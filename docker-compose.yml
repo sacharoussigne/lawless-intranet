@@ -1,0 +1,70 @@
+# Lawless Intranet — one container per app, shared monorepo build context.
+# Requires external nginx-proxy network (same pattern as before).
+#
+# cp docker/.env.example .env.docker
+# docker compose --env-file .env.docker up -d --build
+
+services:
+  auth:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-auth"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: auth
+        APP_PORT: "3001"
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      DATABASE_URL: "${AUTH_DATABASE_URL:?err}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?err}"
+      BETTER_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      NEXT_PUBLIC_DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:?err}"
+      DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:?err}"
+      DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:?err}"
+      AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
+      ACCESS_ON_CREATE: "${ACCESS_ON_CREATE:-}"
+      # nginx-proxy / letsencrypt
+      VIRTUAL_HOST: "${AUTH_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3001"
+      LETSENCRYPT_HOST: "${AUTH_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${AUTH_VIRTUAL_HOST:?err}"
+    networks:
+      - proxy
+
+  dispensary:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-dispensary"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: dispensary
+        APP_PORT: "3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: "${DISPENSARY_DATABASE_URL:?err}"
+      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      NEXT_PUBLIC_APP_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
+      NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
+      TZ: "${TZ:-UTC}"
+      DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
+      VIRTUAL_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3000"
+      LETSENCRYPT_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
