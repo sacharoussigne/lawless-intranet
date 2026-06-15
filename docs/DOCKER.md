@@ -51,8 +51,8 @@ docker build \
 
 | Variable | App | Rôle |
 |----------|-----|------|
-| `AUTH_PUBLIC_URL` | auth + dispensary | URL publique IdP |
-| `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL publique RP |
+| `AUTH_PUBLIC_URL` | auth + dispensary | URL publique IdP — **build + runtime** (`NEXT_PUBLIC_AUTH_URL`) |
+| `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL publique RP — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
 | `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`) |
 | `AUTH_DATABASE_URL` | auth | DB auth |
 | `DISPENSARY_DATABASE_URL` | dispensary | DB métier |
@@ -70,5 +70,6 @@ docker build \
 - Les migrations Prisma s’exécutent au **démarrage** du conteneur (`docker/docker-entrypoint.sh`), pas au build — pas besoin d’accès DB pendant `docker build`.
 - Au runtime : image **standalone** Next.js (`node apps/<app>/server.js`) — `node_modules` tracés, build **webpack** (pas turbopack).
 - Migrations via `prisma` CLI global dans l’image.
+- **Important** : les variables `NEXT_PUBLIC_*` sont **inlinées au build** (logout, login client, etc.). Les mettre dans `docker-compose.yml` `environment:` seul ne suffit pas — il faut rebuild après changement d’URL (`build.args` dans compose).
 - `DATABASE_URL` factice est utilisée uniquement pour `prisma generate` pendant le build.
 - Pour le dev local, continuez avec `pnpm dev` (pas Docker).

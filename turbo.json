@@ -10,7 +10,8 @@
           "NEXT_PUBLIC_DISPENSARY_URL",
           "NEXT_PUBLIC_APP_URL",
           "AUTH_URL",
-          "BETTER_AUTH_URL"
+          "BETTER_AUTH_URL",
+          "DISPENSARY_URL"
         ]
       },
       "dev": {
