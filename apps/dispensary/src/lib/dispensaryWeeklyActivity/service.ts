@@ -27,7 +27,7 @@ import {
   parisYesterdayStartUtc,
   parseWeekdayFlagsJson,
 } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import { DISCORD_ACCOUNT_PROVIDER_ID } from '@/lib/dispensaryWeeklyActivity/constants';
+import { resolveUsersByDiscordIds } from '@lawless-intranet/auth-client/internal';
 
 export function getNormalizedWeeklyActivityPeriod(anchor: Date): {
   periodStart: Date;
@@ -64,7 +64,7 @@ export async function findWeeklyActivityByDoctorAndPeriod(
 export const WEEKLY_ACTIVITY_DUPLICATE_MESSAGE =
   'Une activité existe déjà pour ce médecin sur cette semaine dans ce dispensaire. Modifiez l’entrée existante dans le tableau.';
 
-type WeeklyActivityDb = Pick<PrismaClient, 'dispensaryWeeklyActivity' | 'account'>;
+type WeeklyActivityDb = Pick<PrismaClient, 'dispensaryWeeklyActivity'>;
 
 export async function syncActivityUserIdFromDiscordIfMissing(
   client: WeeklyActivityDb,
@@ -87,15 +87,8 @@ export async function batchSyncActivityUserIds<T extends DispensaryWeeklyActivit
   if (missing.length === 0) return rows;
 
   const discordUserIds = [...new Set(missing.map((r) => r.discordUserId))];
-  const accounts = await client.account.findMany({
-    where: {
-      providerId: DISCORD_ACCOUNT_PROVIDER_ID,
-      accountId: { in: discordUserIds },
-    },
-    select: { accountId: true, userId: true },
-  });
-
-  const discordToUserId = new Map(accounts.map((a) => [a.accountId, a.userId]));
+  const linkedUsers = await resolveUsersByDiscordIds(discordUserIds);
+  const discordToUserId = new Map(linkedUsers.map((row) => [row.discordId, row.userId]));
   const updates: { id: string; userId: string }[] = [];
   for (const row of missing) {
     const userId = discordToUserId.get(row.discordUserId);

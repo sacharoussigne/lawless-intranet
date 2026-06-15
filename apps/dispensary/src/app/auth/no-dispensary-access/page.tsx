@@ -1,7 +1,7 @@
 import { type Metadata } from 'next';
 import { Container, Title, Text } from '@mantine/core';
 import { redirect } from 'next/navigation';
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession } from '@/lib/authSession';
 import { listAccessibleDispensaries } from '@/lib/dispensary/context';
 import { tenantRoutes } from '@/types/routes';
 import LogoutButton from '../no-access/LogoutButton';

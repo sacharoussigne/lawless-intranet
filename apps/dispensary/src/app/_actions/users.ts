@@ -1,16 +1,35 @@
 'use server';
 
-import { auth, getAuthSession } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { z } from 'zod';
 import { z as zv3 } from 'zod/v3';
-import prisma from '@/lib/prisma';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import {
+  adminUpdateUser,
+  changePassword,
+  createUser as createAuthUser,
+  impersonateUser as impersonateUserAdmin,
+  listUsers as listAuthUsers,
+  removeUser,
+  setRole,
+  setUserPassword,
+  updateUser as updateAuthUser,
+} from '@lawless-intranet/auth-client/admin';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { getAuthSession } from '@/lib/authSession';
+import { fetchAllUserProfiles } from '@/lib/authUsers';
 import { type Role } from '@/types/enum/roles';
 import { actionErrorParser } from '@/lib/action';
 import { requirePlatformAdminContext } from '@/lib/dispensary/serverActionContext';
 
-const roleEnum = z.enum(['user', 'admin', 'employee', 'inventory_manager', 'inventory_viewer', 'private_practitioner', 'direction']);
+const roleEnum = z.enum([
+  'user',
+  'admin',
+  'employee',
+  'inventory_manager',
+  'inventory_viewer',
+  'private_practitioner',
+  'direction',
+]);
 
 const createUserSchema = z.object({
   email: z.string().email(),
@@ -34,6 +53,10 @@ const deleteUserSchema = z.object({
   id: z.string(),
 });
 
+async function getCookieHeader() {
+  return (await headers()).get('cookie');
+}
+
 export async function listUsers(params?: {
   searchValue?: string;
   searchField?: 'email' | 'name';
@@ -48,34 +71,24 @@ export async function listUsers(params?: {
       return { status: authCtx.status, error: authCtx.error };
     }
 
-    const result = await auth.api.listUsers({
-      query: {
-        searchValue: params?.searchValue,
-        searchField: params?.searchField,
-        limit: params?.limit?.toString(),
-        offset: params?.offset?.toString(),
-        sortBy: params?.sortBy,
-        sortDirection: params?.sortDirection,
-      },
-      headers: await headers(),
-    });
+    const cookieHeader = await getCookieHeader();
+    const result = await listAuthUsers(params, cookieHeader);
 
     return {
       status: 200,
       data: result,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 500,
-      error: error.message || 'Erreur lors de la récupération des utilisateurs',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Erreur lors de la récupération des utilisateurs',
     };
   }
 }
 
-/**
- * List users for bank access management
- * Returns only id and name, accessible to roles with application.access (including employee)
- */
 export async function listUsersForBankAccess() {
   try {
     const session = await getAuthSession();
@@ -97,26 +110,21 @@ export async function listUsersForBankAccess() {
       };
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const users = await fetchAllUserProfiles();
 
     return {
       status: 200,
       data: {
-        users,
+        users: users.map((user) => ({ id: user.id, name: user.name })),
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 500,
-      error: error.message || 'Erreur lors de la récupération des utilisateurs',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Erreur lors de la récupération des utilisateurs',
     };
   }
 }
@@ -124,169 +132,117 @@ export async function listUsersForBankAccess() {
 export async function createUser(data: z.infer<typeof createUserSchema>) {
   try {
     const validated = createUserSchema.parse(data);
+    const cookieHeader = await getCookieHeader();
 
-    const result = await auth.api.createUser({
-      body: {
+    const result = await createAuthUser(
+      {
         email: validated.email,
         password: validated.password,
         name: validated.name,
-        role: (validated.roles && validated.roles.length > 0)
-          ? (validated.roles.join(',') as any)
-          : ('user' as any),
+        role:
+          validated.roles && validated.roles.length > 0
+            ? validated.roles.join(',')
+            : 'user',
       },
-      headers: await headers(),
-    });
+      cookieHeader,
+    );
 
     return {
       status: 200,
       data: result,
     };
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return {
-        status: 400,
-        error: error.errors,
-      };
-    }
-    return {
-      status: 500,
-      error: error.message || 'Erreur lors de la création de l\'utilisateur',
-    };
+  } catch (error: unknown) {
+    return actionErrorParser(error, "Erreur lors de la création de l'utilisateur");
   }
 }
 
 export async function updateUser(data: z.infer<typeof updateUserSchema>) {
   try {
     const validated = updateUserSchema.parse(data);
+    const cookieHeader = await getCookieHeader();
 
-    const result = await auth.api.adminUpdateUser({
-      body: {
+    const result = await adminUpdateUser(
+      {
         userId: validated.id,
         data: {
           name: validated.name,
-        }
+        },
       },
-      headers: await headers(),
-    });
+      cookieHeader,
+    );
 
-    await auth.api.setRole({
-      body: {
-        userId: validated.id,
-        role: validated.roles as Role[],
-      },
-      headers: await headers(),
-    })
+    if (validated.roles) {
+      await setRole(
+        {
+          userId: validated.id,
+          role: validated.roles as Role[],
+        },
+        cookieHeader,
+      );
+    }
 
     return {
       status: 200,
       data: result,
     };
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return {
-        status: 400,
-        error: error.errors,
-      };
-    }
-    return {
-      status: 500,
-      error: error.message || 'Erreur lors de la mise à jour de l\'utilisateur',
-    };
+  } catch (error: unknown) {
+    return actionErrorParser(error, "Erreur lors de la mise à jour de l'utilisateur");
   }
 }
 
 export async function setPassword(data: z.infer<typeof setPasswordSchema>) {
   try {
     const validated = setPasswordSchema.parse(data);
+    const cookieHeader = await getCookieHeader();
 
-    const result = await auth.api.setUserPassword({
-      body: {
+    const result = await setUserPassword(
+      {
         userId: validated.userId,
         newPassword: validated.password,
       },
-      headers: await headers(),
-    });
+      cookieHeader,
+    );
 
     return {
       status: 200,
       data: result,
     };
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return {
-        status: 400,
-        error: error.errors,
-      };
-    }
-    return {
-      status: 500,
-      error: error.message || 'Erreur lors du changement de mot de passe',
-    };
+  } catch (error: unknown) {
+    return actionErrorParser(error, 'Erreur lors du changement de mot de passe');
   }
 }
 
 export async function deleteUser(data: z.infer<typeof deleteUserSchema>) {
   try {
     const validated = deleteUserSchema.parse(data);
+    const cookieHeader = await getCookieHeader();
 
-    // Direct deletion via Prisma
-    // Sessions and accounts are deleted automatically thanks to onDelete: Cascade
-    await prisma.user.delete({
-      where: {
-        id: validated.id,
-      },
-    });
+    await removeUser({ userId: validated.id }, cookieHeader);
 
     return {
       status: 200,
       data: { success: true },
     };
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return {
-        status: 400,
-        error: error.errors,
-      };
-    }
-    return {
-      status: 500,
-      error: error.message || 'Erreur lors de la suppression de l\'utilisateur',
-    };
+  } catch (error: unknown) {
+    return actionErrorParser(error, "Erreur lors de la suppression de l'utilisateur");
   }
 }
 
 export async function impersonateUser(userId: string) {
   try {
-    const result = await (auth.api as any).admin.impersonateUser({
-      body: {
-        userId,
-      },
-      headers: await headers(),
-    });
+    const cookieHeader = await getCookieHeader();
+    const result = await impersonateUserAdmin({ userId }, cookieHeader);
 
     return {
       status: 200,
       data: result,
     };
-  } catch (error: any) {
-    try {
-      const result = await auth.api.impersonateUser({
-        body: {
-          userId,
-        },
-        headers: await headers(),
-      });
-
-      return {
-        status: 200,
-        data: result,
-      };
-    } catch (fallbackError: any) {
-      return {
-        status: 500,
-        error: error.message || fallbackError.message || 'Erreur lors de l\'impersonation',
-      };
-    }
+  } catch (error: unknown) {
+    return {
+      status: 500,
+      error:
+        error instanceof Error ? error.message : "Erreur lors de l'impersonation",
+    };
   }
 }
 
@@ -329,14 +285,15 @@ export async function updateMyProfile(data: zv3.infer<typeof updateMyProfileSche
     }
 
     const validated = updateMyProfileSchema.parse(data);
+    const cookieHeader = await getCookieHeader();
 
-    const result = await auth.api.updateUser({
-      body: {
+    const result = await updateAuthUser(
+      {
         name: validated.name,
         image: validated.image === undefined ? undefined : validated.image,
       },
-      headers: await headers(),
-    });
+      cookieHeader,
+    );
 
     return {
       status: 200,
@@ -363,15 +320,16 @@ export async function changeMyPassword(data: zv3.infer<typeof changeMyPasswordSc
     }
 
     const validated = changeMyPasswordSchema.parse(data);
+    const cookieHeader = await getCookieHeader();
 
-    const result = await auth.api.changePassword({
-      body: {
+    const result = await changePassword(
+      {
         currentPassword: validated.currentPassword,
         newPassword: validated.newPassword,
         revokeOtherSessions: true,
       },
-      headers: await headers(),
-    });
+      cookieHeader,
+    );
 
     return {
       status: 200,

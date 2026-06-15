@@ -1,8 +1,8 @@
 import { type Metadata } from 'next';
 import { Container, Title, Text } from '@mantine/core';
 import { redirect } from 'next/navigation';
-import { getAuthSession } from '@/lib/auth';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { getAuthSession } from '@/lib/authSession';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import LogoutButton from './LogoutButton';
 
 export const metadata: Metadata = {

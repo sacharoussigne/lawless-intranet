@@ -1,17 +1,13 @@
-import { getAuthSession } from '@/lib/auth';
-import Signup from '@/app/pages/signup';
-import { type Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { routes } from '@/types/routes';
+import { getSignupUrl } from '@lawless-intranet/auth-client/browser';
 
-export const metadata: Metadata = {
-  title: 'Inscription',
-};
-
-export default async function LoginPage() {
-  const session = await getAuthSession();
-  if (session) {
-    redirect(routes.employee.index);
-  }
-  return <Signup />;
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const params = await searchParams;
+  const callbackUrl =
+    params.callbackUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  redirect(getSignupUrl(callbackUrl));
 }

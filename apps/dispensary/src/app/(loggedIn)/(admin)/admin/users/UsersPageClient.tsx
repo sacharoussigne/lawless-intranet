@@ -16,7 +16,7 @@ import { DeleteUserModal } from './components/DeleteUserModal';
 import { PasswordModal } from './components/PasswordModal';
 import { UsersTable } from './components/UsersTable';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
-import { authClient } from '@/lib/client';
+import { authClient } from '@lawless-intranet/auth-client/browser';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types/users';
 

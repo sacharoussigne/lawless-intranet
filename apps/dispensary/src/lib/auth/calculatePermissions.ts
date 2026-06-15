@@ -1,4 +1,4 @@
-import { checkRolePermission } from './permissions';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import type { Permissions } from '@/types/permissions';
 
 /**

@@ -7,13 +7,8 @@ import {
 import prisma from '@/lib/prisma';
 import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-
-const agendaUserSelect = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-} as const;
+import { batchGetUsers, searchUsers } from '@lawless-intranet/auth-client/server';
+import { getCookieHeader } from '@/lib/authUsers';
 
 export type AgendaEligibleUser = {
   id: string;
@@ -21,12 +16,6 @@ export type AgendaEligibleUser = {
   email: string;
   image: string | null;
 };
-
-function buildAgendaUserSearchFilter(query: string) {
-  return {
-    name: { contains: query, mode: 'insensitive' as const },
-  };
-}
 
 export async function searchEligibleDispensaryUsersForAgenda(
   dispensaryId: string,
@@ -37,38 +26,35 @@ export async function searchEligibleDispensaryUsersForAgenda(
     return [];
   }
 
-  const userFilter = buildAgendaUserSearchFilter(q);
-
+  const cookieHeader = await getCookieHeader();
   const [members, matchingUsers] = await Promise.all([
     prisma.dispensaryMember.findMany({
-      where: { dispensaryId, user: userFilter },
-      include: { user: { select: agendaUserSelect } },
-      take: 30,
-      orderBy: { user: { name: 'asc' } },
+      where: { dispensaryId },
+      select: { userId: true },
     }),
-    prisma.user.findMany({
-      where: userFilter,
-      select: { ...agendaUserSelect, role: true },
-      take: 30,
-      orderBy: { name: 'asc' },
-    }),
+    searchUsers(q, cookieHeader),
   ]);
 
-  const byId = new Map<string, AgendaEligibleUser>();
-  for (const member of members) {
-    byId.set(member.user.id, member.user);
-  }
+  const memberIds = new Set(members.map((member) => member.userId));
+  const candidateIds = new Set<string>();
+
   for (const user of matchingUsers) {
-    if (!isPlatformAdmin(user.role)) continue;
-    byId.set(user.id, {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      image: user.image,
-    });
+    if (memberIds.has(user.id)) {
+      candidateIds.add(user.id);
+    } else if (isPlatformAdmin(user.role)) {
+      candidateIds.add(user.id);
+    }
   }
 
-  return Array.from(byId.values())
+  const profiles = await batchGetUsers([...candidateIds], cookieHeader);
+
+  return profiles
+    .map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email ?? '',
+      image: user.image,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
     .slice(0, 20);
 }
@@ -212,10 +198,8 @@ export async function validateDispensaryUserIds(
 ): Promise<boolean> {
   if (userIds.length === 0) return true;
 
-  const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
-    select: { id: true, role: true },
-  });
+  const cookieHeader = await getCookieHeader();
+  const users = await batchGetUsers(userIds, cookieHeader);
   if (users.length !== userIds.length) return false;
 
   const memberRequiredIds = users
