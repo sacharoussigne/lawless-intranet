@@ -21,6 +21,11 @@ RUN pnpm dlx turbo@^2 prune "${APP_NAME}" --docker
 # --- Install & build ---
 FROM base AS builder
 ARG APP_NAME
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_DISPENSARY_URL
+ARG BETTER_AUTH_URL
+ARG DISPENSARY_URL
 WORKDIR /app
 
 COPY --from=prune /app/out/json/ .
@@ -32,6 +37,12 @@ COPY --from=prune /app/out/full/ .
 ENV NEXT_TELEMETRY_DISABLED=1
 # Dummy URL for `prisma generate` at build time only (no real DB connection).
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+# NEXT_PUBLIC_* are inlined into client bundles at build time — pass via docker-compose build.args.
+ENV NEXT_PUBLIC_AUTH_URL="${NEXT_PUBLIC_AUTH_URL}"
+ENV NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL}"
+ENV NEXT_PUBLIC_DISPENSARY_URL="${NEXT_PUBLIC_DISPENSARY_URL}"
+ENV BETTER_AUTH_URL="${BETTER_AUTH_URL}"
+ENV DISPENSARY_URL="${DISPENSARY_URL}"
 
 # Webpack build + standalone output (avoids turbopack hashed externals at runtime).
 RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
