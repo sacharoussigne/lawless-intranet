@@ -36,7 +36,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 #   dispensary → DISPENSARY_DATABASE_URL
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 
-RUN pnpm turbo build --filter="${APP_NAME}"
+# Inline env ensures turbo/pnpm pass DATABASE_URL (turbo strict env mode).
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    pnpm turbo build --filter="${APP_NAME}"
 
 # Portable deploy dir (app + workspace packages + node_modules)
 RUN pnpm --filter="${APP_NAME}" deploy --legacy /deploy
