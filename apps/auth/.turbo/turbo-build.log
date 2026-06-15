@@ -1,27 +1,28 @@
-$ prisma generate && next build
+$ prisma generate && next build --webpack
 Loaded Prisma config from prisma.config.ts.
 
 Prisma schema loaded from prisma\schema.prisma.
 
-✔ Generated Prisma Client (v7.8.0) to .\..\..\node_modules\.pnpm\@prisma+client@7.8.0_prisma_12a6afd4e8168cdd815b06207f03ccf9\node_modules\@prisma\client in 55ms
+✔ Generated Prisma Client (v7.8.0) to .\..\..\node_modules\.pnpm\@prisma+client@7.8.0_prisma_12a6afd4e8168cdd815b06207f03ccf9\node_modules\@prisma\client in 79ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
 
-▲ Next.js 16.2.9 (Turbopack)
+▲ Next.js 16.2.9 (webpack)
 - Environments: .env.local, .env
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.6s
+✓ Compiled successfully in 8.0s
   Running TypeScript ...
-  Finished TypeScript in 2.8s ...
+  Finished TypeScript in 4.4s ...
   Collecting page data using 14 workers ...
   Generating static pages using 14 workers (0/11) ...
   Generating static pages using 14 workers (2/11) 
   Generating static pages using 14 workers (5/11) 
   Generating static pages using 14 workers (8/11) 
-✓ Generating static pages using 14 workers (11/11) in 713ms
+✓ Generating static pages using 14 workers (11/11) in 1315ms
   Finalizing page optimization ...
+  Collecting build traces ...
 
 Route (app)
 ┌ ƒ /
