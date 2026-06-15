@@ -20,9 +20,10 @@ export function corsPreflightResponse(request: Request): NextResponse {
     'Access-Control-Allow-Methods',
     'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   );
+  const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
   response.headers.set(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, Cookie',
+    requestedHeaders ?? 'Content-Type, Authorization, Cookie',
   );
   return withCors(request, response);
 }
