@@ -46,10 +46,11 @@ RUN pnpm --filter="${APP_NAME}" deploy --legacy /deploy
 # pnpm deploy ignores .next (gitignored) — copy build output explicitly
 RUN cp -r "/app/apps/${APP_NAME}/.next" /deploy/.next
 
-# --- Runtime ---
-FROM base AS runner
-ARG APP_NAME
+# --- Runtime (no pnpm — direct node binaries only) ---
+FROM node:22-alpine AS runner
 ARG APP_PORT
+
+RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /deploy
 
@@ -69,4 +70,3 @@ COPY --from=builder --chown=nextjs:nodejs /deploy .
 USER nextjs
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["pnpm", "start"]

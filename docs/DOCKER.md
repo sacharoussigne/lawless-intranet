@@ -69,5 +69,6 @@ docker build \
 ## Notes
 
 - Les migrations Prisma s’exécutent au **démarrage** du conteneur (`docker/docker-entrypoint.sh`), pas au build — pas besoin d’accès DB pendant `docker build`.
+- Au runtime, pas de `pnpm` : migrations via `prisma` et démarrage via `node next start` (évite les erreurs EACCES).
 - `DATABASE_URL` factice est utilisée uniquement pour `prisma generate` pendant le build.
 - Pour le dev local, continuez avec `pnpm dev` (pas Docker).
