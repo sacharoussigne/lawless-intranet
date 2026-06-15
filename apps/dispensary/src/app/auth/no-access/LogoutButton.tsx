@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@mantine/core';
-import { authClient } from '@/lib/client';
+import { authClient } from '@lawless-intranet/auth-client/browser';
 import { useRouter } from 'next/navigation';
 
 export default function LogoutButton() {

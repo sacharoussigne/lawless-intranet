@@ -1,6 +1,6 @@
 import type { AgendaAccessLevel } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { hasRole } from '@/lib/auth/permissions';
+import { hasRole } from '@lawless-intranet/auth-permissions';
 import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { Role } from '@/types/enum/roles';

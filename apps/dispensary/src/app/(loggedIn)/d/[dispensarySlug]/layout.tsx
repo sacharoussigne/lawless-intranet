@@ -1,6 +1,6 @@
 import Header from '@/app/(loggedIn)/_components/Header/Header';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
 import { calculatePermissions } from '@/lib/auth/calculatePermissions';
 import { getAppSettings } from '@/lib/appSettings';

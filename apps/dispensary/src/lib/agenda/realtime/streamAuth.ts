@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { getRequestAuthSession } from '@/lib/authSession';
 import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { requireDispensaryAccess } from '@/lib/dispensary/context';
@@ -10,7 +10,7 @@ export async function requireAgendaStreamAccess(
   | { ok: true; dispensaryId: string; userId: string }
   | { ok: false; status: number; error: string }
 > {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await getRequestAuthSession(request);
   if (!session?.user?.id) {
     return { ok: false, status: 401, error: 'Non autorisé' };
   }

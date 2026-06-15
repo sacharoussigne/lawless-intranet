@@ -1,6 +1,6 @@
 import Header from '@/app/(loggedIn)/_components/Header/Header';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession } from '@/lib/authSession';
 import type { AuthSession } from '@/types/session';
 import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';

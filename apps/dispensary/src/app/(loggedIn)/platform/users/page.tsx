@@ -16,7 +16,7 @@ async function UsersContent() {
 
   const data = getDataOrThrow(result, 'Erreur lors du chargement des utilisateurs');
 
-  const users: User[] = (data.users || []).map((user) => ({
+  const users: User[] = ((data as { users?: User[] }).users || []).map((user) => ({
     ...(user as User),
     role: (user as { role?: string | null }).role ?? null,
   }));
@@ -24,7 +24,7 @@ async function UsersContent() {
   return (
     <UsersPageClient
       initialUsers={users}
-      initialTotalRecords={data.total || 0}
+      initialTotalRecords={(data as { total?: number }).total || 0}
     />
   );
 }

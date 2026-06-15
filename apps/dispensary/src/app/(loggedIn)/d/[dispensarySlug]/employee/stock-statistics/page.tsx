@@ -1,7 +1,7 @@
 import { Container, Title } from '@mantine/core';
 import { redirect } from 'next/navigation';
-import { getAuthSession } from '@/lib/auth';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { getAuthSession } from '@/lib/authSession';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import type { AuthSession } from '@/types/session';
 import { getAppSettings } from '@/lib/appSettings';

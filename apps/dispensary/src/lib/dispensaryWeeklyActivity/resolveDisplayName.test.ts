@@ -36,10 +36,7 @@ function mockPrisma(displayNamesByDiscordId: Record<string, string[]>) {
         },
       ),
     },
-    account: {
-      findFirst: vi.fn(),
-    },
-  } as unknown as Pick<PrismaClient, 'dispensaryWeeklyActivity' | 'account'>;
+  } as unknown as Pick<PrismaClient, 'dispensaryWeeklyActivity'>;
 }
 
 describe('getLatestDiscordDisplayNames', () => {

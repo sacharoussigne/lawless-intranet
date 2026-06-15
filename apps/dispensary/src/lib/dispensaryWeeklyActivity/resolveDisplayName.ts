@@ -1,9 +1,13 @@
 import type { PrismaClient } from '@prisma/client';
-import { DISCORD_ACCOUNT_PROVIDER_ID } from '@/lib/dispensaryWeeklyActivity/constants';
+import {
+  findDiscordIdByUserId,
+  findUserIdByDiscordId,
+  resolveDiscordIdsForUserIds,
+  resolveUsersByDiscordIds,
+} from '@lawless-intranet/auth-client/internal';
 
-type AccountDelegate = Pick<PrismaClient, 'account'>;
 type WeeklyActivityDelegate = Pick<PrismaClient, 'dispensaryWeeklyActivity'>;
-type ResolveDisplayNameDelegate = AccountDelegate & WeeklyActivityDelegate;
+type ResolveDisplayNameDelegate = WeeklyActivityDelegate;
 
 export function genericDoctorFallbackName(discordUserId: string): string {
   const fallback = `Médecin ${discordUserId}`;
@@ -77,31 +81,32 @@ export async function resolveBotWeeklyActivityDisplayName(
 }
 
 export async function findLinkedUserIdByDiscordAccount(
-  prisma: AccountDelegate,
+  _prisma: unknown,
   discordUserId: string,
 ): Promise<string | null> {
-  const acc = await prisma.account.findFirst({
-    where: {
-      providerId: DISCORD_ACCOUNT_PROVIDER_ID,
-      accountId: discordUserId,
-    },
-    select: { userId: true },
-  });
-  return acc?.userId ?? null;
+  return findUserIdByDiscordId(discordUserId);
 }
 
 export async function getDiscordAccountIdForUser(
-  prisma: AccountDelegate,
+  _prisma: unknown,
   userId: string,
 ): Promise<string | null> {
-  const acc = await prisma.account.findFirst({
-    where: {
-      userId,
-      providerId: DISCORD_ACCOUNT_PROVIDER_ID,
-    },
-    select: { accountId: true },
-  });
-  return acc?.accountId ?? null;
+  return findDiscordIdByUserId(userId);
+}
+
+export async function getDiscordAccountIdsForUsers(
+  userIds: string[],
+): Promise<Map<string, string>> {
+  return resolveDiscordIdsForUserIds(userIds);
+}
+
+export async function resolveDiscordUsersByIds(
+  discordUserIds: string[],
+): Promise<Map<string, { userId: string; name: string }>> {
+  const rows = await resolveUsersByDiscordIds(discordUserIds);
+  return new Map(
+    rows.map((row) => [row.discordId, { userId: row.userId, name: row.name }]),
+  );
 }
 
 type RowWithDisplayName = {

@@ -9,8 +9,8 @@ import {
   IconClipboardText,
   IconUsers,
 } from '@tabler/icons-react';
-import { getAuthSession } from '@/lib/auth';
-import { hasRole } from '@/lib/auth/permissions';
+import { getAuthSession } from '@/lib/authSession';
+import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { dispensarySiteTitle, getAppSettings } from '@/lib/appSettings';
 import { requireDispensaryFromSlug } from '@/lib/dispensary/context';

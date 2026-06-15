@@ -1,7 +1,7 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
-import { getAuthSession } from '@/lib/auth';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { getAuthSession } from '@/lib/authSession';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import {

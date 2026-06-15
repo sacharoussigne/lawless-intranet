@@ -4,21 +4,22 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import {
   canEditAllWeeklyDispensaryActivity,
   canEditWeeklyActivity,
   canViewWeeklyDispensaryActivity,
   isWeeklyActivityOwner,
 } from '@/lib/dispensaryWeeklyActivity/access';
-import { DISCORD_ACCOUNT_PROVIDER_ID } from '@/lib/dispensaryWeeklyActivity/constants';
 import {
   findLinkedUserIdByDiscordAccount,
   genericDoctorFallbackName,
   getDiscordAccountIdForUser,
+  getDiscordAccountIdsForUsers,
   getLatestDiscordDisplayNames,
   resolveDiscordDisplayName,
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import { fetchDiscordLinkedUsers, fetchUserProfile, fetchUserProfiles } from '@/lib/authUsers';
 import { listSerializedWeeklyActivities } from '@/lib/dispensaryWeeklyActivity/listSerialized';
 import {
   dispensaryWeeklyActivityCreateSchema,
@@ -155,7 +156,6 @@ export async function getDispensaryWeeklyActivityHistory(
     const history = await prisma.dispensaryWeeklyActivityHistory.findMany({
       where: { activityId: parsed.data.id },
       orderBy: { createdAt: 'desc' },
-      include: { actorUser: { select: { name: true } } },
     });
 
     const actorUserIdsWithoutDiscord = [
@@ -166,19 +166,12 @@ export async function getDispensaryWeeklyActivityHistory(
       ),
     ];
 
-    const userIdToDiscordId = new Map<string, string>();
-    if (actorUserIdsWithoutDiscord.length > 0) {
-      const accounts = await prisma.account.findMany({
-        where: {
-          userId: { in: actorUserIdsWithoutDiscord },
-          providerId: DISCORD_ACCOUNT_PROVIDER_ID,
-        },
-        select: { userId: true, accountId: true },
-      });
-      for (const account of accounts) {
-        userIdToDiscordId.set(account.userId, account.accountId);
-      }
-    }
+    const [userIdToDiscordId, actorProfiles] = await Promise.all([
+      getDiscordAccountIdsForUsers(actorUserIdsWithoutDiscord),
+      fetchUserProfiles([
+        ...new Set(history.map((h) => h.actorUserId).filter(Boolean) as string[]),
+      ]),
+    ]);
 
     const actorDiscordIds = new Set<string>();
     for (const h of history) {
@@ -210,7 +203,9 @@ export async function getDispensaryWeeklyActivityHistory(
           id: h.id,
           action: h.action,
           source: h.source,
-          actorUserName: h.actorUser?.name ?? null,
+          actorUserName: h.actorUserId
+            ? actorProfiles.get(h.actorUserId)?.name ?? null
+            : null,
           actorDiscordUserId,
           actorResolvedName,
           createdAt: h.createdAt.toISOString(),
@@ -246,31 +241,16 @@ export async function listDispensaryWeeklyActivityTargets(dispensarySlug: string
       return { status: 403 as const, error: 'Permission refusée' };
     }
 
-    const users = await prisma.user.findMany({
-      where: {
-        accounts: {
-          some: { providerId: DISCORD_ACCOUNT_PROVIDER_ID },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        accounts: {
-          where: { providerId: DISCORD_ACCOUNT_PROVIDER_ID },
-          select: { accountId: true },
-          take: 1,
-        },
-      },
-    });
+    const users = await fetchDiscordLinkedUsers();
 
     const discordUserIds = users
-      .map((user) => user.accounts[0]?.accountId)
+      .map((user) => user.discordId)
       .filter((id): id is string => Boolean(id));
     const discordDisplayNames = await getLatestDiscordDisplayNames(prisma, discordUserIds);
 
     const enriched = users
       .map((user) => {
-        const discordUserId = user.accounts[0]?.accountId;
+        const discordUserId = user.discordId;
         const discordDisplayName = discordUserId
           ? discordDisplayNames.get(discordUserId) ?? genericDoctorFallbackName(discordUserId)
           : genericDoctorFallbackName('unknown');
@@ -330,10 +310,7 @@ export async function createDispensaryWeeklyActivity(
       if (!parsed.data.targetUserId) {
         return { status: 400 as const, error: 'Sélectionnez un médecin' };
       }
-      const target = await prisma.user.findUnique({
-        where: { id: parsed.data.targetUserId },
-        select: { id: true, name: true },
-      });
+      const target = await fetchUserProfile(parsed.data.targetUserId);
       if (!target) {
         return { status: 400 as const, error: 'Utilisateur introuvable' };
       }

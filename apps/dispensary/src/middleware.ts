@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { routes, legacyPathToTenant, tenantRoutes } from './types/routes';
-import { getAuthSession } from './lib/auth';
+import { getRequestAuthSession } from './lib/authSession';
 import { hasToBeLoggedOutMiddleware } from './middlewares/hasToBeLoggedOutMiddleware';
 import { hasToBeLoggedInMiddleware } from './middlewares/hasToBeLoggedInMiddleware';
 import { hasApplicationAccessMiddleware } from './middlewares/hasApplicationAccessMiddleware';
@@ -32,7 +32,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(legacyTarget, req.url));
   }
 
-  const session = await getAuthSession();
+  const session = await getRequestAuthSession(req);
   const enrichedSession: AppMiddlewareSession = session
     ? await enrichSessionWithTenant(
         {
