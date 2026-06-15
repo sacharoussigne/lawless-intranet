@@ -7,7 +7,11 @@
       "build": "turbo build",
       "lint": "turbo lint",
       "typecheck": "turbo typecheck",
-      "migrate:users-to-auth": "tsx scripts/migrate-users-to-auth.ts"
+      "migrate:users-to-auth": "tsx scripts/migrate-users-to-auth.ts",
+      "docker:build:auth": "docker build --build-arg APP_NAME=auth --build-arg APP_PORT=3001 -t lawless-auth .",
+      "docker:build:dispensary": "docker build --build-arg APP_NAME=dispensary --build-arg APP_PORT=3000 -t lawless-dispensary .",
+      "docker:up": "docker compose --env-file .env.docker up -d --build",
+      "docker:down": "docker compose --env-file .env.docker down"
     },
     "devDependencies": {
       "turbo": "^2.5.0",
