@@ -31,31 +31,27 @@ COPY --from=prune /app/out/full/ .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 # Dummy URL for `prisma generate` at build time only (no real DB connection).
-# At runtime, each container gets its own DATABASE_URL via docker-compose:
-#   auth       → AUTH_DATABASE_URL
-#   dispensary → DISPENSARY_DATABASE_URL
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 
-# Inline env ensures turbo/pnpm pass DATABASE_URL (turbo strict env mode).
+# Webpack build + standalone output (avoids turbopack hashed externals at runtime).
 RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
     pnpm turbo build --filter="${APP_NAME}"
 
-# Portable deploy dir (app + workspace packages + node_modules)
-RUN pnpm --filter="${APP_NAME}" deploy --legacy /deploy
+# Self-contained Prisma CLI for runtime migrations (npm flat install).
+RUN npm install prisma@7.8.0 --prefix /prisma-tools --omit=dev
 
-# pnpm deploy ignores .next (gitignored) — copy build output explicitly
-RUN cp -r "/app/apps/${APP_NAME}/.next" /deploy/.next
-
-# --- Runtime (no pnpm — direct node binaries only) ---
+# --- Runtime (Next.js standalone — traced node_modules) ---
 FROM node:22-alpine AS runner
+ARG APP_NAME
 ARG APP_PORT
 
 RUN apk add --no-cache libc6-compat openssl
 
-WORKDIR /deploy
+WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV APP_NAME="${APP_NAME}"
 ENV PORT="${APP_PORT}"
 ENV HOSTNAME="0.0.0.0"
 
@@ -65,7 +61,14 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-COPY --from=builder --chown=nextjs:nodejs /deploy .
+COPY --from=builder /prisma-tools /prisma-tools
+
+# Standalone bundle (monorepo layout: apps/<name>/server.js)
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/.next/static ./apps/${APP_NAME}/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/public ./apps/${APP_NAME}/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/prisma ./apps/${APP_NAME}/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/prisma.config.mjs ./apps/${APP_NAME}/prisma.config.mjs
 
 USER nextjs
 

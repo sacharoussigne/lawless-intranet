@@ -9,9 +9,8 @@ docker build (context: .)
     │
     ├─ turbo prune auth|dispensary --docker   → apps + packages nécessaires
     ├─ pnpm install
-    ├─ pnpm turbo build --filter=<app>
-    ├─ pnpm deploy --filter=<app>             → bundle portable
-    └─ entrypoint: prisma migrate deploy + pnpm start
+    ├─ pnpm turbo build --filter=<app>        → next build --webpack + standalone
+    └─ entrypoint: prisma migrate deploy + node apps/<app>/server.js
 ```
 
 Équivalent de l’ancien flux (`npm install` → `prisma migrate deploy` → `build` → `start`), mais découpé en deux conteneurs.
@@ -69,6 +68,7 @@ docker build \
 ## Notes
 
 - Les migrations Prisma s’exécutent au **démarrage** du conteneur (`docker/docker-entrypoint.sh`), pas au build — pas besoin d’accès DB pendant `docker build`.
-- Au runtime, pas de `pnpm` : migrations via `prisma` et démarrage via `node next start` (évite les erreurs EACCES).
+- Au runtime : image **standalone** Next.js (`node apps/<app>/server.js`) — `node_modules` tracés, build **webpack** (pas turbopack).
+- Migrations via `prisma` CLI global dans l’image.
 - `DATABASE_URL` factice est utilisée uniquement pour `prisma generate` pendant le build.
 - Pour le dev local, continuez avec `pnpm dev` (pas Docker).
