@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, Stack, TextInput } from '@mantine/core';
 import { IconUser } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -13,6 +14,7 @@ import {
 import { handleAction } from '@/lib/action';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import { getEntitySchema } from '@/lib/cabinet/formSchema';
+import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
 
 type PatientFormData = {
@@ -43,6 +45,8 @@ export function PatientFormModal({
   formSchemas,
   onSuccess,
 }: PatientFormModalProps) {
+  const router = useRouter();
+  const t = tenantRoutes(dispensarySlug);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState<Date | null>(null);
@@ -80,14 +84,19 @@ export function PatientFormModal({
         ? await updateCabinetPatient(dispensarySlug, { id: patient.id, ...payload })
         : await createCabinetPatient(dispensarySlug, payload);
 
-      handleAction(result);
+      const data = handleAction(result);
       notifications.show({
         title: 'Succès',
         message: patient?.id ? 'Patient mis à jour' : 'Patient créé',
         color: 'moss',
       });
-      onSuccess();
       onClose();
+
+      if (patient?.id) {
+        onSuccess();
+      } else if (data?.id) {
+        router.push(`${t.cabinet.index}/patients/${data.id}?cabinetId=${cabinetId}`);
+      }
     } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',

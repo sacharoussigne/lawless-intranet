@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ActionIcon,
   Button,
@@ -64,6 +65,7 @@ export function CareEpisodeDetailPageClient({
   initialConsultations,
   canEditSchema,
 }: CareEpisodeDetailPageClientProps) {
+  const router = useRouter();
   const [episode, setEpisode] = useState(initialEpisode);
   const [consultations, setConsultations] = useState(initialConsultations);
   const [editing, setEditing] = useState(false);
@@ -114,8 +116,15 @@ export function CareEpisodeDetailPageClient({
         careEpisodeId: episode.id,
         date: newConsultationDate.toISOString(),
       });
-      handleAction(result);
-      await reloadConsultations();
+      const created = handleAction(result);
+      notifications.show({ title: 'Consultation créée', message: '', color: 'moss' });
+      if (created?.id) {
+        router.push(
+          `${t.cabinet.index}/patients/${episode.patientId}/episodes/${episode.id}/consultations/${created.id}?cabinetId=${episode.patient.cabinetId}`,
+        );
+      } else {
+        await reloadConsultations();
+      }
     } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',

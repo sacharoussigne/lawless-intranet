@@ -336,6 +336,7 @@ export function PatientDetailPageClient({
         onClose={() => setEpisodeModalOpen(false)}
         dispensarySlug={dispensarySlug}
         patientId={patient.id}
+        cabinetId={patient.cabinetId}
         onSuccess={() => void reloadEpisodes()}
       />
     </Container>
