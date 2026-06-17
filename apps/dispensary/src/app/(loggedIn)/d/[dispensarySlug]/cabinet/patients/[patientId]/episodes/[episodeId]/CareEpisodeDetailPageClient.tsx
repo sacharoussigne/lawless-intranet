@@ -39,6 +39,7 @@ type EpisodeData = {
   id: string;
   patientId: string;
   motif: string;
+  startedAt: Date;
   customValues: CustomValues;
   formSchemas: CabinetFormSchemas;
   accessLevel: CabinetAccessLevel | null;
@@ -89,6 +90,7 @@ export function CareEpisodeDetailPageClient({
         id: episode.id,
         patientId: episode.patientId,
         motif: episode.motif,
+        startedAt: episode.startedAt.toISOString(),
         customValues: episode.customValues,
       });
       handleAction(result);
@@ -141,19 +143,34 @@ export function CareEpisodeDetailPageClient({
   const systemCards = editing
     ? {
         care_episode_general: (
-          <TextInput
-            label="Motif"
-            value={episode.motif}
-            onChange={(e) => setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }))}
-            required
-          />
+          <Stack gap="md">
+            <TextInput
+              label="Motif"
+              value={episode.motif}
+              onChange={(e) => setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }))}
+              required
+            />
+            <RpDatePicker
+              label="Date de début"
+              value={episode.startedAt}
+              onChange={(d) => {
+                if (d) setEpisode((ep) => ({ ...ep, startedAt: d }));
+              }}
+              required
+            />
+          </Stack>
         ),
       }
     : {
         care_episode_general: (
-          <Text size="sm">
-            <strong>Motif :</strong> {episode.motif}
-          </Text>
+          <Stack gap="xs">
+            <Text size="sm">
+              <strong>Motif :</strong> {episode.motif}
+            </Text>
+            <Text size="sm">
+              <strong>Date de début :</strong> {formatRpDate(episode.startedAt)}
+            </Text>
+          </Stack>
         ),
       };
 

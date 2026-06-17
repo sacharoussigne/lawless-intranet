@@ -37,6 +37,7 @@ export type CareEpisodeSummaryDTO = {
   id: string;
   patientId: string;
   motif: string;
+  startedAt: Date;
   consultationCount: number;
   createdAt: Date;
 };

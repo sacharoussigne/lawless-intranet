@@ -22,7 +22,6 @@ import {
   updateCabinetPatient,
 } from '@/app/_actions/cabinet/patients';
 import {
-  createCareEpisode,
   deleteCareEpisode,
   listCareEpisodes,
 } from '@/app/_actions/cabinet/careEpisodes';
@@ -38,6 +37,7 @@ import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
 import { FormSchemaEditor } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/FormSchemaEditor';
+import { CareEpisodeFormModal } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CareEpisodeFormModal';
 
 type PatientData = {
   id: string;
@@ -69,7 +69,7 @@ export function PatientDetailPageClient({
   const [episodes, setEpisodes] = useState(initialEpisodes);
   const [editing, setEditing] = useState(false);
   const [schemaEditorOpen, setSchemaEditorOpen] = useState(false);
-  const [newMotif, setNewMotif] = useState('');
+  const [episodeModalOpen, setEpisodeModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const canWrite = canWriteCabinet(patient.accessLevel);
@@ -106,25 +106,6 @@ export function PatientDetailPageClient({
       });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleAddEpisode = async () => {
-    if (!newMotif.trim()) return;
-    try {
-      const result = await createCareEpisode(dispensarySlug, {
-        patientId: patient.id,
-        motif: newMotif.trim(),
-      });
-      handleAction(result);
-      setNewMotif('');
-      await reloadEpisodes();
-    } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Échec',
-        color: 'danger',
-      });
     }
   };
 
@@ -280,22 +261,16 @@ export function PatientDetailPageClient({
             <Title order={3} className="disp-display-title">
               Prises en charge
             </Title>
-          </Group>
-
-          {canWrite && (
-            <Group mb="md" align="flex-end">
-              <TextInput
-                label="Nouvelle prise en charge"
-                placeholder="Motif"
-                value={newMotif}
-                onChange={(e) => setNewMotif(e.currentTarget.value)}
-                style={{ flex: 1 }}
-              />
-              <Button color="sage" leftSection={<IconPlus size={16} />} onClick={() => void handleAddEpisode()}>
+            {canWrite && (
+              <Button
+                color="sage"
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setEpisodeModalOpen(true)}
+              >
                 Ajouter
               </Button>
-            </Group>
-          )}
+            )}
+          </Group>
 
           <DataTable
             withTableBorder
@@ -304,6 +279,11 @@ export function PatientDetailPageClient({
             records={episodes}
             columns={[
               { accessor: 'motif', title: 'Motif' },
+              {
+                accessor: 'startedAt',
+                title: 'Début',
+                render: (ep) => formatRpDate(ep.startedAt),
+              },
               { accessor: 'consultationCount', title: 'Consultations' },
               {
                 accessor: 'actions',
@@ -346,6 +326,14 @@ export function PatientDetailPageClient({
         entityType="patient"
         initialSchemas={patient.formSchemas}
         onSchemasChange={(schemas) => setPatient((p) => ({ ...p, formSchemas: schemas }))}
+      />
+
+      <CareEpisodeFormModal
+        opened={episodeModalOpen}
+        onClose={() => setEpisodeModalOpen(false)}
+        dispensarySlug={dispensarySlug}
+        patientId={patient.id}
+        onSuccess={() => void reloadEpisodes()}
       />
     </Container>
   );

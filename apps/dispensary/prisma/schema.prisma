@@ -805,12 +805,14 @@ model CareEpisode {
   patientId     String
   patient       CabinetPatient @relation(fields: [patientId], references: [id], onDelete: Cascade)
   motif         String
+  startedAt     DateTime
   customValues  Json           @default("{}")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   consultations Consultation[]
 
   @@index([patientId])
+  @@index([patientId, startedAt])
   @@map("care_episode")
 }
 

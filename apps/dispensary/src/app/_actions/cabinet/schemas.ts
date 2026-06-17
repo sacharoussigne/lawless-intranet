@@ -49,6 +49,7 @@ export const deletePatientSchema = z.object({
 export const createCareEpisodeSchema = z.object({
   patientId: z.string().uuid(),
   motif: z.string().trim().min(1, 'Le motif est requis').max(500),
+  startedAt: z.string().datetime(),
   customValues: z.record(z.string().nullable()).optional(),
 });
 

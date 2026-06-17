@@ -50,13 +50,14 @@ export async function listCareEpisodes(dispensarySlug: string, patientId: string
     const episodes = await prisma.careEpisode.findMany({
       where: { patientId },
       include: { _count: { select: { consultations: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { startedAt: 'desc' },
     });
 
     const result: CareEpisodeSummaryDTO[] = episodes.map((e) => ({
       id: e.id,
       patientId: e.patientId,
       motif: e.motif,
+      startedAt: e.startedAt,
       consultationCount: e._count.consultations,
       createdAt: e.createdAt,
     }));
@@ -124,6 +125,7 @@ export async function createCareEpisode(
   data: {
     patientId: string;
     motif: string;
+    startedAt: string;
     customValues?: Record<string, string | null>;
   },
 ) {
@@ -159,6 +161,7 @@ export async function createCareEpisode(
     const customValidation = validateCustomValues(
       entitySchema,
       validated.customValues ?? {},
+      { enforceRequired: false },
     );
     if (!customValidation.ok) {
       return { status: 400, error: customValidation.error };
@@ -168,6 +171,7 @@ export async function createCareEpisode(
       data: {
         patientId: validated.patientId,
         motif: validated.motif,
+        startedAt: new Date(validated.startedAt),
         customValues: customValidation.values as object,
       },
     });
@@ -184,6 +188,7 @@ export async function updateCareEpisode(
     id: string;
     patientId: string;
     motif: string;
+    startedAt: string;
     customValues?: Record<string, string | null>;
   },
 ) {
@@ -231,6 +236,7 @@ export async function updateCareEpisode(
       where: { id: validated.id },
       data: {
         motif: validated.motif,
+        startedAt: new Date(validated.startedAt),
         customValues: customValidation.values as object,
       },
     });
