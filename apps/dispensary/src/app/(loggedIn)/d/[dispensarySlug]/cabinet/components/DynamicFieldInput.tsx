@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Select,
   Stack,
@@ -9,7 +9,10 @@ import {
   TextInput,
 } from '@mantine/core';
 import type { CustomValues, FormField } from '@/lib/cabinet/formSchema';
-import { getVisibleFieldsForSelectValue } from '@/lib/cabinet/formSchema';
+import {
+  collectFieldIdsToClearOnSelectChange,
+  getVisibleFieldsForSelectValue,
+} from '@/lib/cabinet/formSchema';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
 
@@ -19,6 +22,7 @@ type DynamicFieldInputProps = {
   onChange: (fieldId: string, value: string | null) => void;
   readOnly?: boolean;
   values: CustomValues;
+  depth?: number;
 };
 
 function FieldRecursive({
@@ -27,20 +31,35 @@ function FieldRecursive({
   onChange,
   readOnly,
   values,
+  depth = 0,
 }: DynamicFieldInputProps) {
   const visibleChildren = useMemo(() => {
     if (field.type !== 'select') return [];
     return getVisibleFieldsForSelectValue(field, value);
   }, [field, value]);
 
+  const handleSelectChange = useCallback(
+    (nextValue: string | null) => {
+      const idsToClear = collectFieldIdsToClearOnSelectChange(field, value, nextValue);
+      for (const id of idsToClear) {
+        onChange(id, null);
+      }
+      onChange(field.id, nextValue);
+    },
+    [field, value, onChange],
+  );
+
   if (readOnly) {
     let display = value ?? '—';
+    if (field.type === 'select' && value) {
+      display = field.options?.find((o) => o.id === value)?.label ?? value;
+    }
     if (field.type === 'date' && value) {
       const d = parseRealDateFromIso(value);
       display = formatRpDate(d);
     }
     return (
-      <Stack gap="xs">
+      <Stack gap="xs" pl={depth > 0 ? 'md' : 0}>
         <div>
           <Text size="sm" fw={500}>
             {field.label}
@@ -58,6 +77,7 @@ function FieldRecursive({
             onChange={onChange}
             readOnly
             values={values}
+            depth={depth + 1}
           />
         ))}
       </Stack>
@@ -100,7 +120,7 @@ function FieldRecursive({
           required={field.required}
           data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
           value={value}
-          onChange={(v) => onChange(field.id, v)}
+          onChange={handleSelectChange}
           clearable={!field.required}
         />
       );
@@ -115,7 +135,7 @@ function FieldRecursive({
   }
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xs" pl={depth > 0 ? 'md' : 0}>
       {input}
       {visibleChildren.map((child) => (
         <FieldRecursive
@@ -125,6 +145,7 @@ function FieldRecursive({
           onChange={onChange}
           readOnly={readOnly}
           values={values}
+          depth={depth + 1}
         />
       ))}
     </Stack>

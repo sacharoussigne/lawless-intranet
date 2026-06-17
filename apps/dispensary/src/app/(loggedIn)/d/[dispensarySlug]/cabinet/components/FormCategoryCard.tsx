@@ -15,7 +15,7 @@ import {
   Title,
 } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import type { CustomValues, FormCategory, FormFieldType } from '@/lib/cabinet/formSchema';
+import type { CustomValues, FormCategory, FormField, FormFieldType } from '@/lib/cabinet/formSchema';
 import { DynamicFieldInput } from './DynamicFieldInput';
 import { FormFieldSchemaRow } from './FormFieldSchemaRow';
 import { InlineEditableText } from './InlineEditableText';
@@ -42,10 +42,7 @@ type FormCategoryCardProps = {
     required: boolean;
     options?: string[];
   }) => void;
-  onUpdateField?: (
-    fieldId: string,
-    updates: Partial<Pick<import('@/lib/cabinet/formSchema').FormField, 'label' | 'type' | 'required' | 'options'>>,
-  ) => void;
+  onUpdateField?: (field: FormField) => void;
   onDeleteField?: (fieldId: string) => void;
 };
 
@@ -126,7 +123,7 @@ export function FormCategoryCard({
             <FormFieldSchemaRow
               key={field.id}
               field={field}
-              onUpdate={(updates) => onUpdateField?.(field.id, updates)}
+              onChange={(updated) => onUpdateField?.(updated)}
               onDelete={() => onDeleteField?.(field.id)}
             />
           ))}

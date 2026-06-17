@@ -12,8 +12,8 @@ import {
   addField,
   deleteCategory,
   deleteField,
+  replaceField,
   updateCategoryName,
-  updateField,
 } from '@/lib/cabinet/formSchema/draftMutations';
 import { FormCategoryCard } from './FormCategoryCard';
 
@@ -79,7 +79,7 @@ export function DynamicFormRenderer({
           }
           onUpdateField={
             schemaEditing
-              ? (fieldId, updates) => mutateSchema(updateField(schema, category.id, fieldId, updates))
+              ? (field) => mutateSchema(replaceField(schema, category.id, field))
               : undefined
           }
           onDeleteField={

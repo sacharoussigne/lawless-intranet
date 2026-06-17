@@ -4,6 +4,7 @@ import type {
   FormField,
   FormFieldType,
 } from './types';
+import { replaceTopLevelField } from './fieldTreeMutations';
 
 export function addCategory(schema: FormEntitySchema, name: string): FormEntitySchema {
   const maxOrder = schema.categories.reduce((m, c) => Math.max(m, c.order), -1);
@@ -68,11 +69,27 @@ export function addField(
   };
 }
 
+export function replaceField(
+  schema: FormEntitySchema,
+  categoryId: string,
+  field: FormField,
+): FormEntitySchema {
+  return {
+    categories: schema.categories.map((c) => {
+      if (c.id !== categoryId) return c;
+      return {
+        ...c,
+        fields: replaceTopLevelField(c.fields, field.id, field),
+      };
+    }),
+  };
+}
+
 export function updateField(
   schema: FormEntitySchema,
   categoryId: string,
   fieldId: string,
-  updates: Partial<Pick<FormField, 'label' | 'type' | 'required' | 'options'>>,
+  updates: Partial<Pick<FormField, 'label' | 'type' | 'required' | 'options' | 'conditionalBranches'>>,
 ): FormEntitySchema {
   return {
     categories: schema.categories.map((c) => {

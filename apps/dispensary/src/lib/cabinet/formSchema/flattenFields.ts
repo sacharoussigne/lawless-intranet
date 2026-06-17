@@ -32,3 +32,24 @@ export function getVisibleFieldsForSelectValue(
   const branch = field.conditionalBranches.find((b) => b.optionId === selectedOptionId);
   return branch?.fields ?? [];
 }
+
+export function collectFieldIdsToClearOnSelectChange(
+  field: FormField,
+  previousValue: string | null,
+  nextValue: string | null,
+): string[] {
+  if (field.type !== 'select' || previousValue === nextValue) return [];
+
+  const toClear = new Set<string>();
+  if (previousValue) {
+    for (const f of flattenFields(getVisibleFieldsForSelectValue(field, previousValue))) {
+      toClear.add(f.id);
+    }
+  }
+  if (nextValue) {
+    for (const f of flattenFields(getVisibleFieldsForSelectValue(field, nextValue))) {
+      toClear.delete(f.id);
+    }
+  }
+  return [...toClear];
+}
