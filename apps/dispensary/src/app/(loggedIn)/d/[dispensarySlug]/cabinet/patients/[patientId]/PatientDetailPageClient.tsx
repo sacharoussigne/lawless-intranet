@@ -16,6 +16,7 @@ import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import {
   deleteCabinetPatient,
@@ -128,7 +129,6 @@ export function PatientDetailPageClient({
   };
 
   const handleDeletePatient = async () => {
-    if (!confirm('Supprimer ce patient et toutes ses données ?')) return;
     try {
       const result = await deleteCabinetPatient(dispensarySlug, patient.id);
       handleAction(result);
@@ -143,7 +143,6 @@ export function PatientDetailPageClient({
   };
 
   const handleDeleteEpisode = async (episodeId: string) => {
-    if (!confirm('Supprimer cette prise en charge ?')) return;
     try {
       const result = await deleteCareEpisode(dispensarySlug, episodeId);
       handleAction(result);
@@ -292,10 +291,20 @@ export function PatientDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && (
-              <ActionIcon variant="light" color="danger" onClick={() => void handleDeletePatient()}>
-                <IconTrash size={16} />
-              </ActionIcon>
+            {canWrite && !editing && !schemaEditing && (
+              <DeleteConfirmPopover
+                title="Supprimer le patient ?"
+                message={`« ${patient.lastName} ${patient.firstName} » et toutes ses données seront supprimées.`}
+                onConfirm={handleDeletePatient}
+              >
+                <Button
+                  variant="light"
+                  color="danger"
+                  leftSection={<IconTrash size={16} />}
+                >
+                  Supprimer
+                </Button>
+              </DeleteConfirmPopover>
             )}
           </Group>
         }
@@ -368,13 +377,16 @@ export function PatientDetailPageClient({
                       Ouvrir
                     </Button>
                     {canWrite && (
-                      <ActionIcon
-                        variant="light"
-                        color="danger"
-                        onClick={() => void handleDeleteEpisode(ep.id)}
+                      <DeleteConfirmPopover
+                        title="Supprimer la prise en charge ?"
+                        message={`« ${ep.motif} » et toutes ses consultations seront supprimées.`}
+                        position="left"
+                        onConfirm={() => handleDeleteEpisode(ep.id)}
                       >
-                        <IconTrash size={14} />
-                      </ActionIcon>
+                        <ActionIcon variant="light" color="danger" aria-label="Supprimer la prise en charge">
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </DeleteConfirmPopover>
                     )}
                   </Group>
                 ),

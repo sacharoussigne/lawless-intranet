@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import {
-  ActionIcon,
   Button,
   Container,
   Group,
@@ -12,6 +11,7 @@ import {
 import { IconEdit, IconSettings, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import {
   deleteConsultation,
@@ -110,7 +110,6 @@ export function ConsultationDetailPageClient({
   };
 
   const handleDelete = async () => {
-    if (!confirm('Supprimer cette consultation ?')) return;
     try {
       const result = await deleteConsultation(dispensarySlug, consultation.id);
       handleAction(result);
@@ -212,10 +211,20 @@ export function ConsultationDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && (
-              <ActionIcon variant="light" color="danger" onClick={() => void handleDelete()}>
-                <IconTrash size={16} />
-              </ActionIcon>
+            {canWrite && !editing && !schemaEditing && (
+              <DeleteConfirmPopover
+                title="Supprimer la consultation ?"
+                message={`La consultation du ${formatRpDate(consultation.date)} sera supprimée.`}
+                onConfirm={handleDelete}
+              >
+                <Button
+                  variant="light"
+                  color="danger"
+                  leftSection={<IconTrash size={16} />}
+                >
+                  Supprimer
+                </Button>
+              </DeleteConfirmPopover>
             )}
           </Group>
         }

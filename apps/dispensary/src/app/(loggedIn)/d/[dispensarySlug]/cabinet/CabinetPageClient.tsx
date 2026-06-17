@@ -12,11 +12,12 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEye, IconPlus } from '@tabler/icons-react';
+import { IconEye, IconPlus, IconTrash } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
-import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
+import { deleteCabinetPatient, listCabinetPatients } from '@/app/_actions/cabinet/patients';
 import { handleAction } from '@/lib/action';
 import {
   canWriteCabinet,
@@ -93,6 +94,21 @@ export function CabinetPageClient({
       setLoading(false);
     }
   }, [dispensarySlug, selectedCabinetId, search]);
+
+  const handleDeletePatient = async (patient: CabinetPatientSummaryDTO) => {
+    try {
+      const result = await deleteCabinetPatient(dispensarySlug, patient.id);
+      handleAction(result);
+      notifications.show({ title: 'Patient supprimé', message: '', color: 'moss' });
+      await loadPatients();
+    } catch (error: unknown) {
+      notifications.show({
+        title: 'Erreur',
+        message: error instanceof Error ? error.message : 'Échec de la suppression',
+        color: 'danger',
+      });
+    }
+  };
 
   useEffect(() => {
     void loadPatients();
@@ -180,14 +196,32 @@ export function CabinetPageClient({
               title: '',
               textAlign: 'right',
               render: (p) => (
-                <ActionIcon
-                  component={Link}
-                  href={`${t.cabinet.index}/patients/${p.id}?cabinetId=${selectedCabinetId}`}
-                  variant="light"
-                  color="slate"
-                >
-                  <IconEye size={16} />
-                </ActionIcon>
+                <Group gap="xs" justify="flex-end">
+                  <ActionIcon
+                    component={Link}
+                    href={`${t.cabinet.index}/patients/${p.id}?cabinetId=${selectedCabinetId}`}
+                    variant="light"
+                    color="slate"
+                  >
+                    <IconEye size={16} />
+                  </ActionIcon>
+                  {canWrite && (
+                    <DeleteConfirmPopover
+                      title="Supprimer le patient ?"
+                      message={`« ${p.lastName} ${p.firstName} » et toutes ses données seront supprimées.`}
+                      position="left"
+                      onConfirm={() => handleDeletePatient(p)}
+                    >
+                      <ActionIcon
+                        variant="light"
+                        color="danger"
+                        aria-label={`Supprimer ${p.lastName} ${p.firstName}`}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </DeleteConfirmPopover>
+                  )}
+                </Group>
               ),
             },
           ]}

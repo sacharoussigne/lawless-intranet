@@ -17,9 +17,11 @@ import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import {
   createConsultation,
+  deleteConsultation,
   listConsultations,
 } from '@/app/_actions/cabinet/consultations';
 import {
@@ -152,8 +154,22 @@ export function CareEpisodeDetailPageClient({
     }
   };
 
+  const handleDeleteConsultation = async (consultationId: string) => {
+    try {
+      const result = await deleteConsultation(dispensarySlug, consultationId);
+      handleAction(result);
+      notifications.show({ title: 'Consultation supprimée', message: '', color: 'moss' });
+      await reloadConsultations();
+    } catch (error: unknown) {
+      notifications.show({
+        title: 'Erreur',
+        message: error instanceof Error ? error.message : 'Échec de la suppression',
+        color: 'danger',
+      });
+    }
+  };
+
   const handleDeleteEpisode = async () => {
-    if (!confirm('Supprimer cette prise en charge ?')) return;
     try {
       const result = await deleteCareEpisode(dispensarySlug, episode.id);
       handleAction(result);
@@ -273,10 +289,20 @@ export function CareEpisodeDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && (
-              <ActionIcon variant="light" color="danger" onClick={() => void handleDeleteEpisode()}>
-                <IconTrash size={16} />
-              </ActionIcon>
+            {canWrite && !editing && !schemaEditing && (
+              <DeleteConfirmPopover
+                title="Supprimer la prise en charge ?"
+                message={`« ${episode.motif} » et toutes ses consultations seront supprimées.`}
+                onConfirm={handleDeleteEpisode}
+              >
+                <Button
+                  variant="light"
+                  color="danger"
+                  leftSection={<IconTrash size={16} />}
+                >
+                  Supprimer
+                </Button>
+              </DeleteConfirmPopover>
             )}
           </Group>
         }
@@ -339,15 +365,29 @@ export function CareEpisodeDetailPageClient({
                 title: '',
                 textAlign: 'right',
                 render: (c) => (
-                  <Button
-                    component={Link}
-                    href={`${t.cabinet.index}/patients/${episode.patientId}/episodes/${episode.id}/consultations/${c.id}?cabinetId=${episode.patient.cabinetId}`}
-                    variant="light"
-                    color="slate"
-                    size="xs"
-                  >
-                    Ouvrir
-                  </Button>
+                  <Group gap="xs" justify="flex-end">
+                    <Button
+                      component={Link}
+                      href={`${t.cabinet.index}/patients/${episode.patientId}/episodes/${episode.id}/consultations/${c.id}?cabinetId=${episode.patient.cabinetId}`}
+                      variant="light"
+                      color="slate"
+                      size="xs"
+                    >
+                      Ouvrir
+                    </Button>
+                    {canWrite && (
+                      <DeleteConfirmPopover
+                        title="Supprimer la consultation ?"
+                        message={`La consultation du ${formatRpDate(c.date)} sera supprimée.`}
+                        position="left"
+                        onConfirm={() => handleDeleteConsultation(c.id)}
+                      >
+                        <ActionIcon variant="light" color="danger" aria-label="Supprimer la consultation">
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </DeleteConfirmPopover>
+                    )}
+                  </Group>
                 ),
               },
             ]}
