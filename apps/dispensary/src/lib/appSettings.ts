@@ -22,7 +22,6 @@ function mapFromDb(row: {
   dispensaryName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
-  featurePrivatePracticeEnabled: boolean;
   featureOrdersEnabled: boolean;
   featureSearchEnabled: boolean;
   featureMailsEnabled: boolean;
@@ -40,7 +39,6 @@ function mapFromDb(row: {
     dispensaryName: row.dispensaryName?.trim() || APP_SETTINGS_DEFAULTS.dispensaryName,
     featureStockEnabled: row.featureStockEnabled,
     featureBankEnabled: row.featureBankEnabled,
-    featurePrivatePracticeEnabled: row.featurePrivatePracticeEnabled,
     featureOrdersEnabled: row.featureOrdersEnabled,
     featureSearchEnabled: row.featureSearchEnabled,
     featureMailsEnabled: row.featureMailsEnabled,

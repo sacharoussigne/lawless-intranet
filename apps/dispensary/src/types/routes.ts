@@ -25,7 +25,6 @@ export function tenantRoutes(slug: string) {
     orders: { index: `${base}/orders` },
     searchItems: { index: `${base}/search-items` },
     bank: { index: `${base}/bank` },
-    privatePractice: { index: `${base}/private-practice` },
     weeklyActivity: { index: `${base}/weekly-activity` },
     agenda: { index: `${base}/agenda` },
     management: {
@@ -82,7 +81,6 @@ export const routes = {
   orders: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/orders` },
   searchItems: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/search-items` },
   bank: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/bank` },
-  privatePractice: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/private-practice` },
   weeklyActivity: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/weekly-activity` },
   employee: {
     index: `/d/${DEFAULT_DISPENSARY_SLUG}/employee`,
@@ -118,7 +116,6 @@ export const LEGACY_TENANT_PATHS = [
   '/orders',
   '/search-items',
   '/bank',
-  '/private-practice',
   '/weekly-activity',
   '/employee',
   '/management',

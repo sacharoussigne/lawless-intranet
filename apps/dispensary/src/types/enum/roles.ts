@@ -4,7 +4,6 @@ export enum Role {
     EMPLOYEE = "employee",
     INVENTORY_MANAGER = "inventory_manager",
     INVENTORY_VIEWER = "inventory_viewer",
-    PRIVATE_PRACTITIONER = "private_practitioner",
     DIRECTION = "direction",
 }
 
@@ -13,7 +12,6 @@ export const DISPENSARY_MEMBER_ROLES = [
     Role.EMPLOYEE,
     Role.INVENTORY_MANAGER,
     Role.INVENTORY_VIEWER,
-    Role.PRIVATE_PRACTITIONER,
     Role.DIRECTION,
 ] as const;
 
@@ -52,8 +50,6 @@ export const rolesAsString = (role: Role): string => {
             return "Gestionnaire de stock";
         case Role.INVENTORY_VIEWER:
             return "Consultant de stock";
-        case Role.PRIVATE_PRACTITIONER:
-            return "Praticien privé";
         case Role.DIRECTION:
             return "Direction";
     }

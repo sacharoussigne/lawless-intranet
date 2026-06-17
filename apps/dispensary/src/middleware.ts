@@ -13,7 +13,6 @@ import { hasStockViewAccessMiddleware } from './middlewares/hasStockViewAccessMi
 import { hasOrdersViewAccessMiddleware } from './middlewares/hasOrdersViewAccessMiddleware';
 import { hasSearchAccessMiddleware } from './middlewares/hasSearchAccessMiddleware';
 import { hasBankAccessMiddleware } from './middlewares/hasBankAccessMiddleware';
-import { hasPrivatePracticeAccessMiddleware } from './middlewares/hasPrivatePracticeAccessMiddleware';
 import { hasWeeklyDispensaryActivityMiddleware } from './middlewares/hasWeeklyDispensaryActivityMiddleware';
 import { hasMailsAccessMiddleware } from './middlewares/hasMailsAccessMiddleware';
 import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatureEnabledMiddleware';
@@ -117,11 +116,6 @@ export async function middleware(req: NextRequest) {
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
         assertAppFeatureEnabledMiddleware(request, s, 'bank'),
       );
-    } else if (pathname.startsWith(t.privatePractice.index)) {
-      middlewares.push(hasPrivatePracticeAccessMiddleware);
-      middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
-        assertAppFeatureEnabledMiddleware(request, s, 'privatePractice'),
-      );
     } else if (pathname.startsWith(t.weeklyActivity.index)) {
       middlewares.push(hasWeeklyDispensaryActivityMiddleware);
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
@@ -182,7 +176,6 @@ export const config = {
     '/stock/:path*',
     '/search-items/:path*',
     '/bank/:path*',
-    '/private-practice/:path*',
     '/weekly-activity/:path*',
     '/employee/:path*',
     '/management/:path*',
