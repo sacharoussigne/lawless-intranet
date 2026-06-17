@@ -30,7 +30,7 @@ import { canWriteCabinet, type ConsultationSummaryDTO } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import { getEntitySchema } from '@/lib/cabinet/formSchema';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { formatRpDate, getTodayRealDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
 import { FormSchemaEditor } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/FormSchemaEditor';
@@ -68,7 +68,9 @@ export function CareEpisodeDetailPageClient({
   const [editing, setEditing] = useState(false);
   const [schemaEditorOpen, setSchemaEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [newConsultationDate, setNewConsultationDate] = useState<Date | null>(new Date());
+  const [newConsultationDate, setNewConsultationDate] = useState<Date | null>(
+    () => getTodayRealDate(),
+  );
 
   const canWrite = canWriteCabinet(episode.accessLevel);
   const t = tenantRoutes(dispensarySlug);

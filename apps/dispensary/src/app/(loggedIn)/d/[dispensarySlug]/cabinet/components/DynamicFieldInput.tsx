@@ -88,6 +88,7 @@ function FieldRecursive({
           label={field.label}
           required={field.required}
           value={value}
+          clearable={!field.required}
           onChange={(d) => onChange(field.id, d ? d.toISOString() : null)}
         />
       );
