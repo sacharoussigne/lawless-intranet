@@ -53,6 +53,14 @@ describe('validateCustomValues', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('allows missing required fields when enforceRequired is false', () => {
+    const result = validateCustomValues(schema, {}, { enforceRequired: false });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.values['field-text']).toBeNull();
+    }
+  });
+
   it('validates nested conditional fields when select matches', () => {
     const result = validateCustomValues(schema, {
       'field-text': 'ok',

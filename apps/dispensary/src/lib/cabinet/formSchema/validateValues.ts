@@ -8,9 +8,17 @@ function isEmptyValue(value: string | null | undefined): boolean {
   return value === null || value === undefined || value.trim() === '';
 }
 
-function validateFieldValue(field: FormField, value: string | null | undefined): string | null {
+export type ValidateCustomValuesOptions = {
+  enforceRequired?: boolean;
+};
+
+function validateFieldValue(
+  field: FormField,
+  value: string | null | undefined,
+  enforceRequired: boolean,
+): string | null {
   if (isEmptyValue(value)) {
-    if (field.required) {
+    if (field.required && enforceRequired) {
       throw new Error(`Le champ « ${field.label} » est requis`);
     }
     return null;
@@ -40,17 +48,18 @@ function validateFieldsRecursive(
   fields: FormField[],
   values: CustomValues,
   result: CustomValues,
+  enforceRequired: boolean,
 ): void {
   for (const field of fields) {
     const raw = values[field.id] ?? null;
-    result[field.id] = validateFieldValue(field, raw);
+    result[field.id] = validateFieldValue(field, raw, enforceRequired);
 
     if (field.type === 'select' && field.conditionalBranches?.length) {
       const selectedId = result[field.id];
       if (selectedId) {
         const branch = field.conditionalBranches.find((b) => b.optionId === selectedId);
         if (branch) {
-          validateFieldsRecursive(branch.fields, values, result);
+          validateFieldsRecursive(branch.fields, values, result, enforceRequired);
         }
       }
     }
@@ -60,7 +69,9 @@ function validateFieldsRecursive(
 export function validateCustomValues(
   schema: FormEntitySchema,
   values: unknown,
+  options: ValidateCustomValuesOptions = {},
 ): ValidateValuesResult {
+  const enforceRequired = options.enforceRequired ?? true;
   const input: CustomValues =
     values !== null && typeof values === 'object' && !Array.isArray(values)
       ? (values as CustomValues)
@@ -70,7 +81,7 @@ export function validateCustomValues(
 
   try {
     for (const category of schema.categories) {
-      validateFieldsRecursive(category.fields, input, result);
+      validateFieldsRecursive(category.fields, input, result, enforceRequired);
     }
     return { ok: true, values: result };
   } catch (err) {

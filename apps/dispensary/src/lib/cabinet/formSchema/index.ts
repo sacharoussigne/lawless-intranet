@@ -12,3 +12,4 @@ export type {
 } from './types';
 export { flattenFields, flattenFieldsFromCategories, getVisibleFieldsForSelectValue } from './flattenFields';
 export { validateCustomValues, parseCustomValuesFromDb } from './validateValues';
+export type { ValidateCustomValuesOptions } from './validateValues';

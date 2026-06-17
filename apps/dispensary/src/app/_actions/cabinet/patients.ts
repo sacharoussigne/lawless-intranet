@@ -163,6 +163,7 @@ export async function createCabinetPatient(
     const customValidation = validateCustomValues(
       entitySchema,
       validated.customValues ?? {},
+      { enforceRequired: false },
     );
     if (!customValidation.ok) {
       return { status: 400, error: customValidation.error };
