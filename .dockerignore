@@ -1,0 +1,27 @@
+# Dependencies & build artifacts
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+
+# Git & IDE
+.git
+.gitignore
+.cursor
+**/*.md
+!docs/DOCKER.md
+
+# Env (inject at runtime)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Tests & local tooling
+**/coverage
+**/*.test.ts
+**/*.test.tsx
+**/vitest.config.*
+
+# OS
+.DS_Store
+Thumbs.db
