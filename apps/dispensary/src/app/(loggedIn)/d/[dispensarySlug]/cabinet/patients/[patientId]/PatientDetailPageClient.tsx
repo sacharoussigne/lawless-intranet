@@ -13,9 +13,10 @@ import {
   Title,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconSettings, IconStethoscope, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import {
@@ -352,6 +353,7 @@ export function PatientDetailPageClient({
             withTableBorder
             borderRadius="sm"
             highlightOnHover
+            minHeight={200}
             records={episodes}
             columns={[
               { accessor: 'motif', title: 'Motif' },
@@ -392,7 +394,16 @@ export function PatientDetailPageClient({
                 ),
               },
             ]}
-            emptyState={<Text c="dimmed" py="md">Aucune prise en charge</Text>}
+            emptyState={
+              <DataTableEmptyState
+                icon={IconStethoscope}
+                message={
+                  canWrite
+                    ? 'Aucune prise en charge. Ajoutez-en une pour commencer.'
+                    : 'Aucune prise en charge.'
+                }
+              />
+            }
           />
         </div>
         )}

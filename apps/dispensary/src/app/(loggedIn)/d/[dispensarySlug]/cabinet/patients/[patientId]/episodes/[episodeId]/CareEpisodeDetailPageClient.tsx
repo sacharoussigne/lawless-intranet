@@ -14,9 +14,10 @@ import {
   Title,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconCalendar, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import {
@@ -353,6 +354,7 @@ export function CareEpisodeDetailPageClient({
             withTableBorder
             borderRadius="sm"
             highlightOnHover
+            minHeight={200}
             records={consultations}
             columns={[
               {
@@ -391,7 +393,16 @@ export function CareEpisodeDetailPageClient({
                 ),
               },
             ]}
-            emptyState={<Text c="dimmed" py="md">Aucune consultation</Text>}
+            emptyState={
+              <DataTableEmptyState
+                icon={IconCalendar}
+                message={
+                  canWrite
+                    ? 'Aucune consultation. Ajoutez-en une pour commencer.'
+                    : 'Aucune consultation.'
+                }
+              />
+            }
           />
         </div>
         )}

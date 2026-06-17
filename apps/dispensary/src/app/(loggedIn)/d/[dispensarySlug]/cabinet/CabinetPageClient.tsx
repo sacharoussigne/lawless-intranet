@@ -12,10 +12,11 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEye, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconEye, IconPlus, IconTrash, IconUser } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { deleteCabinetPatient, listCabinetPatients } from '@/app/_actions/cabinet/patients';
 import { handleAction } from '@/lib/action';
@@ -167,6 +168,7 @@ export function CabinetPageClient({
           borderRadius="sm"
           highlightOnHover
           fetching={loading}
+          minHeight={200}
           records={patients}
           columns={[
             {
@@ -226,9 +228,14 @@ export function CabinetPageClient({
             },
           ]}
           emptyState={
-            <Stack align="center" py="xl">
-              <Text c="dimmed">Aucun patient. Créez-en un pour commencer.</Text>
-            </Stack>
+            <DataTableEmptyState
+              icon={IconUser}
+              message={
+                canWrite
+                  ? 'Aucun patient. Créez-en un pour commencer.'
+                  : 'Aucun patient.'
+              }
+            />
           }
         />
       </Stack>
