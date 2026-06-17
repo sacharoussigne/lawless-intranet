@@ -232,8 +232,8 @@ export function CareEpisodeDetailPageClient({
   return (
     <Container size="xl" py="xl">
       <PageHeader
-        title={episode.motif}
-        description={`${episode.patient.lastName} ${episode.patient.firstName} — Prise en charge`}
+        title="Prise en charge"
+        description={`${episode.patient.firstName} ${episode.patient.lastName} — ${episode.motif}`}
         backHref={`${t.cabinet.index}/patients/${episode.patientId}?cabinetId=${episode.patient.cabinetId}`}
         actions={
           <Group>

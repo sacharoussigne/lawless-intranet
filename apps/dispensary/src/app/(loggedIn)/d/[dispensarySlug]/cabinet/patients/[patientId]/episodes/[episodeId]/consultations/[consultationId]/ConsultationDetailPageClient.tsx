@@ -154,7 +154,7 @@ export function ConsultationDetailPageClient({
     <Container size="xl" py="xl">
       <PageHeader
         title={`Consultation — ${formatRpDate(consultation.date)}`}
-        description={`${careEpisode.motif} — ${careEpisode.patient.lastName} ${careEpisode.patient.firstName}`}
+        description={`${careEpisode.patient.firstName} ${careEpisode.patient.lastName} — ${careEpisode.motif}`}
         backHref={`${t.cabinet.index}/patients/${careEpisode.patientId}/episodes/${careEpisode.id}?cabinetId=${careEpisode.patient.cabinetId}`}
         actions={
           <Group>
