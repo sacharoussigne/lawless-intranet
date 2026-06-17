@@ -1,13 +1,9 @@
-import prisma from '@/lib/prisma';
+import { fetchUserProfile } from '@/lib/authUsers';
 
-/** Display name for the admin session stored in Session.impersonatedBy (real account when impersonating). */
 export async function getImpersonatorDisplayName(
-  impersonatorUserId: string | null | undefined
+  impersonatorUserId: string | null | undefined,
 ): Promise<string | null> {
   if (!impersonatorUserId) return null;
-  const user = await prisma.user.findUnique({
-    where: { id: impersonatorUserId },
-    select: { name: true },
-  });
+  const user = await fetchUserProfile(impersonatorUserId);
   return user?.name ?? null;
 }

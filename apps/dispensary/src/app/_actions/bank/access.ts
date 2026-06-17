@@ -5,6 +5,7 @@ import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 
+import { enrichRowsWithUsers } from '@/lib/enrichUsers';
 import {
   createBankAccountAccessSchema,
   deleteBankAccountAccessSchema,
@@ -60,20 +61,13 @@ export async function createBankAccountAccess(
         userId: validatedData.userId,
         accessType: validatedData.accessType,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
     });
+
+    const [enriched] = await enrichRowsWithUsers([access]);
 
     return {
       status: 201,
-      data: access,
+      data: enriched,
     };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la création de l\'accès');

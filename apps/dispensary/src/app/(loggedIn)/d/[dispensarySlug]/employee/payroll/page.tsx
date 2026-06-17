@@ -1,8 +1,8 @@
 import { Container, Group, Text, Title } from '@mantine/core';
 import { redirect } from 'next/navigation';
 import { listPayrollReports } from '@/app/_actions/payrollReports';
-import { getAuthSession } from '@/lib/auth';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { getAuthSession } from '@/lib/authSession';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { getDataOrThrow } from '@/lib/response';
 import type { AuthSession } from '@/types/session';

@@ -1,6 +1,1 @@
-import { type User, type Session } from "@prisma/client";
-
-export interface AuthSession {
-  session: Session
-  user: User;
-}
+export type { AuthSession, AuthUser, AuthUserPublic } from '@lawless-intranet/types';

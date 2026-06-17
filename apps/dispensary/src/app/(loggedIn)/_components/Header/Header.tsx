@@ -11,7 +11,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import classes from './Header.module.scss';
-import { authClient } from '@/lib/client';
+import { authClient } from '@lawless-intranet/auth-client/browser';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
@@ -24,7 +24,7 @@ import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { dispensarySiteTitle } from '@/lib/appSettingsShared';
-import { hasRole } from '@/lib/auth/permissions';
+import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
 import { DEFAULT_DISPENSARY_SLUG } from '@/lib/dispensary/constants';

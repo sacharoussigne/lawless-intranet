@@ -16,7 +16,7 @@ import { CreateBankAccountModal } from './components/CreateBankAccountModal';
 import { EditBankAccountModal } from './components/EditBankAccountModal';
 import { DeleteBankAccountModal } from './components/DeleteBankAccountModal';
 import { ManageAccessModal } from './components/ManageAccessModal';
-import { authClient } from '@/lib/client';
+import { authClient } from '@lawless-intranet/auth-client/browser';
 
 interface BankPageClientProps {
   initialAccounts: BankAccountWithRelations[];

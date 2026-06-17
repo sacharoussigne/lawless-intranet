@@ -23,12 +23,11 @@ import {
 } from '@/app/_actions/agenda/internals';
 import { canManageAgendaMembers } from '@/lib/agenda/access';
 
+import { enrichAgendaMembers } from '@/lib/enrichUsers';
+
 const agendaIncludeMembers = {
   members: {
-    include: {
-      user: { select: { id: true, name: true, email: true, image: true } },
-    },
-    orderBy: { user: { name: 'asc' as const } },
+    orderBy: { createdAt: 'asc' as const },
   },
   _count: { select: { members: true } },
 };
@@ -46,7 +45,14 @@ export async function listAgendasForAdmin(dispensarySlug: string) {
       orderBy: { name: 'asc' },
     });
 
-    return { status: 200, data: agendas };
+    const enriched = await Promise.all(
+      agendas.map(async (agenda) => ({
+        ...agenda,
+        members: await enrichAgendaMembers(agenda.members),
+      })),
+    );
+
+    return { status: 200, data: enriched };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement des agendas');
   }
@@ -321,7 +327,13 @@ export async function getAgendaWithMembers(dispensarySlug: string, agendaId: str
       return { status: 404, error: 'Agenda introuvable' };
     }
 
-    return { status: 200, data: agenda };
+    return {
+      status: 200,
+      data: {
+        ...agenda,
+        members: await enrichAgendaMembers(agenda.members),
+      },
+    };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement de l\'agenda');
   }

@@ -14,7 +14,6 @@ model Dispensary {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdById String?
-  createdBy   User?    @relation("DispensaryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   members     DispensaryMember[]
   settings    AppSettings?
@@ -50,44 +49,10 @@ model DispensaryMember {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([dispensaryId, userId])
   @@index([userId])
   @@map("dispensary_member")
-}
-
-model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  role          String?
-  banned        Boolean?  @default(false)
-  banReason     String?
-  banExpires    DateTime?
-  sessions      Session[]
-  accounts      Account[]
-  bankAccounts  BankAccount[]
-  bankAccountAccesses BankAccountAccess[]
-  mailTemplates MailTemplate[]
-  mails        Mail[]
-  uiPreferences UserUiPreferences?
-  payrollWeeklyReports PayrollWeeklyReport[]
-  dispensaryWeeklyActivities DispensaryWeeklyActivity[]
-  dispensaryWeeklyActivityHistoryAsActor DispensaryWeeklyActivityHistory[] @relation("DispensaryWeeklyActivityHistoryActor")
-  stockItemMovements StockItemMovement[]
-  dispensariesCreated Dispensary[] @relation("DispensaryCreatedBy")
-  dispensaryMemberships DispensaryMember[]
-  agendaMemberships AgendaMember[]
-  agendaEventsCreated AgendaEvent[] @relation("AgendaEventCreatedBy")
-  agendaEventParticipations AgendaEventParticipant[]
-
-  @@unique([email])
-  @@map("user")
 }
 
 model PayrollWeeklyReport {
@@ -100,7 +65,6 @@ model PayrollWeeklyReport {
   resultJson      Json?
   errorMessage    String?
   createdById     String
-  createdBy       User                      @relation(fields: [createdById], references: [id], onDelete: Cascade)
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
 
@@ -115,7 +79,6 @@ model PayrollWeeklyReport {
 model UserUiPreferences {
   id                   String   @id @default(uuid())
   userId               String   @unique
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   lowStockCraftableBg  String   @default("#fff3cd")
   lowStockNormalBg     String   @default("#f8d7da")
@@ -129,55 +92,6 @@ model UserUiPreferences {
 
   @@index([userId])
   @@map("user_ui_preferences")
-}
-
-model Session {
-  id             String   @id
-  expiresAt      DateTime
-  token          String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  ipAddress      String?
-  userAgent      String?
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  impersonatedBy String?
-
-  @@unique([token])
-  @@index([userId])
-  @@map("session")
-}
-
-model Account {
-  id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-  @@map("verification")
 }
 
 model AppSettings {
@@ -325,7 +239,6 @@ model StockItemMovement {
   createdAt DateTime          @default(now())
 
   item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([itemId, createdAt])
   @@index([createdAt])
@@ -492,7 +405,6 @@ model MailTemplate {
   content          String
   defaultMailName  String?
   userId      String?
-  user        User?                           @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime                        @default(now())
   updatedAt   DateTime                        @updatedAt
   assignments OrderMailTemplateAssignment[]
@@ -524,7 +436,6 @@ model Mail {
   dispensaryId  String
   dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   senderId  String
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
   name      String
   receiver  String
   content   String
@@ -548,7 +459,6 @@ model BankAccount {
   dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   name      String
   ownerId   String
-  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   accesses  BankAccountAccess[]
@@ -564,7 +474,6 @@ model BankAccountAccess {
   accountId String
   account   BankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessType BankAccountAccessType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -725,7 +634,6 @@ model DispensaryWeeklyActivity {
   displayName          String
   discordUserId        String
   userId               String?
-  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   chestDays            Json
   presenceDays         Json
   sherifCount          Int      @default(0)
@@ -751,7 +659,6 @@ model DispensaryWeeklyActivityHistory {
   action             DispensaryWeeklyActivityHistoryAction
   source             DispensaryWeeklyActivityHistorySource
   actorUserId        String?
-  actorUser          User?                             @relation("DispensaryWeeklyActivityHistoryActor", fields: [actorUserId], references: [id], onDelete: SetNull)
   actorDiscordUserId String?
   previousValues     Json?
   nextValues         Json?
@@ -790,7 +697,6 @@ model AgendaMember {
   agendaId    String
   agenda      Agenda            @relation(fields: [agendaId], references: [id], onDelete: Cascade)
   userId      String
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessLevel AgendaAccessLevel
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -810,7 +716,6 @@ model AgendaEvent {
   endAt       DateTime
   allDay      Boolean  @default(false)
   createdById String?
-  createdBy   User?    @relation("AgendaEventCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   participants AgendaEventParticipant[]
@@ -825,7 +730,6 @@ model AgendaEventParticipant {
   eventId String
   event   AgendaEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId  String
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
 
   @@unique([eventId, userId])

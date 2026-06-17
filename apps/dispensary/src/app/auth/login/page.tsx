@@ -1,18 +1,13 @@
-import Login from '@/app/pages/login';
-import { getAuthSession } from '@/lib/auth';
-import { routes } from '@/types/routes';
-import { type Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { getAuthLoginRedirectUrl } from '@/lib/authSession';
 
-export const metadata: Metadata = {
-  title: 'Connexion',
-};
-
-export default async function LoginPage() {
-  const session = await getAuthSession();
-
-  if (session) {
-    redirect(routes.employee.index);
-  }
-  return <Login />;
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const params = await searchParams;
+  const callbackUrl =
+    params.callbackUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  redirect(getAuthLoginRedirectUrl(callbackUrl));
 }

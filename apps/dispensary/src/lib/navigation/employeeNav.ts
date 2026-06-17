@@ -11,7 +11,7 @@ import {
   IconStethoscope,
 } from '@tabler/icons-react';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import type { Permissions } from '@/types/permissions';
 import type { tenantRoutes } from '@/types/routes';
 

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { routes } from "@/types/routes";
-import { hasRole } from "@/lib/auth/permissions";
+import { hasRole } from "@lawless-intranet/auth-permissions";
 import { Role } from "@/types/enum/roles";
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
 import { getMiddlewareRole } from '@/types/middlewareSession';
