@@ -19,6 +19,7 @@ import type { CustomValues, FormCategory, FormField, FormFieldType } from '@/lib
 import { DynamicFieldInput } from './DynamicFieldInput';
 import { FormFieldSchemaRow } from './FormFieldSchemaRow';
 import { InlineEditableText } from './InlineEditableText';
+import { SchemaReorderButtons } from './SchemaReorderButtons';
 
 const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: 'text', label: 'Texte' },
@@ -44,6 +45,10 @@ type FormCategoryCardProps = {
   }) => void;
   onUpdateField?: (field: FormField) => void;
   onDeleteField?: (fieldId: string) => void;
+  onMoveField?: (fieldId: string, direction: 'up' | 'down') => void;
+  canMoveCategoryUp?: boolean;
+  canMoveCategoryDown?: boolean;
+  onMoveCategory?: (direction: 'up' | 'down') => void;
 };
 
 export function FormCategoryCard({
@@ -58,6 +63,10 @@ export function FormCategoryCard({
   onAddField,
   onUpdateField,
   onDeleteField,
+  onMoveField,
+  canMoveCategoryUp,
+  canMoveCategoryDown,
+  onMoveCategory,
 }: FormCategoryCardProps) {
   const sortedFields = [...category.fields].sort((a, b) => a.order - b.order);
   const [newFieldLabel, setNewFieldLabel] = useState('');
@@ -105,11 +114,20 @@ export function FormCategoryCard({
               </Title>
             )}
           </Group>
-          {!category.isSystem && onDeleteCategory && (
-            <ActionIcon variant="light" color="danger" onClick={onDeleteCategory}>
-              <IconTrash size={16} />
-            </ActionIcon>
-          )}
+          <Group gap="xs" wrap="nowrap">
+            {onMoveCategory && (
+              <SchemaReorderButtons
+                canMoveUp={canMoveCategoryUp ?? false}
+                canMoveDown={canMoveCategoryDown ?? false}
+                onMove={onMoveCategory}
+              />
+            )}
+            {!category.isSystem && onDeleteCategory && (
+              <ActionIcon variant="light" color="danger" onClick={onDeleteCategory}>
+                <IconTrash size={16} />
+              </ActionIcon>
+            )}
+          </Group>
         </Group>
 
         {children && (
@@ -119,12 +137,19 @@ export function FormCategoryCard({
         )}
 
         <Stack gap="sm">
-          {sortedFields.map((field) => (
+          {sortedFields.map((field, fieldIndex) => (
             <FormFieldSchemaRow
               key={field.id}
               field={field}
               onChange={(updated) => onUpdateField?.(updated)}
               onDelete={() => onDeleteField?.(field.id)}
+              canMoveUp={fieldIndex > 0}
+              canMoveDown={fieldIndex < sortedFields.length - 1}
+              onMove={
+                onMoveField
+                  ? (direction) => onMoveField(field.id, direction)
+                  : undefined
+              }
             />
           ))}
           {sortedFields.length === 0 && !children && (

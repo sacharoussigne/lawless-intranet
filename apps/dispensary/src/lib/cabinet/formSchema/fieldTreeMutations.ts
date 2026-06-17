@@ -1,5 +1,6 @@
 import { randomUUID } from '@/lib/randomId';
 import type { FormField, FormFieldType } from './types';
+import { reorderByOrder } from './reorderItems';
 
 export function mapFieldById(
   field: FormField,
@@ -132,4 +133,23 @@ export function syncBranchesWithOptions(field: FormField): FormField {
 
 export function getBranchFields(field: FormField, optionId: string): FormField[] {
   return field.conditionalBranches?.find((b) => b.optionId === optionId)?.fields ?? [];
+}
+
+export function moveFieldInBranch(
+  field: FormField,
+  optionId: string,
+  fieldId: string,
+  direction: 'up' | 'down',
+): FormField {
+  if (!field.conditionalBranches) return field;
+  return {
+    ...field,
+    conditionalBranches: field.conditionalBranches.map((branch) => {
+      if (branch.optionId !== optionId) return branch;
+      return {
+        ...branch,
+        fields: reorderByOrder(branch.fields, fieldId, direction),
+      };
+    }),
+  };
 }

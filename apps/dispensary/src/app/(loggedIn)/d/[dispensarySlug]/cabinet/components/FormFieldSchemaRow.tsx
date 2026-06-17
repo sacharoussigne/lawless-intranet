@@ -21,11 +21,13 @@ import {
   deleteFieldById,
   getBranchFields,
   mapFieldById,
+  moveFieldInBranch,
   syncBranchesWithOptions,
 } from '@/lib/cabinet/formSchema/fieldTreeMutations';
 import { randomUUID } from '@/lib/randomId';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { InlineEditableText } from './InlineEditableText';
+import { SchemaReorderButtons } from './SchemaReorderButtons';
 
 const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: 'text', label: 'Texte' },
@@ -39,6 +41,9 @@ type FormFieldSchemaRowProps = {
   depth?: number;
   onChange: (field: FormField) => void;
   onDelete?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMove?: (direction: 'up' | 'down') => void;
 };
 
 export function FormFieldSchemaRow({
@@ -46,6 +51,9 @@ export function FormFieldSchemaRow({
   depth = 0,
   onChange,
   onDelete,
+  canMoveUp = false,
+  canMoveDown = false,
+  onMove,
 }: FormFieldSchemaRowProps) {
   const [expanded, setExpanded] = useState(depth === 0);
   const optionsText = (field.options ?? []).map((o) => o.label).join('\n');
@@ -107,11 +115,21 @@ export function FormFieldSchemaRow({
             {field.required && ' *'}
           </Text>
         </Group>
-        {onDelete && (
-          <ActionIcon variant="light" color="danger" size="sm" onClick={onDelete}>
-            <IconTrash size={14} />
-          </ActionIcon>
-        )}
+        <Group gap="xs" wrap="nowrap">
+          {onMove && (
+            <SchemaReorderButtons
+              size="xs"
+              canMoveUp={canMoveUp}
+              canMoveDown={canMoveDown}
+              onMove={onMove}
+            />
+          )}
+          {onDelete && (
+            <ActionIcon variant="light" color="danger" size="sm" onClick={onDelete}>
+              <IconTrash size={14} />
+            </ActionIcon>
+          )}
+        </Group>
       </Group>
 
       <Collapse in={expanded}>
@@ -223,6 +241,9 @@ export function FormFieldSchemaRow({
                     }
                     onUpdateField={(targetId, updated) => updateNestedField(targetId, updated)}
                     onDeleteField={(targetId) => deleteNestedField(targetId)}
+                    onMoveField={(targetId, direction) =>
+                      onChange(moveFieldInBranch(field, option.id, targetId, direction))
+                    }
                     depth={depth + 1}
                   />
                 ))}
@@ -247,6 +268,7 @@ type ConditionalBranchEditorProps = {
   }) => void;
   onUpdateField: (targetId: string, field: FormField) => void;
   onDeleteField: (targetId: string) => void;
+  onMoveField: (targetId: string, direction: 'up' | 'down') => void;
   depth: number;
 };
 
@@ -256,6 +278,7 @@ function ConditionalBranchEditor({
   onAddField,
   onUpdateField,
   onDeleteField,
+  onMoveField,
   depth,
 }: ConditionalBranchEditorProps) {
   const [newLabel, setNewLabel] = useState('');
@@ -309,13 +332,16 @@ function ConditionalBranchEditor({
       </Group>
 
       <Stack gap="xs">
-        {sortedFields.map((child) => (
+        {sortedFields.map((child, index) => (
           <FormFieldSchemaRow
             key={child.id}
             field={child}
             depth={depth}
             onChange={(updated) => onUpdateField(child.id, updated)}
             onDelete={() => onDeleteField(child.id)}
+            canMoveUp={index > 0}
+            canMoveDown={index < sortedFields.length - 1}
+            onMove={(direction) => onMoveField(child.id, direction)}
           />
         ))}
         {sortedFields.length === 0 && (

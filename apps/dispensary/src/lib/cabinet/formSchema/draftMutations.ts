@@ -5,6 +5,7 @@ import type {
   FormFieldType,
 } from './types';
 import { replaceTopLevelField } from './fieldTreeMutations';
+import { reorderByOrder } from './reorderItems';
 
 export function addCategory(schema: FormEntitySchema, name: string): FormEntitySchema {
   const maxOrder = schema.categories.reduce((m, c) => Math.max(m, c.order), -1);
@@ -108,6 +109,33 @@ export function updateField(
           }
           return next;
         }),
+      };
+    }),
+  };
+}
+
+export function moveCategory(
+  schema: FormEntitySchema,
+  categoryId: string,
+  direction: 'up' | 'down',
+): FormEntitySchema {
+  return {
+    categories: reorderByOrder(schema.categories, categoryId, direction),
+  };
+}
+
+export function moveField(
+  schema: FormEntitySchema,
+  categoryId: string,
+  fieldId: string,
+  direction: 'up' | 'down',
+): FormEntitySchema {
+  return {
+    categories: schema.categories.map((c) => {
+      if (c.id !== categoryId) return c;
+      return {
+        ...c,
+        fields: reorderByOrder(c.fields, fieldId, direction),
       };
     }),
   };

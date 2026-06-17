@@ -12,6 +12,8 @@ import {
   addField,
   deleteCategory,
   deleteField,
+  moveCategory,
+  moveField,
   replaceField,
   updateCategoryName,
 } from '@/lib/cabinet/formSchema/draftMutations';
@@ -54,7 +56,7 @@ export function DynamicFormRenderer({
 
   return (
     <Stack gap="md">
-      {sortedCategories.map((category) => (
+      {sortedCategories.map((category, categoryIndex) => (
         <FormCategoryCard
           key={category.id}
           category={category}
@@ -62,6 +64,13 @@ export function DynamicFormRenderer({
           onChange={onChange}
           readOnly={readOnly}
           schemaEditing={schemaEditing}
+          canMoveCategoryUp={categoryIndex > 0}
+          canMoveCategoryDown={categoryIndex < sortedCategories.length - 1}
+          onMoveCategory={
+            schemaEditing
+              ? (direction) => mutateSchema(moveCategory(schema, category.id, direction))
+              : undefined
+          }
           onRenameCategory={
             schemaEditing
               ? (name) => mutateSchema(updateCategoryName(schema, category.id, name))
@@ -85,6 +94,12 @@ export function DynamicFormRenderer({
           onDeleteField={
             schemaEditing
               ? (fieldId) => mutateSchema(deleteField(schema, category.id, fieldId))
+              : undefined
+          }
+          onMoveField={
+            schemaEditing
+              ? (fieldId, direction) =>
+                  mutateSchema(moveField(schema, category.id, fieldId, direction))
               : undefined
           }
         >
