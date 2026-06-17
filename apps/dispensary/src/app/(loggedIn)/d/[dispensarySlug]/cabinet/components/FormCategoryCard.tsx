@@ -284,7 +284,7 @@ export function FormCategoryCard({
       <Title order={4} className="disp-display-title" mb="md">
         {category.name}
       </Title>
-      <Stack gap="md">
+      <Stack gap="md" style={{ minWidth: 0 }}>
         {children}
         {sortedFields.map((field) => (
           <DynamicFieldInput

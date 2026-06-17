@@ -17,6 +17,12 @@ import {
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
 
+const READ_ONLY_TEXT_STYLE = {
+  overflowWrap: 'break-word',
+  wordBreak: 'break-word',
+  whiteSpace: 'pre-wrap',
+} as const;
+
 type DynamicFieldInputProps = {
   field: FormField;
   value: string | null | undefined;
@@ -65,17 +71,25 @@ function FieldRecursive({
       const d = parseRealDateFromIso(effectiveValue);
       display = formatRpDate(d);
     }
+
+    const label = (
+      <>
+        <strong>
+          {field.label}
+          {field.required && ' *'} :
+        </strong>
+      </>
+    );
+
+    const readOnlyContent = (
+      <Text size="sm" style={READ_ONLY_TEXT_STYLE}>
+        {label} {display}
+      </Text>
+    );
+
     return (
-      <Stack gap="xs" pl={depth > 0 ? 'md' : 0}>
-        <div>
-          <Text size="sm" fw={500}>
-            {field.label}
-            {field.required && ' *'}
-          </Text>
-          <Text size="sm" c="dimmed">
-            {display}
-          </Text>
-        </div>
+      <Stack gap="xs" pl={depth > 0 ? 'md' : 0} style={{ minWidth: 0 }}>
+        {readOnlyContent}
         {visibleChildren.map((child) => (
           <FieldRecursive
             key={child.id}

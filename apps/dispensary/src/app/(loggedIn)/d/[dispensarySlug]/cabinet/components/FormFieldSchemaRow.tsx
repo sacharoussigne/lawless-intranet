@@ -55,7 +55,7 @@ export function FormFieldSchemaRow({
   canMoveDown = false,
   onMove,
 }: FormFieldSchemaRowProps) {
-  const [expanded, setExpanded] = useState(depth === 0);
+  const [expanded, setExpanded] = useState(false);
   const optionsText = (field.options ?? []).map((o) => o.label).join('\n');
 
   const patchField = (updates: Partial<FormField>) => {
