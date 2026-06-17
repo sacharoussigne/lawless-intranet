@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { DatePickerInput, type DatePickerInputProps } from '@mantine/dates';
+import { DatePickerInput, DatesProvider, type DatePickerInputProps } from '@mantine/dates';
+import 'dayjs/locale/fr';
 import {
   fromRpDisplayDate,
   getTodayRealDate,
@@ -40,18 +41,20 @@ export function RpDatePicker({
   const rpValue = realDate ? toRpDisplayDate(realDate) : null;
 
   return (
-    <DatePickerInput
-      {...props}
-      value={rpValue}
-      defaultDate={rpToday}
-      onChange={(rp) => {
-        if (!rp) {
-          onChange(null);
-          return;
-        }
-        onChange(fromRpDisplayDate(new Date(rp)));
-      }}
-      valueFormat="DD MMMM YYYY"
-    />
+    <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
+      <DatePickerInput
+        {...props}
+        value={rpValue}
+        defaultDate={rpToday}
+        onChange={(rp) => {
+          if (!rp) {
+            onChange(null);
+            return;
+          }
+          onChange(fromRpDisplayDate(new Date(rp)));
+        }}
+        valueFormat="DD MMMM YYYY"
+      />
+    </DatesProvider>
   );
 }
