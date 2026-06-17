@@ -18,6 +18,8 @@ export type FormField = {
   label: string;
   required: boolean;
   order: number;
+  placeholder?: string;
+  defaultValue?: string;
   options?: SelectOption[];
   conditionalBranches?: ConditionalBranch[];
 };

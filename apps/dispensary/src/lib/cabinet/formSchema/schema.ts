@@ -7,12 +7,16 @@ const selectOptionSchema = z.object({
   label: z.string().min(1),
 });
 
+const optionalString = z.string().trim().max(500).optional();
+
 const formFieldSchema: z.ZodType<{
   id: string;
   type: 'text' | 'date' | 'textarea' | 'select';
   label: string;
   required: boolean;
   order: number;
+  placeholder?: string;
+  defaultValue?: string;
   options?: { id: string; label: string }[];
   conditionalBranches?: { optionId: string; fields: unknown[] }[];
 }> = z.lazy(() =>
@@ -22,6 +26,8 @@ const formFieldSchema: z.ZodType<{
     label: z.string().min(1).max(200),
     required: z.boolean(),
     order: z.number().int(),
+    placeholder: optionalString,
+    defaultValue: optionalString,
     options: z.array(selectOptionSchema).optional(),
     conditionalBranches: z
       .array(

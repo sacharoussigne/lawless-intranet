@@ -12,13 +12,14 @@ import type { CustomValues, FormField } from '@/lib/cabinet/formSchema';
 import {
   collectFieldIdsToClearOnSelectChange,
   getVisibleFieldsForSelectValue,
+  resolveFieldInputValue,
 } from '@/lib/cabinet/formSchema';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
 
 type DynamicFieldInputProps = {
   field: FormField;
-  value: string | null;
+  value: string | null | undefined;
   onChange: (fieldId: string, value: string | null) => void;
   readOnly?: boolean;
   values: CustomValues;
@@ -33,29 +34,31 @@ function FieldRecursive({
   values,
   depth = 0,
 }: DynamicFieldInputProps) {
+  const effectiveValue = resolveFieldInputValue(value, field.defaultValue);
+
   const visibleChildren = useMemo(() => {
     if (field.type !== 'select') return [];
-    return getVisibleFieldsForSelectValue(field, value);
-  }, [field, value]);
+    return getVisibleFieldsForSelectValue(field, effectiveValue);
+  }, [field, effectiveValue]);
 
   const handleSelectChange = useCallback(
     (nextValue: string | null) => {
-      const idsToClear = collectFieldIdsToClearOnSelectChange(field, value, nextValue);
+      const idsToClear = collectFieldIdsToClearOnSelectChange(field, effectiveValue, nextValue);
       for (const id of idsToClear) {
         onChange(id, null);
       }
       onChange(field.id, nextValue);
     },
-    [field, value, onChange],
+    [field, effectiveValue, onChange],
   );
 
   if (readOnly) {
-    let display = value ?? '—';
-    if (field.type === 'select' && value) {
-      display = field.options?.find((o) => o.id === value)?.label ?? value;
+    let display = effectiveValue ?? '—';
+    if (field.type === 'select' && effectiveValue) {
+      display = field.options?.find((o) => o.id === effectiveValue)?.label ?? effectiveValue;
     }
-    if (field.type === 'date' && value) {
-      const d = parseRealDateFromIso(value);
+    if (field.type === 'date' && effectiveValue) {
+      const d = parseRealDateFromIso(effectiveValue);
       display = formatRpDate(d);
     }
     return (
@@ -73,7 +76,7 @@ function FieldRecursive({
           <FieldRecursive
             key={child.id}
             field={child}
-            value={values[child.id] ?? null}
+            value={values[child.id]}
             onChange={onChange}
             readOnly
             values={values}
@@ -87,7 +90,8 @@ function FieldRecursive({
   const common = {
     label: field.label,
     required: field.required,
-    value: value ?? '',
+    placeholder: field.placeholder,
+    value: effectiveValue ?? '',
   };
 
   let input: React.ReactNode;
@@ -107,7 +111,8 @@ function FieldRecursive({
         <RpDatePicker
           label={field.label}
           required={field.required}
-          value={value}
+          placeholder={field.placeholder}
+          value={effectiveValue}
           clearable={!field.required}
           onChange={(d) => onChange(field.id, d ? d.toISOString() : null)}
         />
@@ -118,8 +123,9 @@ function FieldRecursive({
         <Select
           label={field.label}
           required={field.required}
+          placeholder={field.placeholder}
           data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
-          value={value}
+          value={effectiveValue}
           onChange={handleSelectChange}
           clearable={!field.required}
         />
@@ -141,7 +147,7 @@ function FieldRecursive({
         <FieldRecursive
           key={child.id}
           field={child}
-          value={values[child.id] ?? null}
+          value={values[child.id]}
           onChange={onChange}
           readOnly={readOnly}
           values={values}

@@ -24,6 +24,7 @@ import {
   syncBranchesWithOptions,
 } from '@/lib/cabinet/formSchema/fieldTreeMutations';
 import { randomUUID } from '@/lib/randomId';
+import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { InlineEditableText } from './InlineEditableText';
 
 const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
@@ -51,9 +52,14 @@ export function FormFieldSchemaRow({
 
   const patchField = (updates: Partial<FormField>) => {
     let next: FormField = { ...field, ...updates };
+    if (updates.placeholder === '') delete next.placeholder;
+    if (updates.defaultValue === '') delete next.defaultValue;
     if (updates.type && updates.type !== 'select') {
       delete next.options;
       delete next.conditionalBranches;
+      if (field.type === 'select') {
+        delete next.defaultValue;
+      }
     }
     if (updates.options) {
       next = syncBranchesWithOptions(next);
@@ -110,23 +116,68 @@ export function FormFieldSchemaRow({
 
       <Collapse in={expanded}>
         <Stack gap="sm" pt="xs">
-          <Select
-            label="Type"
-            size="xs"
-            data={FIELD_TYPES}
-            value={field.type}
-            onChange={(v) => {
-              const type = (v as FormFieldType) ?? 'text';
-              if (type === 'select' && !field.options?.length) {
-                patchField({
-                  type,
-                  options: [{ id: randomUUID(), label: 'Option 1' }],
-                });
-              } else {
-                patchField({ type });
-              }
-            }}
-          />
+          <Group align="flex-end" wrap="wrap" grow>
+            <Select
+              label="Type"
+              size="xs"
+              data={FIELD_TYPES}
+              value={field.type}
+              style={{ flex: 1, minWidth: 140 }}
+              onChange={(v) => {
+                const type = (v as FormFieldType) ?? 'text';
+                if (type === 'select' && !field.options?.length) {
+                  patchField({
+                    type,
+                    options: [{ id: randomUUID(), label: 'Option 1' }],
+                  });
+                } else {
+                  patchField({ type });
+                }
+              }}
+            />
+            {(field.type === 'text' ||
+              field.type === 'textarea' ||
+              field.type === 'select' ||
+              field.type === 'date') && (
+              <TextInput
+                label="Placeholder"
+                size="xs"
+                placeholder="Texte d'aide"
+                value={field.placeholder ?? ''}
+                style={{ flex: 1, minWidth: 160 }}
+                onChange={(e) => patchField({ placeholder: e.currentTarget.value })}
+              />
+            )}
+            {field.type === 'text' || field.type === 'textarea' ? (
+              <TextInput
+                label="Valeur par défaut"
+                size="xs"
+                value={field.defaultValue ?? ''}
+                style={{ flex: 1, minWidth: 160 }}
+                onChange={(e) => patchField({ defaultValue: e.currentTarget.value })}
+              />
+            ) : field.type === 'select' ? (
+              <Select
+                label="Valeur par défaut"
+                size="xs"
+                placeholder="Aucune"
+                data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
+                value={field.defaultValue ?? null}
+                clearable
+                style={{ flex: 1, minWidth: 160 }}
+                onChange={(v) => patchField({ defaultValue: v ?? '' })}
+              />
+            ) : field.type === 'date' ? (
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <RpDatePicker
+                  label="Valeur par défaut"
+                  value={field.defaultValue ?? null}
+                  clearable
+                  onChange={(d) => patchField({ defaultValue: d ? d.toISOString() : '' })}
+                />
+              </div>
+            ) : null}
+          </Group>
           <Switch
             label="Obligatoire"
             size="sm"
@@ -187,7 +238,13 @@ export function FormFieldSchemaRow({
 type ConditionalBranchEditorProps = {
   optionLabel: string;
   branchFields: FormField[];
-  onAddField: (partial: { label: string; type: FormFieldType; required: boolean }) => void;
+  onAddField: (partial: {
+    label: string;
+    type: FormFieldType;
+    required: boolean;
+    placeholder?: string;
+    defaultValue?: string;
+  }) => void;
   onUpdateField: (targetId: string, field: FormField) => void;
   onDeleteField: (targetId: string) => void;
   depth: number;
@@ -204,8 +261,18 @@ function ConditionalBranchEditor({
   const [newLabel, setNewLabel] = useState('');
   const [newType, setNewType] = useState<FormFieldType>('text');
   const [newRequired, setNewRequired] = useState(false);
+  const [newPlaceholder, setNewPlaceholder] = useState('');
+  const [newDefaultValue, setNewDefaultValue] = useState('');
 
   const sortedFields = [...branchFields].sort((a, b) => a.order - b.order);
+
+  const resetAddForm = () => {
+    setNewLabel('');
+    setNewType('text');
+    setNewRequired(false);
+    setNewPlaceholder('');
+    setNewDefaultValue('');
+  };
 
   const handleAdd = () => {
     if (!newLabel.trim()) return;
@@ -213,11 +280,14 @@ function ConditionalBranchEditor({
       label: newLabel.trim(),
       type: newType,
       required: newRequired,
+      placeholder: newPlaceholder.trim() || undefined,
+      defaultValue: newDefaultValue.trim() || undefined,
     });
-    setNewLabel('');
-    setNewType('text');
-    setNewRequired(false);
+    resetAddForm();
   };
+
+  const showPlaceholder =
+    newType === 'text' || newType === 'textarea' || newType === 'select' || newType === 'date';
 
   return (
     <Stack
@@ -255,7 +325,7 @@ function ConditionalBranchEditor({
         )}
       </Stack>
 
-      <Group align="flex-end" wrap="wrap">
+      <Group align="flex-end" wrap="wrap" grow>
         <TextInput
           label="Nouveau champ"
           placeholder="Libellé"
@@ -276,8 +346,37 @@ function ConditionalBranchEditor({
           data={FIELD_TYPES}
           value={newType}
           onChange={(v) => setNewType((v as FormFieldType) ?? 'text')}
-          style={{ minWidth: 140 }}
+          style={{ flex: 1, minWidth: 140 }}
         />
+        {showPlaceholder && (
+          <TextInput
+            label="Placeholder"
+            size="xs"
+            placeholder="Texte d'aide"
+            value={newPlaceholder}
+            onChange={(e) => setNewPlaceholder(e.currentTarget.value)}
+            style={{ flex: 1, minWidth: 140 }}
+          />
+        )}
+        {(newType === 'text' || newType === 'textarea') && (
+          <TextInput
+            label="Valeur par défaut"
+            size="xs"
+            value={newDefaultValue}
+            onChange={(e) => setNewDefaultValue(e.currentTarget.value)}
+            style={{ flex: 1, minWidth: 140 }}
+          />
+        )}
+        {newType === 'date' && (
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <RpDatePicker
+              label="Valeur par défaut"
+              value={newDefaultValue || null}
+              clearable
+              onChange={(d) => setNewDefaultValue(d ? d.toISOString() : '')}
+            />
+          </div>
+        )}
         <Switch
           label="Requis"
           size="xs"

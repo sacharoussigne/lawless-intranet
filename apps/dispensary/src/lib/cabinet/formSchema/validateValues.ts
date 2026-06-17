@@ -12,6 +12,15 @@ export type ValidateCustomValuesOptions = {
   enforceRequired?: boolean;
 };
 
+function resolveStoredValueFromMap(
+  values: CustomValues,
+  fieldId: string,
+  defaultValue?: string,
+): string | null | undefined {
+  if (fieldId in values) return values[fieldId];
+  return defaultValue;
+}
+
 function validateFieldValue(
   field: FormField,
   value: string | null | undefined,
@@ -51,7 +60,7 @@ function validateFieldsRecursive(
   enforceRequired: boolean,
 ): void {
   for (const field of fields) {
-    const raw = values[field.id] ?? null;
+    const raw = resolveStoredValueFromMap(values, field.id, field.defaultValue) ?? null;
     result[field.id] = validateFieldValue(field, raw, enforceRequired);
 
     if (field.type === 'select' && field.conditionalBranches?.length) {

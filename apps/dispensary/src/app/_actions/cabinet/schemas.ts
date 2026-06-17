@@ -75,6 +75,8 @@ export const deleteConsultationSchema = z.object({
   id: z.string().uuid(),
 });
 
+const optionalString = z.string().trim().max(500).optional();
+
 const formFieldInputSchema: z.ZodType<unknown> = z.lazy(() =>
   z.object({
     id: z.string().min(1),
@@ -82,6 +84,8 @@ const formFieldInputSchema: z.ZodType<unknown> = z.lazy(() =>
     label: z.string().min(1).max(200),
     required: z.boolean(),
     order: z.number().int(),
+    placeholder: optionalString,
+    defaultValue: optionalString,
     options: z
       .array(z.object({ id: z.string().min(1), label: z.string().min(1) }))
       .optional(),

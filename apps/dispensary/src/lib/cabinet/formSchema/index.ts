@@ -10,6 +10,7 @@ export type {
   SelectOption,
   ConditionalBranch,
 } from './types';
+export { resolveFieldInputValue, resolveStoredValue } from './resolveFieldValue';
 export {
   flattenFields,
   flattenFieldsFromCategories,

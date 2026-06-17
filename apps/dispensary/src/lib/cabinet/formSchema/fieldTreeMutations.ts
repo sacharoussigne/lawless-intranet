@@ -62,7 +62,13 @@ export function replaceTopLevelField(
 export function addFieldToBranch(
   field: FormField,
   optionId: string,
-  partial: { label: string; type: FormFieldType; required: boolean },
+  partial: {
+    label: string;
+    type: FormFieldType;
+    required: boolean;
+    placeholder?: string;
+    defaultValue?: string;
+  },
 ): FormField {
   const branches = [...(field.conditionalBranches ?? [])];
   const branchIndex = branches.findIndex((b) => b.optionId === optionId);
@@ -79,6 +85,12 @@ export function addFieldToBranch(
     required: partial.required,
     order: maxOrder + 1,
   };
+  if (partial.placeholder?.trim()) {
+    newField.placeholder = partial.placeholder.trim();
+  }
+  if (partial.defaultValue?.trim()) {
+    newField.defaultValue = partial.defaultValue.trim();
+  }
   if (partial.type === 'select') {
     newField.options = [{ id: randomUUID(), label: 'Option 1' }];
   }
@@ -92,18 +104,30 @@ export function addFieldToBranch(
   return { ...field, conditionalBranches: nextBranches };
 }
 
+export function syncDefaultValueWithOptions(field: FormField): FormField {
+  if (field.type !== 'select' || !field.defaultValue) return field;
+  const valid = field.options?.some((o) => o.id === field.defaultValue);
+  if (valid) return field;
+  const next = { ...field };
+  delete next.defaultValue;
+  return next;
+}
+
 export function syncBranchesWithOptions(field: FormField): FormField {
   if (field.type !== 'select' || !field.options?.length) {
     const next = { ...field };
     delete next.conditionalBranches;
+    delete next.defaultValue;
     return next;
   }
   const optionIds = new Set(field.options.map((o) => o.id));
   const branches = (field.conditionalBranches ?? []).filter((b) => optionIds.has(b.optionId));
-  return {
+  let next: FormField = {
     ...field,
     conditionalBranches: branches.length > 0 ? branches : undefined,
   };
+  next = syncDefaultValueWithOptions(next);
+  return next;
 }
 
 export function getBranchFields(field: FormField, optionId: string): FormField[] {

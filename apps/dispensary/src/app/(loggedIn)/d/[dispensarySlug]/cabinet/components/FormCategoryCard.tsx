@@ -192,7 +192,7 @@ export function FormCategoryCard({
           <DynamicFieldInput
             key={field.id}
             field={field}
-            value={values[field.id] ?? null}
+            value={values[field.id]}
             onChange={onChange}
             readOnly={readOnly}
             values={values}
