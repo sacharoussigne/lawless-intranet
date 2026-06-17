@@ -34,6 +34,7 @@ model Dispensary {
   dispensaryWeeklyActivities DispensaryWeeklyActivity[]
   craftRecipes CraftRecipe[]
   agendas Agenda[]
+  cabinets Cabinet[]
 
   @@index([createdById])
   @@map("dispensary")
@@ -104,6 +105,7 @@ model AppSettings {
   featurePayrollEnabled        Boolean  @default(true)
   featureWeeklyDispensaryActivityEnabled Boolean @default(true)
   featureAgendaEnabled                 Boolean @default(true)
+  featureCabinetEnabled                Boolean @default(true)
   weeklyActivityChestDaysVisible       Boolean @default(true)
   weeklyActivityPresenceDaysVisible    Boolean @default(true)
   weeklyActivityPatientsVisible        Boolean @default(true)
@@ -742,4 +744,85 @@ model AgendaEventTodoTask {
 
   @@index([eventId])
   @@map("agenda_event_todo_task")
+}
+
+enum CabinetAccessLevel {
+  OWNER
+  WRITE
+  READ
+}
+
+model Cabinet {
+  id           String   @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  formSchemas  Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  members      CabinetMember[]
+  patients     CabinetPatient[]
+
+  @@index([dispensaryId])
+  @@map("cabinet")
+}
+
+model CabinetMember {
+  id          String             @id @default(uuid())
+  cabinetId   String
+  cabinet     Cabinet            @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  userId      String
+  accessLevel CabinetAccessLevel
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([cabinetId, userId])
+  @@index([userId])
+  @@map("cabinet_member")
+}
+
+model CabinetPatient {
+  id               String        @id @default(uuid())
+  cabinetId        String
+  cabinet          Cabinet       @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  birthDate        DateTime?
+  emergencyContact String?
+  customValues     Json          @default("{}")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  careEpisodes     CareEpisode[]
+
+  @@index([cabinetId])
+  @@index([cabinetId, lastName, firstName])
+  @@map("cabinet_patient")
+}
+
+model CareEpisode {
+  id            String         @id @default(uuid())
+  patientId     String
+  patient       CabinetPatient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  motif         String
+  customValues  Json           @default("{}")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  consultations Consultation[]
+
+  @@index([patientId])
+  @@map("care_episode")
+}
+
+model Consultation {
+  id            String      @id @default(uuid())
+  careEpisodeId String
+  careEpisode   CareEpisode @relation(fields: [careEpisodeId], references: [id], onDelete: Cascade)
+  date          DateTime
+  customValues  Json        @default("{}")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([careEpisodeId, date])
+  @@map("consultation")
 }

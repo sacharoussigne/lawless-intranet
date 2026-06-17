@@ -15,6 +15,10 @@ import {
 } from '@/lib/dispensary/context';
 import { notFound, redirect } from 'next/navigation';
 import { userHasAnyAgendaAccess, listAccessibleAgendaIds } from '@/lib/agenda/access';
+import {
+  userHasAnyCabinetAccess,
+  listAccessibleCabinetIds,
+} from '@/lib/cabinet/access';
 import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 
@@ -74,6 +78,13 @@ export default async function DispensaryLayout({
           effectiveRole,
         )
       : [];
+  const cabinetModuleAccess = userId
+    ? await userHasAnyCabinetAccess(dispensary.id, userId)
+    : false;
+  const accessibleCabinetIds =
+    userId && cabinetModuleAccess
+      ? await listAccessibleCabinetIds(dispensary.id, userId)
+      : [];
 
   return (
     <PermissionsProvider
@@ -85,6 +96,8 @@ export default async function DispensaryLayout({
       accessibleDispensaries={accessibleDispensaries}
       agendaModuleAccess={agendaModuleAccess}
       accessibleAgendaIds={accessibleAgendaIds}
+      cabinetModuleAccess={cabinetModuleAccess}
+      accessibleCabinetIds={accessibleCabinetIds}
     >
       <DispensaryRealtimeShell>
         <QueryProvider>

@@ -242,6 +242,11 @@ export default function Header({
                             <Menu.Item>Agendas</Menu.Item>
                           </Link>
                         )}
+                        {appSettings.featureCabinetEnabled && (
+                          <Link href={t.admin.cabinets}>
+                            <Menu.Item>Cabinets</Menu.Item>
+                          </Link>
+                        )}
                         {appSettings.featureStockEnabled && (
                           <Link href={t.admin.overwriteStock}>
                             <Menu.Item>Écraser les stocks</Menu.Item>
