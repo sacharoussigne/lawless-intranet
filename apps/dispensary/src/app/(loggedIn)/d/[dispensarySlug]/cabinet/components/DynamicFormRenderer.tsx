@@ -7,6 +7,7 @@ import type {
   CustomValues,
   FormEntitySchema,
 } from '@/lib/cabinet/formSchema';
+import type { CabinetFieldErrors } from '@/lib/cabinet/formErrors';
 import {
   addCategory,
   addField,
@@ -29,6 +30,7 @@ type DynamicFormRendererProps = {
   systemCards?: Record<string, React.ReactNode>;
   mode?: DynamicFormRendererMode;
   onSchemaChange?: (schema: FormEntitySchema) => void;
+  fieldErrors?: CabinetFieldErrors;
 };
 
 export function DynamicFormRenderer({
@@ -39,6 +41,7 @@ export function DynamicFormRenderer({
   systemCards,
   mode = 'values',
   onSchemaChange,
+  fieldErrors,
 }: DynamicFormRendererProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const sortedCategories = [...schema.categories].sort((a, b) => a.order - b.order);
@@ -102,6 +105,7 @@ export function DynamicFormRenderer({
                   mutateSchema(moveField(schema, category.id, fieldId, direction))
               : undefined
           }
+          fieldErrors={schemaEditing ? undefined : fieldErrors}
         >
           {category.systemKey && systemCards?.[category.systemKey]}
         </FormCategoryCard>

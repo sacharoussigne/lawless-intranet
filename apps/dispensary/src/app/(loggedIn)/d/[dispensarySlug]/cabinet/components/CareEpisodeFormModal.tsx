@@ -11,6 +11,8 @@ import { createCareEpisode } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
 import { getTodayRealDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
+import { useCabinetFieldErrors } from '../hooks/useCabinetFieldErrors';
+import { CabinetFormErrorBanner } from './CabinetFormErrorBanner';
 
 interface CareEpisodeFormModalProps {
   opened: boolean;
@@ -34,17 +36,21 @@ export function CareEpisodeFormModal({
   const [motif, setMotif] = useState('');
   const [startedAt, setStartedAt] = useState<Date | null>(() => getTodayRealDate());
   const [submitting, setSubmitting] = useState(false);
+  const { fieldErrors, formError, clearFieldError, resetErrors, applySubmitError } =
+    useCabinetFieldErrors();
 
   useEffect(() => {
     if (opened) {
       setMotif('');
       setStartedAt(getTodayRealDate());
+      resetErrors();
     }
-  }, [opened]);
+  }, [opened, resetErrors]);
 
   const handleSubmit = async () => {
-    if (!motif.trim() || !startedAt) return;
+    if (!startedAt) return;
     setSubmitting(true);
+    resetErrors();
     try {
       const result = await createCareEpisode(dispensarySlug, {
         patientId,
@@ -66,11 +72,7 @@ export function CareEpisodeFormModal({
         onSuccess();
       }
     } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Échec',
-        color: 'danger',
-      });
+      applySubmitError(error);
     } finally {
       setSubmitting(false);
     }
@@ -100,16 +102,25 @@ export function CareEpisodeFormModal({
       }
     >
       <Stack gap="md">
+        <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
         <TextInput
           label="Motif"
           value={motif}
-          onChange={(e) => setMotif(e.currentTarget.value)}
+          onChange={(e) => {
+            clearFieldError('motif');
+            setMotif(e.currentTarget.value);
+          }}
+          error={fieldErrors.motif}
           required
         />
         <RpDatePicker
           label="Date de début"
           value={startedAt}
-          onChange={setStartedAt}
+          onChange={(d) => {
+            clearFieldError('startedAt');
+            setStartedAt(d);
+          }}
+          error={fieldErrors.startedAt}
           defaultToToday
           required
         />

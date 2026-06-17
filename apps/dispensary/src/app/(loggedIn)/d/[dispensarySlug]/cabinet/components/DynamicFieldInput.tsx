@@ -24,6 +24,7 @@ type DynamicFieldInputProps = {
   readOnly?: boolean;
   values: CustomValues;
   depth?: number;
+  fieldErrors?: Record<string, string>;
 };
 
 function FieldRecursive({
@@ -33,8 +34,10 @@ function FieldRecursive({
   readOnly,
   values,
   depth = 0,
+  fieldErrors,
 }: DynamicFieldInputProps) {
   const effectiveValue = resolveFieldInputValue(value, field.defaultValue);
+  const error = fieldErrors?.[field.id];
 
   const visibleChildren = useMemo(() => {
     if (field.type !== 'select') return [];
@@ -81,6 +84,7 @@ function FieldRecursive({
             readOnly
             values={values}
             depth={depth + 1}
+            fieldErrors={fieldErrors}
           />
         ))}
       </Stack>
@@ -101,6 +105,7 @@ function FieldRecursive({
       input = (
         <Textarea
           {...common}
+          error={error}
           minRows={3}
           resize="vertical"
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
@@ -113,6 +118,7 @@ function FieldRecursive({
           label={field.label}
           required={field.required}
           placeholder={field.placeholder}
+          error={error}
           value={effectiveValue}
           clearable={!field.required}
           onChange={(d) => onChange(field.id, d ? d.toISOString() : null)}
@@ -125,6 +131,7 @@ function FieldRecursive({
           label={field.label}
           required={field.required}
           placeholder={field.placeholder}
+          error={error}
           data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
           value={effectiveValue}
           onChange={handleSelectChange}
@@ -136,6 +143,7 @@ function FieldRecursive({
       input = (
         <TextInput
           {...common}
+          error={error}
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />
       );
@@ -153,6 +161,7 @@ function FieldRecursive({
           readOnly={readOnly}
           values={values}
           depth={depth + 1}
+          fieldErrors={fieldErrors}
         />
       ))}
     </Stack>

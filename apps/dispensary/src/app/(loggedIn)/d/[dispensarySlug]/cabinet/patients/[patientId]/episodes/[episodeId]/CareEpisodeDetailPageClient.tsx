@@ -34,7 +34,9 @@ import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { formatRpDate, getTodayRealDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
+import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
 import { useCabinetSchemaEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetSchemaEditing';
+import { useCabinetFieldErrors } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetFieldErrors';
 
 type EpisodeData = {
   id: string;
@@ -73,6 +75,8 @@ export function CareEpisodeDetailPageClient({
   const [newConsultationDate, setNewConsultationDate] = useState<Date | null>(
     () => getTodayRealDate(),
   );
+  const { fieldErrors, formError, clearFieldError, resetErrors, applySubmitError } =
+    useCabinetFieldErrors();
 
   const {
     schemaEditing,
@@ -104,6 +108,7 @@ export function CareEpisodeDetailPageClient({
 
   const handleSave = async () => {
     setSaving(true);
+    resetErrors();
     try {
       const result = await updateCareEpisode(dispensarySlug, {
         id: episode.id,
@@ -116,11 +121,7 @@ export function CareEpisodeDetailPageClient({
       setEditing(false);
       notifications.show({ title: 'Enregistré', message: '', color: 'moss' });
     } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Échec',
-        color: 'danger',
-      });
+      applySubmitError(error);
     } finally {
       setSaving(false);
     }
@@ -187,17 +188,21 @@ export function CareEpisodeDetailPageClient({
               label="Motif"
               value={episode.motif}
               onChange={(e) => {
+                clearFieldError('motif');
                 const value = e.currentTarget.value;
                 setEpisode((ep) => ({ ...ep, motif: value }));
               }}
+              error={fieldErrors.motif}
               required
             />
             <RpDatePicker
               label="Date de début"
               value={episode.startedAt}
               onChange={(d) => {
+                clearFieldError('startedAt');
                 if (d) setEpisode((ep) => ({ ...ep, startedAt: d }));
               }}
+              error={fieldErrors.startedAt}
               required
             />
           </Stack>
@@ -240,13 +245,27 @@ export function CareEpisodeDetailPageClient({
               </>
             )}
             {canWrite && !editing && !schemaEditing && (
-              <Button color="sage" leftSection={<IconEdit size={16} />} onClick={() => setEditing(true)}>
+              <Button
+                color="sage"
+                leftSection={<IconEdit size={16} />}
+                onClick={() => {
+                  resetErrors();
+                  setEditing(true);
+                }}
+              >
                 Modifier
               </Button>
             )}
             {canWrite && editing && (
               <>
-                <Button variant="subtle" color="slate" onClick={() => setEditing(false)}>
+                <Button
+                  variant="subtle"
+                  color="slate"
+                  onClick={() => {
+                    resetErrors();
+                    setEditing(false);
+                  }}
+                >
                   Annuler
                 </Button>
                 <Button color="sage" loading={saving} onClick={() => void handleSave()}>
@@ -264,19 +283,24 @@ export function CareEpisodeDetailPageClient({
       />
 
       <Stack gap="xl">
+        {editing && (
+          <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
+        )}
         <DynamicFormRenderer
           schema={entitySchema}
           values={episode.customValues}
-          onChange={(fieldId, value) =>
+          onChange={(fieldId, value) => {
+            clearFieldError(fieldId);
             setEpisode((ep) => ({
               ...ep,
               customValues: { ...ep.customValues, [fieldId]: value },
-            }))
-          }
+            }));
+          }}
           readOnly={!editing}
           systemCards={activeSystemCards}
           mode={schemaEditing ? 'schema' : 'values'}
           onSchemaChange={setDraftEntitySchema}
+          fieldErrors={editing ? fieldErrors : undefined}
         />
 
         {!schemaEditing && (

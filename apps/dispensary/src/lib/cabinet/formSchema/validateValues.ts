@@ -2,7 +2,7 @@ import type { CustomValues, FormEntitySchema, FormField } from './types';
 
 export type ValidateValuesResult =
   | { ok: true; values: CustomValues }
-  | { ok: false; error: string };
+  | { ok: false; fieldErrors: { fieldId: string; message: string }[] };
 
 function isEmptyValue(value: string | null | undefined): boolean {
   return value === null || value === undefined || value.trim() === '';
@@ -58,19 +58,27 @@ function validateFieldsRecursive(
   values: CustomValues,
   result: CustomValues,
   enforceRequired: boolean,
+  errors: { fieldId: string; message: string }[],
 ): void {
   for (const field of fields) {
-    const raw = resolveStoredValueFromMap(values, field.id, field.defaultValue) ?? null;
-    result[field.id] = validateFieldValue(field, raw, enforceRequired);
+    try {
+      const raw = resolveStoredValueFromMap(values, field.id, field.defaultValue) ?? null;
+      result[field.id] = validateFieldValue(field, raw, enforceRequired);
 
-    if (field.type === 'select' && field.conditionalBranches?.length) {
-      const selectedId = result[field.id];
-      if (selectedId) {
-        const branch = field.conditionalBranches.find((b) => b.optionId === selectedId);
-        if (branch) {
-          validateFieldsRecursive(branch.fields, values, result, enforceRequired);
+      if (field.type === 'select' && field.conditionalBranches?.length) {
+        const selectedId = result[field.id];
+        if (selectedId) {
+          const branch = field.conditionalBranches.find((b) => b.optionId === selectedId);
+          if (branch) {
+            validateFieldsRecursive(branch.fields, values, result, enforceRequired, errors);
+          }
         }
       }
+    } catch (err) {
+      errors.push({
+        fieldId: field.id,
+        message: err instanceof Error ? err.message : 'Valeur invalide',
+      });
     }
   }
 }
@@ -87,16 +95,25 @@ export function validateCustomValues(
       : {};
 
   const result: CustomValues = {};
+  const errors: { fieldId: string; message: string }[] = [];
 
   try {
     for (const category of schema.categories) {
-      validateFieldsRecursive(category.fields, input, result, enforceRequired);
+      validateFieldsRecursive(category.fields, input, result, enforceRequired, errors);
+    }
+    if (errors.length > 0) {
+      return { ok: false, fieldErrors: errors };
     }
     return { ok: true, values: result };
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Valeurs invalides',
+      fieldErrors: [
+        {
+          fieldId: '_form',
+          message: err instanceof Error ? err.message : 'Valeurs invalides',
+        },
+      ],
     };
   }
 }

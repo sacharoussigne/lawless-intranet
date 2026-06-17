@@ -16,6 +16,7 @@ import {
 } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type { CustomValues, FormCategory, FormField, FormFieldType } from '@/lib/cabinet/formSchema';
+import type { CabinetFieldErrors } from '@/lib/cabinet/formErrors';
 import { DynamicFieldInput } from './DynamicFieldInput';
 import { FormFieldSchemaRow } from './FormFieldSchemaRow';
 import { InlineEditableText } from './InlineEditableText';
@@ -46,6 +47,7 @@ type FormCategoryCardProps = {
   onUpdateField?: (field: FormField) => void;
   onDeleteField?: (fieldId: string) => void;
   onMoveField?: (fieldId: string, direction: 'up' | 'down') => void;
+  fieldErrors?: CabinetFieldErrors;
   canMoveCategoryUp?: boolean;
   canMoveCategoryDown?: boolean;
   onMoveCategory?: (direction: 'up' | 'down') => void;
@@ -64,6 +66,7 @@ export function FormCategoryCard({
   onUpdateField,
   onDeleteField,
   onMoveField,
+  fieldErrors,
   canMoveCategoryUp,
   canMoveCategoryDown,
   onMoveCategory,
@@ -221,6 +224,7 @@ export function FormCategoryCard({
             onChange={onChange}
             readOnly={readOnly}
             values={values}
+            fieldErrors={fieldErrors}
           />
         ))}
         {sortedFields.length === 0 && !children && (

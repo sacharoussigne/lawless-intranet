@@ -15,6 +15,8 @@ import { handleAction } from '@/lib/action';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { tenantRoutes } from '@/types/routes';
+import { useCabinetFieldErrors } from '../hooks/useCabinetFieldErrors';
+import { CabinetFormErrorBanner } from './CabinetFormErrorBanner';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
 
 type PatientFormData = {
@@ -53,6 +55,8 @@ export function PatientFormModal({
   const [emergencyContact, setEmergencyContact] = useState('');
   const [customValues, setCustomValues] = useState<CustomValues>({});
   const [submitting, setSubmitting] = useState(false);
+  const { fieldErrors, formError, clearFieldError, resetErrors, applySubmitError } =
+    useCabinetFieldErrors();
 
   useEffect(() => {
     if (opened) {
@@ -61,15 +65,18 @@ export function PatientFormModal({
       setBirthDate(patient?.birthDate ?? null);
       setEmergencyContact(patient?.emergencyContact ?? '');
       setCustomValues(patient?.customValues ?? {});
+      resetErrors();
     }
-  }, [opened, patient]);
+  }, [opened, patient, resetErrors]);
 
   const handleCustomChange = (fieldId: string, value: string | null) => {
+    clearFieldError(fieldId);
     setCustomValues((prev) => ({ ...prev, [fieldId]: value }));
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    resetErrors();
     try {
       const payload = {
         cabinetId,
@@ -98,11 +105,7 @@ export function PatientFormModal({
         router.push(`${t.cabinet.index}/patients/${data.id}?cabinetId=${cabinetId}`);
       }
     } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Échec',
-        color: 'danger',
-      });
+      applySubmitError(error);
     } finally {
       setSubmitting(false);
     }
@@ -129,34 +132,52 @@ export function PatientFormModal({
       }
     >
       <Stack gap="md">
+        <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
         <TextInput
           label="Prénom"
           value={firstName}
-          onChange={(e) => setFirstName(e.currentTarget.value)}
+          onChange={(e) => {
+            clearFieldError('firstName');
+            setFirstName(e.currentTarget.value);
+          }}
+          error={fieldErrors.firstName}
           required
         />
         <TextInput
           label="Nom"
           value={lastName}
-          onChange={(e) => setLastName(e.currentTarget.value)}
+          onChange={(e) => {
+            clearFieldError('lastName');
+            setLastName(e.currentTarget.value);
+          }}
+          error={fieldErrors.lastName}
           required
         />
         <RpDatePicker
           label="Date de naissance"
           value={birthDate}
-          onChange={setBirthDate}
+          onChange={(d) => {
+            clearFieldError('birthDate');
+            setBirthDate(d);
+          }}
+          error={fieldErrors.birthDate}
           clearable
         />
         <TextInput
           label="Personne à contacter en cas d'urgence"
           value={emergencyContact}
-          onChange={(e) => setEmergencyContact(e.currentTarget.value)}
+          onChange={(e) => {
+            clearFieldError('emergencyContact');
+            setEmergencyContact(e.currentTarget.value);
+          }}
+          error={fieldErrors.emergencyContact}
         />
         {entitySchema && (
           <DynamicFormRenderer
             schema={entitySchema}
             values={customValues}
             onChange={handleCustomChange}
+            fieldErrors={fieldErrors}
           />
         )}
       </Stack>

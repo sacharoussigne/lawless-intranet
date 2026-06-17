@@ -25,7 +25,9 @@ import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
+import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
 import { useCabinetSchemaEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetSchemaEditing';
+import { useCabinetFieldErrors } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetFieldErrors';
 
 type ConsultationData = {
   id: string;
@@ -61,6 +63,8 @@ export function ConsultationDetailPageClient({
   const [consultation, setConsultation] = useState(initialConsultation);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { fieldErrors, formError, clearFieldError, resetErrors, applySubmitError } =
+    useCabinetFieldErrors();
   const { careEpisode } = consultation;
 
   const {
@@ -87,6 +91,7 @@ export function ConsultationDetailPageClient({
 
   const handleSave = async () => {
     setSaving(true);
+    resetErrors();
     try {
       const result = await updateConsultation(dispensarySlug, {
         id: consultation.id,
@@ -98,11 +103,7 @@ export function ConsultationDetailPageClient({
       setEditing(false);
       notifications.show({ title: 'Enregistré', message: '', color: 'moss' });
     } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Échec',
-        color: 'danger',
-      });
+      applySubmitError(error);
     } finally {
       setSaving(false);
     }
@@ -137,9 +138,11 @@ export function ConsultationDetailPageClient({
           <RpDatePicker
             label="Date"
             value={consultation.date}
-            onChange={(d) =>
-              setConsultation((c) => ({ ...c, date: d ?? c.date }))
-            }
+            onChange={(d) => {
+              clearFieldError('date');
+              setConsultation((c) => ({ ...c, date: d ?? c.date }));
+            }}
+            error={fieldErrors.date}
             required
           />
         ),
@@ -181,13 +184,27 @@ export function ConsultationDetailPageClient({
               </>
             )}
             {canWrite && !editing && !schemaEditing && (
-              <Button color="sage" leftSection={<IconEdit size={16} />} onClick={() => setEditing(true)}>
+              <Button
+                color="sage"
+                leftSection={<IconEdit size={16} />}
+                onClick={() => {
+                  resetErrors();
+                  setEditing(true);
+                }}
+              >
                 Modifier
               </Button>
             )}
             {canWrite && editing && (
               <>
-                <Button variant="subtle" color="slate" onClick={() => setEditing(false)}>
+                <Button
+                  variant="subtle"
+                  color="slate"
+                  onClick={() => {
+                    resetErrors();
+                    setEditing(false);
+                  }}
+                >
                   Annuler
                 </Button>
                 <Button color="sage" loading={saving} onClick={() => void handleSave()}>
@@ -205,19 +222,24 @@ export function ConsultationDetailPageClient({
       />
 
       <Stack gap="xl">
+        {editing && (
+          <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
+        )}
         <DynamicFormRenderer
           schema={entitySchema}
           values={consultation.customValues}
-          onChange={(fieldId, value) =>
+          onChange={(fieldId, value) => {
+            clearFieldError(fieldId);
             setConsultation((c) => ({
               ...c,
               customValues: { ...c.customValues, [fieldId]: value },
-            }))
-          }
+            }));
+          }}
           readOnly={!editing}
           systemCards={activeSystemCards}
           mode={schemaEditing ? 'schema' : 'values'}
           onSchemaChange={setDraftEntitySchema}
+          fieldErrors={editing ? fieldErrors : undefined}
         />
       </Stack>
     </Container>

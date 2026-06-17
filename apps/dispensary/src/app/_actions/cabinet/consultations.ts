@@ -14,6 +14,7 @@ import {
   guardCabinetRead,
   guardCabinetWrite,
 } from '@/app/_actions/cabinet/internals';
+import { customValidationToActionError } from '@/lib/cabinet/customValidationActionError';
 import {
   getEntitySchema,
   parseCabinetFormSchemas,
@@ -169,7 +170,7 @@ export async function createConsultation(
       validated.customValues ?? {},
     );
     if (!customValidation.ok) {
-      return { status: 400, error: customValidation.error };
+      return customValidationToActionError(customValidation.fieldErrors);
     }
 
     const consultation = await prisma.consultation.create({
@@ -236,7 +237,7 @@ export async function updateConsultation(
       validated.customValues ?? {},
     );
     if (!customValidation.ok) {
-      return { status: 400, error: customValidation.error };
+      return customValidationToActionError(customValidation.fieldErrors);
     }
 
     const consultation = await prisma.consultation.update({

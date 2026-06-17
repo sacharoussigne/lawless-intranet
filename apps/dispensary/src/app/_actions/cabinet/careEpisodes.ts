@@ -14,6 +14,7 @@ import {
   guardCabinetRead,
   guardCabinetWrite,
 } from '@/app/_actions/cabinet/internals';
+import { customValidationToActionError } from '@/lib/cabinet/customValidationActionError';
 import {
   getEntitySchema,
   parseCabinetFormSchemas,
@@ -164,7 +165,7 @@ export async function createCareEpisode(
       { enforceRequired: false },
     );
     if (!customValidation.ok) {
-      return { status: 400, error: customValidation.error };
+      return customValidationToActionError(customValidation.fieldErrors);
     }
 
     const episode = await prisma.careEpisode.create({
@@ -229,7 +230,7 @@ export async function updateCareEpisode(
       validated.customValues ?? {},
     );
     if (!customValidation.ok) {
-      return { status: 400, error: customValidation.error };
+      return customValidationToActionError(customValidation.fieldErrors);
     }
 
     const episode = await prisma.careEpisode.update({
