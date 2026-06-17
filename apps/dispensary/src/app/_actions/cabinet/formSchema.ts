@@ -14,7 +14,9 @@ import {
   deleteFormFieldSchema,
   reorderFormCategoriesSchema,
   reorderFormFieldsSchema,
+  saveFormSchemaEntitySchema,
 } from '@/app/_actions/cabinet/schemas';
+import type { FormEntitySchema } from '@/lib/cabinet/formSchema';
 import { getCabinetSessionContext } from '@/app/_actions/cabinet/internals';
 import {
   type CabinetFormSchemas,
@@ -290,6 +292,60 @@ export async function reorderFormCategories(
     return { status: 200, data: schemas };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du réordonnancement');
+  }
+}
+
+export async function saveFormSchemaEntity(
+  dispensarySlug: string,
+  data: {
+    cabinetId: string;
+    entityType: FormEntityType;
+    schema: FormEntitySchema;
+  },
+) {
+  try {
+    const validated = saveFormSchemaEntitySchema.parse(data);
+    const loaded = await loadAndGuardSchemas(dispensarySlug, validated.cabinetId);
+    if ('error' in loaded && loaded.error) return loaded.error;
+
+    const { ctx, schemas } = loaded as {
+      ctx: NonNullable<typeof loaded.ctx>;
+      schemas: CabinetFormSchemas;
+    };
+    const key = entityKey(validated.entityType);
+    const current = schemas[key];
+    const incoming = validated.schema as FormEntitySchema;
+
+    const systemCategories = current.categories.filter((c) => c.isSystem);
+    for (const systemCat of systemCategories) {
+      const preserved = incoming.categories.find((c) => c.id === systemCat.id);
+      if (!preserved) {
+        return {
+          status: 400,
+          error: 'Les catégories système ne peuvent pas être supprimées',
+        };
+      }
+      if (preserved.isSystem !== true || preserved.systemKey !== systemCat.systemKey) {
+        return {
+          status: 400,
+          error: 'Les catégories système ne peuvent pas être modifiées',
+        };
+      }
+    }
+
+    schemas[key] = {
+      categories: incoming.categories
+        .map((c) => ({
+          ...c,
+          fields: [...c.fields].sort((a, b) => a.order - b.order),
+        }))
+        .sort((a, b) => a.order - b.order),
+    };
+
+    await saveSchemas(validated.cabinetId, ctx.tenant.dispensaryId, schemas);
+    return { status: 200, data: schemas };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la sauvegarde du schéma');
   }
 }
 

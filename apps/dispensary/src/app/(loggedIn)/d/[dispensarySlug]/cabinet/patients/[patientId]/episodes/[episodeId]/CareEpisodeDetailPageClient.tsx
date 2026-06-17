@@ -34,7 +34,7 @@ import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { formatRpDate, getTodayRealDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
-import { FormSchemaEditor } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/FormSchemaEditor';
+import { useCabinetSchemaEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetSchemaEditing';
 
 type EpisodeData = {
   id: string;
@@ -69,15 +69,32 @@ export function CareEpisodeDetailPageClient({
   const [episode, setEpisode] = useState(initialEpisode);
   const [consultations, setConsultations] = useState(initialConsultations);
   const [editing, setEditing] = useState(false);
-  const [schemaEditorOpen, setSchemaEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newConsultationDate, setNewConsultationDate] = useState<Date | null>(
     () => getTodayRealDate(),
   );
 
+  const {
+    schemaEditing,
+    draftEntitySchema,
+    savingSchema,
+    startSchemaEditing,
+    cancelSchemaEditing,
+    saveSchemaEditing,
+    setDraftEntitySchema,
+  } = useCabinetSchemaEditing({
+    dispensarySlug,
+    cabinetId: episode.patient.cabinetId,
+    entityType: 'careEpisode',
+    formSchemas: episode.formSchemas,
+    onSchemasSaved: (schemas) => setEpisode((ep) => ({ ...ep, formSchemas: schemas })),
+  });
+
   const canWrite = canWriteCabinet(episode.accessLevel);
   const t = tenantRoutes(dispensarySlug);
-  const entitySchema = getEntitySchema(episode.formSchemas, 'careEpisode');
+  const entitySchema = schemaEditing
+    ? draftEntitySchema
+    : getEntitySchema(episode.formSchemas, 'careEpisode');
 
   const reloadConsultations = useCallback(async () => {
     const result = await listConsultations(dispensarySlug, episode.id);
@@ -149,6 +166,19 @@ export function CareEpisodeDetailPageClient({
     }
   };
 
+  const systemCardsReadOnly = {
+    care_episode_general: (
+      <Stack gap="xs">
+        <Text size="sm">
+          <strong>Motif :</strong> {episode.motif}
+        </Text>
+        <Text size="sm">
+          <strong>Date de début :</strong> {formatRpDate(episode.startedAt)}
+        </Text>
+      </Stack>
+    ),
+  };
+
   const systemCards = editing
     ? {
         care_episode_general: (
@@ -173,18 +203,9 @@ export function CareEpisodeDetailPageClient({
           </Stack>
         ),
       }
-    : {
-        care_episode_general: (
-          <Stack gap="xs">
-            <Text size="sm">
-              <strong>Motif :</strong> {episode.motif}
-            </Text>
-            <Text size="sm">
-              <strong>Date de début :</strong> {formatRpDate(episode.startedAt)}
-            </Text>
-          </Stack>
-        ),
-      };
+    : systemCardsReadOnly;
+
+  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
 
   return (
     <Container size="xl" py="xl">
@@ -194,17 +215,31 @@ export function CareEpisodeDetailPageClient({
         backHref={`${t.cabinet.index}/patients/${episode.patientId}?cabinetId=${episode.patient.cabinetId}`}
         actions={
           <Group>
-            {canEditSchema && (
+            {canEditSchema && !schemaEditing && (
               <Button
                 variant="light"
                 color="leather"
                 leftSection={<IconSettings size={16} />}
-                onClick={() => setSchemaEditorOpen(true)}
+                onClick={startSchemaEditing}
               >
-                Schéma
+                Configurer le formulaire
               </Button>
             )}
-            {canWrite && !editing && (
+            {canEditSchema && schemaEditing && (
+              <>
+                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
+                  Annuler
+                </Button>
+                <Button
+                  color="sage"
+                  loading={savingSchema}
+                  onClick={() => void saveSchemaEditing()}
+                >
+                  Enregistrer le schéma
+                </Button>
+              </>
+            )}
+            {canWrite && !editing && !schemaEditing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={() => setEditing(true)}>
                 Modifier
               </Button>
@@ -239,9 +274,12 @@ export function CareEpisodeDetailPageClient({
             }))
           }
           readOnly={!editing}
-          systemCards={systemCards}
+          systemCards={activeSystemCards}
+          mode={schemaEditing ? 'schema' : 'values'}
+          onSchemaChange={setDraftEntitySchema}
         />
 
+        {!schemaEditing && (
         <div>
           <Title order={3} className="disp-display-title" mb="md">
             Consultations
@@ -292,17 +330,8 @@ export function CareEpisodeDetailPageClient({
             emptyState={<Text c="dimmed" py="md">Aucune consultation</Text>}
           />
         </div>
+        )}
       </Stack>
-
-      <FormSchemaEditor
-        opened={schemaEditorOpen}
-        onClose={() => setSchemaEditorOpen(false)}
-        dispensarySlug={dispensarySlug}
-        cabinetId={episode.patient.cabinetId}
-        entityType="careEpisode"
-        initialSchemas={episode.formSchemas}
-        onSchemasChange={(schemas) => setEpisode((ep) => ({ ...ep, formSchemas: schemas }))}
-      />
     </Container>
   );
 }

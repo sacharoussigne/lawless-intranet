@@ -25,7 +25,7 @@ import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
-import { FormSchemaEditor } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/FormSchemaEditor';
+import { useCabinetSchemaEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetSchemaEditing';
 
 type ConsultationData = {
   id: string;
@@ -60,13 +60,30 @@ export function ConsultationDetailPageClient({
 }: ConsultationDetailPageClientProps) {
   const [consultation, setConsultation] = useState(initialConsultation);
   const [editing, setEditing] = useState(false);
-  const [schemaEditorOpen, setSchemaEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { careEpisode } = consultation;
+
+  const {
+    schemaEditing,
+    draftEntitySchema,
+    savingSchema,
+    startSchemaEditing,
+    cancelSchemaEditing,
+    saveSchemaEditing,
+    setDraftEntitySchema,
+  } = useCabinetSchemaEditing({
+    dispensarySlug,
+    cabinetId: careEpisode.patient.cabinetId,
+    entityType: 'consultation',
+    formSchemas: consultation.formSchemas,
+    onSchemasSaved: (schemas) => setConsultation((c) => ({ ...c, formSchemas: schemas })),
+  });
 
   const canWrite = canWriteCabinet(consultation.accessLevel);
   const t = tenantRoutes(dispensarySlug);
-  const entitySchema = getEntitySchema(consultation.formSchemas, 'consultation');
-  const { careEpisode } = consultation;
+  const entitySchema = schemaEditing
+    ? draftEntitySchema
+    : getEntitySchema(consultation.formSchemas, 'consultation');
 
   const handleSave = async () => {
     setSaving(true);
@@ -106,6 +123,14 @@ export function ConsultationDetailPageClient({
     }
   };
 
+  const systemCardsReadOnly = {
+    consultation_general: (
+      <Text size="sm">
+        <strong>Date :</strong> {formatRpDate(consultation.date)}
+      </Text>
+    ),
+  };
+
   const systemCards = editing
     ? {
         consultation_general: (
@@ -119,13 +144,9 @@ export function ConsultationDetailPageClient({
           />
         ),
       }
-    : {
-        consultation_general: (
-          <Text size="sm">
-            <strong>Date :</strong> {formatRpDate(consultation.date)}
-          </Text>
-        ),
-      };
+    : systemCardsReadOnly;
+
+  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
 
   return (
     <Container size="xl" py="xl">
@@ -135,17 +156,31 @@ export function ConsultationDetailPageClient({
         backHref={`${t.cabinet.index}/patients/${careEpisode.patientId}/episodes/${careEpisode.id}?cabinetId=${careEpisode.patient.cabinetId}`}
         actions={
           <Group>
-            {canEditSchema && (
+            {canEditSchema && !schemaEditing && (
               <Button
                 variant="light"
                 color="leather"
                 leftSection={<IconSettings size={16} />}
-                onClick={() => setSchemaEditorOpen(true)}
+                onClick={startSchemaEditing}
               >
-                Schéma
+                Configurer le formulaire
               </Button>
             )}
-            {canWrite && !editing && (
+            {canEditSchema && schemaEditing && (
+              <>
+                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
+                  Annuler
+                </Button>
+                <Button
+                  color="sage"
+                  loading={savingSchema}
+                  onClick={() => void saveSchemaEditing()}
+                >
+                  Enregistrer le schéma
+                </Button>
+              </>
+            )}
+            {canWrite && !editing && !schemaEditing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={() => setEditing(true)}>
                 Modifier
               </Button>
@@ -180,21 +215,11 @@ export function ConsultationDetailPageClient({
             }))
           }
           readOnly={!editing}
-          systemCards={systemCards}
+          systemCards={activeSystemCards}
+          mode={schemaEditing ? 'schema' : 'values'}
+          onSchemaChange={setDraftEntitySchema}
         />
       </Stack>
-
-      <FormSchemaEditor
-        opened={schemaEditorOpen}
-        onClose={() => setSchemaEditorOpen(false)}
-        dispensarySlug={dispensarySlug}
-        cabinetId={careEpisode.patient.cabinetId}
-        entityType="consultation"
-        initialSchemas={consultation.formSchemas}
-        onSchemasChange={(schemas) =>
-          setConsultation((c) => ({ ...c, formSchemas: schemas }))
-        }
-      />
     </Container>
   );
 }

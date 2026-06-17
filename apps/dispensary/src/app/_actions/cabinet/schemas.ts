@@ -150,6 +150,27 @@ export const reorderFormFieldsSchema = z.object({
   items: z.array(z.object({ id: z.string().min(1), order: z.number().int() })),
 });
 
+const formEntitySchemaInput = z.object({
+  categories: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().trim().min(1).max(120),
+      isSystem: z.boolean(),
+      systemKey: z
+        .enum(['patient_identity', 'care_episode_general', 'consultation_general'])
+        .optional(),
+      order: z.number().int(),
+      fields: z.array(formFieldInputSchema),
+    }),
+  ),
+});
+
+export const saveFormSchemaEntitySchema = z.object({
+  cabinetId: z.string().uuid(),
+  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
+  schema: formEntitySchemaInput,
+});
+
 export const listPatientsSchema = z.object({
   cabinetId: z.string().uuid(),
   search: z.string().trim().optional(),

@@ -36,7 +36,7 @@ import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
-import { FormSchemaEditor } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/FormSchemaEditor';
+import { useCabinetSchemaEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetSchemaEditing';
 import { CareEpisodeFormModal } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CareEpisodeFormModal';
 
 type PatientData = {
@@ -68,14 +68,31 @@ export function PatientDetailPageClient({
   const [patient, setPatient] = useState(initialPatient);
   const [episodes, setEpisodes] = useState(initialEpisodes);
   const [editing, setEditing] = useState(false);
-  const [schemaEditorOpen, setSchemaEditorOpen] = useState(false);
   const [episodeModalOpen, setEpisodeModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const {
+    schemaEditing,
+    draftEntitySchema,
+    savingSchema,
+    startSchemaEditing,
+    cancelSchemaEditing,
+    saveSchemaEditing,
+    setDraftEntitySchema,
+  } = useCabinetSchemaEditing({
+    dispensarySlug,
+    cabinetId: patient.cabinetId,
+    entityType: 'patient',
+    formSchemas: patient.formSchemas,
+    onSchemasSaved: (schemas) => setPatient((p) => ({ ...p, formSchemas: schemas })),
+  });
 
   const canWrite = canWriteCabinet(patient.accessLevel);
 
   const t = tenantRoutes(dispensarySlug);
-  const entitySchema = getEntitySchema(patient.formSchemas, 'patient');
+  const entitySchema = schemaEditing
+    ? draftEntitySchema
+    : getEntitySchema(patient.formSchemas, 'patient');
 
   const reloadEpisodes = useCallback(async () => {
     const result = await listCareEpisodes(dispensarySlug, patient.id);
@@ -139,6 +156,27 @@ export function PatientDetailPageClient({
     }
   };
 
+  const systemCardsReadOnly = {
+    patient_identity: (
+      <Stack gap="xs">
+        <Text size="sm">
+          <strong>Prénom :</strong> {patient.firstName}
+        </Text>
+        <Text size="sm">
+          <strong>Nom :</strong> {patient.lastName}
+        </Text>
+        <Text size="sm">
+          <strong>Date de naissance :</strong> {formatRpDate(patient.birthDate)}
+          {computeRpAge(patient.birthDate) !== null &&
+            ` (${computeRpAge(patient.birthDate)} ans)`}
+        </Text>
+        <Text size="sm">
+          <strong>Contact urgence :</strong> {patient.emergencyContact || '—'}
+        </Text>
+      </Stack>
+    ),
+  };
+
   const systemCards = editing
     ? {
         patient_identity: (
@@ -178,26 +216,9 @@ export function PatientDetailPageClient({
           </Stack>
         ),
       }
-    : {
-        patient_identity: (
-          <Stack gap="xs">
-            <Text size="sm">
-              <strong>Prénom :</strong> {patient.firstName}
-            </Text>
-            <Text size="sm">
-              <strong>Nom :</strong> {patient.lastName}
-            </Text>
-            <Text size="sm">
-              <strong>Date de naissance :</strong> {formatRpDate(patient.birthDate)}
-              {computeRpAge(patient.birthDate) !== null &&
-                ` (${computeRpAge(patient.birthDate)} ans)`}
-            </Text>
-            <Text size="sm">
-              <strong>Contact urgence :</strong> {patient.emergencyContact || '—'}
-            </Text>
-          </Stack>
-        ),
-      };
+    : systemCardsReadOnly;
+
+  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
 
   return (
     <Container size="xl" py="xl">
@@ -207,17 +228,31 @@ export function PatientDetailPageClient({
         backHref={`${t.cabinet.index}?cabinetId=${patient.cabinetId}`}
         actions={
           <Group>
-            {canEditSchema && (
+            {canEditSchema && !schemaEditing && (
               <Button
                 variant="light"
                 color="leather"
                 leftSection={<IconSettings size={16} />}
-                onClick={() => setSchemaEditorOpen(true)}
+                onClick={startSchemaEditing}
               >
-                Schéma
+                Configurer le formulaire
               </Button>
             )}
-            {canWrite && !editing && (
+            {canEditSchema && schemaEditing && (
+              <>
+                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
+                  Annuler
+                </Button>
+                <Button
+                  color="sage"
+                  loading={savingSchema}
+                  onClick={() => void saveSchemaEditing()}
+                >
+                  Enregistrer le schéma
+                </Button>
+              </>
+            )}
+            {canWrite && !editing && !schemaEditing && (
               <Button
                 color="sage"
                 leftSection={<IconEdit size={16} />}
@@ -256,9 +291,12 @@ export function PatientDetailPageClient({
             }))
           }
           readOnly={!editing}
-          systemCards={systemCards}
+          systemCards={activeSystemCards}
+          mode={schemaEditing ? 'schema' : 'values'}
+          onSchemaChange={setDraftEntitySchema}
         />
 
+        {!schemaEditing && (
         <div>
           <Group justify="space-between" mb="md">
             <Title order={3} className="disp-display-title">
@@ -319,17 +357,8 @@ export function PatientDetailPageClient({
             emptyState={<Text c="dimmed" py="md">Aucune prise en charge</Text>}
           />
         </div>
+        )}
       </Stack>
-
-      <FormSchemaEditor
-        opened={schemaEditorOpen}
-        onClose={() => setSchemaEditorOpen(false)}
-        dispensarySlug={dispensarySlug}
-        cabinetId={patient.cabinetId}
-        entityType="patient"
-        initialSchemas={patient.formSchemas}
-        onSchemasChange={(schemas) => setPatient((p) => ({ ...p, formSchemas: schemas }))}
-      />
 
       <CareEpisodeFormModal
         opened={episodeModalOpen}
