@@ -147,7 +147,10 @@ export function CareEpisodeDetailPageClient({
             <TextInput
               label="Motif"
               value={episode.motif}
-              onChange={(e) => setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }))}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setEpisode((ep) => ({ ...ep, motif: value }));
+              }}
               required
             />
             <RpDatePicker

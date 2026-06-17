@@ -146,17 +146,19 @@ export function PatientDetailPageClient({
             <TextInput
               label="Prénom"
               value={patient.firstName}
-              onChange={(e) =>
-                setPatient((p) => ({ ...p, firstName: e.currentTarget.value }))
-              }
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setPatient((p) => ({ ...p, firstName: value }));
+              }}
               required
             />
             <TextInput
               label="Nom"
               value={patient.lastName}
-              onChange={(e) =>
-                setPatient((p) => ({ ...p, lastName: e.currentTarget.value }))
-              }
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setPatient((p) => ({ ...p, lastName: value }));
+              }}
               required
             />
             <RpDatePicker
@@ -168,9 +170,10 @@ export function PatientDetailPageClient({
             <TextInput
               label="Personne à contacter en cas d'urgence"
               value={patient.emergencyContact ?? ''}
-              onChange={(e) =>
-                setPatient((p) => ({ ...p, emergencyContact: e.currentTarget.value }))
-              }
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setPatient((p) => ({ ...p, emergencyContact: value }));
+              }}
             />
           </Stack>
         ),
