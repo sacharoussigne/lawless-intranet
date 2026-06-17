@@ -1,5 +1,3 @@
-'use server';
-
 import { z } from 'zod';
 
 export const cabinetAccessLevelSchema = z.enum(['OWNER', 'WRITE', 'READ']);

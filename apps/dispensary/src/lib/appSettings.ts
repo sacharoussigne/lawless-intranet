@@ -5,6 +5,7 @@ import {
   APP_FEATURE_DISABLED_MESSAGE,
   appSettingsCacheTag,
   isAppFeatureEnabled,
+  normalizeAppSettings,
   type AppFeatureKey,
   type AppSettingsDTO,
 } from '@/lib/appSettingsShared';
@@ -15,6 +16,7 @@ export {
   APP_FEATURE_DISABLED_MESSAGE,
   appSettingsCacheTag,
   isAppFeatureEnabled,
+  normalizeAppSettings,
   dispensarySiteTitle,
 } from '@/lib/appSettingsShared';
 
@@ -71,18 +73,18 @@ export async function loadAppSettingsFromDb(dispensaryId: string): Promise<AppSe
       where: { dispensaryId },
     });
     if (!row) {
-      return { ...APP_SETTINGS_DEFAULTS };
+      return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
     }
-    return mapFromDb(row);
+    return normalizeAppSettings(mapFromDb(row));
   } catch {
-    return { ...APP_SETTINGS_DEFAULTS };
+    return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
   }
 }
 
 export function getAppSettings(dispensaryId: string) {
   return unstable_cache(
     () => loadAppSettingsFromDb(dispensaryId),
-    ['app-settings', dispensaryId],
+    ['app-settings', dispensaryId, 'v2'],
     {
       tags: [appSettingsCacheTag(dispensaryId)],
       revalidate: 86400,

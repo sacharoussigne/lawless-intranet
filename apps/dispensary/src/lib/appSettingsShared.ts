@@ -47,6 +47,12 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   weeklyActivityPoppyMilkVisible: true,
 };
 
+export function normalizeAppSettings(
+  settings: Partial<AppSettingsDTO>,
+): AppSettingsDTO {
+  return { ...APP_SETTINGS_DEFAULTS, ...settings };
+}
+
 export function appSettingsCacheTag(dispensaryId: string): string {
   return `app-settings-${dispensaryId}`;
 }

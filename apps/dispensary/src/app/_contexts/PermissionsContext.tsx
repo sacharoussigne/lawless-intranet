@@ -3,7 +3,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { Permissions, PermissionsContextType, AccessibleDispensary } from '@/types/permissions';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
-import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
+import { APP_SETTINGS_DEFAULTS, normalizeAppSettings } from '@/lib/appSettingsShared';
 import { tenantRoutes } from '@/types/routes';
 
 const PermissionsContext = createContext<PermissionsContextType>({
@@ -53,7 +53,7 @@ export function PermissionsProvider({
         permissions: initialPermissions,
         userRole: initialRole,
         loading: false,
-        appSettings: initialAppSettings,
+        appSettings: normalizeAppSettings(initialAppSettings),
         dispensarySlug,
         dispensaryId,
         accessibleDispensaries,
