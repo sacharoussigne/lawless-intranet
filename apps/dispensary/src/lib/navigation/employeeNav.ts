@@ -8,7 +8,6 @@ import {
   IconNotebook,
   IconReportMoney,
   IconSearch,
-  IconStethoscope,
 } from '@tabler/icons-react';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
 import { checkRolePermission } from '@lawless-intranet/auth-permissions';
@@ -19,7 +18,6 @@ export type EmployeeNavId =
   | 'stock'
   | 'orders'
   | 'bank'
-  | 'privatePractice'
   | 'weeklyActivity'
   | 'payroll'
   | 'stockStatistics'
@@ -63,11 +61,6 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
       return (
         appSettings.featureBankEnabled &&
         checkRolePermission(userRole, 'bank', 'access')
-      );
-    case 'privatePractice':
-      return (
-        appSettings.featurePrivatePracticeEnabled &&
-        checkRolePermission(userRole, 'private_practice', 'access')
       );
     case 'weeklyActivity':
       return (
@@ -123,14 +116,6 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       href: t.bank.index,
       icon: IconCashRegister,
       navOrder: 3,
-    },
-    {
-      id: 'privatePractice',
-      label: 'Cabinet privé',
-      shortLabel: 'Cabinet',
-      href: t.privatePractice.index,
-      icon: IconStethoscope,
-      navOrder: 4,
     },
     {
       id: 'weeklyActivity',

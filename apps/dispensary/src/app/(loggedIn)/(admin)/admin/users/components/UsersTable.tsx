@@ -135,10 +135,6 @@ export function UsersTable({
                         color = 'cyan';
                         label = rolesAsString(Role.INVENTORY_VIEWER);
                         break;
-                      case Role.PRIVATE_PRACTITIONER:
-                        color = 'purple';
-                        label = rolesAsString(Role.PRIVATE_PRACTITIONER);
-                        break;
                       case Role.DIRECTION:
                         color = 'orange';
                         label = rolesAsString(Role.DIRECTION);

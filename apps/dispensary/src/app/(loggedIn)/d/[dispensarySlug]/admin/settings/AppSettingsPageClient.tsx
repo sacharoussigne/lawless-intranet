@@ -36,8 +36,6 @@ export default function AppSettingsPageClient({
   const [featureBankEnabled, setFeatureBankEnabled] = useState(
     initial.featureBankEnabled,
   );
-  const [featurePrivatePracticeEnabled, setFeaturePrivatePracticeEnabled] =
-    useState(initial.featurePrivatePracticeEnabled);
   const [featureOrdersEnabled, setFeatureOrdersEnabled] = useState(
     initial.featureOrdersEnabled,
   );
@@ -82,7 +80,6 @@ export default function AppSettingsPageClient({
       slug: slug.trim().toLowerCase(),
       featureStockEnabled,
       featureBankEnabled,
-      featurePrivatePracticeEnabled,
       featureOrdersEnabled,
       featureSearchEnabled,
       featureMailsEnabled,
@@ -172,15 +169,6 @@ export default function AppSettingsPageClient({
                 label="Banque"
                 checked={featureBankEnabled}
                 onChange={(e) => setFeatureBankEnabled(e.currentTarget.checked)}
-              />
-            </Paper>
-            <Paper withBorder p="md" radius="md" bg="var(--mantine-color-body)">
-              <Switch
-                label="Cabinet privé"
-                checked={featurePrivatePracticeEnabled}
-                onChange={(e) =>
-                  setFeaturePrivatePracticeEnabled(e.currentTarget.checked)
-                }
               />
             </Paper>
             <Paper withBorder p="md" radius="md" bg="var(--mantine-color-body)">

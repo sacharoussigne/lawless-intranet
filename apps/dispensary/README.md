@@ -1,6 +1,6 @@
 # lawless-dispensaire-sd
 
-**lawless-dispensaire-sd** is a self-hosted web application for running a dispensary-style organization: inventory and crafting, orders, banking, patient mail workflows, private practice, and optional weekly payroll reporting. It uses accounts with **role-based access** and separate areas for day-to-day staff, catalog management, and administration.
+**lawless-dispensaire-sd** is a self-hosted web application for running a dispensary-style organization: inventory and crafting, orders, banking, patient mail workflows, and optional weekly payroll reporting. It uses accounts with **role-based access** and separate areas for day-to-day staff, catalog management, and administration.
 
 ## Features
 
@@ -9,7 +9,6 @@
 - **Bank** — Bank account views and operations for permitted roles.
 - **Search** — Search the item catalog where enabled.
 - **Mails** — Mail templates and patient-oriented mail flows for staff workflows.
-- **Private practice** — Dedicated flows for private-practice roles.
 - **Payroll (admin)** — Weekly payroll reports where the feature is enabled.
 - **Management** — Companies, categories, items, chests, and related catalog configuration (`/management`).
 - **Admin** — User and role management, app settings (including **per-feature toggles**), stock overrides, and payroll (`/admin`).
@@ -118,7 +117,6 @@ Roles are enforced with [Better Auth](https://www.better-auth.com/) and a custom
 | `employee` | Day-to-day access: orders (view), bank, application, mails. |
 | `inventory_manager` | Stock (full), orders, search, bank, **management** catalog tools, mails. |
 | `inventory_viewer` | Stock (read-oriented), orders (view), search, bank, application. |
-| `private_practitioner` | Private practice, bank, application, mails (limited vs other roles). |
 | `direction` | Application access and payroll report create/view. |
 
 **Self-hosting:** the **first** user on an empty database is promoted to **`admin`** automatically (see `databaseHooks` in [`src/lib/auth.ts`](src/lib/auth.ts)). Everyone else keeps the Better Auth default **`user`** role until an administrator assigns another role from **Admin → Users** at `/admin/users`, **unless** you set **`ACCESS_ON_CREATE`** to **`true`** or **`1`** in the environment: then each subsequent new user is assigned **`employee`** instead.
