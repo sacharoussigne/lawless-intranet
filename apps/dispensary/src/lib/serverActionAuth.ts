@@ -1,6 +1,6 @@
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession } from '@/lib/authSession';
 import { getAppFeatureActionBlock, type AppFeatureKey } from '@/lib/appSettings';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { requireTenantActionContext, type TenantActionContext } from '@/lib/dispensary/serverActionContext';
 
 export type AuthSession = NonNullable<Awaited<ReturnType<typeof getAuthSession>>>;

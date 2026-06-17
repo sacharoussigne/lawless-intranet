@@ -11,6 +11,8 @@ import {
   deleteBankAccountSchema,
 } from '@/app/_actions/bank/schemas';
 import { checkAccountAccess } from '@/app/_actions/bank/internals';
+import { enrichBankAccount, enrichBankAccounts } from '@/lib/enrichUsers';
+import type { BankAccountWithRelations } from '@/types/bankAccounts';
 
 export async function createBankAccount(
   dispensarySlug: string,
@@ -33,30 +35,13 @@ export async function createBankAccount(
         ownerId: session.user.id,
       },
       include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        accesses: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
+        accesses: true,
       },
     });
 
     return {
       status: 201,
-      data: account,
+      data: (await enrichBankAccount(account)) as BankAccountWithRelations,
     };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la création du compte bancaire');
@@ -87,24 +72,7 @@ export async function getBankAccounts(dispensarySlug: string) {
         ],
       },
       include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        accesses: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
+        accesses: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -113,7 +81,7 @@ export async function getBankAccounts(dispensarySlug: string) {
 
     return {
       status: 200,
-      data: accounts,
+      data: (await enrichBankAccounts(accounts)) as BankAccountWithRelations[],
     };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la récupération des comptes bancaires');
@@ -140,24 +108,7 @@ export async function getBankAccount(dispensarySlug: string, accountId: string) 
     const account = await prisma.bankAccount.findFirst({
       where: { id: accountId, ...tenantWhere(dispensaryId) },
       include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        accesses: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
+        accesses: true,
       },
     });
 
@@ -170,7 +121,7 @@ export async function getBankAccount(dispensarySlug: string, accountId: string) 
 
     return {
       status: 200,
-      data: account,
+      data: (await enrichBankAccount(account)) as BankAccountWithRelations,
     };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la récupération du compte bancaire');
@@ -210,30 +161,13 @@ export async function updateBankAccount(
         name: validatedData.name,
       },
       include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        accesses: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
+        accesses: true,
       },
     });
 
     return {
       status: 200,
-      data: account,
+      data: (await enrichBankAccount(account)) as BankAccountWithRelations,
     };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la modification du compte bancaire');

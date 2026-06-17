@@ -1,4 +1,4 @@
-import { hasRole } from '@/lib/auth/permissions';
+import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 
 export function isPlatformAdmin(role: string | null | undefined): boolean {

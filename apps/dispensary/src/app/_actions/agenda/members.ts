@@ -14,6 +14,7 @@ import {
   searchEligibleDispensaryUsersForAgenda,
   validateDispensaryUserIds,
 } from '@/app/_actions/agenda/internals';
+import { enrichAgendaMembers } from '@/lib/enrichUsers';
 
 export async function upsertAgendaMember(
   dispensarySlug: string,
@@ -66,12 +67,11 @@ export async function upsertAgendaMember(
         accessLevel: validated.accessLevel,
       },
       update: { accessLevel: validated.accessLevel },
-      include: {
-        user: { select: { id: true, name: true, email: true, image: true } },
-      },
     });
 
-    return { status: 200, data: member };
+    const [enriched] = await enrichAgendaMembers([member]);
+
+    return { status: 200, data: enriched };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la mise à jour du membre');
   }
