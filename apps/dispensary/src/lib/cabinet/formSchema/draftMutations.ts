@@ -46,7 +46,14 @@ export function deleteCategory(schema: FormEntitySchema, categoryId: string): Fo
 export function addField(
   schema: FormEntitySchema,
   categoryId: string,
-  partial: { label: string; type: FormFieldType; required: boolean; options?: string[] },
+  partial: {
+    label: string;
+    type: FormFieldType;
+    required: boolean;
+    options?: string[];
+    placeholder?: string;
+    defaultValue?: string;
+  },
 ): FormEntitySchema {
   return {
     categories: schema.categories.map((c) => {
@@ -59,6 +66,12 @@ export function addField(
         required: partial.required,
         order: maxOrder + 1,
       };
+      if (partial.placeholder?.trim()) {
+        field.placeholder = partial.placeholder.trim();
+      }
+      if (partial.defaultValue?.trim()) {
+        field.defaultValue = partial.defaultValue.trim();
+      }
       if (partial.type === 'select' && partial.options?.length) {
         field.options = partial.options
           .map((l) => l.trim())

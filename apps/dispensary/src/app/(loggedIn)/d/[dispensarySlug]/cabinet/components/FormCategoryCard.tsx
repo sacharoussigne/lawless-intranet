@@ -21,6 +21,7 @@ import { DynamicFieldInput } from './DynamicFieldInput';
 import { FormFieldSchemaRow } from './FormFieldSchemaRow';
 import { InlineEditableText } from './InlineEditableText';
 import { SchemaReorderButtons } from './SchemaReorderButtons';
+import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 
 const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: 'text', label: 'Texte' },
@@ -43,6 +44,8 @@ type FormCategoryCardProps = {
     type: FormFieldType;
     required: boolean;
     options?: string[];
+    placeholder?: string;
+    defaultValue?: string;
   }) => void;
   onUpdateField?: (field: FormField) => void;
   onDeleteField?: (fieldId: string) => void;
@@ -75,6 +78,22 @@ export function FormCategoryCard({
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<FormFieldType>('text');
   const [newFieldRequired, setNewFieldRequired] = useState(false);
+  const [newFieldPlaceholder, setNewFieldPlaceholder] = useState('');
+  const [newFieldDefaultValue, setNewFieldDefaultValue] = useState('');
+
+  const resetNewFieldForm = () => {
+    setNewFieldLabel('');
+    setNewFieldType('text');
+    setNewFieldRequired(false);
+    setNewFieldPlaceholder('');
+    setNewFieldDefaultValue('');
+  };
+
+  const showNewFieldPlaceholder =
+    newFieldType === 'text' ||
+    newFieldType === 'textarea' ||
+    newFieldType === 'select' ||
+    newFieldType === 'date';
 
   const handleAddField = () => {
     if (!newFieldLabel.trim() || !onAddField) return;
@@ -82,10 +101,10 @@ export function FormCategoryCard({
       label: newFieldLabel.trim(),
       type: newFieldType,
       required: newFieldRequired,
+      placeholder: newFieldPlaceholder.trim() || undefined,
+      defaultValue: newFieldDefaultValue.trim() || undefined,
     });
-    setNewFieldLabel('');
-    setNewFieldType('text');
-    setNewFieldRequired(false);
+    resetNewFieldForm();
   };
 
   if (schemaEditing) {
@@ -167,7 +186,7 @@ export function FormCategoryCard({
             <Text size="sm" fw={500}>
               Nouveau champ
             </Text>
-            <Group align="flex-end" wrap="wrap">
+            <Group align="flex-end" wrap="wrap" grow>
               <TextInput
                 label="Libellé"
                 placeholder="Nom du champ"
@@ -185,9 +204,39 @@ export function FormCategoryCard({
                 label="Type"
                 data={FIELD_TYPES}
                 value={newFieldType}
-                onChange={(v) => setNewFieldType((v as FormFieldType) ?? 'text')}
+                onChange={(v) => {
+                  setNewFieldType((v as FormFieldType) ?? 'text');
+                  setNewFieldDefaultValue('');
+                }}
                 style={{ minWidth: 160 }}
               />
+              {showNewFieldPlaceholder && (
+                <TextInput
+                  label="Placeholder"
+                  placeholder="Texte d'aide"
+                  value={newFieldPlaceholder}
+                  onChange={(e) => setNewFieldPlaceholder(e.currentTarget.value)}
+                  style={{ flex: 1, minWidth: 160 }}
+                />
+              )}
+              {(newFieldType === 'text' || newFieldType === 'textarea') && (
+                <TextInput
+                  label="Valeur par défaut"
+                  value={newFieldDefaultValue}
+                  onChange={(e) => setNewFieldDefaultValue(e.currentTarget.value)}
+                  style={{ flex: 1, minWidth: 160 }}
+                />
+              )}
+              {newFieldType === 'date' && (
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <RpDatePicker
+                    label="Valeur par défaut"
+                    value={newFieldDefaultValue || null}
+                    clearable
+                    onChange={(d) => setNewFieldDefaultValue(d ? d.toISOString() : '')}
+                  />
+                </div>
+              )}
               <Switch
                 label="Obligatoire"
                 checked={newFieldRequired}
