@@ -9,7 +9,6 @@ import {
   employee,
   inventory_manager,
   inventory_viewer,
-  private_practitioner,
   direction,
 } from '@lawless-intranet/auth-permissions';
 
@@ -24,7 +23,6 @@ export const authClient = createAuthClient({
         employee,
         inventory_manager,
         inventory_viewer,
-        private_practitioner,
         direction,
       },
     }),

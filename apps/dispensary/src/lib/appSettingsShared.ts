@@ -1,7 +1,6 @@
 export type AppFeatureKey =
   | 'stock'
   | 'bank'
-  | 'privatePractice'
   | 'orders'
   | 'search'
   | 'mails'
@@ -13,7 +12,6 @@ export type AppSettingsDTO = {
   dispensaryName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
-  featurePrivatePracticeEnabled: boolean;
   featureOrdersEnabled: boolean;
   featureSearchEnabled: boolean;
   featureMailsEnabled: boolean;
@@ -32,7 +30,6 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   dispensaryName: 'Saint-Denis',
   featureStockEnabled: true,
   featureBankEnabled: true,
-  featurePrivatePracticeEnabled: true,
   featureOrdersEnabled: true,
   featureSearchEnabled: true,
   featureMailsEnabled: true,
@@ -63,8 +60,6 @@ export function isAppFeatureEnabled(
       return settings.featureStockEnabled;
     case 'bank':
       return settings.featureBankEnabled;
-    case 'privatePractice':
-      return settings.featurePrivatePracticeEnabled;
     case 'orders':
       return settings.featureOrdersEnabled;
     case 'search':

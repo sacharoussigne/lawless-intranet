@@ -6,7 +6,6 @@ const defaultApplicationPermissions = {
   orders: ["view", "create", "update", "delete"],
   search: ["access"],
   bank: ["access"],
-  private_practice: ["access"],
   application: ["access", "management"],
   mails: ["access"],
   payroll_reports: ["view", "create"],
@@ -27,7 +26,6 @@ const user = ac.newRole({
   orders: [],
   search: [],
   bank: [],
-  private_practice: [],
   application: [],
   mails: [],
   payroll_reports: [],
@@ -44,7 +42,6 @@ const admin = ac.newRole({
 const employee = ac.newRole({
   ...userAc.statements,
   orders: ["view"],
-  private_practice: [],
   bank: ["access"],
   application: ["access"],
   mails: ["access"],
@@ -59,7 +56,6 @@ const inventory_manager = ac.newRole({
   orders: ["view", "create", "update", "delete"],
   search: ["access"],
   bank: ["access"],
-  private_practice: [],
   application: ["access", "management"],
   mails: ["access"],
   payroll_reports: [],
@@ -73,23 +69,10 @@ const inventory_viewer = ac.newRole({
   orders: ["view"],
   search: ["access"],
   bank: ["access"],
-  private_practice: [],
   application: ["access"],
   mails: [],
   payroll_reports: [],
   weekly_dispensary_activity: [],
-  stock_statistics: [],
-});
-
-const private_practitioner = ac.newRole({
-  ...userAc.statements,
-  orders: [],
-  private_practice: ["access"],
-  bank: ["access"],
-  application: ["access"],
-  mails: [],
-  payroll_reports: [],
-  weekly_dispensary_activity: ["view", "edit_own"],
   stock_statistics: [],
 });
 
@@ -99,7 +82,6 @@ const direction = ac.newRole({
   orders: [],
   search: [],
   bank: [],
-  private_practice: [],
   application: ["access"],
   mails: [],
   payroll_reports: ["view", "create"],
@@ -113,7 +95,6 @@ const rolesMap = {
   employee,
   inventory_manager,
   inventory_viewer,
-  private_practitioner,
   direction,
 } as const;
 
@@ -175,6 +156,5 @@ export {
   employee,
   inventory_manager,
   inventory_viewer,
-  private_practitioner,
   direction,
 };

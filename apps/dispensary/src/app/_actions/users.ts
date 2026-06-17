@@ -27,7 +27,6 @@ const roleEnum = z.enum([
   'employee',
   'inventory_manager',
   'inventory_viewer',
-  'private_practitioner',
   'direction',
 ]);
 

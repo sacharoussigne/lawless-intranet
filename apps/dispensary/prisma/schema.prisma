@@ -30,8 +30,6 @@ model Dispensary {
   bankAccounts BankAccount[]
   transactionNameSuggestions TransactionNameSuggestion[]
   transactionDescriptionSuggestions TransactionDescriptionSuggestion[]
-  patientIdentitySuggestions PatientIdentitySuggestion[]
-  privatePracticeWeeks PrivatePracticeWeek[]
   payrollWeeklyReports PayrollWeeklyReport[]
   dispensaryWeeklyActivities DispensaryWeeklyActivity[]
   craftRecipes CraftRecipe[]
@@ -100,7 +98,6 @@ model AppSettings {
   dispensaryName               String   @default("Saint-Denis")
   featureStockEnabled          Boolean  @default(true)
   featureBankEnabled           Boolean  @default(true)
-  featurePrivatePracticeEnabled Boolean @default(true)
   featureOrdersEnabled         Boolean  @default(true)
   featureSearchEnabled         Boolean  @default(true)
   featureMailsEnabled          Boolean  @default(true)
@@ -548,56 +545,6 @@ model TransactionDescriptionSuggestion {
 
   @@unique([dispensaryId, value])
   @@map("transaction_description_suggestion")
-}
-
-model PatientIdentitySuggestion {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([dispensaryId, value])
-  @@map("patient_identity_suggestion")
-}
-
-model PrivatePracticeWeek {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  weekStart DateTime
-  weekEnd   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  patients  PrivatePracticePatient[]
-
-  @@unique([dispensaryId, weekStart])
-  @@index([weekStart])
-  @@index([dispensaryId])
-  @@map("private_practice_week")
-}
-
-model PrivatePracticePatient {
-  id                      String   @id @default(uuid())
-  weekId                  String
-  week                    PrivatePracticeWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  date                    DateTime
-  type                    String
-  identity                String
-  description             String?
-  consultationPrice       Decimal  @db.Decimal(10, 2)
-  otherPrice              Decimal  @db.Decimal(10, 2)
-  amountForCashRegister   Decimal  @db.Decimal(10, 2)
-  depositedInCashRegister Boolean  @default(false)
-  retrievedFromCashRegister Boolean @default(false)
-  order                   Int      @default(0)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  @@index([weekId])
-  @@index([date])
-  @@map("private_practice_patient")
 }
 
 enum DispensaryWeeklyActivityHistoryAction {
