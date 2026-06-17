@@ -102,6 +102,7 @@ function FieldRecursive({
         <Textarea
           {...common}
           minRows={3}
+          resize="vertical"
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />
       );
