@@ -9,7 +9,6 @@ import {
   IconMail,
   IconNotebook,
   IconReportMoney,
-  IconStethoscope,
 } from '@tabler/icons-react';
 import { getAuthSession } from '@/lib/authSession';
 import { calculatePermissions } from '@/lib/auth/calculatePermissions';
@@ -67,15 +66,6 @@ export default async function EmployeePage({
       href: t.bank.index,
       hasAccess:
         appSettings.featureBankEnabled && checkRolePermission(effectiveRole, 'bank', 'access'),
-    },
-    {
-      title: 'Cabinet privé',
-      description: 'Gérez les consultations et patients du cabinet privé.',
-      icon: IconStethoscope,
-      href: t.privatePractice.index,
-      hasAccess:
-        appSettings.featurePrivatePracticeEnabled &&
-        checkRolePermission(effectiveRole, 'private_practice', 'access'),
     },
     {
       title: 'Courriers',

@@ -10,7 +10,6 @@ import {
   employee,
   inventory_manager,
   inventory_viewer,
-  private_practitioner,
   direction,
 } from '@lawless-intranet/auth-permissions';
 import prisma from '@/lib/prisma';
@@ -59,7 +58,6 @@ export const auth = betterAuth({
         employee,
         inventory_manager,
         inventory_viewer,
-        private_practitioner,
         direction,
       },
     }),
