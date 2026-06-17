@@ -62,6 +62,10 @@ export function FormFieldSchemaRow({
     let next: FormField = { ...field, ...updates };
     if (updates.placeholder === '') delete next.placeholder;
     if (updates.defaultValue === '') delete next.defaultValue;
+    if ('editable' in updates && updates.editable !== false) delete next.editable;
+    if (updates.defaultValue === '' || updates.defaultValue === undefined) {
+      if (!next.defaultValue && next.editable === false) delete next.editable;
+    }
     if (updates.type && updates.type !== 'select') {
       delete next.options;
       delete next.conditionalBranches;
@@ -114,6 +118,11 @@ export function FormFieldSchemaRow({
             ({FIELD_TYPES.find((t) => t.value === field.type)?.label ?? field.type})
             {field.required && ' *'}
           </Text>
+          {field.editable === false && (
+            <Badge variant="outline" color="slate" size="xs">
+              Fixe
+            </Badge>
+          )}
         </Group>
         <Group gap="xs" wrap="nowrap">
           {onMove && (
@@ -196,12 +205,22 @@ export function FormFieldSchemaRow({
               </div>
             ) : null}
           </Group>
-          <Switch
-            label="Obligatoire"
-            size="sm"
-            checked={field.required}
-            onChange={(e) => patchField({ required: e.currentTarget.checked })}
-          />
+          <Group gap="lg">
+            <Switch
+              label="Obligatoire"
+              size="sm"
+              checked={field.required}
+              onChange={(e) => patchField({ required: e.currentTarget.checked })}
+            />
+            {field.defaultValue && (
+              <Switch
+                label="Modifiable"
+                size="sm"
+                checked={field.editable !== false}
+                onChange={(e) => patchField({ editable: e.currentTarget.checked })}
+              />
+            )}
+          </Group>
           {field.type === 'select' && (
             <>
               <Textarea
@@ -265,6 +284,7 @@ type ConditionalBranchEditorProps = {
     required: boolean;
     placeholder?: string;
     defaultValue?: string;
+    editable?: boolean;
   }) => void;
   onUpdateField: (targetId: string, field: FormField) => void;
   onDeleteField: (targetId: string) => void;
@@ -286,6 +306,7 @@ function ConditionalBranchEditor({
   const [newRequired, setNewRequired] = useState(false);
   const [newPlaceholder, setNewPlaceholder] = useState('');
   const [newDefaultValue, setNewDefaultValue] = useState('');
+  const [newEditable, setNewEditable] = useState(true);
 
   const sortedFields = [...branchFields].sort((a, b) => a.order - b.order);
 
@@ -295,6 +316,7 @@ function ConditionalBranchEditor({
     setNewRequired(false);
     setNewPlaceholder('');
     setNewDefaultValue('');
+    setNewEditable(true);
   };
 
   const handleAdd = () => {
@@ -305,6 +327,7 @@ function ConditionalBranchEditor({
       required: newRequired,
       placeholder: newPlaceholder.trim() || undefined,
       defaultValue: newDefaultValue.trim() || undefined,
+      editable: newDefaultValue.trim() ? newEditable : undefined,
     });
     resetAddForm();
   };
@@ -389,7 +412,11 @@ function ConditionalBranchEditor({
             label="Valeur par défaut"
             size="xs"
             value={newDefaultValue}
-            onChange={(e) => setNewDefaultValue(e.currentTarget.value)}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setNewDefaultValue(value);
+              if (!value.trim()) setNewEditable(true);
+            }}
             style={{ flex: 1, minWidth: 140 }}
           />
         )}
@@ -399,9 +426,22 @@ function ConditionalBranchEditor({
               label="Valeur par défaut"
               value={newDefaultValue || null}
               clearable
-              onChange={(d) => setNewDefaultValue(d ? d.toISOString() : '')}
+              onChange={(d) => {
+                const iso = d ? d.toISOString() : '';
+                setNewDefaultValue(iso);
+                if (!iso) setNewEditable(true);
+              }}
             />
           </div>
+        )}
+        {newDefaultValue && (
+          <Switch
+            label="Modifiable"
+            size="xs"
+            checked={newEditable}
+            onChange={(e) => setNewEditable(e.currentTarget.checked)}
+            mt="lg"
+          />
         )}
         <Switch
           label="Requis"

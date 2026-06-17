@@ -46,6 +46,7 @@ type FormCategoryCardProps = {
     options?: string[];
     placeholder?: string;
     defaultValue?: string;
+    editable?: boolean;
   }) => void;
   onUpdateField?: (field: FormField) => void;
   onDeleteField?: (fieldId: string) => void;
@@ -80,6 +81,7 @@ export function FormCategoryCard({
   const [newFieldRequired, setNewFieldRequired] = useState(false);
   const [newFieldPlaceholder, setNewFieldPlaceholder] = useState('');
   const [newFieldDefaultValue, setNewFieldDefaultValue] = useState('');
+  const [newFieldEditable, setNewFieldEditable] = useState(true);
 
   const resetNewFieldForm = () => {
     setNewFieldLabel('');
@@ -87,6 +89,7 @@ export function FormCategoryCard({
     setNewFieldRequired(false);
     setNewFieldPlaceholder('');
     setNewFieldDefaultValue('');
+    setNewFieldEditable(true);
   };
 
   const showNewFieldPlaceholder =
@@ -103,6 +106,7 @@ export function FormCategoryCard({
       required: newFieldRequired,
       placeholder: newFieldPlaceholder.trim() || undefined,
       defaultValue: newFieldDefaultValue.trim() || undefined,
+      editable: newFieldDefaultValue.trim() ? newFieldEditable : undefined,
     });
     resetNewFieldForm();
   };
@@ -207,6 +211,7 @@ export function FormCategoryCard({
                 onChange={(v) => {
                   setNewFieldType((v as FormFieldType) ?? 'text');
                   setNewFieldDefaultValue('');
+                  setNewFieldEditable(true);
                 }}
                 style={{ minWidth: 160 }}
               />
@@ -223,7 +228,11 @@ export function FormCategoryCard({
                 <TextInput
                   label="Valeur par défaut"
                   value={newFieldDefaultValue}
-                  onChange={(e) => setNewFieldDefaultValue(e.currentTarget.value)}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setNewFieldDefaultValue(value);
+                    if (!value.trim()) setNewFieldEditable(true);
+                  }}
                   style={{ flex: 1, minWidth: 160 }}
                 />
               )}
@@ -233,9 +242,21 @@ export function FormCategoryCard({
                     label="Valeur par défaut"
                     value={newFieldDefaultValue || null}
                     clearable
-                    onChange={(d) => setNewFieldDefaultValue(d ? d.toISOString() : '')}
+                    onChange={(d) => {
+                      const iso = d ? d.toISOString() : '';
+                      setNewFieldDefaultValue(iso);
+                      if (!iso) setNewFieldEditable(true);
+                    }}
                   />
                 </div>
+              )}
+              {newFieldDefaultValue && (
+                <Switch
+                  label="Modifiable"
+                  checked={newFieldEditable}
+                  onChange={(e) => setNewFieldEditable(e.currentTarget.checked)}
+                  mt="lg"
+                />
               )}
               <Switch
                 label="Obligatoire"

@@ -20,6 +20,8 @@ export type FormField = {
   order: number;
   placeholder?: string;
   defaultValue?: string;
+  /** When false, the field value cannot be changed when filling the form. Omitted = editable. */
+  editable?: boolean;
   options?: SelectOption[];
   conditionalBranches?: ConditionalBranch[];
 };

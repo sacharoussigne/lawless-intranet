@@ -17,6 +17,7 @@ const formFieldSchema: z.ZodType<{
   order: number;
   placeholder?: string;
   defaultValue?: string;
+  editable?: boolean;
   options?: { id: string; label: string }[];
   conditionalBranches?: { optionId: string; fields: unknown[] }[];
 }> = z.lazy(() =>
@@ -28,6 +29,7 @@ const formFieldSchema: z.ZodType<{
     order: z.number().int(),
     placeholder: optionalString,
     defaultValue: optionalString,
+    editable: z.boolean().optional(),
     options: z.array(selectOptionSchema).optional(),
     conditionalBranches: z
       .array(

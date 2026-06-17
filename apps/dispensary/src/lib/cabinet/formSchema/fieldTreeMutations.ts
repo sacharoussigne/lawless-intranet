@@ -69,6 +69,7 @@ export function addFieldToBranch(
     required: boolean;
     placeholder?: string;
     defaultValue?: string;
+    editable?: boolean;
   },
 ): FormField {
   const branches = [...(field.conditionalBranches ?? [])];
@@ -91,6 +92,9 @@ export function addFieldToBranch(
   }
   if (partial.defaultValue?.trim()) {
     newField.defaultValue = partial.defaultValue.trim();
+  }
+  if (partial.editable === false) {
+    newField.editable = false;
   }
   if (partial.type === 'select') {
     newField.options = [{ id: randomUUID(), label: 'Option 1' }];

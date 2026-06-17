@@ -53,6 +53,7 @@ export function addField(
     options?: string[];
     placeholder?: string;
     defaultValue?: string;
+    editable?: boolean;
   },
 ): FormEntitySchema {
   return {
@@ -71,6 +72,9 @@ export function addField(
       }
       if (partial.defaultValue?.trim()) {
         field.defaultValue = partial.defaultValue.trim();
+      }
+      if (partial.editable === false) {
+        field.editable = false;
       }
       if (partial.type === 'select' && partial.options?.length) {
         field.options = partial.options

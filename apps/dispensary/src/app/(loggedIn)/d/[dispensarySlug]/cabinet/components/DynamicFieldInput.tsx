@@ -38,6 +38,7 @@ function FieldRecursive({
 }: DynamicFieldInputProps) {
   const effectiveValue = resolveFieldInputValue(value, field.defaultValue);
   const error = fieldErrors?.[field.id];
+  const fieldLocked = readOnly || field.editable === false;
 
   const visibleChildren = useMemo(() => {
     if (field.type !== 'select') return [];
@@ -55,7 +56,7 @@ function FieldRecursive({
     [field, effectiveValue, onChange],
   );
 
-  if (readOnly) {
+  if (fieldLocked) {
     let display = effectiveValue ?? '—';
     if (field.type === 'select' && effectiveValue) {
       display = field.options?.find((o) => o.id === effectiveValue)?.label ?? effectiveValue;
@@ -81,7 +82,7 @@ function FieldRecursive({
             field={child}
             value={values[child.id]}
             onChange={onChange}
-            readOnly
+            readOnly={readOnly}
             values={values}
             depth={depth + 1}
             fieldErrors={fieldErrors}
