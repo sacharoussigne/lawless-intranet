@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   ActionIcon,
   Badge,
@@ -16,6 +17,7 @@ import {
 } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type { CustomValues, FormCategory, FormField, FormFieldType } from '@/lib/cabinet/formSchema';
+import { FIELD_TYPES } from '@/lib/cabinet/formSchema';
 import type { CabinetFieldErrors } from '@/lib/cabinet/formErrors';
 import { DynamicFieldInput } from './DynamicFieldInput';
 import { FormFieldSchemaRow } from './FormFieldSchemaRow';
@@ -23,17 +25,11 @@ import { InlineEditableText } from './InlineEditableText';
 import { SchemaReorderButtons } from './SchemaReorderButtons';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 
-const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
-  { value: 'text', label: 'Texte' },
-  { value: 'textarea', label: 'Zone de texte' },
-  { value: 'date', label: 'Date' },
-  { value: 'select', label: 'Liste déroulante' },
-];
-
 type FormCategoryCardProps = {
   category: FormCategory;
   values: CustomValues;
   onChange: (fieldId: string, value: string | null) => void;
+  onBatchChange?: (updates: Record<string, string | null>) => void;
   readOnly?: boolean;
   children?: React.ReactNode;
   schemaEditing?: boolean;
@@ -55,12 +51,15 @@ type FormCategoryCardProps = {
   canMoveCategoryUp?: boolean;
   canMoveCategoryDown?: boolean;
   onMoveCategory?: (direction: 'up' | 'down') => void;
+  schemaNestedFlushToken?: number;
+  schemaFlushToken?: number;
 };
 
-export function FormCategoryCard({
+export const FormCategoryCard = memo(function FormCategoryCard({
   category,
   values,
   onChange,
+  onBatchChange,
   readOnly,
   children,
   schemaEditing,
@@ -74,14 +73,48 @@ export function FormCategoryCard({
   canMoveCategoryUp,
   canMoveCategoryDown,
   onMoveCategory,
+  schemaNestedFlushToken,
+  schemaFlushToken,
 }: FormCategoryCardProps) {
-  const sortedFields = [...category.fields].sort((a, b) => a.order - b.order);
+  const sortedFields = useMemo(
+    () => [...category.fields].sort((a, b) => a.order - b.order),
+    [category.fields],
+  );
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<FormFieldType>('text');
   const [newFieldRequired, setNewFieldRequired] = useState(false);
   const [newFieldPlaceholder, setNewFieldPlaceholder] = useState('');
   const [newFieldDefaultValue, setNewFieldDefaultValue] = useState('');
   const [newFieldEditable, setNewFieldEditable] = useState(true);
+  const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
+  const lastSchemaFlushTokenRef = useRef(0);
+
+  useLayoutEffect(() => {
+    if (schemaFlushToken === undefined) return;
+    if (schemaFlushToken <= lastSchemaFlushTokenRef.current) return;
+    lastSchemaFlushTokenRef.current = schemaFlushToken;
+    if (expandedFieldId !== null) {
+      flushSync(() => setExpandedFieldId(null));
+    }
+  }, [schemaFlushToken, expandedFieldId]);
+
+  const onUpdateFieldRef = useRef(onUpdateField);
+  const onDeleteFieldRef = useRef(onDeleteField);
+  const onMoveFieldRef = useRef(onMoveField);
+  onUpdateFieldRef.current = onUpdateField;
+  onDeleteFieldRef.current = onDeleteField;
+  onMoveFieldRef.current = onMoveField;
+
+  const handleFieldChange = useCallback((updated: FormField) => {
+    onUpdateFieldRef.current?.(updated);
+  }, []);
+
+  const handleFieldExpandedChange = useCallback((fieldId: string, next: boolean) => {
+    setExpandedFieldId((current) => {
+      if (next) return fieldId;
+      return current === fieldId ? null : current;
+    });
+  }, []);
 
   const resetNewFieldForm = () => {
     setNewFieldLabel('');
@@ -167,13 +200,16 @@ export function FormCategoryCard({
             <FormFieldSchemaRow
               key={field.id}
               field={field}
-              onChange={(updated) => onUpdateField?.(updated)}
-              onDelete={() => onDeleteField?.(field.id)}
+              expanded={expandedFieldId === field.id}
+              onExpandedChange={(next) => handleFieldExpandedChange(field.id, next)}
+              onChange={handleFieldChange}
+              schemaNestedFlushToken={schemaNestedFlushToken}
+              onDelete={() => onDeleteFieldRef.current?.(field.id)}
               canMoveUp={fieldIndex > 0}
               canMoveDown={fieldIndex < sortedFields.length - 1}
               onMove={
-                onMoveField
-                  ? (direction) => onMoveField(field.id, direction)
+                onMoveFieldRef.current
+                  ? (direction) => onMoveFieldRef.current?.(field.id, direction)
                   : undefined
               }
             />
@@ -292,6 +328,7 @@ export function FormCategoryCard({
             field={field}
             value={values[field.id]}
             onChange={onChange}
+            onBatchChange={onBatchChange}
             readOnly={readOnly}
             values={values}
             fieldErrors={fieldErrors}
@@ -305,4 +342,4 @@ export function FormCategoryCard({
       </Stack>
     </Card>
   );
-}
+});

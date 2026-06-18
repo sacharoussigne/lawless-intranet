@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { notifications } from '@mantine/notifications';
 import { saveFormSchemaEntity } from '@/app/_actions/cabinet/formSchema';
 import { handleAction } from '@/lib/action';
@@ -27,24 +28,47 @@ export function useCabinetSchemaEditing({
     getEntitySchema(formSchemas, entityType),
   );
   const [savingSchema, setSavingSchema] = useState(false);
+  const [schemaNestedFlushToken, setSchemaNestedFlushToken] = useState(0);
+  const [schemaFlushToken, setSchemaFlushToken] = useState(0);
+  const draftEntitySchemaRef = useRef(draftEntitySchema);
+  draftEntitySchemaRef.current = draftEntitySchema;
+
+  const setDraftEntitySchemaTracked = useCallback(
+    (value: FormEntitySchema | ((prev: FormEntitySchema) => FormEntitySchema)) => {
+      setDraftEntitySchema((prev) => {
+        const next = typeof value === 'function' ? value(prev) : value;
+        draftEntitySchemaRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
 
   const startSchemaEditing = useCallback(() => {
-    setDraftEntitySchema(getEntitySchema(formSchemas, entityType));
+    const schema = getEntitySchema(formSchemas, entityType);
+    draftEntitySchemaRef.current = schema;
+    setDraftEntitySchema(schema);
     setSchemaEditing(true);
   }, [formSchemas, entityType]);
 
   const cancelSchemaEditing = useCallback(() => {
-    setDraftEntitySchema(getEntitySchema(formSchemas, entityType));
+    flushSync(() => setSchemaNestedFlushToken((t) => t + 1));
+    flushSync(() => setSchemaFlushToken((t) => t + 1));
+    const schema = getEntitySchema(formSchemas, entityType);
+    draftEntitySchemaRef.current = schema;
+    setDraftEntitySchema(schema);
     setSchemaEditing(false);
   }, [formSchemas, entityType]);
 
   const saveSchemaEditing = useCallback(async () => {
     setSavingSchema(true);
     try {
+      flushSync(() => setSchemaNestedFlushToken((t) => t + 1));
+      flushSync(() => setSchemaFlushToken((t) => t + 1));
       const result = await saveFormSchemaEntity(dispensarySlug, {
         cabinetId,
         entityType,
-        schema: draftEntitySchema,
+        schema: draftEntitySchemaRef.current,
       });
       const data = handleAction(result) as CabinetFormSchemas | undefined;
       if (data) {
@@ -61,15 +85,17 @@ export function useCabinetSchemaEditing({
     } finally {
       setSavingSchema(false);
     }
-  }, [dispensarySlug, cabinetId, entityType, draftEntitySchema, onSchemasSaved]);
+  }, [dispensarySlug, cabinetId, entityType, onSchemasSaved]);
 
   return {
     schemaEditing,
     draftEntitySchema,
     savingSchema,
+    schemaNestedFlushToken,
+    schemaFlushToken,
     startSchemaEditing,
     cancelSchemaEditing,
     saveSchemaEditing,
-    setDraftEntitySchema,
+    setDraftEntitySchema: setDraftEntitySchemaTracked,
   };
 }

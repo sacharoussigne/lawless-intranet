@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import {
   MultiSelect,
   Select,
@@ -33,6 +33,7 @@ type DynamicFieldInputProps = {
   field: FormField;
   value: string | null | undefined;
   onChange: (fieldId: string, value: string | null) => void;
+  onBatchChange?: (updates: Record<string, string | null>) => void;
   readOnly?: boolean;
   values: CustomValues;
   depth?: number;
@@ -49,7 +50,7 @@ function renderConditionalChildren(
   effectiveValue: string | null,
   props: Omit<DynamicFieldInputProps, 'field' | 'value'>,
 ) {
-  const { onChange, readOnly, values, depth = 0, fieldErrors } = props;
+  const { onChange, onBatchChange, readOnly, values, depth = 0, fieldErrors } = props;
 
   if (field.type === 'select' && field.multiple) {
     const groups = getVisibleFieldGroupsForSelectValue(field, effectiveValue);
@@ -65,6 +66,7 @@ function renderConditionalChildren(
               field={child}
               value={values[child.id]}
               onChange={onChange}
+              onBatchChange={onBatchChange}
               readOnly={readOnly}
               values={values}
               depth={depth + 1}
@@ -85,6 +87,7 @@ function renderConditionalChildren(
       field={child}
       value={values[child.id]}
       onChange={onChange}
+      onBatchChange={onBatchChange}
       readOnly={readOnly}
       values={values}
       depth={depth + 1}
@@ -93,10 +96,38 @@ function renderConditionalChildren(
   ));
 }
 
-function FieldRecursive({
+function fieldRendersConditionalChildren(field: FormField): boolean {
+  return (
+    field.type === 'select' &&
+    (Boolean(field.conditionalBranches?.length) || field.multiple === true)
+  );
+}
+
+function fieldInputPropsAreEqual(
+  prev: DynamicFieldInputProps,
+  next: DynamicFieldInputProps,
+): boolean {
+  if (fieldRendersConditionalChildren(prev.field)) {
+    if (prev.values !== next.values) return false;
+    if (prev.fieldErrors !== next.fieldErrors) return false;
+  }
+
+  return (
+    prev.field === next.field &&
+    prev.value === next.value &&
+    prev.readOnly === next.readOnly &&
+    prev.depth === next.depth &&
+    prev.onChange === next.onChange &&
+    prev.onBatchChange === next.onBatchChange &&
+    prev.fieldErrors?.[prev.field.id] === next.fieldErrors?.[next.field.id]
+  );
+}
+
+const FieldRecursive = memo(function FieldRecursive({
   field,
   value,
   onChange,
+  onBatchChange,
   readOnly,
   values,
   depth = 0,
@@ -110,6 +141,11 @@ function FieldRecursive({
     if (field.type !== 'select') return [];
     return getSelectedOptionIds(field, effectiveValue);
   }, [field, effectiveValue]);
+
+  const selectData = useMemo(
+    () => (field.options ?? []).map((o) => ({ value: o.id, label: o.label })),
+    [field.options],
+  );
 
   const applySelectChange = useCallback(
     (nextStored: string | null) => {
@@ -126,6 +162,19 @@ function FieldRecursive({
         nextStored,
         values,
       );
+
+      if (onBatchChange) {
+        const updates: Record<string, string | null> = { [field.id]: nextStored };
+        for (const id of idsToClear) {
+          updates[id] = null;
+        }
+        for (const { fieldId, defaultValue } of defaultsToSeed) {
+          updates[fieldId] = defaultValue;
+        }
+        onBatchChange(updates);
+        return;
+      }
+
       for (const id of idsToClear) {
         onChange(id, null);
       }
@@ -134,7 +183,7 @@ function FieldRecursive({
         onChange(fieldId, defaultValue);
       }
     },
-    [field, value, values, onChange],
+    [field, value, values, onChange, onBatchChange],
   );
 
   const handleSelectChange = useCallback(
@@ -181,6 +230,7 @@ function FieldRecursive({
         {readOnlyContent}
         {renderConditionalChildren(field, effectiveValue, {
           onChange,
+          onBatchChange,
           readOnly,
           values,
           depth,
@@ -196,8 +246,6 @@ function FieldRecursive({
     placeholder: field.placeholder,
     value: effectiveValue ?? '',
   };
-
-  const selectData = (field.options ?? []).map((o) => ({ value: o.id, label: o.label }));
 
   let input: React.ReactNode;
 
@@ -266,6 +314,7 @@ function FieldRecursive({
       {input}
       {renderConditionalChildren(field, effectiveValue, {
         onChange,
+        onBatchChange,
         readOnly,
         values,
         depth,
@@ -273,8 +322,8 @@ function FieldRecursive({
       })}
     </Stack>
   );
-}
+}, fieldInputPropsAreEqual);
 
-export function DynamicFieldInput(props: DynamicFieldInputProps) {
+export const DynamicFieldInput = memo(function DynamicFieldInput(props: DynamicFieldInputProps) {
   return <FieldRecursive {...props} />;
-}
+}, fieldInputPropsAreEqual);

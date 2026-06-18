@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   ActionIcon,
   Badge,
   Button,
-  Collapse,
   Group,
   MultiSelect,
   Select,
@@ -17,6 +17,7 @@ import {
 } from '@mantine/core';
 import { IconChevronDown, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
 import type { FormField, FormFieldType } from '@/lib/cabinet/formSchema';
+import { FIELD_TYPES } from '@/lib/cabinet/formSchema';
 import {
   addFieldToBranch,
   deleteFieldById,
@@ -34,81 +35,165 @@ import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { InlineEditableText } from './InlineEditableText';
 import { SchemaReorderButtons } from './SchemaReorderButtons';
 
-const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
-  { value: 'text', label: 'Texte' },
-  { value: 'textarea', label: 'Zone de texte' },
-  { value: 'date', label: 'Date' },
-  { value: 'select', label: 'Liste déroulante' },
-];
-
-type FormFieldSchemaRowProps = {
+export type FormFieldSchemaRowProps = {
   field: FormField;
   depth?: number;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   onChange: (field: FormField) => void;
   onDelete?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   onMove?: (direction: 'up' | 'down') => void;
+  schemaNestedFlushToken?: number;
 };
 
-export function FormFieldSchemaRow({
+function normalizePatchedField(base: FormField, updates: Partial<FormField>): FormField {
+  let next: FormField = { ...base, ...updates };
+  if (updates.placeholder === '') delete next.placeholder;
+  if (updates.defaultValue === '') delete next.defaultValue;
+  if ('editable' in updates && updates.editable !== false) delete next.editable;
+  if (updates.defaultValue === '' || updates.defaultValue === undefined) {
+    if (!next.defaultValue && next.editable === false) delete next.editable;
+  }
+  if (updates.type && updates.type !== 'select') {
+    delete next.options;
+    delete next.conditionalBranches;
+    delete next.multiple;
+    if (base.type === 'select') {
+      delete next.defaultValue;
+    }
+  }
+  if ('multiple' in updates) {
+    if (updates.multiple) {
+      next.multiple = true;
+      if (next.defaultValue) {
+        const converted = convertSelectDefaultForMultipleChange(next.defaultValue, true);
+        if (converted) next.defaultValue = converted;
+        else delete next.defaultValue;
+      }
+    } else {
+      delete next.multiple;
+      if (next.defaultValue) {
+        const converted = convertSelectDefaultForMultipleChange(next.defaultValue, false);
+        if (converted) next.defaultValue = converted;
+        else delete next.defaultValue;
+      }
+    }
+  }
+  if (updates.options) {
+    next = syncBranchesWithOptions(next);
+  }
+  return next;
+}
+
+function formFieldSchemaRowPropsAreEqual(
+  prev: FormFieldSchemaRowProps,
+  next: FormFieldSchemaRowProps,
+): boolean {
+  return (
+    prev.field === next.field &&
+    prev.expanded === next.expanded &&
+    prev.depth === next.depth &&
+    prev.canMoveUp === next.canMoveUp &&
+    prev.canMoveDown === next.canMoveDown &&
+    prev.schemaNestedFlushToken === next.schemaNestedFlushToken &&
+    prev.onChange === next.onChange &&
+    prev.onExpandedChange === next.onExpandedChange
+  );
+}
+
+function FormFieldSchemaRowInner({
   field,
   depth = 0,
+  expanded: expandedProp,
+  onExpandedChange,
   onChange,
   onDelete,
   canMoveUp = false,
   canMoveDown = false,
   onMove,
+  schemaNestedFlushToken,
 }: FormFieldSchemaRowProps) {
-  const [expanded, setExpanded] = useState(false);
-  const optionsText = (field.options ?? []).map((o) => o.label).join('\n');
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const expanded = expandedProp ?? internalExpanded;
+  const [draftField, setDraftField] = useState(field);
+  const draftFieldRef = useRef(draftField);
+  draftFieldRef.current = draftField;
+  const optionsText = (draftField.options ?? []).map((o) => o.label).join('\n');
+  const prevExpandedRef = useRef(expanded);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
-  const patchField = (updates: Partial<FormField>) => {
-    let next: FormField = { ...field, ...updates };
-    if (updates.placeholder === '') delete next.placeholder;
-    if (updates.defaultValue === '') delete next.defaultValue;
-    if ('editable' in updates && updates.editable !== false) delete next.editable;
-    if (updates.defaultValue === '' || updates.defaultValue === undefined) {
-      if (!next.defaultValue && next.editable === false) delete next.editable;
+  useLayoutEffect(() => {
+    if (expanded && !prevExpandedRef.current) {
+      draftFieldRef.current = field;
+      setDraftField(field);
     }
-    if (updates.type && updates.type !== 'select') {
-      delete next.options;
-      delete next.conditionalBranches;
-      delete next.multiple;
-      if (field.type === 'select') {
-        delete next.defaultValue;
-      }
+  }, [expanded, field]);
+
+  useLayoutEffect(() => {
+    if (prevExpandedRef.current && !expanded) {
+      onChangeRef.current(draftFieldRef.current);
     }
-    if ('multiple' in updates) {
-      if (updates.multiple) {
-        next.multiple = true;
-        if (next.defaultValue) {
-          const converted = convertSelectDefaultForMultipleChange(next.defaultValue, true);
-          if (converted) next.defaultValue = converted;
-          else delete next.defaultValue;
-        }
+    prevExpandedRef.current = expanded;
+  }, [expanded]);
+
+  useLayoutEffect(() => {
+    return () => {
+      onChangeRef.current(draftFieldRef.current);
+    };
+  }, []);
+
+  const applyDraftField = useCallback(
+    (updater: FormField | ((prev: FormField) => FormField)) => {
+      const next =
+        typeof updater === 'function'
+          ? (updater as (prev: FormField) => FormField)(draftFieldRef.current)
+          : updater;
+      draftFieldRef.current = next;
+      setDraftField(next);
+    },
+    [],
+  );
+
+  const setExpanded = useCallback(
+    (next: boolean) => {
+      if (onExpandedChange) {
+        onExpandedChange(next);
       } else {
-        delete next.multiple;
-        if (next.defaultValue) {
-          const converted = convertSelectDefaultForMultipleChange(next.defaultValue, false);
-          if (converted) next.defaultValue = converted;
-          else delete next.defaultValue;
-        }
+        setInternalExpanded(next);
       }
-    }
-    if (updates.options) {
-      next = syncBranchesWithOptions(next);
-    }
-    onChange(next);
-  };
+    },
+    [onExpandedChange],
+  );
 
-  const updateNestedField = (targetId: string, updated: FormField) => {
-    onChange(mapFieldById(field, targetId, () => updated));
-  };
+  const patchField = useCallback(
+    (updates: Partial<FormField>) => {
+      applyDraftField((prev) => normalizePatchedField(prev, updates));
+    },
+    [applyDraftField],
+  );
 
-  const deleteNestedField = (targetId: string) => {
-    onChange(deleteFieldById(field, targetId));
-  };
+  const updateNestedField = useCallback(
+    (targetId: string, updated: FormField) => {
+      applyDraftField((prev) => mapFieldById(prev, targetId, () => updated));
+    },
+    [applyDraftField],
+  );
+
+  const deleteNestedField = useCallback(
+    (targetId: string) => {
+      applyDraftField((prev) => deleteFieldById(prev, targetId));
+    },
+    [applyDraftField],
+  );
+
+  const headerLabel = expanded ? draftField.label : field.label;
+  const headerType = expanded ? draftField.type : field.type;
+  const headerRequired = expanded ? draftField.required : field.required;
+  const headerEditable = expanded ? draftField.editable : field.editable;
+  const headerMultiple = expanded ? draftField.multiple : field.multiple;
 
   return (
     <Stack
@@ -127,26 +212,26 @@ export function FormFieldSchemaRow({
             variant="subtle"
             color="slate"
             size="sm"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => setExpanded(!expanded)}
           >
             {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
           </ActionIcon>
           <InlineEditableText
-            value={field.label}
-            canEdit
+            value={headerLabel}
+            canEdit={expanded}
             onSave={(label) => patchField({ label })}
             textClassName="disp-display-title"
           />
           <Text size="xs" c="dimmed">
-            ({FIELD_TYPES.find((t) => t.value === field.type)?.label ?? field.type})
-            {field.required && ' *'}
+            ({FIELD_TYPES.find((t) => t.value === headerType)?.label ?? headerType})
+            {headerRequired && ' *'}
           </Text>
-          {field.editable === false && (
+          {headerEditable === false && (
             <Badge variant="outline" color="slate" size="xs">
               Fixe
             </Badge>
           )}
-          {field.type === 'select' && field.multiple && (
+          {headerType === 'select' && headerMultiple && (
             <Badge variant="outline" color="sage" size="xs">
               Multi
             </Badge>
@@ -169,18 +254,18 @@ export function FormFieldSchemaRow({
         </Group>
       </Group>
 
-      <Collapse in={expanded}>
+      {expanded && (
         <Stack gap="sm" pt="xs">
           <Group align="flex-end" wrap="wrap" grow>
             <Select
               label="Type"
               size="xs"
               data={FIELD_TYPES}
-              value={field.type}
+              value={draftField.type}
               style={{ flex: 1, minWidth: 140 }}
               onChange={(v) => {
                 const type = (v as FormFieldType) ?? 'text';
-                if (type === 'select' && !field.options?.length) {
+                if (type === 'select' && !draftField.options?.length) {
                   patchField({
                     type,
                     options: [{ id: randomUUID(), label: 'Option 1' }],
@@ -190,35 +275,35 @@ export function FormFieldSchemaRow({
                 }
               }}
             />
-            {(field.type === 'text' ||
-              field.type === 'textarea' ||
-              field.type === 'select' ||
-              field.type === 'date') && (
+            {(draftField.type === 'text' ||
+              draftField.type === 'textarea' ||
+              draftField.type === 'select' ||
+              draftField.type === 'date') && (
               <TextInput
                 label="Placeholder"
                 size="xs"
                 placeholder="Texte d'aide"
-                value={field.placeholder ?? ''}
+                value={draftField.placeholder ?? ''}
                 style={{ flex: 1, minWidth: 160 }}
                 onChange={(e) => patchField({ placeholder: e.currentTarget.value })}
               />
             )}
-            {field.type === 'text' || field.type === 'textarea' ? (
+            {draftField.type === 'text' || draftField.type === 'textarea' ? (
               <TextInput
                 label="Valeur par défaut"
                 size="xs"
-                value={field.defaultValue ?? ''}
+                value={draftField.defaultValue ?? ''}
                 style={{ flex: 1, minWidth: 160 }}
                 onChange={(e) => patchField({ defaultValue: e.currentTarget.value })}
               />
-            ) : field.type === 'select' && field.multiple ? (
+            ) : draftField.type === 'select' && draftField.multiple ? (
               <MultiSelect
                 label="Valeur par défaut"
                 size="xs"
                 placeholder="Aucune"
-                data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
+                data={(draftField.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
                 value={
-                  field.defaultValue ? parseMultiSelectValue(field.defaultValue) : []
+                  draftField.defaultValue ? parseMultiSelectValue(draftField.defaultValue) : []
                 }
                 clearable
                 style={{ flex: 1, minWidth: 160 }}
@@ -226,22 +311,22 @@ export function FormFieldSchemaRow({
                   patchField({ defaultValue: ids.length > 0 ? JSON.stringify(ids) : '' })
                 }
               />
-            ) : field.type === 'select' ? (
+            ) : draftField.type === 'select' ? (
               <Select
                 label="Valeur par défaut"
                 size="xs"
                 placeholder="Aucune"
-                data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
-                value={field.defaultValue ?? null}
+                data={(draftField.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
+                value={draftField.defaultValue ?? null}
                 clearable
                 style={{ flex: 1, minWidth: 160 }}
                 onChange={(v) => patchField({ defaultValue: v ?? '' })}
               />
-            ) : field.type === 'date' ? (
+            ) : draftField.type === 'date' ? (
               <div style={{ flex: 1, minWidth: 180 }}>
                 <RpDatePicker
                   label="Valeur par défaut"
-                  value={field.defaultValue ?? null}
+                  value={draftField.defaultValue ?? null}
                   clearable
                   onChange={(d) => patchField({ defaultValue: d ? d.toISOString() : '' })}
                 />
@@ -252,40 +337,39 @@ export function FormFieldSchemaRow({
             <Switch
               label="Obligatoire"
               size="sm"
-              checked={field.required}
+              checked={draftField.required}
               onChange={(e) => patchField({ required: e.currentTarget.checked })}
             />
-            {field.type === 'select' && (
+            {draftField.type === 'select' && (
               <Switch
                 label="Sélection multiple"
                 size="sm"
-                checked={field.multiple === true}
+                checked={draftField.multiple === true}
                 onChange={(e) => patchField({ multiple: e.currentTarget.checked })}
               />
             )}
-            {field.defaultValue && (
+            {draftField.defaultValue && (
               <Switch
                 label="Modifiable"
                 size="sm"
-                checked={field.editable !== false}
+                checked={draftField.editable !== false}
                 onChange={(e) => patchField({ editable: e.currentTarget.checked })}
               />
             )}
           </Group>
-          {field.type === 'select' && (
+          {draftField.type === 'select' && (
             <>
               <Textarea
                 label="Options (une par ligne)"
                 size="xs"
                 minRows={3}
                 defaultValue={optionsText}
-                key={optionsText}
                 onBlur={(e) => {
                   const lines = e.currentTarget.value
                     .split('\n')
                     .map((l) => l.trim())
                     .filter(Boolean);
-                  const existing = field.options ?? [];
+                  const existing = draftField.options ?? [];
                   const options = lines.map((label, i) => ({
                     id: existing[i]?.id ?? randomUUID(),
                     label,
@@ -301,18 +385,21 @@ export function FormFieldSchemaRow({
                 <Text size="xs" c="dimmed">
                   Définissez ce qui s&apos;affiche selon la valeur sélectionnée.
                 </Text>
-                {(field.options ?? []).map((option) => (
+                {(draftField.options ?? []).map((option) => (
                   <ConditionalBranchEditor
                     key={option.id}
                     optionLabel={option.label}
-                    branchFields={getBranchFields(field, option.id)}
+                    branchFields={getBranchFields(draftField, option.id)}
+                    schemaNestedFlushToken={schemaNestedFlushToken}
                     onAddField={(partial) =>
-                      onChange(addFieldToBranch(field, option.id, partial))
+                      applyDraftField((prev) => addFieldToBranch(prev, option.id, partial))
                     }
-                    onUpdateField={(targetId, updated) => updateNestedField(targetId, updated)}
-                    onDeleteField={(targetId) => deleteNestedField(targetId)}
+                    onUpdateField={updateNestedField}
+                    onDeleteField={deleteNestedField}
                     onMoveField={(targetId, direction) =>
-                      onChange(moveFieldInBranch(field, option.id, targetId, direction))
+                      applyDraftField((prev) =>
+                        moveFieldInBranch(prev, option.id, targetId, direction),
+                      )
                     }
                     depth={depth + 1}
                   />
@@ -321,14 +408,17 @@ export function FormFieldSchemaRow({
             </>
           )}
         </Stack>
-      </Collapse>
+      )}
     </Stack>
   );
 }
 
+export const FormFieldSchemaRow = memo(FormFieldSchemaRowInner, formFieldSchemaRowPropsAreEqual);
+
 type ConditionalBranchEditorProps = {
   optionLabel: string;
   branchFields: FormField[];
+  schemaNestedFlushToken?: number;
   onAddField: (partial: {
     label: string;
     type: FormFieldType;
@@ -346,6 +436,7 @@ type ConditionalBranchEditorProps = {
 function ConditionalBranchEditor({
   optionLabel,
   branchFields,
+  schemaNestedFlushToken,
   onAddField,
   onUpdateField,
   onDeleteField,
@@ -358,6 +449,17 @@ function ConditionalBranchEditor({
   const [newPlaceholder, setNewPlaceholder] = useState('');
   const [newDefaultValue, setNewDefaultValue] = useState('');
   const [newEditable, setNewEditable] = useState(true);
+  const [expandedNestedFieldId, setExpandedNestedFieldId] = useState<string | null>(null);
+  const lastSchemaFlushTokenRef = useRef(0);
+
+  useLayoutEffect(() => {
+    if (schemaNestedFlushToken === undefined) return;
+    if (schemaNestedFlushToken <= lastSchemaFlushTokenRef.current) return;
+    lastSchemaFlushTokenRef.current = schemaNestedFlushToken;
+    if (expandedNestedFieldId !== null) {
+      flushSync(() => setExpandedNestedFieldId(null));
+    }
+  }, [schemaNestedFlushToken, expandedNestedFieldId]);
 
   const sortedFields = [...branchFields].sort((a, b) => a.order - b.order);
 
@@ -386,6 +488,13 @@ function ConditionalBranchEditor({
   const showPlaceholder =
     newType === 'text' || newType === 'textarea' || newType === 'select' || newType === 'date';
 
+  const handleNestedExpandedChange = useCallback((fieldId: string, next: boolean) => {
+    setExpandedNestedFieldId((current) => {
+      if (next) return fieldId;
+      return current === fieldId ? null : current;
+    });
+  }, []);
+
   return (
     <Stack
       gap="sm"
@@ -411,11 +520,14 @@ function ConditionalBranchEditor({
             key={child.id}
             field={child}
             depth={depth}
+            expanded={expandedNestedFieldId === child.id}
+            onExpandedChange={(next) => handleNestedExpandedChange(child.id, next)}
             onChange={(updated) => onUpdateField(child.id, updated)}
             onDelete={() => onDeleteField(child.id)}
             canMoveUp={index > 0}
             canMoveDown={index < sortedFields.length - 1}
             onMove={(direction) => onMoveField(child.id, direction)}
+            schemaNestedFlushToken={schemaNestedFlushToken}
           />
         ))}
         {sortedFields.length === 0 && (

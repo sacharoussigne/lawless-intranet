@@ -14,7 +14,7 @@ import {
   searchEligibleDispensaryUsersForCabinet,
   validateDispensaryUserIds,
 } from '@/app/_actions/cabinet/internals';
-import { enrichCabinetMembers } from '@/lib/cabinet/enrichMembers';
+import { enrichAgendaMembers } from '@/lib/enrichUsers';
 
 export async function upsertCabinetMember(
   dispensarySlug: string,
@@ -68,7 +68,7 @@ export async function upsertCabinetMember(
       update: { accessLevel: validated.accessLevel },
     });
 
-    const [enriched] = await enrichCabinetMembers([member]);
+    const [enriched] = await enrichAgendaMembers([member]);
 
     return { status: 200, data: enriched };
   } catch (error) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Button,
   Container,
@@ -21,13 +21,11 @@ import { handleAction } from '@/lib/action';
 import { canWriteCabinet } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
-import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
 import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
-import { useCabinetSchemaEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetSchemaEditing';
-import { useCabinetFieldErrors } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetFieldErrors';
+import { useCabinetEntityEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetEntityEditing';
 
 type ConsultationData = {
   id: string;
@@ -60,54 +58,54 @@ export function ConsultationDetailPageClient({
   consultation: initialConsultation,
   canEditSchema,
 }: ConsultationDetailPageClientProps) {
-  const [consultation, setConsultation] = useState(initialConsultation);
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const { fieldErrors, formError, clearFieldError, resetErrors, applySubmitError } =
-    useCabinetFieldErrors();
-  const { careEpisode } = consultation;
+  const handleSaveConsultation = useCallback(
+    async (consultation: ConsultationData, customValues: CustomValues) => {
+      const result = await updateConsultation(dispensarySlug, {
+        id: consultation.id,
+        careEpisodeId: consultation.careEpisodeId,
+        date: consultation.date.toISOString(),
+        customValues,
+      });
+      handleAction(result);
+    },
+    [dispensarySlug],
+  );
 
   const {
+    entity: consultation,
+    setEntity: setConsultation,
+    customValues,
+    editing,
+    saving,
+    startEditing,
+    cancelEditing,
+    handleSave,
+    handleCustomChange,
+    handleCustomBatchChange,
+    fieldErrors,
+    formError,
+    clearFieldError,
     schemaEditing,
-    draftEntitySchema,
     savingSchema,
     startSchemaEditing,
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema,
-  } = useCabinetSchemaEditing({
+    schemaNestedFlushToken,
+    schemaFlushToken,
+    entitySchema,
+  } = useCabinetEntityEditing({
     dispensarySlug,
-    cabinetId: careEpisode.patient.cabinetId,
+    cabinetId: initialConsultation.careEpisode.patient.cabinetId,
     entityType: 'consultation',
-    formSchemas: consultation.formSchemas,
-    onSchemasSaved: (schemas) => setConsultation((c) => ({ ...c, formSchemas: schemas })),
+    initialEntity: initialConsultation,
+    canEditSchema,
+    onSave: handleSaveConsultation,
   });
 
+  const { careEpisode } = consultation;
   const canWrite = canWriteCabinet(consultation.accessLevel);
   const t = tenantRoutes(dispensarySlug);
-  const entitySchema = schemaEditing
-    ? draftEntitySchema
-    : getEntitySchema(consultation.formSchemas, 'consultation');
-
-  const handleSave = async () => {
-    setSaving(true);
-    resetErrors();
-    try {
-      const result = await updateConsultation(dispensarySlug, {
-        id: consultation.id,
-        careEpisodeId: consultation.careEpisodeId,
-        date: consultation.date.toISOString(),
-        customValues: consultation.customValues,
-      });
-      handleAction(result);
-      setEditing(false);
-      notifications.show({ title: 'Enregistré', message: '', color: 'moss' });
-    } catch (error: unknown) {
-      applySubmitError(error);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDelete = async () => {
     try {
@@ -123,30 +121,44 @@ export function ConsultationDetailPageClient({
     }
   };
 
-  const systemCardsReadOnly = {
-    consultation_general: (
-      <Text size="sm">
-        <strong>Date :</strong> {formatRpDate(consultation.date)}
-      </Text>
-    ),
-  };
+  const systemCardsReadOnly = useMemo(
+    () => ({
+      consultation_general: (
+        <Text size="sm">
+          <strong>Date :</strong> {formatRpDate(consultation.date)}
+        </Text>
+      ),
+    }),
+    [consultation.date],
+  );
 
-  const systemCards = editing
-    ? {
-        consultation_general: (
-          <RpDatePicker
-            label="Date"
-            value={consultation.date}
-            onChange={(d) => {
-              clearFieldError('date');
-              setConsultation((c) => ({ ...c, date: d ?? c.date }));
-            }}
-            error={fieldErrors.date}
-            required
-          />
-        ),
-      }
-    : systemCardsReadOnly;
+  const systemCards = useMemo(
+    () =>
+      editing
+        ? {
+            consultation_general: (
+              <RpDatePicker
+                label="Date"
+                value={consultation.date}
+                onChange={(d) => {
+                  clearFieldError('date');
+                  setConsultation((c) => ({ ...c, date: d ?? c.date }));
+                }}
+                error={fieldErrors.date}
+                required
+              />
+            ),
+          }
+        : systemCardsReadOnly,
+    [
+      clearFieldError,
+      consultation.date,
+      editing,
+      fieldErrors.date,
+      setConsultation,
+      systemCardsReadOnly,
+    ],
+  );
 
   const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
 
@@ -183,27 +195,13 @@ export function ConsultationDetailPageClient({
               </>
             )}
             {canWrite && !editing && !schemaEditing && (
-              <Button
-                color="sage"
-                leftSection={<IconEdit size={16} />}
-                onClick={() => {
-                  resetErrors();
-                  setEditing(true);
-                }}
-              >
+              <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
               </Button>
             )}
             {canWrite && editing && (
               <>
-                <Button
-                  variant="subtle"
-                  color="slate"
-                  onClick={() => {
-                    resetErrors();
-                    setEditing(false);
-                  }}
-                >
+                <Button variant="subtle" color="slate" onClick={cancelEditing}>
                   Annuler
                 </Button>
                 <Button color="sage" loading={saving} onClick={() => void handleSave()}>
@@ -236,18 +234,15 @@ export function ConsultationDetailPageClient({
         )}
         <DynamicFormRenderer
           schema={entitySchema}
-          values={consultation.customValues}
-          onChange={(fieldId, value) => {
-            clearFieldError(fieldId);
-            setConsultation((c) => ({
-              ...c,
-              customValues: { ...c.customValues, [fieldId]: value },
-            }));
-          }}
+          values={customValues}
+          onChange={handleCustomChange}
+          onBatchChange={handleCustomBatchChange}
           readOnly={!editing}
           systemCards={activeSystemCards}
           mode={schemaEditing ? 'schema' : 'values'}
           onSchemaChange={setDraftEntitySchema}
+          schemaNestedFlushToken={schemaNestedFlushToken}
+          schemaFlushToken={schemaFlushToken}
           fieldErrors={editing ? fieldErrors : undefined}
         />
       </Stack>

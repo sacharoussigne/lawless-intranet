@@ -6,6 +6,7 @@ import {
   serializeSelectValue,
 } from './selectValue';
 import { getVisibleFieldsForSelectedOptions } from './flattenFields';
+import { resolveStoredValue } from './resolveFieldValue';
 
 export type ValidateValuesResult =
   | { ok: true; values: CustomValues }
@@ -21,11 +22,9 @@ export type ValidateCustomValuesOptions = {
 
 function resolveStoredValueFromMap(
   values: CustomValues,
-  fieldId: string,
-  defaultValue?: string,
+  field: FormField,
 ): string | null | undefined {
-  if (fieldId in values) return values[fieldId];
-  return defaultValue;
+  return resolveStoredValue(values, field);
 }
 
 function validateFieldValue(
@@ -84,7 +83,7 @@ function validateFieldsRecursive(
 ): void {
   for (const field of fields) {
     try {
-      const raw = resolveStoredValueFromMap(values, field.id, field.defaultValue) ?? null;
+      const raw = resolveStoredValueFromMap(values, field) ?? null;
       result[field.id] = validateFieldValue(field, raw, enforceRequired);
 
       if (field.type === 'select' && field.conditionalBranches?.length) {

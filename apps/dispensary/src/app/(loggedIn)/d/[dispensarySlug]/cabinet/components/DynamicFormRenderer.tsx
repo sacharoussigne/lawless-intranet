@@ -2,7 +2,7 @@
 
 import { Button, Group, Stack, TextInput } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type {
   CustomValues,
   FormEntitySchema,
@@ -20,36 +20,50 @@ import {
 } from '@/lib/cabinet/formSchema/draftMutations';
 import { FormCategoryCard } from './FormCategoryCard';
 
-export type DynamicFormRendererMode = 'values' | 'schema';
+type DynamicFormRendererMode = 'values' | 'schema';
 
 type DynamicFormRendererProps = {
   schema: FormEntitySchema;
   values: CustomValues;
   onChange: (fieldId: string, value: string | null) => void;
+  onBatchChange?: (updates: Record<string, string | null>) => void;
   readOnly?: boolean;
   systemCards?: Record<string, React.ReactNode>;
   mode?: DynamicFormRendererMode;
-  onSchemaChange?: (schema: FormEntitySchema) => void;
+  onSchemaChange?: (
+    schema: FormEntitySchema | ((prev: FormEntitySchema) => FormEntitySchema),
+  ) => void;
   fieldErrors?: CabinetFieldErrors;
+  schemaNestedFlushToken?: number;
+  schemaFlushToken?: number;
 };
 
 export function DynamicFormRenderer({
   schema,
   values,
   onChange,
+  onBatchChange,
   readOnly,
   systemCards,
   mode = 'values',
   onSchemaChange,
   fieldErrors,
+  schemaNestedFlushToken,
+  schemaFlushToken,
 }: DynamicFormRendererProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
-  const sortedCategories = [...schema.categories].sort((a, b) => a.order - b.order);
+  const sortedCategories = useMemo(
+    () => [...schema.categories].sort((a, b) => a.order - b.order),
+    [schema.categories],
+  );
   const schemaEditing = mode === 'schema';
 
-  const mutateSchema = (next: FormEntitySchema) => {
-    onSchemaChange?.(next);
-  };
+  const mutateSchema = useCallback(
+    (next: FormEntitySchema | ((prev: FormEntitySchema) => FormEntitySchema)) => {
+      onSchemaChange?.(next);
+    },
+    [onSchemaChange],
+  );
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
@@ -65,6 +79,7 @@ export function DynamicFormRenderer({
           category={category}
           values={values}
           onChange={onChange}
+          onBatchChange={onBatchChange}
           readOnly={readOnly}
           schemaEditing={schemaEditing}
           canMoveCategoryUp={categoryIndex > 0}
@@ -91,7 +106,7 @@ export function DynamicFormRenderer({
           }
           onUpdateField={
             schemaEditing
-              ? (field) => mutateSchema(replaceField(schema, category.id, field))
+              ? (field) => mutateSchema((prev) => replaceField(prev, category.id, field))
               : undefined
           }
           onDeleteField={
@@ -106,6 +121,8 @@ export function DynamicFormRenderer({
               : undefined
           }
           fieldErrors={schemaEditing ? undefined : fieldErrors}
+          schemaNestedFlushToken={schemaEditing ? schemaNestedFlushToken : undefined}
+          schemaFlushToken={schemaEditing ? schemaFlushToken : undefined}
         >
           {category.systemKey && systemCards?.[category.systemKey]}
         </FormCategoryCard>

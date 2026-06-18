@@ -61,7 +61,13 @@ export function replaceTopLevelField(
   fieldId: string,
   replacement: FormField,
 ): FormField[] {
-  return fields.map((f) => (f.id === fieldId ? replacement : f));
+  let changed = false;
+  const next = fields.map((f) => {
+    if (f.id !== fieldId) return f;
+    changed = true;
+    return replacement;
+  });
+  return changed ? next : fields;
 }
 
 export function addFieldToBranch(

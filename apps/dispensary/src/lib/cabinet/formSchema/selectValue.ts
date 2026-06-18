@@ -53,18 +53,6 @@ export function formatSelectDisplayLabels(
   return ids.map((id) => optionMap.get(id) ?? id).join(', ');
 }
 
-export function areSelectStoredValuesEqual(
-  field: FormField,
-  a: string | null | undefined,
-  b: string | null | undefined,
-): boolean {
-  if (a === b) return true;
-  if (field.type !== 'select') return false;
-  const idsA = getSelectedOptionIds(field, a ?? null).sort().join('\0');
-  const idsB = getSelectedOptionIds(field, b ?? null).sort().join('\0');
-  return idsA === idsB;
-}
-
 export function normalizeSelectDefaultValue(field: FormField): string | undefined {
   if (!field.defaultValue?.trim()) return undefined;
   if (!isMultiSelectField(field)) return field.defaultValue.trim();
