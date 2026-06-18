@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   ActionIcon,
   Button,
@@ -35,7 +36,6 @@ interface CabinetPageClientProps {
   cabinets: CabinetSummaryDTO[];
   initialCabinetId: string | null;
   initialPatients: CabinetPatientSummaryDTO[];
-  isAdmin: boolean;
 }
 
 export function CabinetPageClient({
@@ -43,7 +43,6 @@ export function CabinetPageClient({
   cabinets: initialCabinets,
   initialCabinetId,
   initialPatients,
-  isAdmin,
 }: CabinetPageClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,9 +51,13 @@ export function CabinetPageClient({
 
   const [cabinets] = useState(initialCabinets);
   const [patients, setPatients] = useState(initialPatients);
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch] = useDebouncedValue(searchInput, 300);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const initialFetchSkipped = useRef(false);
+
+  const isSearchDebouncing = searchInput !== debouncedSearch;
 
   const urlCabinetId = useMemo(() => {
     if (!cabinetIdFromUrl) return null;
@@ -81,7 +84,7 @@ export function CabinetPageClient({
     try {
       const result = await listCabinetPatients(dispensarySlug, {
         cabinetId: selectedCabinetId,
-        search: search.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
       });
       const data = handleAction(result);
       if (data) setPatients(data);
@@ -94,7 +97,7 @@ export function CabinetPageClient({
     } finally {
       setLoading(false);
     }
-  }, [dispensarySlug, selectedCabinetId, search]);
+  }, [dispensarySlug, selectedCabinetId, debouncedSearch]);
 
   const handleDeletePatient = async (patient: CabinetPatientSummaryDTO) => {
     try {
@@ -112,8 +115,20 @@ export function CabinetPageClient({
   };
 
   useEffect(() => {
+    if (!selectedCabinetId) return;
+
+    const skipInitialFetch =
+      !initialFetchSkipped.current &&
+      debouncedSearch === '' &&
+      selectedCabinetId === initialCabinetId;
+
+    if (skipInitialFetch) {
+      initialFetchSkipped.current = true;
+      return;
+    }
+
     void loadPatients();
-  }, [loadPatients]);
+  }, [selectedCabinetId, debouncedSearch, initialCabinetId, loadPatients]);
 
   const t = tenantRoutes(dispensarySlug);
 
@@ -159,15 +174,15 @@ export function CabinetPageClient({
       <Stack gap="md">
         <TextInput
           placeholder="Rechercher par nom…"
-          value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.currentTarget.value)}
         />
 
         <DataTable
           withTableBorder
           borderRadius="sm"
           highlightOnHover
-          fetching={loading}
+          fetching={loading || isSearchDebouncing}
           minHeight={200}
           records={patients}
           columns={[

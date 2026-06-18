@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ActionIcon,
@@ -34,13 +34,11 @@ import {
 } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
-import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
 import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
-import { useCabinetSchemaEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetSchemaEditing';
-import { useCabinetFieldErrors } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetFieldErrors';
+import { useCabinetEntityEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetEntityEditing';
 import { CareEpisodeFormModal } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CareEpisodeFormModal';
 
 type PatientData = {
@@ -59,7 +57,6 @@ interface PatientDetailPageClientProps {
   dispensarySlug: string;
   patient: PatientData;
   initialEpisodes: CareEpisodeSummaryDTO[];
-  isAdmin: boolean;
   canEditSchema: boolean;
 }
 
@@ -69,47 +66,11 @@ export function PatientDetailPageClient({
   initialEpisodes,
   canEditSchema,
 }: PatientDetailPageClientProps) {
-  const [patient, setPatient] = useState(initialPatient);
   const [episodes, setEpisodes] = useState(initialEpisodes);
-  const [editing, setEditing] = useState(false);
   const [episodeModalOpen, setEpisodeModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const { fieldErrors, formError, clearFieldError, resetErrors, applySubmitError } =
-    useCabinetFieldErrors();
 
-  const {
-    schemaEditing,
-    draftEntitySchema,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-  } = useCabinetSchemaEditing({
-    dispensarySlug,
-    cabinetId: patient.cabinetId,
-    entityType: 'patient',
-    formSchemas: patient.formSchemas,
-    onSchemasSaved: (schemas) => setPatient((p) => ({ ...p, formSchemas: schemas })),
-  });
-
-  const canWrite = canWriteCabinet(patient.accessLevel);
-
-  const t = tenantRoutes(dispensarySlug);
-  const entitySchema = schemaEditing
-    ? draftEntitySchema
-    : getEntitySchema(patient.formSchemas, 'patient');
-
-  const reloadEpisodes = useCallback(async () => {
-    const result = await listCareEpisodes(dispensarySlug, patient.id);
-    const data = handleAction(result);
-    if (data) setEpisodes(data);
-  }, [dispensarySlug, patient.id]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    resetErrors();
-    try {
+  const handleSavePatient = useCallback(
+    async (patient: PatientData, customValues: CustomValues) => {
       const result = await updateCabinetPatient(dispensarySlug, {
         id: patient.id,
         cabinetId: patient.cabinetId,
@@ -117,17 +78,51 @@ export function PatientDetailPageClient({
         lastName: patient.lastName,
         birthDate: patient.birthDate?.toISOString() ?? null,
         emergencyContact: patient.emergencyContact,
-        customValues: patient.customValues,
+        customValues,
       });
       handleAction(result);
-      setEditing(false);
-      notifications.show({ title: 'Enregistré', message: '', color: 'moss' });
-    } catch (error: unknown) {
-      applySubmitError(error);
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    [dispensarySlug],
+  );
+
+  const {
+    entity: patient,
+    setEntity: setPatient,
+    customValues,
+    editing,
+    saving,
+    startEditing,
+    cancelEditing,
+    handleSave,
+    handleCustomChange,
+    handleCustomBatchChange,
+    fieldErrors,
+    formError,
+    clearFieldError,
+    schemaEditing,
+    savingSchema,
+    startSchemaEditing,
+    cancelSchemaEditing,
+    saveSchemaEditing,
+    setDraftEntitySchema,
+    entitySchema,
+  } = useCabinetEntityEditing({
+    dispensarySlug,
+    cabinetId: initialPatient.cabinetId,
+    entityType: 'patient',
+    initialEntity: initialPatient,
+    canEditSchema,
+    onSave: handleSavePatient,
+  });
+
+  const canWrite = canWriteCabinet(patient.accessLevel);
+  const t = tenantRoutes(dispensarySlug);
+
+  const reloadEpisodes = useCallback(async () => {
+    const result = await listCareEpisodes(dispensarySlug, patient.id);
+    const data = handleAction(result);
+    if (data) setEpisodes(data);
+  }, [dispensarySlug, patient.id]);
 
   const handleDeletePatient = async () => {
     try {
@@ -157,77 +152,94 @@ export function PatientDetailPageClient({
     }
   };
 
-  const systemCardsReadOnly = {
-    patient_identity: (
-      <Stack gap="xs">
-        <Text size="sm">
-          <strong>Prénom :</strong> {patient.firstName}
-        </Text>
-        <Text size="sm">
-          <strong>Nom :</strong> {patient.lastName}
-        </Text>
-        <Text size="sm">
-          <strong>Date de naissance :</strong> {formatRpDate(patient.birthDate)}
-          {computeRpAge(patient.birthDate) !== null &&
-            ` (${computeRpAge(patient.birthDate)} ans)`}
-        </Text>
-        <Text size="sm">
-          <strong>Contact urgence :</strong> {patient.emergencyContact || '—'}
-        </Text>
-      </Stack>
-    ),
-  };
+  const systemCardsReadOnly = useMemo(
+    () => ({
+      patient_identity: (
+        <Stack gap="xs">
+          <Text size="sm">
+            <strong>Prénom :</strong> {patient.firstName}
+          </Text>
+          <Text size="sm">
+            <strong>Nom :</strong> {patient.lastName}
+          </Text>
+          <Text size="sm">
+            <strong>Date de naissance :</strong> {formatRpDate(patient.birthDate)}
+            {computeRpAge(patient.birthDate) !== null &&
+              ` (${computeRpAge(patient.birthDate)} ans)`}
+          </Text>
+          <Text size="sm">
+            <strong>Contact urgence :</strong> {patient.emergencyContact || '—'}
+          </Text>
+        </Stack>
+      ),
+    }),
+    [patient.birthDate, patient.emergencyContact, patient.firstName, patient.lastName],
+  );
 
-  const systemCards = editing
-    ? {
-        patient_identity: (
-          <Stack gap="md">
-            <TextInput
-              label="Prénom"
-              value={patient.firstName}
-              onChange={(e) => {
-                clearFieldError('firstName');
-                const value = e.currentTarget.value;
-                setPatient((p) => ({ ...p, firstName: value }));
-              }}
-              error={fieldErrors.firstName}
-              required
-            />
-            <TextInput
-              label="Nom"
-              value={patient.lastName}
-              onChange={(e) => {
-                clearFieldError('lastName');
-                const value = e.currentTarget.value;
-                setPatient((p) => ({ ...p, lastName: value }));
-              }}
-              error={fieldErrors.lastName}
-              required
-            />
-            <RpDatePicker
-              label="Date de naissance"
-              value={patient.birthDate}
-              onChange={(d) => {
-                clearFieldError('birthDate');
-                setPatient((p) => ({ ...p, birthDate: d }));
-              }}
-              error={fieldErrors.birthDate}
-              clearable
-            />
-            <TextInput
-              label="Personne à contacter en cas d'urgence"
-              value={patient.emergencyContact ?? ''}
-              onChange={(e) => {
-                clearFieldError('emergencyContact');
-                const value = e.currentTarget.value;
-                setPatient((p) => ({ ...p, emergencyContact: value }));
-              }}
-              error={fieldErrors.emergencyContact}
-            />
-          </Stack>
-        ),
-      }
-    : systemCardsReadOnly;
+  const systemCards = useMemo(
+    () =>
+      editing
+        ? {
+            patient_identity: (
+              <Stack gap="md">
+                <TextInput
+                  label="Prénom"
+                  value={patient.firstName}
+                  onChange={(e) => {
+                    clearFieldError('firstName');
+                    setPatient((p) => ({ ...p, firstName: e.currentTarget.value }));
+                  }}
+                  error={fieldErrors.firstName}
+                  required
+                />
+                <TextInput
+                  label="Nom"
+                  value={patient.lastName}
+                  onChange={(e) => {
+                    clearFieldError('lastName');
+                    setPatient((p) => ({ ...p, lastName: e.currentTarget.value }));
+                  }}
+                  error={fieldErrors.lastName}
+                  required
+                />
+                <RpDatePicker
+                  label="Date de naissance"
+                  value={patient.birthDate}
+                  onChange={(d) => {
+                    clearFieldError('birthDate');
+                    setPatient((p) => ({ ...p, birthDate: d }));
+                  }}
+                  error={fieldErrors.birthDate}
+                  clearable
+                />
+                <TextInput
+                  label="Personne à contacter en cas d'urgence"
+                  value={patient.emergencyContact ?? ''}
+                  onChange={(e) => {
+                    clearFieldError('emergencyContact');
+                    setPatient((p) => ({ ...p, emergencyContact: e.currentTarget.value }));
+                  }}
+                  error={fieldErrors.emergencyContact}
+                />
+              </Stack>
+            ),
+          }
+        : systemCardsReadOnly,
+    [
+      clearFieldError,
+      editing,
+      fieldErrors.birthDate,
+      fieldErrors.emergencyContact,
+      fieldErrors.firstName,
+      fieldErrors.lastName,
+      patient.birthDate,
+      patient.emergencyContact,
+      patient.firstName,
+      patient.lastName,
+      setPatient,
+      systemCardsReadOnly,
+    ],
+  );
 
   const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
 
@@ -264,27 +276,13 @@ export function PatientDetailPageClient({
               </>
             )}
             {canWrite && !editing && !schemaEditing && (
-              <Button
-                color="sage"
-                leftSection={<IconEdit size={16} />}
-                onClick={() => {
-                  resetErrors();
-                  setEditing(true);
-                }}
-              >
+              <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
               </Button>
             )}
             {canWrite && editing && (
               <>
-                <Button
-                  variant="subtle"
-                  color="slate"
-                  onClick={() => {
-                    resetErrors();
-                    setEditing(false);
-                  }}
-                >
+                <Button variant="subtle" color="slate" onClick={cancelEditing}>
                   Annuler
                 </Button>
                 <Button color="sage" loading={saving} onClick={() => void handleSave()}>
@@ -317,14 +315,9 @@ export function PatientDetailPageClient({
         )}
         <DynamicFormRenderer
           schema={entitySchema}
-          values={patient.customValues}
-          onChange={(fieldId, value) => {
-            clearFieldError(fieldId);
-            setPatient((p) => ({
-              ...p,
-              customValues: { ...p.customValues, [fieldId]: value },
-            }));
-          }}
+          values={customValues}
+          onChange={handleCustomChange}
+          onBatchChange={handleCustomBatchChange}
           readOnly={!editing}
           systemCards={activeSystemCards}
           mode={schemaEditing ? 'schema' : 'values'}

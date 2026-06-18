@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -16,6 +16,7 @@ import {
 } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type { CustomValues, FormCategory, FormField, FormFieldType } from '@/lib/cabinet/formSchema';
+import { FIELD_TYPES } from '@/lib/cabinet/formSchema';
 import type { CabinetFieldErrors } from '@/lib/cabinet/formErrors';
 import { DynamicFieldInput } from './DynamicFieldInput';
 import { FormFieldSchemaRow } from './FormFieldSchemaRow';
@@ -23,17 +24,11 @@ import { InlineEditableText } from './InlineEditableText';
 import { SchemaReorderButtons } from './SchemaReorderButtons';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 
-const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
-  { value: 'text', label: 'Texte' },
-  { value: 'textarea', label: 'Zone de texte' },
-  { value: 'date', label: 'Date' },
-  { value: 'select', label: 'Liste déroulante' },
-];
-
 type FormCategoryCardProps = {
   category: FormCategory;
   values: CustomValues;
   onChange: (fieldId: string, value: string | null) => void;
+  onBatchChange?: (updates: Record<string, string | null>) => void;
   readOnly?: boolean;
   children?: React.ReactNode;
   schemaEditing?: boolean;
@@ -57,10 +52,11 @@ type FormCategoryCardProps = {
   onMoveCategory?: (direction: 'up' | 'down') => void;
 };
 
-export function FormCategoryCard({
+export const FormCategoryCard = memo(function FormCategoryCard({
   category,
   values,
   onChange,
+  onBatchChange,
   readOnly,
   children,
   schemaEditing,
@@ -75,7 +71,10 @@ export function FormCategoryCard({
   canMoveCategoryDown,
   onMoveCategory,
 }: FormCategoryCardProps) {
-  const sortedFields = [...category.fields].sort((a, b) => a.order - b.order);
+  const sortedFields = useMemo(
+    () => [...category.fields].sort((a, b) => a.order - b.order),
+    [category.fields],
+  );
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<FormFieldType>('text');
   const [newFieldRequired, setNewFieldRequired] = useState(false);
@@ -292,6 +291,7 @@ export function FormCategoryCard({
             field={field}
             value={values[field.id]}
             onChange={onChange}
+            onBatchChange={onBatchChange}
             readOnly={readOnly}
             values={values}
             fieldErrors={fieldErrors}
@@ -305,4 +305,4 @@ export function FormCategoryCard({
       </Stack>
     </Card>
   );
-}
+});

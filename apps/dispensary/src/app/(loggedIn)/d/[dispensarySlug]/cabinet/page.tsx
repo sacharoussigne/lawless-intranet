@@ -25,7 +25,7 @@ export default async function CabinetPage({
     redirect(tenantRoutes(dispensarySlug).employee.index);
   }
 
-  const { cabinets, isAdmin } = bootstrap;
+  const { cabinets } = bootstrap;
   const firstCabinetId = cabinets[0]?.id;
 
   const patientsResult = firstCabinetId
@@ -42,7 +42,6 @@ export default async function CabinetPage({
           ? patientsResult.data ?? []
           : []
       }
-      isAdmin={isAdmin}
     />
   );
 }

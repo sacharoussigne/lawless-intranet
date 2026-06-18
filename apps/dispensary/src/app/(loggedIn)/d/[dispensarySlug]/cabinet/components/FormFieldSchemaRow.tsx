@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -17,6 +17,7 @@ import {
 } from '@mantine/core';
 import { IconChevronDown, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
 import type { FormField, FormFieldType } from '@/lib/cabinet/formSchema';
+import { FIELD_TYPES } from '@/lib/cabinet/formSchema';
 import {
   addFieldToBranch,
   deleteFieldById,
@@ -34,13 +35,6 @@ import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { InlineEditableText } from './InlineEditableText';
 import { SchemaReorderButtons } from './SchemaReorderButtons';
 
-const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
-  { value: 'text', label: 'Texte' },
-  { value: 'textarea', label: 'Zone de texte' },
-  { value: 'date', label: 'Date' },
-  { value: 'select', label: 'Liste déroulante' },
-];
-
 type FormFieldSchemaRowProps = {
   field: FormField;
   depth?: number;
@@ -50,6 +44,45 @@ type FormFieldSchemaRowProps = {
   canMoveDown?: boolean;
   onMove?: (direction: 'up' | 'down') => void;
 };
+
+function normalizePatchedField(base: FormField, updates: Partial<FormField>): FormField {
+  let next: FormField = { ...base, ...updates };
+  if (updates.placeholder === '') delete next.placeholder;
+  if (updates.defaultValue === '') delete next.defaultValue;
+  if ('editable' in updates && updates.editable !== false) delete next.editable;
+  if (updates.defaultValue === '' || updates.defaultValue === undefined) {
+    if (!next.defaultValue && next.editable === false) delete next.editable;
+  }
+  if (updates.type && updates.type !== 'select') {
+    delete next.options;
+    delete next.conditionalBranches;
+    delete next.multiple;
+    if (base.type === 'select') {
+      delete next.defaultValue;
+    }
+  }
+  if ('multiple' in updates) {
+    if (updates.multiple) {
+      next.multiple = true;
+      if (next.defaultValue) {
+        const converted = convertSelectDefaultForMultipleChange(next.defaultValue, true);
+        if (converted) next.defaultValue = converted;
+        else delete next.defaultValue;
+      }
+    } else {
+      delete next.multiple;
+      if (next.defaultValue) {
+        const converted = convertSelectDefaultForMultipleChange(next.defaultValue, false);
+        if (converted) next.defaultValue = converted;
+        else delete next.defaultValue;
+      }
+    }
+  }
+  if (updates.options) {
+    next = syncBranchesWithOptions(next);
+  }
+  return next;
+}
 
 export function FormFieldSchemaRow({
   field,
@@ -61,53 +94,45 @@ export function FormFieldSchemaRow({
   onMove,
 }: FormFieldSchemaRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const optionsText = (field.options ?? []).map((o) => o.label).join('\n');
+  const [draftField, setDraftField] = useState(field);
+  const optionsText = (draftField.options ?? []).map((o) => o.label).join('\n');
 
-  const patchField = (updates: Partial<FormField>) => {
-    let next: FormField = { ...field, ...updates };
-    if (updates.placeholder === '') delete next.placeholder;
-    if (updates.defaultValue === '') delete next.defaultValue;
-    if ('editable' in updates && updates.editable !== false) delete next.editable;
-    if (updates.defaultValue === '' || updates.defaultValue === undefined) {
-      if (!next.defaultValue && next.editable === false) delete next.editable;
-    }
-    if (updates.type && updates.type !== 'select') {
-      delete next.options;
-      delete next.conditionalBranches;
-      delete next.multiple;
-      if (field.type === 'select') {
-        delete next.defaultValue;
-      }
-    }
-    if ('multiple' in updates) {
-      if (updates.multiple) {
-        next.multiple = true;
-        if (next.defaultValue) {
-          const converted = convertSelectDefaultForMultipleChange(next.defaultValue, true);
-          if (converted) next.defaultValue = converted;
-          else delete next.defaultValue;
-        }
-      } else {
-        delete next.multiple;
-        if (next.defaultValue) {
-          const converted = convertSelectDefaultForMultipleChange(next.defaultValue, false);
-          if (converted) next.defaultValue = converted;
-          else delete next.defaultValue;
-        }
-      }
-    }
-    if (updates.options) {
-      next = syncBranchesWithOptions(next);
-    }
-    onChange(next);
-  };
+  useEffect(() => {
+    setDraftField(field);
+  }, [field]);
+
+  const commitField = useCallback(
+    (next: FormField) => {
+      setDraftField(next);
+      onChange(next);
+    },
+    [onChange],
+  );
+
+  const patchField = useCallback(
+    (updates: Partial<FormField>, commit = true) => {
+      setDraftField((prev) => {
+        const next = normalizePatchedField(prev, updates);
+        if (commit) onChange(next);
+        return next;
+      });
+    },
+    [onChange],
+  );
+
+  const commitDraft = useCallback(() => {
+    setDraftField((current) => {
+      onChange(current);
+      return current;
+    });
+  }, [onChange]);
 
   const updateNestedField = (targetId: string, updated: FormField) => {
-    onChange(mapFieldById(field, targetId, () => updated));
+    commitField(mapFieldById(draftField, targetId, () => updated));
   };
 
   const deleteNestedField = (targetId: string) => {
-    onChange(deleteFieldById(field, targetId));
+    commitField(deleteFieldById(draftField, targetId));
   };
 
   return (
@@ -132,21 +157,21 @@ export function FormFieldSchemaRow({
             {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
           </ActionIcon>
           <InlineEditableText
-            value={field.label}
+            value={draftField.label}
             canEdit
             onSave={(label) => patchField({ label })}
             textClassName="disp-display-title"
           />
           <Text size="xs" c="dimmed">
-            ({FIELD_TYPES.find((t) => t.value === field.type)?.label ?? field.type})
-            {field.required && ' *'}
+            ({FIELD_TYPES.find((t) => t.value === draftField.type)?.label ?? draftField.type})
+            {draftField.required && ' *'}
           </Text>
-          {field.editable === false && (
+          {draftField.editable === false && (
             <Badge variant="outline" color="slate" size="xs">
               Fixe
             </Badge>
           )}
-          {field.type === 'select' && field.multiple && (
+          {draftField.type === 'select' && draftField.multiple && (
             <Badge variant="outline" color="sage" size="xs">
               Multi
             </Badge>
@@ -176,11 +201,11 @@ export function FormFieldSchemaRow({
               label="Type"
               size="xs"
               data={FIELD_TYPES}
-              value={field.type}
+              value={draftField.type}
               style={{ flex: 1, minWidth: 140 }}
               onChange={(v) => {
                 const type = (v as FormFieldType) ?? 'text';
-                if (type === 'select' && !field.options?.length) {
+                if (type === 'select' && !draftField.options?.length) {
                   patchField({
                     type,
                     options: [{ id: randomUUID(), label: 'Option 1' }],
@@ -190,35 +215,37 @@ export function FormFieldSchemaRow({
                 }
               }}
             />
-            {(field.type === 'text' ||
-              field.type === 'textarea' ||
-              field.type === 'select' ||
-              field.type === 'date') && (
+            {(draftField.type === 'text' ||
+              draftField.type === 'textarea' ||
+              draftField.type === 'select' ||
+              draftField.type === 'date') && (
               <TextInput
                 label="Placeholder"
                 size="xs"
                 placeholder="Texte d'aide"
-                value={field.placeholder ?? ''}
+                value={draftField.placeholder ?? ''}
                 style={{ flex: 1, minWidth: 160 }}
-                onChange={(e) => patchField({ placeholder: e.currentTarget.value })}
+                onChange={(e) => patchField({ placeholder: e.currentTarget.value }, false)}
+                onBlur={commitDraft}
               />
             )}
-            {field.type === 'text' || field.type === 'textarea' ? (
+            {draftField.type === 'text' || draftField.type === 'textarea' ? (
               <TextInput
                 label="Valeur par défaut"
                 size="xs"
-                value={field.defaultValue ?? ''}
+                value={draftField.defaultValue ?? ''}
                 style={{ flex: 1, minWidth: 160 }}
-                onChange={(e) => patchField({ defaultValue: e.currentTarget.value })}
+                onChange={(e) => patchField({ defaultValue: e.currentTarget.value }, false)}
+                onBlur={commitDraft}
               />
-            ) : field.type === 'select' && field.multiple ? (
+            ) : draftField.type === 'select' && draftField.multiple ? (
               <MultiSelect
                 label="Valeur par défaut"
                 size="xs"
                 placeholder="Aucune"
-                data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
+                data={(draftField.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
                 value={
-                  field.defaultValue ? parseMultiSelectValue(field.defaultValue) : []
+                  draftField.defaultValue ? parseMultiSelectValue(draftField.defaultValue) : []
                 }
                 clearable
                 style={{ flex: 1, minWidth: 160 }}
@@ -226,22 +253,22 @@ export function FormFieldSchemaRow({
                   patchField({ defaultValue: ids.length > 0 ? JSON.stringify(ids) : '' })
                 }
               />
-            ) : field.type === 'select' ? (
+            ) : draftField.type === 'select' ? (
               <Select
                 label="Valeur par défaut"
                 size="xs"
                 placeholder="Aucune"
-                data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
-                value={field.defaultValue ?? null}
+                data={(draftField.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
+                value={draftField.defaultValue ?? null}
                 clearable
                 style={{ flex: 1, minWidth: 160 }}
                 onChange={(v) => patchField({ defaultValue: v ?? '' })}
               />
-            ) : field.type === 'date' ? (
+            ) : draftField.type === 'date' ? (
               <div style={{ flex: 1, minWidth: 180 }}>
                 <RpDatePicker
                   label="Valeur par défaut"
-                  value={field.defaultValue ?? null}
+                  value={draftField.defaultValue ?? null}
                   clearable
                   onChange={(d) => patchField({ defaultValue: d ? d.toISOString() : '' })}
                 />
@@ -252,40 +279,39 @@ export function FormFieldSchemaRow({
             <Switch
               label="Obligatoire"
               size="sm"
-              checked={field.required}
+              checked={draftField.required}
               onChange={(e) => patchField({ required: e.currentTarget.checked })}
             />
-            {field.type === 'select' && (
+            {draftField.type === 'select' && (
               <Switch
                 label="Sélection multiple"
                 size="sm"
-                checked={field.multiple === true}
+                checked={draftField.multiple === true}
                 onChange={(e) => patchField({ multiple: e.currentTarget.checked })}
               />
             )}
-            {field.defaultValue && (
+            {draftField.defaultValue && (
               <Switch
                 label="Modifiable"
                 size="sm"
-                checked={field.editable !== false}
+                checked={draftField.editable !== false}
                 onChange={(e) => patchField({ editable: e.currentTarget.checked })}
               />
             )}
           </Group>
-          {field.type === 'select' && (
+          {draftField.type === 'select' && (
             <>
               <Textarea
                 label="Options (une par ligne)"
                 size="xs"
                 minRows={3}
                 defaultValue={optionsText}
-                key={optionsText}
                 onBlur={(e) => {
                   const lines = e.currentTarget.value
                     .split('\n')
                     .map((l) => l.trim())
                     .filter(Boolean);
-                  const existing = field.options ?? [];
+                  const existing = draftField.options ?? [];
                   const options = lines.map((label, i) => ({
                     id: existing[i]?.id ?? randomUUID(),
                     label,
@@ -301,18 +327,18 @@ export function FormFieldSchemaRow({
                 <Text size="xs" c="dimmed">
                   Définissez ce qui s&apos;affiche selon la valeur sélectionnée.
                 </Text>
-                {(field.options ?? []).map((option) => (
+                {(draftField.options ?? []).map((option) => (
                   <ConditionalBranchEditor
                     key={option.id}
                     optionLabel={option.label}
-                    branchFields={getBranchFields(field, option.id)}
+                    branchFields={getBranchFields(draftField, option.id)}
                     onAddField={(partial) =>
-                      onChange(addFieldToBranch(field, option.id, partial))
+                      commitField(addFieldToBranch(draftField, option.id, partial))
                     }
                     onUpdateField={(targetId, updated) => updateNestedField(targetId, updated)}
                     onDeleteField={(targetId) => deleteNestedField(targetId)}
                     onMoveField={(targetId, direction) =>
-                      onChange(moveFieldInBranch(field, option.id, targetId, direction))
+                      commitField(moveFieldInBranch(draftField, option.id, targetId, direction))
                     }
                     depth={depth + 1}
                   />

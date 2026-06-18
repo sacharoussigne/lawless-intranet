@@ -102,60 +102,6 @@ const formFieldInputSchema: z.ZodType<unknown> = z.lazy(() =>
   }),
 );
 
-export const addFormCategorySchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  name: z.string().trim().min(1).max(120),
-});
-
-export const updateFormCategorySchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  categoryId: z.string().min(1),
-  name: z.string().trim().min(1).max(120).optional(),
-});
-
-export const deleteFormCategorySchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  categoryId: z.string().min(1),
-});
-
-export const addFormFieldSchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  categoryId: z.string().min(1),
-  field: formFieldInputSchema,
-});
-
-export const updateFormFieldSchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  categoryId: z.string().min(1),
-  fieldId: z.string().min(1),
-  field: formFieldInputSchema,
-});
-
-export const deleteFormFieldSchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  categoryId: z.string().min(1),
-  fieldId: z.string().min(1),
-});
-
-export const reorderFormCategoriesSchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  items: z.array(z.object({ id: z.string().min(1), order: z.number().int() })),
-});
-
-export const reorderFormFieldsSchema = z.object({
-  cabinetId: z.string().uuid(),
-  entityType: z.enum(['patient', 'careEpisode', 'consultation']),
-  categoryId: z.string().min(1),
-  items: z.array(z.object({ id: z.string().min(1), order: z.number().int() })),
-});
-
 const formEntitySchemaInput = z.object({
   categories: z.array(
     z.object({

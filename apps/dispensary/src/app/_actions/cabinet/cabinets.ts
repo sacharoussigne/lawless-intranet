@@ -22,7 +22,7 @@ import {
   guardCabinetRead,
   validateDispensaryUserIds,
 } from '@/app/_actions/cabinet/internals';
-import { enrichCabinetMembers } from '@/lib/cabinet/enrichMembers';
+import { enrichAgendaMembers } from '@/lib/enrichUsers';
 import { createDefaultFormSchemas } from '@/lib/cabinet/formSchema';
 
 const cabinetIncludeMembers = {
@@ -48,52 +48,11 @@ export async function listCabinetsForAdmin(dispensarySlug: string) {
     const enriched = await Promise.all(
       cabinets.map(async (cabinet) => ({
         ...cabinet,
-        members: await enrichCabinetMembers(cabinet.members),
+        members: await enrichAgendaMembers(cabinet.members),
       })),
     );
 
     return { status: 200, data: enriched };
-  } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement des cabinets');
-  }
-}
-
-export async function listAccessibleCabinets(dispensarySlug: string) {
-  try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
-    if (!ctx.ok) return ctx.response;
-
-    const { dispensaryId } = ctx.tenant;
-    const { session } = ctx;
-
-    const cabinetIds = await listAccessibleCabinetIds(dispensaryId, session.user.id);
-
-    if (cabinetIds.length === 0) {
-      return { status: 200, data: [] as CabinetSummaryDTO[] };
-    }
-
-    const cabinets = await prisma.cabinet.findMany({
-      where: { id: { in: cabinetIds }, ...tenantWhere(dispensaryId) },
-      include: {
-        members: {
-          where: { userId: session.user.id },
-          select: { accessLevel: true },
-        },
-        _count: { select: { members: true, patients: true } },
-      },
-      orderBy: { name: 'asc' },
-    });
-
-    const data: CabinetSummaryDTO[] = cabinets.map((c) => ({
-      id: c.id,
-      name: c.name,
-      description: c.description,
-      accessLevel: c.members[0]?.accessLevel ?? null,
-      memberCount: c._count.members,
-      patientCount: c._count.patients,
-    }));
-
-    return { status: 200, data };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement des cabinets');
   }
@@ -302,40 +261,10 @@ export async function getCabinetWithMembers(dispensarySlug: string, cabinetId: s
       status: 200,
       data: {
         ...cabinet,
-        members: await enrichCabinetMembers(cabinet.members),
+        members: await enrichAgendaMembers(cabinet.members),
       },
     };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement du cabinet');
-  }
-}
-
-export async function getCabinetFormSchemas(dispensarySlug: string, cabinetId: string) {
-  try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
-    if (!ctx.ok) return ctx.response;
-
-    const guard = await guardCabinetRead(
-      ctx.tenant.dispensaryId,
-      cabinetId,
-      ctx.session,
-      ctx.tenant.effectiveRole,
-    );
-    if (!guard.ok) {
-      return { status: guard.status, error: guard.error };
-    }
-
-    const cabinet = await prisma.cabinet.findFirst({
-      where: { id: cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
-      select: { formSchemas: true },
-    });
-
-    if (!cabinet) {
-      return { status: 404, error: 'Cabinet introuvable' };
-    }
-
-    return { status: 200, data: cabinet.formSchemas };
-  } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement du schéma');
   }
 }

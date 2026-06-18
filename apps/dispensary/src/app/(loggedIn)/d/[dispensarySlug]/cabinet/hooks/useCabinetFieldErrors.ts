@@ -44,6 +44,5 @@ export function useCabinetFieldErrors() {
     clearFieldError,
     resetErrors,
     applySubmitError,
-    setFieldErrors,
   };
 }

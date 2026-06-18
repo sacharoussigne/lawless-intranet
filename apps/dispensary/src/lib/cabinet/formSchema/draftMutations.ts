@@ -103,35 +103,6 @@ export function replaceField(
   };
 }
 
-export function updateField(
-  schema: FormEntitySchema,
-  categoryId: string,
-  fieldId: string,
-  updates: Partial<Pick<FormField, 'label' | 'type' | 'required' | 'options' | 'conditionalBranches' | 'multiple'>>,
-): FormEntitySchema {
-  return {
-    categories: schema.categories.map((c) => {
-      if (c.id !== categoryId) return c;
-      return {
-        ...c,
-        fields: c.fields.map((f) => {
-          if (f.id !== fieldId) return f;
-          const next: FormField = { ...f, ...updates };
-          if (updates.type && updates.type !== 'select') {
-            delete next.options;
-            delete next.conditionalBranches;
-            delete next.multiple;
-          }
-          if (updates.type === 'select' && updates.options) {
-            next.options = updates.options;
-          }
-          return next;
-        }),
-      };
-    }),
-  };
-}
-
 export function moveCategory(
   schema: FormEntitySchema,
   categoryId: string,

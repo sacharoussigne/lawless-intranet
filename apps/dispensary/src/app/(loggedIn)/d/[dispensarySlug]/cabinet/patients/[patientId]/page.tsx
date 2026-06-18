@@ -2,7 +2,7 @@ import { getCabinetPatient } from '@/app/_actions/cabinet/patients';
 import { listCareEpisodes } from '@/app/_actions/cabinet/careEpisodes';
 import { getAuthSession } from '@/lib/authSession';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
-import { isDispensaryAdminRole, canEditCabinetFormSchema } from '@/lib/cabinet/access';
+import { canEditCabinetFormSchema } from '@/lib/cabinet/access';
 import { redirect, notFound } from 'next/navigation';
 import { tenantRoutes } from '@/types/routes';
 import type { AuthSession } from '@/types/session';
@@ -50,7 +50,6 @@ export default async function PatientDetailPage({
           ? episodesResult.data ?? []
           : []
       }
-      isAdmin={isDispensaryAdminRole(session?.user?.role, effectiveRole)}
       canEditSchema={canEditSchema}
     />
   );
