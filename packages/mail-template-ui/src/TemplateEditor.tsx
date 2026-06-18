@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Textarea, Stack, Text, Paper } from '@mantine/core';
-import { parseTemplateParameters } from '@/lib/mailTemplate/parser';
+import { parseTemplateParameters } from '@lawless-intranet/mail-template-engine';
 import { DetectedParameters } from './DetectedParameters';
 
 interface TemplateEditorProps {
@@ -69,6 +69,8 @@ export function TemplateEditor({
               <strong>Syntaxe :</strong>
               <br />
               JavaScript: {'{js:code:endjs}'}
+              <br />
+              Variable: {'${name}'}, {'${items}'}, {'${price}'}, {'${username}'}
               <br />
               Input texte:{' '}
               {

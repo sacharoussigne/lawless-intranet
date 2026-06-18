@@ -21,6 +21,7 @@ import {
 } from '@/lib/cabinet/access';
 import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
+import { MailTemplateProvider } from '@lawless-intranet/mail-template-ui';
 
 export default async function DispensaryLayout({
   children,
@@ -101,6 +102,7 @@ export default async function DispensaryLayout({
     >
       <DispensaryRealtimeShell>
         <QueryProvider>
+          <MailTemplateProvider username={session?.user.name ?? 'Utilisateur'}>
           <LoggedInShell>
           <Header
             session={authSession}
@@ -112,6 +114,7 @@ export default async function DispensaryLayout({
             {children}
           </div>
         </LoggedInShell>
+          </MailTemplateProvider>
         </QueryProvider>
       </DispensaryRealtimeShell>
     </PermissionsProvider>

@@ -21,6 +21,8 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@lawless-intranet/auth-client": "workspace:*",
     "@lawless-intranet/auth-permissions": "workspace:*",
+    "@lawless-intranet/mail-template-engine": "workspace:*",
+    "@lawless-intranet/mail-template-ui": "workspace:*",
     "@lawless-intranet/types": "workspace:*",
     "@mantine/charts": "^8.3.17",
     "@mantine/core": "^8.3.17",

@@ -21,13 +21,11 @@ import { useForm } from '@mantine/form';
 import {
   extractInputs,
   extractFormSections,
-  type TemplateInput,
-} from '@/lib/mailTemplate/parser';
-import {
   renderTemplate,
-  type RenderContext,
   resolveJsValue,
-} from '@/lib/mailTemplate/renderer';
+  type TemplateInput,
+} from '@lawless-intranet/mail-template-engine';
+import { buildTemplateRenderContext, useMailTemplateContext } from './MailTemplateProvider';
 
 type FormValues = Record<string, string | number | boolean | undefined>;
 
@@ -52,6 +50,8 @@ export interface TemplateFormGeneratorHandle {
 
 interface TemplateFormGeneratorProps {
   template: string;
+  /** Additional template variables beyond built-in `${username}`. */
+  variables?: Record<string, string>;
   onSubmit?: (renderedContent: string) => void;
   onCancel?: () => void;
   onChange?: (renderedContent: string) => void;
@@ -61,9 +61,10 @@ export const TemplateFormGenerator = forwardRef<
   TemplateFormGeneratorHandle,
   TemplateFormGeneratorProps
 >(function TemplateFormGenerator(
-  { template, onSubmit, onCancel, onChange },
+  { template, variables, onSubmit, onCancel, onChange },
   ref
 ) {
+  const { username } = useMailTemplateContext();
   const inputs = useMemo(() => extractInputs(template), [template]);
 
   const dependentsByParent = useMemo(() => {
@@ -98,21 +99,24 @@ export const TemplateFormGenerator = forwardRef<
   const [debouncedValues] = useDebouncedValue(form.values, 200);
 
   const renderContent = (values: FormValues) => {
-    const context: RenderContext = {
-      inputs: Object.entries(values).reduce(
-        (acc, [key, value]) => {
-          if (typeof value === 'boolean') {
-            acc[key] = value ? 'true' : 'false';
-          } else {
-            acc[key] =
-              value !== null && value !== undefined ? String(value) : '';
-          }
-          return acc;
-        },
-        {} as Record<string, string>
-      ),
-    };
-    return renderTemplate(template, context);
+    return renderTemplate(
+      template,
+      buildTemplateRenderContext(username, {
+        inputs: Object.entries(values).reduce(
+          (acc, [key, value]) => {
+            if (typeof value === 'boolean') {
+              acc[key] = value ? 'true' : 'false';
+            } else {
+              acc[key] =
+                value !== null && value !== undefined ? String(value) : '';
+            }
+            return acc;
+          },
+          {} as Record<string, string>
+        ),
+        variables,
+      }),
+    );
   };
 
   const handleSubmit = (values: FormValues) => {
@@ -125,7 +129,7 @@ export const TemplateFormGenerator = forwardRef<
     if (onChange) {
       onChange(renderContent(debouncedValues));
     }
-  }, [debouncedValues, template]);
+  }, [debouncedValues, template, variables, username]);
 
   const renderInput = (input: TemplateInput) => {
     const commonProps = {

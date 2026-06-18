@@ -1,29 +1,6 @@
-export interface TemplateInput {
-  type: string;
-  name: string;
-  label: string;
-  placeholder?: string;
-  required?: boolean;
-  defaultValue?: string;
-  checkedValue?: string;
-  dependsOn?: string;
-  layout?: 'inline' | 'below';
-}
+import type { FormSection, TemplateInput, TemplateParameter } from './types';
 
-export interface FormSection {
-  title?: string;
-  inputs: TemplateInput[];
-}
-
-export interface TemplateParameter {
-  type: 'js' | 'input' | 'category';
-  raw: string;
-  startIndex: number;
-  endIndex: number;
-  jsCode?: string;
-  input?: TemplateInput;
-  categoryTitle?: string;
-}
+export type { FormSection, TemplateInput, TemplateParameter };
 
 const JS_PATTERN = /\{js:(.*?):endjs\}/g;
 const INPUT_PATTERN = /\{input:\[(.*?)\]\}/g;

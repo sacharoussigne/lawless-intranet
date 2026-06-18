@@ -15,7 +15,7 @@ import { handleApiZodError } from '@/lib/services/zod';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import type { MailTemplate } from '@/types/mails';
 import { TemplateFormHeader } from './TemplateFormHeader';
-import { TemplateEditorLayout } from './TemplateEditorLayout';
+import { TemplateEditorLayout } from '@lawless-intranet/mail-template-ui';
 
 interface UserTemplateFormPageProps {
   mode: 'create' | 'edit';

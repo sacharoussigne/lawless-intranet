@@ -21,11 +21,11 @@ import { handleAction } from '@/lib/action';
 import { handleApiZodError } from '@/lib/services/zod';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import type { MailTemplateOption } from '@/types/mails';
-import { TemplateEditor } from '../components/TemplateEditor';
 import {
+  TemplateEditor,
   TemplatePreviewWithForm,
   useTemplatePreviewActions,
-} from '../components/TemplatePreviewPanel';
+} from '@lawless-intranet/mail-template-ui';
 import { useUserMailTemplateDetail, useUserMailTemplateOptions } from '../hooks/useMailsQueries';
 
 interface NewMailPageClientProps {

@@ -19,7 +19,7 @@ import { handleAction } from '@/lib/action';
 import { handleApiZodError } from '@/lib/services/zod';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import type { Mail } from '@prisma/client';
-import { TemplateEditor } from '../../components/TemplateEditor';
+import { TemplateEditor } from '@lawless-intranet/mail-template-ui';
 
 
 interface EditMailPageClientProps {

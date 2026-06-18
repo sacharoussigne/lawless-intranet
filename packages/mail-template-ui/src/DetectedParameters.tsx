@@ -2,8 +2,11 @@
 
 import { useMemo } from 'react';
 import { Stack, Text, Group, Badge, Code } from '@mantine/core';
-import { IconCode, IconForms } from '@tabler/icons-react';
-import { parseTemplateParameters } from '@/lib/mailTemplate/parser';
+import { IconCode, IconForms, IconVariable } from '@tabler/icons-react';
+import {
+  extractVariables,
+  parseTemplateParameters,
+} from '@lawless-intranet/mail-template-engine';
 
 interface DetectedParametersProps {
   content: string;
@@ -12,6 +15,7 @@ interface DetectedParametersProps {
 export function DetectedParameters({ content }: DetectedParametersProps) {
   const parsed = useMemo(() => {
     const parameters = parseTemplateParameters(content);
+    const variables = extractVariables(content);
     const inputs = parameters
       .filter((p): p is typeof p & { input: NonNullable<(typeof p)['input']> } => p.type === 'input' && p.input != null)
       .map((p) => p.input);
@@ -40,13 +44,13 @@ export function DetectedParameters({ content }: DetectedParametersProps) {
       (section) => section.title || section.inputs.length > 0,
     );
 
-    return { parameters, inputs, jsCodes, formSections: sections };
+    return { parameters, inputs, jsCodes, formSections: sections, variables };
   }, [content]);
 
-  const { parameters, inputs, jsCodes, formSections } = parsed;
+  const { parameters, inputs, jsCodes, formSections, variables } = parsed;
   const hasCategories = formSections.some((section) => section.title);
 
-  if (parameters.length === 0) {
+  if (parameters.length === 0 && variables.length === 0) {
     return (
       <Text size="sm" c="dimmed">
         Aucun paramètre détecté
@@ -56,6 +60,26 @@ export function DetectedParameters({ content }: DetectedParametersProps) {
 
   return (
     <Stack gap="md">
+      {variables.length > 0 && (
+        <Stack gap="xs">
+          <Group gap="xs">
+            <IconVariable size={16} />
+            <Text size="sm" fw={500}>
+              Variables ({variables.length})
+            </Text>
+          </Group>
+          <Group gap="xs">
+            {variables.map((variable) => (
+              <Badge key={variable} variant="light" color="leather">
+                {'${'}
+                {variable}
+                {'}'}
+              </Badge>
+            ))}
+          </Group>
+        </Stack>
+      )}
+
       {jsCodes.length > 0 && (
         <Stack gap="xs">
           <Group gap="xs">

@@ -1,13 +1,13 @@
 import {
   extractInputs,
   parseTemplateParameters,
-  type TemplateInput,
-  type TemplateParameter,
 } from './parser';
+import type { RenderContext, RenderOptions, TemplateInput, TemplateParameter } from './types';
+import { resolveRenderVariables } from './context';
+import { applyGreetingAdaptation } from './greeting';
+import { substituteVariables } from './variables';
 
-export interface RenderContext {
-  inputs: Record<string, string>;
-}
+export type { RenderContext, RenderOptions };
 
 export function executeJsCode(jsCode: string): string {
   try {
@@ -143,10 +143,7 @@ export function getReplacementSpan(
   return { startIndex, endIndex };
 }
 
-export function renderTemplate(
-  template: string,
-  context: RenderContext
-): string {
+function renderDslTemplate(template: string, context: RenderContext): string {
   const parameters = parseTemplateParameters(template);
   const allInputs = extractInputs(template);
   let result = template;
@@ -176,6 +173,25 @@ export function renderTemplate(
       result.substring(0, startIndex) +
       replacement +
       result.substring(endIndex);
+  }
+
+  return result;
+}
+
+export function renderTemplate(
+  template: string,
+  context: RenderContext,
+  options?: RenderOptions
+): string {
+  let result = renderDslTemplate(template, context);
+
+  const variables = resolveRenderVariables(context);
+  if (variables) {
+    result = substituteVariables(result, variables);
+  }
+
+  if (options?.applyGreetingAdaptation !== false) {
+    result = applyGreetingAdaptation(result, options?.now);
   }
 
   return result;

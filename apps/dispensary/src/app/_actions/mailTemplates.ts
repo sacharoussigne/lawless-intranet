@@ -5,7 +5,12 @@ import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { renderTemplate } from '@lawless-intranet/mail-template-engine';
 import type { OrderStatus, OrderType } from '@prisma/client';
+import {
+  buildOrderMailVariables,
+  type OrderMailPreviewSource,
+} from '@/lib/mailTemplate/buildOrderMailVariables';
 
 const optionalDefaultMailName = z
   .string()
@@ -268,18 +273,6 @@ export async function deleteMailTemplate(dispensarySlug: string, data: { id: str
   }
 }
 
-type OrderMailPreviewSource = {
-  type: string;
-  status: string;
-  price: unknown;
-  company: { name: string } | null;
-  individualCustomer: { name: string } | null;
-  items: Array<{
-    quantity: number;
-    item: { name: string };
-  }>;
-};
-
 export async function generateOrderMailPreview(
   dispensarySlug: string,
   data: {
@@ -364,59 +357,11 @@ export async function generateOrderMailPreview(
     }
 
     const template = assignment.mailTemplate;
-
-    const itemsText = order.items
-      .map((orderItem) => {
-        const itemName = orderItem.item.name;
-        const quantity = orderItem.quantity;
-        return `- ${itemName} (x${quantity})`;
-      })
-      .join('\n');
-
-    const priceValue = order.price != null ? Number(order.price) : null;
-    const priceText =
-      priceValue != null && Number.isFinite(priceValue)
-        ? `${priceValue.toFixed(2)} $`
-        : 'Non spécifié';
-
-    const username = ctx.session.user.name || 'Utilisateur';
-
-    let preview = template.content;
-    const clientName =
-      order.individualCustomer?.name ?? order.company?.name ?? 'Client';
-    preview = preview.replace(/\${name}/g, clientName);
-    preview = preview.replace(/\${items}/g, itemsText);
-    preview = preview.replace(/\${price}/g, priceText);
-    preview = preview.replace(/\${username}/g, username);
-
-    const currentHour = new Date().getHours();
-    const isEvening = currentHour >= 18;
-
-    if (isEvening) {
-      preview = preview.replace(/Bonjour/gi, (match) => {
-        if (match === 'Bonjour') return 'Bonsoir';
-        if (match === 'BONJOUR') return 'BONSOIR';
-        return 'bonsoir';
-      });
-      preview = preview.replace(/journée/gi, (match) => {
-        if (match === 'Journée') return 'Soirée';
-        if (match === 'JOURNÉE') return 'SOIRÉE';
-        if (match === 'JOURNEE') return 'SOIREE';
-        return 'soirée';
-      });
-    } else {
-      preview = preview.replace(/Bonsoir/gi, (match) => {
-        if (match === 'Bonsoir') return 'Bonjour';
-        if (match === 'BONSOIR') return 'BONJOUR';
-        return 'bonjour';
-      });
-      preview = preview.replace(/soirée/gi, (match) => {
-        if (match === 'Soirée') return 'Journée';
-        if (match === 'SOIRÉE') return 'JOURNÉE';
-        if (match === 'SOIREE') return 'JOURNEE';
-        return 'journée';
-      });
-    }
+    const preview = renderTemplate(template.content, {
+      inputs: {},
+      username: ctx.session.user.name || 'Utilisateur',
+      variables: buildOrderMailVariables(order),
+    });
 
     return {
       status: 200,

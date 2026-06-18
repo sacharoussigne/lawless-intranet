@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pg', '@prisma/client', '@prisma/adapter-pg'],
   experimental: {
     optimizePackageImports: [
+      '@lawless-intranet/mail-template-engine',
+      '@lawless-intranet/mail-template-ui',
       '@mantine/core',
       '@mantine/hooks',
       '@mantine/dates',

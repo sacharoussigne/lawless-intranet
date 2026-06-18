@@ -13,13 +13,20 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
+  extractInputs,
+  renderTemplate,
+} from '@lawless-intranet/mail-template-engine';
+import {
   TemplateFormGenerator,
   type TemplateFormGeneratorHandle,
 } from './TemplateFormGenerator';
-import { renderTemplate, type RenderContext } from '@/lib/mailTemplate/renderer';
-import { extractInputs } from '@/lib/mailTemplate/parser';
+import { buildTemplateRenderContext, useMailTemplateContext } from './MailTemplateProvider';
 
-export function useTemplatePreviewActions(templateContent: string) {
+export function useTemplatePreviewActions(
+  templateContent: string,
+  variables?: Record<string, string>
+) {
+  const { username } = useMailTemplateContext();
   const formRef = useRef<TemplateFormGeneratorHandle>(null);
   const [formContent, setFormContent] = useState('');
   const [editedContent, setEditedContent] = useState<string | null>(null);
@@ -32,9 +39,11 @@ export function useTemplatePreviewActions(templateContent: string) {
 
   const staticContent = useMemo(() => {
     if (hasInputs) return '';
-    const context: RenderContext = { inputs: {} };
-    return renderTemplate(templateContent, context);
-  }, [templateContent, hasInputs]);
+    return renderTemplate(
+      templateContent,
+      buildTemplateRenderContext(username, { inputs: {}, variables }),
+    );
+  }, [templateContent, hasInputs, variables, username]);
 
   const autoContent = hasInputs ? formContent : staticContent;
   const resultContent = editedContent ?? autoContent;
@@ -44,7 +53,7 @@ export function useTemplatePreviewActions(templateContent: string) {
     setFormContent('');
     setEditedContent(null);
     formRef.current?.reset();
-  }, [templateContent]);
+  }, [templateContent, variables]);
 
   const resetTemplateForm = () => {
     formRef.current?.reset();
@@ -95,6 +104,7 @@ export function useTemplatePreviewActions(templateContent: string) {
 
 interface TemplatePreviewWithFormProps {
   templateContent: string;
+  variables?: Record<string, string>;
   resultLabel?: string;
   formRef: React.RefObject<TemplateFormGeneratorHandle | null>;
   onFormChange: (content: string) => void;
@@ -106,6 +116,7 @@ interface TemplatePreviewWithFormProps {
 
 export function TemplatePreviewWithForm({
   templateContent,
+  variables,
   resultLabel = 'Aperçu',
   formRef,
   onFormChange,
@@ -126,6 +137,7 @@ export function TemplatePreviewWithForm({
               <TemplateFormGenerator
                 ref={formRef}
                 template={templateContent}
+                variables={variables}
                 onChange={onFormChange}
               />
             </ScrollArea>
