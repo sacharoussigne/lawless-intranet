@@ -108,6 +108,8 @@ export function CareEpisodeDetailPageClient({
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema,
+    schemaNestedFlushToken,
+    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
     dispensarySlug,
@@ -320,6 +322,8 @@ export function CareEpisodeDetailPageClient({
           systemCards={activeSystemCards}
           mode={schemaEditing ? 'schema' : 'values'}
           onSchemaChange={setDraftEntitySchema}
+          schemaNestedFlushToken={schemaNestedFlushToken}
+          schemaFlushToken={schemaFlushToken}
           fieldErrors={editing ? fieldErrors : undefined}
         />
 

@@ -57,6 +57,8 @@ export function useCabinetEntityEditing<T extends EntityWithFormData>({
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema,
+    schemaNestedFlushToken,
+    schemaFlushToken,
   } = useCabinetSchemaEditing({
     dispensarySlug,
     cabinetId,
@@ -135,6 +137,8 @@ export function useCabinetEntityEditing<T extends EntityWithFormData>({
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema,
+    schemaNestedFlushToken,
+    schemaFlushToken,
     entitySchema,
     canEditSchema,
   };

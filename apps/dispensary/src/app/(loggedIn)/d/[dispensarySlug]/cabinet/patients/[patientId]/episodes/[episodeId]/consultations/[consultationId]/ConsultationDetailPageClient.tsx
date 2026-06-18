@@ -91,6 +91,8 @@ export function ConsultationDetailPageClient({
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema,
+    schemaNestedFlushToken,
+    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
     dispensarySlug,
@@ -239,6 +241,8 @@ export function ConsultationDetailPageClient({
           systemCards={activeSystemCards}
           mode={schemaEditing ? 'schema' : 'values'}
           onSchemaChange={setDraftEntitySchema}
+          schemaNestedFlushToken={schemaNestedFlushToken}
+          schemaFlushToken={schemaFlushToken}
           fieldErrors={editing ? fieldErrors : undefined}
         />
       </Stack>

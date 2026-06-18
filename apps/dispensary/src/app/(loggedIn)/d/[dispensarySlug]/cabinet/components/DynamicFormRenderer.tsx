@@ -30,8 +30,12 @@ type DynamicFormRendererProps = {
   readOnly?: boolean;
   systemCards?: Record<string, React.ReactNode>;
   mode?: DynamicFormRendererMode;
-  onSchemaChange?: (schema: FormEntitySchema) => void;
+  onSchemaChange?: (
+    schema: FormEntitySchema | ((prev: FormEntitySchema) => FormEntitySchema),
+  ) => void;
   fieldErrors?: CabinetFieldErrors;
+  schemaNestedFlushToken?: number;
+  schemaFlushToken?: number;
 };
 
 export function DynamicFormRenderer({
@@ -44,6 +48,8 @@ export function DynamicFormRenderer({
   mode = 'values',
   onSchemaChange,
   fieldErrors,
+  schemaNestedFlushToken,
+  schemaFlushToken,
 }: DynamicFormRendererProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const sortedCategories = useMemo(
@@ -53,7 +59,7 @@ export function DynamicFormRenderer({
   const schemaEditing = mode === 'schema';
 
   const mutateSchema = useCallback(
-    (next: FormEntitySchema) => {
+    (next: FormEntitySchema | ((prev: FormEntitySchema) => FormEntitySchema)) => {
       onSchemaChange?.(next);
     },
     [onSchemaChange],
@@ -100,7 +106,7 @@ export function DynamicFormRenderer({
           }
           onUpdateField={
             schemaEditing
-              ? (field) => mutateSchema(replaceField(schema, category.id, field))
+              ? (field) => mutateSchema((prev) => replaceField(prev, category.id, field))
               : undefined
           }
           onDeleteField={
@@ -115,6 +121,8 @@ export function DynamicFormRenderer({
               : undefined
           }
           fieldErrors={schemaEditing ? undefined : fieldErrors}
+          schemaNestedFlushToken={schemaEditing ? schemaNestedFlushToken : undefined}
+          schemaFlushToken={schemaEditing ? schemaFlushToken : undefined}
         >
           {category.systemKey && systemCards?.[category.systemKey]}
         </FormCategoryCard>

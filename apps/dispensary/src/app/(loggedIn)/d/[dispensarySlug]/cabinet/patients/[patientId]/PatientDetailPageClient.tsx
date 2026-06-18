@@ -105,6 +105,8 @@ export function PatientDetailPageClient({
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema,
+    schemaNestedFlushToken,
+    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
     dispensarySlug,
@@ -322,6 +324,8 @@ export function PatientDetailPageClient({
           systemCards={activeSystemCards}
           mode={schemaEditing ? 'schema' : 'values'}
           onSchemaChange={setDraftEntitySchema}
+          schemaNestedFlushToken={schemaNestedFlushToken}
+          schemaFlushToken={schemaFlushToken}
           fieldErrors={editing ? fieldErrors : undefined}
         />
 

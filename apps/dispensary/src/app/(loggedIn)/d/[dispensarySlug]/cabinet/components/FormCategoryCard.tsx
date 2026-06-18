@@ -1,6 +1,7 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import {
   ActionIcon,
   Badge,
@@ -50,6 +51,8 @@ type FormCategoryCardProps = {
   canMoveCategoryUp?: boolean;
   canMoveCategoryDown?: boolean;
   onMoveCategory?: (direction: 'up' | 'down') => void;
+  schemaNestedFlushToken?: number;
+  schemaFlushToken?: number;
 };
 
 export const FormCategoryCard = memo(function FormCategoryCard({
@@ -70,6 +73,8 @@ export const FormCategoryCard = memo(function FormCategoryCard({
   canMoveCategoryUp,
   canMoveCategoryDown,
   onMoveCategory,
+  schemaNestedFlushToken,
+  schemaFlushToken,
 }: FormCategoryCardProps) {
   const sortedFields = useMemo(
     () => [...category.fields].sort((a, b) => a.order - b.order),
@@ -81,6 +86,35 @@ export const FormCategoryCard = memo(function FormCategoryCard({
   const [newFieldPlaceholder, setNewFieldPlaceholder] = useState('');
   const [newFieldDefaultValue, setNewFieldDefaultValue] = useState('');
   const [newFieldEditable, setNewFieldEditable] = useState(true);
+  const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
+  const lastSchemaFlushTokenRef = useRef(0);
+
+  useLayoutEffect(() => {
+    if (schemaFlushToken === undefined) return;
+    if (schemaFlushToken <= lastSchemaFlushTokenRef.current) return;
+    lastSchemaFlushTokenRef.current = schemaFlushToken;
+    if (expandedFieldId !== null) {
+      flushSync(() => setExpandedFieldId(null));
+    }
+  }, [schemaFlushToken, expandedFieldId]);
+
+  const onUpdateFieldRef = useRef(onUpdateField);
+  const onDeleteFieldRef = useRef(onDeleteField);
+  const onMoveFieldRef = useRef(onMoveField);
+  onUpdateFieldRef.current = onUpdateField;
+  onDeleteFieldRef.current = onDeleteField;
+  onMoveFieldRef.current = onMoveField;
+
+  const handleFieldChange = useCallback((updated: FormField) => {
+    onUpdateFieldRef.current?.(updated);
+  }, []);
+
+  const handleFieldExpandedChange = useCallback((fieldId: string, next: boolean) => {
+    setExpandedFieldId((current) => {
+      if (next) return fieldId;
+      return current === fieldId ? null : current;
+    });
+  }, []);
 
   const resetNewFieldForm = () => {
     setNewFieldLabel('');
@@ -166,13 +200,16 @@ export const FormCategoryCard = memo(function FormCategoryCard({
             <FormFieldSchemaRow
               key={field.id}
               field={field}
-              onChange={(updated) => onUpdateField?.(updated)}
-              onDelete={() => onDeleteField?.(field.id)}
+              expanded={expandedFieldId === field.id}
+              onExpandedChange={(next) => handleFieldExpandedChange(field.id, next)}
+              onChange={handleFieldChange}
+              schemaNestedFlushToken={schemaNestedFlushToken}
+              onDelete={() => onDeleteFieldRef.current?.(field.id)}
               canMoveUp={fieldIndex > 0}
               canMoveDown={fieldIndex < sortedFields.length - 1}
               onMove={
-                onMoveField
-                  ? (direction) => onMoveField(field.id, direction)
+                onMoveFieldRef.current
+                  ? (direction) => onMoveFieldRef.current?.(field.id, direction)
                   : undefined
               }
             />

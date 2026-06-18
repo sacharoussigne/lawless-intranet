@@ -92,15 +92,15 @@ export function replaceField(
   categoryId: string,
   field: FormField,
 ): FormEntitySchema {
-  return {
-    categories: schema.categories.map((c) => {
-      if (c.id !== categoryId) return c;
-      return {
-        ...c,
-        fields: replaceTopLevelField(c.fields, field.id, field),
-      };
-    }),
-  };
+  let categoriesChanged = false;
+  const categories = schema.categories.map((c) => {
+    if (c.id !== categoryId) return c;
+    const nextFields = replaceTopLevelField(c.fields, field.id, field);
+    if (nextFields === c.fields) return c;
+    categoriesChanged = true;
+    return { ...c, fields: nextFields };
+  });
+  return categoriesChanged ? { categories } : schema;
 }
 
 export function moveCategory(
