@@ -1,4 +1,11 @@
 import type { CustomValues, FormEntitySchema, FormField } from './types';
+import {
+  getSelectedOptionIds,
+  isMultiSelectField,
+  parseMultiSelectValue,
+  serializeSelectValue,
+} from './selectValue';
+import { getVisibleFieldsForSelectedOptions } from './flattenFields';
 
 export type ValidateValuesResult =
   | { ok: true; values: CustomValues }
@@ -45,6 +52,21 @@ function validateFieldValue(
 
   if (field.type === 'select' && field.options?.length) {
     const validIds = new Set(field.options.map((o) => o.id));
+    if (isMultiSelectField(field)) {
+      const ids = parseMultiSelectValue(v);
+      if (ids.length === 0) {
+        if (field.required && enforceRequired) {
+          throw new Error(`Le champ « ${field.label} » est requis`);
+        }
+        return null;
+      }
+      for (const id of ids) {
+        if (!validIds.has(id)) {
+          throw new Error(`Valeur invalide pour « ${field.label} »`);
+        }
+      }
+      return serializeSelectValue(field, ids);
+    }
     if (!validIds.has(v)) {
       throw new Error(`Valeur invalide pour « ${field.label} »`);
     }
@@ -66,12 +88,11 @@ function validateFieldsRecursive(
       result[field.id] = validateFieldValue(field, raw, enforceRequired);
 
       if (field.type === 'select' && field.conditionalBranches?.length) {
-        const selectedId = result[field.id];
-        if (selectedId) {
-          const branch = field.conditionalBranches.find((b) => b.optionId === selectedId);
-          if (branch) {
-            validateFieldsRecursive(branch.fields, values, result, enforceRequired, errors);
-          }
+        const stored = result[field.id];
+        if (stored) {
+          const selectedIds = getSelectedOptionIds(field, stored);
+          const visible = getVisibleFieldsForSelectedOptions(field, selectedIds);
+          validateFieldsRecursive(visible, values, result, enforceRequired, errors);
         }
       }
     } catch (err) {

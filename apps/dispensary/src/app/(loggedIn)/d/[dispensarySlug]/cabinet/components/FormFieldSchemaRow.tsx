@@ -7,6 +7,7 @@ import {
   Button,
   Collapse,
   Group,
+  MultiSelect,
   Select,
   Stack,
   Switch,
@@ -24,6 +25,10 @@ import {
   moveFieldInBranch,
   syncBranchesWithOptions,
 } from '@/lib/cabinet/formSchema/fieldTreeMutations';
+import {
+  convertSelectDefaultForMultipleChange,
+  parseMultiSelectValue,
+} from '@/lib/cabinet/formSchema';
 import { randomUUID } from '@/lib/randomId';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { InlineEditableText } from './InlineEditableText';
@@ -69,8 +74,26 @@ export function FormFieldSchemaRow({
     if (updates.type && updates.type !== 'select') {
       delete next.options;
       delete next.conditionalBranches;
+      delete next.multiple;
       if (field.type === 'select') {
         delete next.defaultValue;
+      }
+    }
+    if ('multiple' in updates) {
+      if (updates.multiple) {
+        next.multiple = true;
+        if (next.defaultValue) {
+          const converted = convertSelectDefaultForMultipleChange(next.defaultValue, true);
+          if (converted) next.defaultValue = converted;
+          else delete next.defaultValue;
+        }
+      } else {
+        delete next.multiple;
+        if (next.defaultValue) {
+          const converted = convertSelectDefaultForMultipleChange(next.defaultValue, false);
+          if (converted) next.defaultValue = converted;
+          else delete next.defaultValue;
+        }
       }
     }
     if (updates.options) {
@@ -121,6 +144,11 @@ export function FormFieldSchemaRow({
           {field.editable === false && (
             <Badge variant="outline" color="slate" size="xs">
               Fixe
+            </Badge>
+          )}
+          {field.type === 'select' && field.multiple && (
+            <Badge variant="outline" color="sage" size="xs">
+              Multi
             </Badge>
           )}
         </Group>
@@ -183,6 +211,21 @@ export function FormFieldSchemaRow({
                 style={{ flex: 1, minWidth: 160 }}
                 onChange={(e) => patchField({ defaultValue: e.currentTarget.value })}
               />
+            ) : field.type === 'select' && field.multiple ? (
+              <MultiSelect
+                label="Valeur par défaut"
+                size="xs"
+                placeholder="Aucune"
+                data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
+                value={
+                  field.defaultValue ? parseMultiSelectValue(field.defaultValue) : []
+                }
+                clearable
+                style={{ flex: 1, minWidth: 160 }}
+                onChange={(ids) =>
+                  patchField({ defaultValue: ids.length > 0 ? JSON.stringify(ids) : '' })
+                }
+              />
             ) : field.type === 'select' ? (
               <Select
                 label="Valeur par défaut"
@@ -212,6 +255,14 @@ export function FormFieldSchemaRow({
               checked={field.required}
               onChange={(e) => patchField({ required: e.currentTarget.checked })}
             />
+            {field.type === 'select' && (
+              <Switch
+                label="Sélection multiple"
+                size="sm"
+                checked={field.multiple === true}
+                onChange={(e) => patchField({ multiple: e.currentTarget.checked })}
+              />
+            )}
             {field.defaultValue && (
               <Switch
                 label="Modifiable"

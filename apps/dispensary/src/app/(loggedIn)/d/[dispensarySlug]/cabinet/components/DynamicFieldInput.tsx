@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import {
+  MultiSelect,
   Select,
   Stack,
   Text,
@@ -10,9 +11,14 @@ import {
 } from '@mantine/core';
 import type { CustomValues, FormField } from '@/lib/cabinet/formSchema';
 import {
+  collectFieldDefaultsToSeedOnSelectChange,
   collectFieldIdsToClearOnSelectChange,
+  formatSelectDisplayLabels,
+  getSelectedOptionIds,
+  getVisibleFieldGroupsForSelectValue,
   getVisibleFieldsForSelectValue,
   resolveFieldInputValue,
+  serializeSelectValue,
 } from '@/lib/cabinet/formSchema';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
@@ -33,6 +39,60 @@ type DynamicFieldInputProps = {
   fieldErrors?: Record<string, string>;
 };
 
+const CONDITIONAL_GROUP_STYLE = {
+  borderLeft: '2px solid var(--mantine-color-sage-4)',
+  paddingLeft: 'var(--mantine-spacing-md)',
+} as const;
+
+function renderConditionalChildren(
+  field: FormField,
+  effectiveValue: string | null,
+  props: Omit<DynamicFieldInputProps, 'field' | 'value'>,
+) {
+  const { onChange, readOnly, values, depth = 0, fieldErrors } = props;
+
+  if (field.type === 'select' && field.multiple) {
+    const groups = getVisibleFieldGroupsForSelectValue(field, effectiveValue);
+    if (groups.length > 0) {
+      return groups.map((group) => (
+        <Stack key={group.optionId} gap="xs" style={CONDITIONAL_GROUP_STYLE}>
+          <Text size="sm" fw={600}>
+            {group.optionLabel}
+          </Text>
+          {group.fields.map((child) => (
+            <FieldRecursive
+              key={child.id}
+              field={child}
+              value={values[child.id]}
+              onChange={onChange}
+              readOnly={readOnly}
+              values={values}
+              depth={depth + 1}
+              fieldErrors={fieldErrors}
+            />
+          ))}
+        </Stack>
+      ));
+    }
+  }
+
+  const visibleChildren =
+    field.type === 'select' ? getVisibleFieldsForSelectValue(field, effectiveValue) : [];
+
+  return visibleChildren.map((child) => (
+    <FieldRecursive
+      key={child.id}
+      field={child}
+      value={values[child.id]}
+      onChange={onChange}
+      readOnly={readOnly}
+      values={values}
+      depth={depth + 1}
+      fieldErrors={fieldErrors}
+    />
+  ));
+}
+
 function FieldRecursive({
   field,
   value,
@@ -46,26 +106,55 @@ function FieldRecursive({
   const error = fieldErrors?.[field.id];
   const fieldLocked = readOnly || field.editable === false;
 
-  const visibleChildren = useMemo(() => {
+  const selectedOptionIds = useMemo(() => {
     if (field.type !== 'select') return [];
-    return getVisibleFieldsForSelectValue(field, effectiveValue);
+    return getSelectedOptionIds(field, effectiveValue);
   }, [field, effectiveValue]);
 
-  const handleSelectChange = useCallback(
-    (nextValue: string | null) => {
-      const idsToClear = collectFieldIdsToClearOnSelectChange(field, effectiveValue, nextValue);
+  const applySelectChange = useCallback(
+    (nextStored: string | null) => {
+      const previousEffective = resolveFieldInputValue(value, field.defaultValue);
+      const idsToClear = collectFieldIdsToClearOnSelectChange(
+        field,
+        previousEffective,
+        nextStored,
+        values,
+      );
+      const defaultsToSeed = collectFieldDefaultsToSeedOnSelectChange(
+        field,
+        previousEffective,
+        nextStored,
+        values,
+      );
       for (const id of idsToClear) {
         onChange(id, null);
       }
-      onChange(field.id, nextValue);
+      onChange(field.id, nextStored);
+      for (const { fieldId, defaultValue } of defaultsToSeed) {
+        onChange(fieldId, defaultValue);
+      }
     },
-    [field, effectiveValue, onChange],
+    [field, value, values, onChange],
+  );
+
+  const handleSelectChange = useCallback(
+    (nextValue: string | null) => {
+      applySelectChange(nextValue);
+    },
+    [applySelectChange],
+  );
+
+  const handleMultiSelectChange = useCallback(
+    (nextIds: string[]) => {
+      applySelectChange(serializeSelectValue(field, nextIds));
+    },
+    [applySelectChange, field],
   );
 
   if (fieldLocked) {
     let display = effectiveValue ?? '—';
-    if (field.type === 'select' && effectiveValue) {
-      display = field.options?.find((o) => o.id === effectiveValue)?.label ?? effectiveValue;
+    if (field.type === 'select') {
+      display = formatSelectDisplayLabels(field, effectiveValue);
     }
     if (field.type === 'date' && effectiveValue) {
       const d = parseRealDateFromIso(effectiveValue);
@@ -76,7 +165,7 @@ function FieldRecursive({
       <>
         <strong>
           {field.label}
-          {field.required && ' *'} :
+          {field.required && !readOnly && ' *'} :
         </strong>
       </>
     );
@@ -90,18 +179,13 @@ function FieldRecursive({
     return (
       <Stack gap="xs" pl={depth > 0 ? 'md' : 0} style={{ minWidth: 0 }}>
         {readOnlyContent}
-        {visibleChildren.map((child) => (
-          <FieldRecursive
-            key={child.id}
-            field={child}
-            value={values[child.id]}
-            onChange={onChange}
-            readOnly={readOnly}
-            values={values}
-            depth={depth + 1}
-            fieldErrors={fieldErrors}
-          />
-        ))}
+        {renderConditionalChildren(field, effectiveValue, {
+          onChange,
+          readOnly,
+          values,
+          depth,
+          fieldErrors,
+        })}
       </Stack>
     );
   }
@@ -112,6 +196,8 @@ function FieldRecursive({
     placeholder: field.placeholder,
     value: effectiveValue ?? '',
   };
+
+  const selectData = (field.options ?? []).map((o) => ({ value: o.id, label: o.label }));
 
   let input: React.ReactNode;
 
@@ -141,13 +227,24 @@ function FieldRecursive({
       );
       break;
     case 'select':
-      input = (
+      input = field.multiple ? (
+        <MultiSelect
+          label={field.label}
+          required={field.required}
+          placeholder={field.placeholder}
+          error={error}
+          data={selectData}
+          value={selectedOptionIds}
+          onChange={handleMultiSelectChange}
+          clearable={!field.required}
+        />
+      ) : (
         <Select
           label={field.label}
           required={field.required}
           placeholder={field.placeholder}
           error={error}
-          data={(field.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
+          data={selectData}
           value={effectiveValue}
           onChange={handleSelectChange}
           clearable={!field.required}
@@ -167,18 +264,13 @@ function FieldRecursive({
   return (
     <Stack gap="xs" pl={depth > 0 ? 'md' : 0}>
       {input}
-      {visibleChildren.map((child) => (
-        <FieldRecursive
-          key={child.id}
-          field={child}
-          value={values[child.id]}
-          onChange={onChange}
-          readOnly={readOnly}
-          values={values}
-          depth={depth + 1}
-          fieldErrors={fieldErrors}
-        />
-      ))}
+      {renderConditionalChildren(field, effectiveValue, {
+        onChange,
+        readOnly,
+        values,
+        depth,
+        fieldErrors,
+      })}
     </Stack>
   );
 }

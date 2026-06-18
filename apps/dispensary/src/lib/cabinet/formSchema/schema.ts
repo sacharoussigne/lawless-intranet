@@ -19,6 +19,7 @@ const formFieldSchema: z.ZodType<{
   defaultValue?: string;
   editable?: boolean;
   options?: { id: string; label: string }[];
+  multiple?: boolean;
   conditionalBranches?: { optionId: string; fields: unknown[] }[];
 }> = z.lazy(() =>
   z.object({
@@ -31,6 +32,7 @@ const formFieldSchema: z.ZodType<{
     defaultValue: optionalString,
     editable: z.boolean().optional(),
     options: z.array(selectOptionSchema).optional(),
+    multiple: z.boolean().optional(),
     conditionalBranches: z
       .array(
         z.object({

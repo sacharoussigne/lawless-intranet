@@ -1,6 +1,10 @@
 import { randomUUID } from '@/lib/randomId';
 import type { FormField, FormFieldType } from './types';
 import { reorderByOrder } from './reorderItems';
+import {
+  isMultiSelectField,
+  normalizeSelectDefaultValue,
+} from './selectValue';
 
 export function mapFieldById(
   field: FormField,
@@ -111,6 +115,18 @@ export function addFieldToBranch(
 
 export function syncDefaultValueWithOptions(field: FormField): FormField {
   if (field.type !== 'select' || !field.defaultValue) return field;
+
+  if (isMultiSelectField(field)) {
+    const normalized = normalizeSelectDefaultValue(field);
+    if (!normalized) {
+      const next = { ...field };
+      delete next.defaultValue;
+      return next;
+    }
+    if (normalized === field.defaultValue) return field;
+    return { ...field, defaultValue: normalized };
+  }
+
   const valid = field.options?.some((o) => o.id === field.defaultValue);
   if (valid) return field;
   const next = { ...field };

@@ -107,7 +107,7 @@ export function updateField(
   schema: FormEntitySchema,
   categoryId: string,
   fieldId: string,
-  updates: Partial<Pick<FormField, 'label' | 'type' | 'required' | 'options' | 'conditionalBranches'>>,
+  updates: Partial<Pick<FormField, 'label' | 'type' | 'required' | 'options' | 'conditionalBranches' | 'multiple'>>,
 ): FormEntitySchema {
   return {
     categories: schema.categories.map((c) => {
@@ -120,6 +120,7 @@ export function updateField(
           if (updates.type && updates.type !== 'select') {
             delete next.options;
             delete next.conditionalBranches;
+            delete next.multiple;
           }
           if (updates.type === 'select' && updates.options) {
             next.options = updates.options;

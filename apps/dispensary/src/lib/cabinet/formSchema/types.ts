@@ -23,6 +23,8 @@ export type FormField = {
   /** When false, the field value cannot be changed when filling the form. Omitted = editable. */
   editable?: boolean;
   options?: SelectOption[];
+  /** When true, multiple options can be selected (stored as JSON array of option ids). */
+  multiple?: boolean;
   conditionalBranches?: ConditionalBranch[];
 };
 

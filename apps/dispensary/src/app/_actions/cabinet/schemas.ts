@@ -90,6 +90,7 @@ const formFieldInputSchema: z.ZodType<unknown> = z.lazy(() =>
     options: z
       .array(z.object({ id: z.string().min(1), label: z.string().min(1) }))
       .optional(),
+    multiple: z.boolean().optional(),
     conditionalBranches: z
       .array(
         z.object({
