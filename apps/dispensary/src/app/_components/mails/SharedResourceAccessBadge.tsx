@@ -5,42 +5,34 @@ import { Badge, Group } from '@mantine/core';
 type SharedResourceAccessBadgeProps = {
   isOwner?: boolean;
   isSharedWithMe?: boolean;
-  isSharedByMe?: boolean;
+  ownerName?: string | null;
   accessType?: 'READ' | 'WRITE' | null;
 };
 
 export function SharedResourceAccessBadge({
   isOwner,
   isSharedWithMe,
-  isSharedByMe,
+  ownerName,
   accessType,
 }: SharedResourceAccessBadgeProps) {
+  if (isOwner) {
+    return (
+      <Badge variant="light" color="moss" size="sm">
+        Propriétaire
+      </Badge>
+    );
+  }
+
   if (isSharedWithMe) {
     return (
       <Group gap={4} wrap="nowrap">
         <Badge variant="light" color="denim" size="sm">
-          Partagé avec moi
+          {ownerName ?? 'Utilisateur inconnu'}
         </Badge>
         <Badge variant="outline" color={accessType === 'WRITE' ? 'sage' : 'slate'} size="sm">
           {accessType === 'WRITE' ? 'Écriture' : 'Lecture'}
         </Badge>
       </Group>
-    );
-  }
-
-  if (isOwner && isSharedByMe) {
-    return (
-      <Badge variant="light" color="leather" size="sm">
-        Partagé
-      </Badge>
-    );
-  }
-
-  if (isOwner) {
-    return (
-      <Badge variant="light" color="slate" size="sm">
-        Personnel
-      </Badge>
     );
   }
 

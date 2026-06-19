@@ -18,6 +18,7 @@ import {
   getServerCookieHeader,
   MAIL_DOCUMENT_TYPE,
   resolveMailDocumentAccess,
+  attachOwnerNames,
 } from '@/lib/documents/mailDocuments';
 
 const createMailSchema = z.object({
@@ -128,17 +129,19 @@ export async function getMailsPage(
       { cookieHeader },
     );
 
+    const mappedItems = result.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      receiver: getMailReceiver(item.metadata),
+      createdAt: new Date(item.createdAt),
+      contentPreview: item.contentPreview,
+      ...resolveMailDocumentAccess(item, ctx.session.user.id),
+    }));
+
     return {
       status: 200,
       data: {
-        items: result.items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          receiver: getMailReceiver(item.metadata),
-          createdAt: new Date(item.createdAt),
-          contentPreview: item.contentPreview,
-          ...resolveMailDocumentAccess(item, ctx.session.user.id),
-        })),
+        items: await attachOwnerNames(mappedItems),
         totalCount: result.totalCount,
         page: result.page,
         pageSize: result.pageSize,

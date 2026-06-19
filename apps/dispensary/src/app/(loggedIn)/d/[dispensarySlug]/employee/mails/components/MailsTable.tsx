@@ -46,6 +46,19 @@ export function MailsTable({
         records={mails}
         columns={[
           {
+            accessor: 'access',
+            title: 'Accès',
+            width: 240,
+            render: (mail: MailListItem) => (
+              <SharedResourceAccessBadge
+                isOwner={mail.isOwner}
+                isSharedWithMe={mail.isSharedWithMe}
+                ownerName={mail.ownerName}
+                accessType={mail.accessType}
+              />
+            ),
+          },
+          {
             accessor: 'name',
             title: 'Nom',
             filter: (
@@ -54,19 +67,6 @@ export function MailsTable({
                 value={nameFilter}
                 onChange={(e) => onNameFilterChange(e.currentTarget.value)}
                 style={{ minWidth: 200 }}
-              />
-            ),
-          },
-          {
-            accessor: 'access',
-            title: 'Accès',
-            width: 220,
-            render: (mail: MailListItem) => (
-              <SharedResourceAccessBadge
-                isOwner={mail.isOwner}
-                isSharedWithMe={mail.isSharedWithMe}
-                isSharedByMe={mail.isSharedByMe}
-                accessType={mail.accessType}
               />
             ),
           },

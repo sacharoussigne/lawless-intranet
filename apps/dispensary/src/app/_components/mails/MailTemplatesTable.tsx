@@ -16,6 +16,7 @@ export type MailTemplateTableRow = {
   accessType?: 'READ' | 'WRITE' | null;
   canWrite?: boolean;
   ownerId?: string | null;
+  ownerName?: string | null;
 };
 
 interface MailTemplatesTableProps<T extends MailTemplateTableRow> {
@@ -53,6 +54,19 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
         records={mailTemplates}
         columns={[
           {
+            accessor: 'access',
+            title: 'Accès',
+            width: 240,
+            render: (mailTemplate: T) => (
+              <SharedResourceAccessBadge
+                isOwner={mailTemplate.isOwner}
+                isSharedWithMe={mailTemplate.isSharedWithMe}
+                ownerName={mailTemplate.ownerName}
+                accessType={mailTemplate.accessType}
+              />
+            ),
+          },
+          {
             accessor: 'name',
             title: 'Nom',
             filter: (
@@ -61,19 +75,6 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
                 value={nameFilter}
                 onChange={(e) => onNameFilterChange(e.currentTarget.value)}
                 style={{ minWidth: 200 }}
-              />
-            ),
-          },
-          {
-            accessor: 'access',
-            title: 'Accès',
-            width: 220,
-            render: (mailTemplate: T) => (
-              <SharedResourceAccessBadge
-                isOwner={mailTemplate.isOwner}
-                isSharedWithMe={mailTemplate.isSharedWithMe}
-                isSharedByMe={mailTemplate.isSharedByMe}
-                accessType={mailTemplate.accessType}
               />
             ),
           },

@@ -23,6 +23,7 @@ export type MailTemplate = {
 
 export type MailResourceAccessFields = {
   ownerId?: string | null;
+  ownerName?: string | null;
   isOwner?: boolean;
   isSharedWithMe?: boolean;
   isSharedByMe?: boolean;

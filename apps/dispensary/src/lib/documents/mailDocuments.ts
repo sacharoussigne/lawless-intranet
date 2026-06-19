@@ -118,3 +118,20 @@ export function resolveMailDocumentAccess(
 ): MailResourceAccessMeta {
   return resolveResourceAccess(document.ownerId, document.accesses, currentUserId);
 }
+
+export async function attachOwnerNames<T extends { ownerId?: string | null }>(
+  items: T[],
+): Promise<Array<T & { ownerName: string | null }>> {
+  const { fetchUserProfiles } = await import('@/lib/authUsers');
+  const ownerIds = [
+    ...new Set(items.map((item) => item.ownerId).filter((id): id is string => Boolean(id))),
+  ];
+
+  const profiles =
+    ownerIds.length > 0 ? await fetchUserProfiles(ownerIds) : new Map<string, { name: string }>();
+
+  return items.map((item) => ({
+    ...item,
+    ownerName: item.ownerId ? (profiles.get(item.ownerId)?.name ?? null) : null,
+  }));
+}

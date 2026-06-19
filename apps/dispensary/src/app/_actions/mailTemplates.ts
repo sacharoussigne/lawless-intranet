@@ -25,6 +25,7 @@ import {
   getServerCookieHeader,
   MAIL_DOCUMENT_TYPE,
   resolveMailTemplateAccess,
+  attachOwnerNames,
   templateToMailTemplate,
 } from '@/lib/documents/mailDocuments';
 
@@ -400,19 +401,21 @@ export async function getUserMailTemplatesPage(
       { cookieHeader },
     );
 
+    const mappedItems = result.items.map((template) => ({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      defaultMailName: getDefaultMailName(template.metadata),
+      createdAt: new Date(template.createdAt),
+      updatedAt: new Date(template.updatedAt),
+      userId: template.ownerId,
+      ...resolveMailTemplateAccess(template, ctx.session.user.id),
+    }));
+
     return {
       status: 200,
       data: {
-        items: result.items.map((template) => ({
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          defaultMailName: getDefaultMailName(template.metadata),
-          createdAt: new Date(template.createdAt),
-          updatedAt: new Date(template.updatedAt),
-          userId: template.ownerId,
-          ...resolveMailTemplateAccess(template, ctx.session.user.id),
-        })),
+        items: await attachOwnerNames(mappedItems),
         totalCount: result.totalCount,
         page: result.page,
         pageSize: result.pageSize,
