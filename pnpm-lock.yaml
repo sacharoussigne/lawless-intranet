@@ -38,6 +38,9 @@ importers:
       '@prisma/client':
         specifier: ^7.2.0
         version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
+      '@prisma/client-runtime-utils':
+        specifier: ^7.2.0
+        version: 7.8.0
       better-auth:
         specifier: ^1.4.12
         version: 1.6.18(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))(mysql2@3.15.3)(next@16.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.101.0))(pg@8.21.0)(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15)))
@@ -105,6 +108,15 @@ importers:
       '@lawless-intranet/auth-permissions':
         specifier: workspace:*
         version: link:../../packages/auth-permissions
+      '@lawless-intranet/documents-client':
+        specifier: workspace:*
+        version: link:../../packages/documents-client
+      '@lawless-intranet/mail-template-engine':
+        specifier: workspace:*
+        version: link:../../packages/mail-template-engine
+      '@lawless-intranet/mail-template-ui':
+        specifier: workspace:*
+        version: link:../../packages/mail-template-ui
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -144,6 +156,9 @@ importers:
       '@prisma/client':
         specifier: ^7.2.0
         version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(typescript@5.9.3)
+      '@prisma/client-runtime-utils':
+        specifier: ^7.2.0
+        version: 7.8.0
       '@tabler/icons-react':
         specifier: ^3.36.1
         version: 3.44.0(react@19.2.3)
@@ -251,6 +266,67 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
 
+  apps/documents:
+    dependencies:
+      '@lawless-intranet/auth-client':
+        specifier: workspace:*
+        version: link:../../packages/auth-client
+      '@lawless-intranet/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@prisma/adapter-pg':
+        specifier: ^7.2.0
+        version: 7.8.0
+      '@prisma/client':
+        specifier: ^7.2.0
+        version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
+      '@prisma/client-runtime-utils':
+        specifier: ^7.2.0
+        version: 7.8.0
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.4.2
+      next:
+        specifier: 16.2.9
+        version: 16.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.101.0)
+      pg:
+        specifier: ^8.16.3
+        version: 8.21.0
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      react-dom:
+        specifier: 19.2.4
+        version: 19.2.4(react@19.2.4)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      '@types/pg':
+        specifier: ^8.16.0
+        version: 8.20.0
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.17)
+      eslint:
+        specifier: ^9
+        version: 9.39.4(jiti@2.7.0)
+      eslint-config-next:
+        specifier: 16.2.9
+        version: 16.2.9(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
+      prisma:
+        specifier: ^7.2.0
+        version: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   packages/auth-client:
     dependencies:
       '@lawless-intranet/auth-permissions':
@@ -271,6 +347,58 @@ importers:
       better-auth:
         specifier: ^1.4.12
         version: 1.6.18(@prisma/client@7.8.0(prisma@7.8.0(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))(mysql2@3.15.3)(next@16.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.101.0))(pg@8.21.0)(prisma@7.8.0(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15)))
+
+  packages/documents-client:
+    dependencies:
+      '@lawless-intranet/types':
+        specifier: workspace:*
+        version: link:../types
+
+  packages/mail-template-engine:
+    devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
+
+  packages/mail-template-ui:
+    dependencies:
+      '@lawless-intranet/mail-template-engine':
+        specifier: workspace:*
+        version: link:../mail-template-engine
+    devDependencies:
+      '@mantine/core':
+        specifier: ^8.3.17
+        version: 8.3.18(@mantine/hooks@8.3.18(react@19.2.3))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@mantine/form':
+        specifier: ^8.3.17
+        version: 8.3.18(react@19.2.3)
+      '@mantine/hooks':
+        specifier: ^8.3.17
+        version: 8.3.18(react@19.2.3)
+      '@mantine/notifications':
+        specifier: ^8.3.17
+        version: 8.3.18(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.3))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@mantine/hooks@8.3.18(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tabler/icons-react':
+        specifier: ^3.36.1
+        version: 3.44.0(react@19.2.3)
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.17)
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: 19.2.3
+        version: 19.2.3(react@19.2.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
 
   packages/types: {}
 

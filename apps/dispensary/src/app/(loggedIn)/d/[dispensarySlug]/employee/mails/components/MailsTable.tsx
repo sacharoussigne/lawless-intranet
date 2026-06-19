@@ -2,9 +2,10 @@
 
 import { Paper, TextInput } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconTrash, IconEye } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconEye, IconUsers } from '@tabler/icons-react';
 import { Group, ActionIcon } from '@mantine/core';
 import type { MailListItem } from '@/types/mails';
+import { SharedResourceAccessBadge } from '@/app/_components/mails/SharedResourceAccessBadge';
 
 interface MailsTableProps {
   mails: MailListItem[];
@@ -20,6 +21,7 @@ interface MailsTableProps {
   onEdit: (mail: MailListItem) => void;
   onDelete: (mail: MailListItem) => void;
   onView: (mail: MailListItem) => void;
+  onManageAccess?: (mail: MailListItem) => void;
 }
 
 export function MailsTable({
@@ -36,12 +38,26 @@ export function MailsTable({
   onEdit,
   onDelete,
   onView,
+  onManageAccess,
 }: MailsTableProps) {
   return (
     <Paper shadow="sm" p="md" withBorder>
       <DataTable
         records={mails}
         columns={[
+          {
+            accessor: 'access',
+            title: 'Accès',
+            width: 240,
+            render: (mail: MailListItem) => (
+              <SharedResourceAccessBadge
+                isOwner={mail.isOwner}
+                isSharedWithMe={mail.isSharedWithMe}
+                ownerName={mail.ownerName}
+                accessType={mail.accessType}
+              />
+            ),
+          },
           {
             accessor: 'name',
             title: 'Nom',
@@ -99,9 +115,19 @@ export function MailsTable({
                 </ActionIcon>
                 <ActionIcon
                   variant="light"
+                  color="leather"
+                  onClick={() => onManageAccess?.(mail)}
+                  title="Partager"
+                  disabled={!onManageAccess || !mail.canWrite}
+                >
+                  <IconUsers size={16} />
+                </ActionIcon>
+                <ActionIcon
+                  variant="light"
                   color="slate"
                   onClick={() => onEdit(mail)}
                   title="Modifier"
+                  disabled={!mail.canWrite}
                 >
                   <IconEdit size={16} />
                 </ActionIcon>
@@ -110,6 +136,7 @@ export function MailsTable({
                   color="danger"
                   onClick={() => onDelete(mail)}
                   title="Supprimer"
+                  disabled={!mail.canWrite}
                 >
                   <IconTrash size={16} />
                 </ActionIcon>

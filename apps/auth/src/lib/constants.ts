@@ -6,8 +6,10 @@ export function getTrustedOrigins(): string[] {
     process.env.DISPENSARY_URL,
     'http://localhost:3001',
     'http://localhost:3000',
+    'http://localhost:3002',
     'http://auth.localhost:3001',
     'http://dispensary.localhost:3000',
+    'http://documents.localhost:3002',
   ].filter(Boolean) as string[];
 
   return [...new Set(origins)];

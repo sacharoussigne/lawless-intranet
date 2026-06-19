@@ -2,10 +2,32 @@
 
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
+import {
+  createTemplate,
+  deleteTemplate,
+  getTemplate,
+  listTemplates,
+  updateTemplate,
+} from '@lawless-intranet/documents-client/server';
+import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { renderTemplate } from '@lawless-intranet/mail-template-engine';
 import type { OrderStatus, OrderType } from '@prisma/client';
+import {
+  buildOrderMailVariables,
+  type OrderMailPreviewSource,
+} from '@/lib/mailTemplate/buildOrderMailVariables';
+import {
+  buildMailTemplateMetadata,
+  getDefaultMailName,
+  getServerCookieHeader,
+  MAIL_DOCUMENT_TYPE,
+  resolveMailTemplateAccess,
+  attachOwnerNames,
+  templateToMailTemplate,
+} from '@/lib/documents/mailDocuments';
 
 const optionalDefaultMailName = z
   .string()
@@ -45,16 +67,15 @@ const getUserMailTemplateByIdSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-const MANAGEMENT_MAIL_TEMPLATE_LIST_SELECT = {
-  id: true,
-  name: true,
-  description: true,
-  defaultMailName: true,
-  createdAt: true,
-  updatedAt: true,
-  dispensaryId: true,
-  userId: true,
-} as const;
+function documentsActionError(error: unknown, fallback: string) {
+  if (error instanceof DocumentsClientError) {
+    return {
+      status: error.status,
+      error: error.message,
+    };
+  }
+  return actionErrorParser(error, fallback);
+}
 
 export async function createMailTemplate(
   dispensarySlug: string,
@@ -73,24 +94,27 @@ export async function createMailTemplate(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createMailTemplateSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const mailTemplate = await prisma.mailTemplate.create({
-      data: {
-        dispensaryId,
+    const template = await createTemplate(
+      {
+        type: MAIL_DOCUMENT_TYPE,
+        scopeId: dispensaryId,
+        ownerId: null,
         name: validatedData.name,
         description: validatedData.description,
         content: validatedData.content,
-        defaultMailName: validatedData.defaultMailName ?? null,
-        userId: null,
+        metadata: buildMailTemplateMetadata(validatedData.defaultMailName),
       },
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 201,
-      data: mailTemplate,
+      data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la création du modèle de courrier');
   }
 }
 
@@ -102,23 +126,23 @@ export async function getMailTemplates(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const mailTemplates = await prisma.mailTemplate.findMany({
-      where: {
-        userId: null,
-        ...tenantWhere(dispensaryId),
+    const cookieHeader = await getServerCookieHeader();
+    const result = await listTemplates(
+      {
+        type: MAIL_DOCUMENT_TYPE,
+        scopeId: dispensaryId,
+        ownerScope: 'org',
+        pageSize: 50,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      select: MANAGEMENT_MAIL_TEMPLATE_LIST_SELECT,
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 200,
-      data: mailTemplates,
+      data: result.items.map(templateToMailTemplate),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des modèles de courriers');
+    return documentsActionError(error, 'Erreur lors de la récupération des modèles de courriers');
   }
 }
 
@@ -134,16 +158,10 @@ export async function getManagementMailTemplateById(
     const { dispensaryId } = ctx.tenant;
 
     const { id } = getUserMailTemplateByIdSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
+    const template = await getTemplate(id, { cookieHeader });
 
-    const mailTemplate = await prisma.mailTemplate.findFirst({
-      where: {
-        id,
-        userId: null,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!mailTemplate) {
+    if (template.scopeId !== dispensaryId || template.ownerId !== null) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -152,10 +170,10 @@ export async function getManagementMailTemplateById(
 
     return {
       status: 200,
-      data: mailTemplate,
+      data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la récupération du modèle de courrier');
   }
 }
 
@@ -177,47 +195,40 @@ export async function updateMailTemplate(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = updateMailTemplateSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
+    const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    const existingTemplate = await prisma.mailTemplate.findFirst({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!existingTemplate) {
+    if (existingTemplate.scopeId !== dispensaryId) {
       return {
         status: 404,
         error: 'Template introuvable',
       };
     }
 
-    if (existingTemplate.userId !== null) {
+    if (existingTemplate.ownerId !== null) {
       return {
         status: 403,
         error: 'Ce template est un template personnel et ne peut pas être modifié depuis le panneau management',
       };
     }
 
-    const mailTemplate = await prisma.mailTemplate.update({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-      data: {
+    const template = await updateTemplate(
+      validatedData.id,
+      {
         name: validatedData.name,
-        description: validatedData.description,
+        description: validatedData.description ?? null,
         content: validatedData.content,
-        defaultMailName: validatedData.defaultMailName ?? null,
+        metadata: buildMailTemplateMetadata(validatedData.defaultMailName) ?? null,
       },
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 200,
-      data: mailTemplate,
+      data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la modification du modèle de courrier');
   }
 }
 
@@ -230,55 +241,33 @@ export async function deleteMailTemplate(dispensarySlug: string, data: { id: str
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = deleteMailTemplateSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
+    const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    const existingTemplate = await prisma.mailTemplate.findFirst({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!existingTemplate) {
+    if (existingTemplate.scopeId !== dispensaryId) {
       return {
         status: 404,
         error: 'Template introuvable',
       };
     }
 
-    if (existingTemplate.userId !== null) {
+    if (existingTemplate.ownerId !== null) {
       return {
         status: 403,
         error: 'Ce template est un template personnel et ne peut pas être supprimé depuis le panneau management',
       };
     }
 
-    await prisma.mailTemplate.delete({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
+    await deleteTemplate(validatedData.id, { cookieHeader });
 
     return {
       status: 200,
       data: { success: true },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la suppression du modèle de courrier');
   }
 }
-
-type OrderMailPreviewSource = {
-  type: string;
-  status: string;
-  price: unknown;
-  company: { name: string } | null;
-  individualCustomer: { name: string } | null;
-  items: Array<{
-    quantity: number;
-    item: { name: string };
-  }>;
-};
 
 export async function generateOrderMailPreview(
   dispensarySlug: string,
@@ -351,9 +340,6 @@ export async function generateOrderMailPreview(
           orderStatus: order.status as OrderStatus,
         },
       },
-      include: {
-        mailTemplate: true,
-      },
     });
 
     if (!assignment) {
@@ -363,60 +349,14 @@ export async function generateOrderMailPreview(
       };
     }
 
-    const template = assignment.mailTemplate;
+    const cookieHeader = await getServerCookieHeader();
+    const template = await getTemplate(assignment.templateId, { cookieHeader });
 
-    const itemsText = order.items
-      .map((orderItem) => {
-        const itemName = orderItem.item.name;
-        const quantity = orderItem.quantity;
-        return `- ${itemName} (x${quantity})`;
-      })
-      .join('\n');
-
-    const priceValue = order.price != null ? Number(order.price) : null;
-    const priceText =
-      priceValue != null && Number.isFinite(priceValue)
-        ? `${priceValue.toFixed(2)} $`
-        : 'Non spécifié';
-
-    const username = ctx.session.user.name || 'Utilisateur';
-
-    let preview = template.content;
-    const clientName =
-      order.individualCustomer?.name ?? order.company?.name ?? 'Client';
-    preview = preview.replace(/\${name}/g, clientName);
-    preview = preview.replace(/\${items}/g, itemsText);
-    preview = preview.replace(/\${price}/g, priceText);
-    preview = preview.replace(/\${username}/g, username);
-
-    const currentHour = new Date().getHours();
-    const isEvening = currentHour >= 18;
-
-    if (isEvening) {
-      preview = preview.replace(/Bonjour/gi, (match) => {
-        if (match === 'Bonjour') return 'Bonsoir';
-        if (match === 'BONJOUR') return 'BONSOIR';
-        return 'bonsoir';
-      });
-      preview = preview.replace(/journée/gi, (match) => {
-        if (match === 'Journée') return 'Soirée';
-        if (match === 'JOURNÉE') return 'SOIRÉE';
-        if (match === 'JOURNEE') return 'SOIREE';
-        return 'soirée';
-      });
-    } else {
-      preview = preview.replace(/Bonsoir/gi, (match) => {
-        if (match === 'Bonsoir') return 'Bonjour';
-        if (match === 'BONSOIR') return 'BONJOUR';
-        return 'bonjour';
-      });
-      preview = preview.replace(/soirée/gi, (match) => {
-        if (match === 'Soirée') return 'Journée';
-        if (match === 'SOIRÉE') return 'JOURNÉE';
-        if (match === 'SOIREE') return 'JOURNEE';
-        return 'journée';
-      });
-    }
+    const preview = renderTemplate(template.content, {
+      inputs: {},
+      username: ctx.session.user.name || 'Utilisateur',
+      variables: buildOrderMailVariables(order),
+    });
 
     return {
       status: 200,
@@ -426,7 +366,7 @@ export async function generateOrderMailPreview(
       },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la génération de l\'aperçu du courrier');
+    return documentsActionError(error, 'Erreur lors de la génération de l\'aperçu du courrier');
   }
 }
 
@@ -447,50 +387,42 @@ export async function getUserMailTemplatesPage(
 
     const { page, pageSize, nameSearch } =
       getUserMailTemplatesPageSchema.parse(params);
-    const nameTerm = nameSearch?.trim();
+    const cookieHeader = await getServerCookieHeader();
 
-    const where = {
-      userId: ctx.session.user.id,
-      ...tenantWhere(dispensaryId),
-      ...(nameTerm
-        ? {
-            name: {
-              contains: nameTerm,
-              mode: 'insensitive' as const,
-            },
-          }
-        : {}),
-    };
+    const result = await listTemplates(
+      {
+        type: MAIL_DOCUMENT_TYPE,
+        scopeId: dispensaryId,
+        ownerScope: 'accessible',
+        page,
+        pageSize,
+        nameSearch,
+      },
+      { cookieHeader },
+    );
 
-    const [mailTemplates, totalCount] = await Promise.all([
-      prisma.mailTemplate.findMany({
-        where,
-        orderBy: { name: 'asc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          defaultMailName: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-      prisma.mailTemplate.count({ where }),
-    ]);
+    const mappedItems = result.items.map((template) => ({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      defaultMailName: getDefaultMailName(template.metadata),
+      createdAt: new Date(template.createdAt),
+      updatedAt: new Date(template.updatedAt),
+      userId: template.ownerId,
+      ...resolveMailTemplateAccess(template, ctx.session.user.id),
+    }));
 
     return {
       status: 200,
       data: {
-        items: mailTemplates,
-        totalCount,
-        page,
-        pageSize,
+        items: await attachOwnerNames(mappedItems),
+        totalCount: result.totalCount,
+        page: result.page,
+        pageSize: result.pageSize,
       },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des modèles de courriers');
+    return documentsActionError(error, 'Erreur lors de la récupération des modèles de courriers');
   }
 }
 
@@ -506,16 +438,10 @@ export async function getUserMailTemplateById(
     const { dispensaryId } = ctx.tenant;
 
     const { id } = getUserMailTemplateByIdSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
+    const template = await getTemplate(id, { cookieHeader });
 
-    const mailTemplate = await prisma.mailTemplate.findFirst({
-      where: {
-        id,
-        userId: ctx.session.user.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!mailTemplate) {
+    if (template.scopeId !== dispensaryId || template.ownerId === null) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -524,10 +450,10 @@ export async function getUserMailTemplateById(
 
     return {
       status: 200,
-      data: mailTemplate,
+      data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la récupération du modèle de courrier');
   }
 }
 
@@ -539,24 +465,30 @@ export async function getUserMailTemplateOptions(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const options = await prisma.mailTemplate.findMany({
-      where: {
-        userId: ctx.session.user.id,
-        ...tenantWhere(dispensaryId),
+    const cookieHeader = await getServerCookieHeader();
+    const result = await listTemplates(
+      {
+        type: MAIL_DOCUMENT_TYPE,
+        scopeId: dispensaryId,
+        ownerScope: 'accessible',
+        pageSize: 50,
       },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 200,
-      data: options,
+      data: result.items.map((template) => {
+        const access = resolveMailTemplateAccess(template, ctx.session.user.id);
+        return {
+          id: template.id,
+          name: template.name,
+          isSharedWithMe: access.isSharedWithMe,
+        };
+      }),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des modèles de courriers');
+    return documentsActionError(error, 'Erreur lors de la récupération des modèles de courriers');
   }
 }
 
@@ -577,24 +509,27 @@ export async function createUserMailTemplate(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createMailTemplateSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const mailTemplate = await prisma.mailTemplate.create({
-      data: {
-        dispensaryId,
+    const template = await createTemplate(
+      {
+        type: MAIL_DOCUMENT_TYPE,
+        scopeId: dispensaryId,
+        ownerId: ctx.session.user.id,
         name: validatedData.name,
         description: validatedData.description,
         content: validatedData.content,
-        defaultMailName: validatedData.defaultMailName ?? null,
-        userId: ctx.session.user.id,
+        metadata: buildMailTemplateMetadata(validatedData.defaultMailName),
       },
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 201,
-      data: mailTemplate,
+      data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la création du modèle de courrier');
   }
 }
 
@@ -616,29 +551,17 @@ export async function updateUserMailTemplate(
     const { dispensaryId, effectiveRole } = ctx.tenant;
 
     const validatedData = updateMailTemplateSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
+    const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    const existingTemplate = await prisma.mailTemplate.findFirst({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!existingTemplate) {
+    if (existingTemplate.scopeId !== dispensaryId) {
       return {
         status: 404,
         error: 'Template introuvable',
       };
     }
 
-    if (existingTemplate.userId !== null && existingTemplate.userId !== ctx.session.user.id) {
-      return {
-        status: 403,
-        error: 'Vous n\'êtes pas autorisé à modifier ce template',
-      };
-    }
-
-    if (existingTemplate.userId === null) {
+    if (existingTemplate.ownerId === null) {
       const permResult = requirePermission(
         effectiveRole,
         'application',
@@ -648,25 +571,23 @@ export async function updateUserMailTemplate(
       if (!permResult.ok) return permResult.response;
     }
 
-    const mailTemplate = await prisma.mailTemplate.update({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-      data: {
+    const template = await updateTemplate(
+      validatedData.id,
+      {
         name: validatedData.name,
-        description: validatedData.description,
+        description: validatedData.description ?? null,
         content: validatedData.content,
-        defaultMailName: validatedData.defaultMailName ?? null,
+        metadata: buildMailTemplateMetadata(validatedData.defaultMailName) ?? null,
       },
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 200,
-      data: mailTemplate,
+      data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la modification du modèle de courrier');
   }
 }
 
@@ -679,29 +600,17 @@ export async function deleteUserMailTemplate(dispensarySlug: string, data: { id:
     const { dispensaryId, effectiveRole } = ctx.tenant;
 
     const validatedData = deleteMailTemplateSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
+    const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    const existingTemplate = await prisma.mailTemplate.findFirst({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!existingTemplate) {
+    if (existingTemplate.scopeId !== dispensaryId) {
       return {
         status: 404,
         error: 'Template introuvable',
       };
     }
 
-    if (existingTemplate.userId !== null && existingTemplate.userId !== ctx.session.user.id) {
-      return {
-        status: 403,
-        error: 'Vous n\'êtes pas autorisé à supprimer ce template',
-      };
-    }
-
-    if (existingTemplate.userId === null) {
+    if (existingTemplate.ownerId === null) {
       const permResult = requirePermission(
         effectiveRole,
         'application',
@@ -711,18 +620,13 @@ export async function deleteUserMailTemplate(dispensarySlug: string, data: { id:
       if (!permResult.ok) return permResult.response;
     }
 
-    await prisma.mailTemplate.delete({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
+    await deleteTemplate(validatedData.id, { cookieHeader });
 
     return {
       status: 200,
       data: { success: true },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du modèle de courrier');
+    return documentsActionError(error, 'Erreur lors de la suppression du modèle de courrier');
   }
 }

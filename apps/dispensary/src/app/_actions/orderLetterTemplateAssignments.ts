@@ -2,10 +2,13 @@
 
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
+import { getTemplate } from '@lawless-intranet/documents-client/server';
+import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import type { OrderType, OrderStatus } from '@prisma/client';
+import { getServerCookieHeader, MAIL_DOCUMENT_TYPE } from '@/lib/documents/mailDocuments';
 
 const createAssignmentSchema = z.object({
   orderType: z.enum(['INCOMING', 'OUTGOING']),
@@ -22,6 +25,44 @@ const deleteAssignmentSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
+function documentsActionError(error: unknown, fallback: string) {
+  if (error instanceof DocumentsClientError) {
+    return {
+      status: error.status,
+      error: error.message,
+    };
+  }
+  return actionErrorParser(error, fallback);
+}
+
+async function validateOrgTemplate(
+  templateId: string,
+  dispensaryId: string,
+  cookieHeader: string | null,
+) {
+  const template = await getTemplate(templateId, { cookieHeader });
+
+  if (
+    template.type !== MAIL_DOCUMENT_TYPE ||
+    template.scopeId !== dispensaryId ||
+    template.ownerId !== null
+  ) {
+    return null;
+  }
+
+  return template;
+}
+
+function withTemplateSummary<T extends { templateId: string }>(
+  assignment: T,
+  template: { id: string; name: string } | null,
+) {
+  return {
+    ...assignment,
+    mailTemplate: template,
+  };
+}
+
 export async function createOrderLetterTemplateAssignment(
   dispensarySlug: string,
   data: {
@@ -36,13 +77,13 @@ export async function createOrderLetterTemplateAssignment(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createAssignmentSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const template = await prisma.mailTemplate.findFirst({
-      where: {
-        id: validatedData.mailTemplateId,
-        ...tenantWhere(dispensaryId),
-      },
-    });
+    const template = await validateOrgTemplate(
+      validatedData.mailTemplateId,
+      dispensaryId,
+      cookieHeader,
+    );
 
     if (!template) {
       return {
@@ -73,24 +114,19 @@ export async function createOrderLetterTemplateAssignment(
         dispensaryId,
         orderType: validatedData.orderType,
         orderStatus: validatedData.orderStatus,
-        mailTemplateId: validatedData.mailTemplateId,
-      },
-      include: {
-        mailTemplate: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        templateId: validatedData.mailTemplateId,
       },
     });
 
     return {
       status: 201,
-      data: assignment,
+      data: withTemplateSummary(assignment, {
+        id: template.id,
+        name: template.name,
+      }),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création de l\'assignation');
+    return documentsActionError(error, 'Erreur lors de la création de l\'assignation');
   }
 }
 
@@ -102,26 +138,39 @@ export async function getOrderLetterTemplateAssignments(dispensarySlug: string) 
 
     const assignments = await prisma.orderMailTemplateAssignment.findMany({
       where: tenantWhere(dispensaryId),
-      include: {
-        mailTemplate: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
       orderBy: [
         { orderType: 'asc' },
         { orderStatus: 'asc' },
       ],
     });
 
+    const cookieHeader = await getServerCookieHeader();
+    const templateIds = [...new Set(assignments.map((assignment) => assignment.templateId))];
+    const templates = await Promise.all(
+      templateIds.map(async (templateId) => {
+        try {
+          const template = await getTemplate(templateId, { cookieHeader });
+          return { id: template.id, name: template.name };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const templateMap = new Map(
+      templates.filter(Boolean).map((template) => [template!.id, template!]),
+    );
+
     return {
       status: 200,
-      data: assignments,
+      data: assignments.map((assignment) =>
+        withTemplateSummary(
+          assignment,
+          templateMap.get(assignment.templateId) ?? null,
+        ),
+      ),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des assignations');
+    return documentsActionError(error, 'Erreur lors de la récupération des assignations');
   }
 }
 
@@ -145,17 +194,32 @@ export async function getOrderLetterTemplateAssignmentByTypeAndStatus(
           orderStatus: data.orderStatus,
         },
       },
-      include: {
-        mailTemplate: true,
-      },
     });
+
+    if (!assignment) {
+      return {
+        status: 200,
+        data: null,
+      };
+    }
+
+    const cookieHeader = await getServerCookieHeader();
+    let template = null;
+    try {
+      template = await getTemplate(assignment.templateId, { cookieHeader });
+    } catch {
+      template = null;
+    }
 
     return {
       status: 200,
-      data: assignment,
+      data: withTemplateSummary(
+        assignment,
+        template ? { id: template.id, name: template.name } : null,
+      ),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération de l\'assignation');
+    return documentsActionError(error, 'Erreur lors de la récupération de l\'assignation');
   }
 }
 
@@ -172,13 +236,13 @@ export async function updateOrderLetterTemplateAssignment(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = updateAssignmentSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const template = await prisma.mailTemplate.findFirst({
-      where: {
-        id: validatedData.mailTemplateId,
-        ...tenantWhere(dispensaryId),
-      },
-    });
+    const template = await validateOrgTemplate(
+      validatedData.mailTemplateId,
+      dispensaryId,
+      cookieHeader,
+    );
 
     if (!template) {
       return {
@@ -207,24 +271,19 @@ export async function updateOrderLetterTemplateAssignment(
         ...tenantWhere(dispensaryId),
       },
       data: {
-        mailTemplateId: validatedData.mailTemplateId,
-      },
-      include: {
-        mailTemplate: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        templateId: validatedData.mailTemplateId,
       },
     });
 
     return {
       status: 200,
-      data: assignment,
+      data: withTemplateSummary(assignment, {
+        id: template.id,
+        name: template.name,
+      }),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification de l\'assignation');
+    return documentsActionError(error, 'Erreur lors de la modification de l\'assignation');
   }
 }
 

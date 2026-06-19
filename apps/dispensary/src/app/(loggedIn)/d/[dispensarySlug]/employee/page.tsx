@@ -9,14 +9,16 @@ import {
   IconMail,
   IconNotebook,
   IconReportMoney,
+  IconStethoscope,
 } from '@tabler/icons-react';
 import { getAuthSession } from '@/lib/authSession';
 import { calculatePermissions } from '@/lib/auth/calculatePermissions';
 import { checkRolePermission } from '@lawless-intranet/auth-permissions';
-import { dispensarySiteTitle, getAppSettings } from '@/lib/appSettings';
+import { dispensarySiteTitle, getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
+import { userHasAnyCabinetAccess } from '@/lib/cabinet/access';
 import { ModuleCard, type ModuleCardProps } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 
@@ -41,6 +43,9 @@ export default async function EmployeePage({
         session.user.role,
         effectiveRole,
       )
+    : false;
+  const cabinetModuleAccess = userId
+    ? await userHasAnyCabinetAccess(dispensary.id, userId)
     : false;
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
@@ -87,6 +92,13 @@ export default async function EmployeePage({
       icon: IconCalendarEvent,
       href: t.agenda.index,
       hasAccess: appSettings.featureAgendaEnabled && agendaModuleAccess,
+    },
+    {
+      title: 'Cabinet',
+      description: 'Dossiers patients et consultations des cabinets médicaux.',
+      icon: IconStethoscope,
+      href: t.cabinet.index,
+      hasAccess: isAppFeatureEnabled(appSettings, 'cabinet') && cabinetModuleAccess,
     },
     {
       title: 'Activité hebdo',

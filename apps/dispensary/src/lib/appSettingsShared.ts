@@ -6,7 +6,8 @@ export type AppFeatureKey =
   | 'mails'
   | 'payroll'
   | 'weeklyDispensaryActivity'
-  | 'agenda';
+  | 'agenda'
+  | 'cabinet';
 
 export type AppSettingsDTO = {
   dispensaryName: string;
@@ -18,6 +19,7 @@ export type AppSettingsDTO = {
   featurePayrollEnabled: boolean;
   featureWeeklyDispensaryActivityEnabled: boolean;
   featureAgendaEnabled: boolean;
+  featureCabinetEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   weeklyActivityPatientsVisible: boolean;
@@ -36,6 +38,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   featurePayrollEnabled: true,
   featureWeeklyDispensaryActivityEnabled: true,
   featureAgendaEnabled: true,
+  featureCabinetEnabled: true,
   weeklyActivityChestDaysVisible: true,
   weeklyActivityPresenceDaysVisible: true,
   weeklyActivityPatientsVisible: true,
@@ -43,6 +46,12 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   weeklyActivityInfusionsVisible: true,
   weeklyActivityPoppyMilkVisible: true,
 };
+
+export function normalizeAppSettings(
+  settings: Partial<AppSettingsDTO>,
+): AppSettingsDTO {
+  return { ...APP_SETTINGS_DEFAULTS, ...settings };
+}
 
 export function appSettingsCacheTag(dispensaryId: string): string {
   return `app-settings-${dispensaryId}`;
@@ -72,6 +81,8 @@ export function isAppFeatureEnabled(
       return settings.featureWeeklyDispensaryActivityEnabled;
     case 'agenda':
       return settings.featureAgendaEnabled;
+    case 'cabinet':
+      return settings.featureCabinetEnabled ?? APP_SETTINGS_DEFAULTS.featureCabinetEnabled;
     default: {
       const _exhaustive: never = feature;
       return _exhaustive;

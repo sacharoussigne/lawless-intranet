@@ -15,7 +15,8 @@ import { handleApiZodError } from '@/lib/services/zod';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import type { MailTemplate } from '@/types/mails';
 import { TemplateFormHeader } from './TemplateFormHeader';
-import { TemplateEditorLayout } from './TemplateEditorLayout';
+import { TemplateEditorLayout } from '@lawless-intranet/mail-template-ui';
+import { useInvalidateMailTemplates } from '../hooks/useMailsQueries';
 
 interface UserTemplateFormPageProps {
   mode: 'create' | 'edit';
@@ -26,6 +27,7 @@ export function UserTemplateFormPage({ mode, template }: UserTemplateFormPagePro
   const routes = useTenantRoutes();
   const dispensarySlug = useRequiredDispensarySlug();
   const router = useRouter();
+  const invalidateMailTemplates = useInvalidateMailTemplates();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -94,6 +96,7 @@ export function UserTemplateFormPage({ mode, template }: UserTemplateFormPagePro
             : 'Template modifié avec succès',
         color: 'moss',
       });
+      invalidateMailTemplates();
       router.push(routes.employee.mails);
     } catch (error: unknown) {
       if (error instanceof ParsedZodError) {

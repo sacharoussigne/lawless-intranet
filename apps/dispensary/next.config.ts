@@ -9,9 +9,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: monorepoRoot,
   },
-  serverExternalPackages: ['pg', '@prisma/client', '@prisma/adapter-pg'],
+  serverExternalPackages: [
+    'pg',
+    '@prisma/client',
+    '@prisma/client-runtime-utils',
+    '@prisma/adapter-pg',
+  ],
   experimental: {
     optimizePackageImports: [
+      '@lawless-intranet/mail-template-engine',
+      '@lawless-intranet/mail-template-ui',
       '@mantine/core',
       '@mantine/hooks',
       '@mantine/dates',

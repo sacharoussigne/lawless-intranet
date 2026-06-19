@@ -8,8 +8,10 @@ import {
   IconNotebook,
   IconReportMoney,
   IconSearch,
+  IconStethoscope,
 } from '@tabler/icons-react';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
+import { isAppFeatureEnabled } from '@/lib/appSettingsShared';
 import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import type { Permissions } from '@/types/permissions';
 import type { tenantRoutes } from '@/types/routes';
@@ -18,6 +20,7 @@ export type EmployeeNavId =
   | 'stock'
   | 'orders'
   | 'bank'
+  | 'cabinet'
   | 'weeklyActivity'
   | 'payroll'
   | 'stockStatistics'
@@ -40,6 +43,7 @@ export type EmployeeNavContext = {
   appSettings: AppSettingsDTO;
   permissions: Permissions | null;
   userRole: string | null;
+  cabinetModuleAccess?: boolean;
 };
 
 const PRIMARY_SLOT_COUNT = 4;
@@ -61,6 +65,10 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
       return (
         appSettings.featureBankEnabled &&
         checkRolePermission(userRole, 'bank', 'access')
+      );
+    case 'cabinet':
+      return (
+        isAppFeatureEnabled(appSettings, 'cabinet') && (ctx.cabinetModuleAccess ?? false)
       );
     case 'weeklyActivity':
       return (
@@ -118,6 +126,14 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       navOrder: 3,
     },
     {
+      id: 'cabinet',
+      label: 'Cabinet',
+      shortLabel: 'Cabinet',
+      href: t.cabinet.index,
+      icon: IconStethoscope,
+      navOrder: 14,
+    },
+    {
       id: 'weeklyActivity',
       label: 'Activité hebdo',
       shortLabel: 'Activité',
@@ -155,7 +171,7 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       shortLabel: 'Recherche',
       href: t.searchItems.index,
       icon: IconSearch,
-      navOrder: 14,
+      navOrder: 15,
       iconOnly: true,
     },
   ];
