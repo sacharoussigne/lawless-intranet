@@ -53,6 +53,7 @@ export function ManageResourceAccessModal({
 }: ManageResourceAccessModalProps) {
   const dispensarySlug = useRequiredDispensarySlug();
   const [accesses, setAccesses] = useState<DocumentAccessItem[]>([]);
+  const [allUsers, setAllUsers] = useState<AccessUser[]>([]);
   const [users, setUsers] = useState<AccessUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [accessType, setAccessType] = useState<'READ' | 'WRITE'>('READ');
@@ -77,12 +78,15 @@ export function ManageResourceAccessModal({
     const data = handleAction(result);
     if (!data) return;
 
-    const filteredUsers = (data.users || []).filter(
-      (user: AccessUser) =>
-        user.id !== ownerId &&
-        !currentAccesses.some((access) => access.userId === user.id),
+    const dispensaryUsers = (data.users || []) as AccessUser[];
+    setAllUsers(dispensaryUsers);
+    setUsers(
+      dispensaryUsers.filter(
+        (user) =>
+          user.id !== ownerId &&
+          !currentAccesses.some((access) => access.userId === user.id),
+      ),
     );
-    setUsers(filteredUsers as AccessUser[]);
   };
 
   useEffect(() => {
@@ -229,7 +233,7 @@ export function ManageResourceAccessModal({
               </Table.Tr>
             ) : (
               accesses.map((access) => {
-                const user = users.find((item) => item.id === access.userId);
+                const user = allUsers.find((item) => item.id === access.userId);
                 return (
                   <Table.Tr key={access.id}>
                     <Table.Td>{user?.name ?? access.userId}</Table.Td>

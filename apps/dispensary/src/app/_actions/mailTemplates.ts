@@ -24,6 +24,7 @@ import {
   getDefaultMailName,
   getServerCookieHeader,
   MAIL_DOCUMENT_TYPE,
+  resolveMailTemplateAccess,
   templateToMailTemplate,
 } from '@/lib/documents/mailDocuments';
 
@@ -391,7 +392,7 @@ export async function getUserMailTemplatesPage(
       {
         type: MAIL_DOCUMENT_TYPE,
         scopeId: dispensaryId,
-        ownerScope: 'personal',
+        ownerScope: 'accessible',
         page,
         pageSize,
         nameSearch,
@@ -409,6 +410,8 @@ export async function getUserMailTemplatesPage(
           defaultMailName: getDefaultMailName(template.metadata),
           createdAt: new Date(template.createdAt),
           updatedAt: new Date(template.updatedAt),
+          userId: template.ownerId,
+          ...resolveMailTemplateAccess(template, ctx.session.user.id),
         })),
         totalCount: result.totalCount,
         page: result.page,
@@ -435,10 +438,7 @@ export async function getUserMailTemplateById(
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(id, { cookieHeader });
 
-    if (
-      template.scopeId !== dispensaryId ||
-      template.ownerId !== ctx.session.user.id
-    ) {
+    if (template.scopeId !== dispensaryId || template.ownerId === null) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -467,7 +467,7 @@ export async function getUserMailTemplateOptions(dispensarySlug: string) {
       {
         type: MAIL_DOCUMENT_TYPE,
         scopeId: dispensaryId,
-        ownerScope: 'personal',
+        ownerScope: 'accessible',
         pageSize: 50,
       },
       { cookieHeader },
@@ -475,10 +475,14 @@ export async function getUserMailTemplateOptions(dispensarySlug: string) {
 
     return {
       status: 200,
-      data: result.items.map((template) => ({
-        id: template.id,
-        name: template.name,
-      })),
+      data: result.items.map((template) => {
+        const access = resolveMailTemplateAccess(template, ctx.session.user.id);
+        return {
+          id: template.id,
+          name: template.name,
+          isSharedWithMe: access.isSharedWithMe,
+        };
+      }),
     };
   } catch (error) {
     return documentsActionError(error, 'Erreur lors de la récupération des modèles de courriers');
@@ -554,16 +558,6 @@ export async function updateUserMailTemplate(
       };
     }
 
-    if (
-      existingTemplate.ownerId !== null &&
-      existingTemplate.ownerId !== ctx.session.user.id
-    ) {
-      return {
-        status: 403,
-        error: 'Vous n\'êtes pas autorisé à modifier ce template',
-      };
-    }
-
     if (existingTemplate.ownerId === null) {
       const permResult = requirePermission(
         effectiveRole,
@@ -610,16 +604,6 @@ export async function deleteUserMailTemplate(dispensarySlug: string, data: { id:
       return {
         status: 404,
         error: 'Template introuvable',
-      };
-    }
-
-    if (
-      existingTemplate.ownerId !== null &&
-      existingTemplate.ownerId !== ctx.session.user.id
-    ) {
-      return {
-        status: 403,
-        error: 'Vous n\'êtes pas autorisé à supprimer ce template',
       };
     }
 

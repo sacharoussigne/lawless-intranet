@@ -51,7 +51,7 @@ export async function GET(request: Request) {
   const nameTerm = nameSearch?.trim();
 
   const where = {
-    ...templateListWhere(auth.userId, type, scopeId, ownerFilter),
+    ...templateListWhere(auth.userId, type, scopeId, ownerFilter, ownerScope),
     ...(nameTerm
       ? {
           name: {

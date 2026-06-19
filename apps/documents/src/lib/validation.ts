@@ -6,7 +6,7 @@ export const listQuerySchema = z.object({
   type: z.string().min(1),
   scopeId: z.string().min(1),
   ownerId: z.string().optional(),
-  ownerScope: z.enum(['org', 'personal', 'all']).optional(),
+  ownerScope: z.enum(['org', 'personal', 'all', 'accessible']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(10),
   nameSearch: z.string().max(255).optional(),
@@ -51,7 +51,7 @@ export const grantAccessSchema = z.object({
 
 export function parseOwnerIdFilter(
   ownerId: string | undefined,
-  ownerScope: 'org' | 'personal' | 'all' | undefined,
+  ownerScope: 'org' | 'personal' | 'all' | 'accessible' | undefined,
   userId: string,
 ): string | null | undefined {
   if (ownerScope === 'org') {

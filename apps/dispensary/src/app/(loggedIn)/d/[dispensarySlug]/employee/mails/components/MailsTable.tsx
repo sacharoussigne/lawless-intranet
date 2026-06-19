@@ -5,6 +5,7 @@ import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconTrash, IconEye, IconUsers } from '@tabler/icons-react';
 import { Group, ActionIcon } from '@mantine/core';
 import type { MailListItem } from '@/types/mails';
+import { SharedResourceAccessBadge } from '@/app/_components/mails/SharedResourceAccessBadge';
 
 interface MailsTableProps {
   mails: MailListItem[];
@@ -57,6 +58,19 @@ export function MailsTable({
             ),
           },
           {
+            accessor: 'access',
+            title: 'Accès',
+            width: 220,
+            render: (mail: MailListItem) => (
+              <SharedResourceAccessBadge
+                isOwner={mail.isOwner}
+                isSharedWithMe={mail.isSharedWithMe}
+                isSharedByMe={mail.isSharedByMe}
+                accessType={mail.accessType}
+              />
+            ),
+          },
+          {
             accessor: 'receiver',
             title: 'Destinataire',
             filter: (
@@ -104,7 +118,7 @@ export function MailsTable({
                   color="leather"
                   onClick={() => onManageAccess?.(mail)}
                   title="Partager"
-                  disabled={!onManageAccess}
+                  disabled={!onManageAccess || !mail.canWrite}
                 >
                   <IconUsers size={16} />
                 </ActionIcon>
@@ -113,6 +127,7 @@ export function MailsTable({
                   color="slate"
                   onClick={() => onEdit(mail)}
                   title="Modifier"
+                  disabled={!mail.canWrite}
                 >
                   <IconEdit size={16} />
                 </ActionIcon>
@@ -121,6 +136,7 @@ export function MailsTable({
                   color="danger"
                   onClick={() => onDelete(mail)}
                   title="Supprimer"
+                  disabled={!mail.canWrite}
                 >
                   <IconTrash size={16} />
                 </ActionIcon>

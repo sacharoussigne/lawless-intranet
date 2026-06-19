@@ -41,6 +41,9 @@ function toMailTemplateListItem(template: MailTemplate): MailTemplateListItem {
     updatedAt: template.updatedAt,
     dispensaryId: template.dispensaryId,
     userId: template.userId,
+    ownerId: template.userId,
+    isOwner: true,
+    canWrite: true,
   };
 }
 

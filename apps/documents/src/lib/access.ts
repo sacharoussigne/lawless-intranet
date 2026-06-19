@@ -81,8 +81,19 @@ export function templateListWhere(
   type: string,
   scopeId: string,
   ownerId?: string | null,
+  ownerScope?: 'org' | 'personal' | 'all' | 'accessible',
 ) {
   const base = { type, scopeId };
+
+  if (ownerScope === 'accessible') {
+    return {
+      ...base,
+      OR: [
+        { ownerId: userId },
+        { accesses: { some: { userId } } },
+      ],
+    };
+  }
 
   if (ownerId === null) {
     return { ...base, ownerId: null };

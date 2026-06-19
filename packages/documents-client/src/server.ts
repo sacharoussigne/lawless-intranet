@@ -18,7 +18,7 @@ export type ListTemplatesParams = {
   type: string;
   scopeId: string;
   ownerId?: string;
-  ownerScope?: 'org' | 'personal' | 'all';
+  ownerScope?: 'org' | 'personal' | 'all' | 'accessible';
   page?: number;
   pageSize?: number;
   nameSearch?: string;

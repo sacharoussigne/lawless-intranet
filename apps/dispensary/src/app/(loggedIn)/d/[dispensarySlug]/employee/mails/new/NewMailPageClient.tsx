@@ -180,7 +180,10 @@ export default function NewMailPageClient({
                 <Select
                   label="Template (optionnel)"
                   placeholder="Sélectionner un template ou laisser vide pour créer manuellement"
-                  data={templateOptions.map((t) => ({ value: t.id, label: t.name }))}
+                  data={templateOptions.map((t) => ({
+                    value: t.id,
+                    label: t.isSharedWithMe ? `${t.name} (partagé)` : t.name,
+                  }))}
                   value={selectedTemplateId}
                   onChange={handleTemplateChange}
                   clearable

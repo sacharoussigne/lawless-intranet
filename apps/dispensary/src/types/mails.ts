@@ -21,13 +21,22 @@ export type MailTemplate = {
   updatedAt: Date;
 };
 
+export type MailResourceAccessFields = {
+  ownerId?: string | null;
+  isOwner?: boolean;
+  isSharedWithMe?: boolean;
+  isSharedByMe?: boolean;
+  accessType?: 'READ' | 'WRITE' | null;
+  canWrite?: boolean;
+};
+
 export type MailListItem = {
   id: string;
   name: string;
   receiver: string;
   createdAt: Date;
   contentPreview: string;
-};
+} & MailResourceAccessFields;
 
 export type MailsPageFilters = {
   page: number;
@@ -52,7 +61,7 @@ export type MailTemplateListItem = {
   updatedAt: Date;
   dispensaryId?: string;
   userId?: string | null;
-};
+} & MailResourceAccessFields;
 
 export type MailTemplatesPageFilters = {
   page: number;
@@ -70,6 +79,7 @@ export type MailTemplatesPageResult = {
 export type MailTemplateOption = {
   id: string;
   name: string;
+  isSharedWithMe?: boolean;
 };
 
 export type DocumentAccessItem = {

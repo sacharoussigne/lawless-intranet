@@ -4,11 +4,18 @@ import { Paper, TextInput, Text } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconTrash, IconFlask, IconUsers } from '@tabler/icons-react';
 import { Group, ActionIcon } from '@mantine/core';
+import { SharedResourceAccessBadge } from './SharedResourceAccessBadge';
 
 export type MailTemplateTableRow = {
   id: string;
   name: string;
   description?: string | null;
+  isOwner?: boolean;
+  isSharedWithMe?: boolean;
+  isSharedByMe?: boolean;
+  accessType?: 'READ' | 'WRITE' | null;
+  canWrite?: boolean;
+  ownerId?: string | null;
 };
 
 interface MailTemplatesTableProps<T extends MailTemplateTableRow> {
@@ -58,6 +65,19 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
             ),
           },
           {
+            accessor: 'access',
+            title: 'Accès',
+            width: 220,
+            render: (mailTemplate: T) => (
+              <SharedResourceAccessBadge
+                isOwner={mailTemplate.isOwner}
+                isSharedWithMe={mailTemplate.isSharedWithMe}
+                isSharedByMe={mailTemplate.isSharedByMe}
+                accessType={mailTemplate.accessType}
+              />
+            ),
+          },
+          {
             accessor: 'description',
             title: 'Description',
             render: (mailTemplate: T) => {
@@ -96,7 +116,7 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
                   color="leather"
                   onClick={() => onManageAccess?.(mailTemplate)}
                   title="Partager"
-                  disabled={!onManageAccess}
+                  disabled={!onManageAccess || mailTemplate.canWrite === false}
                 >
                   <IconUsers size={16} />
                 </ActionIcon>
@@ -105,6 +125,7 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
                   color="slate"
                   onClick={() => onEdit(mailTemplate)}
                   title="Modifier"
+                  disabled={mailTemplate.canWrite === false}
                 >
                   <IconEdit size={16} />
                 </ActionIcon>
@@ -113,6 +134,7 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
                   color="danger"
                   onClick={() => onDelete(mailTemplate)}
                   title="Supprimer"
+                  disabled={mailTemplate.canWrite === false}
                 >
                   <IconTrash size={16} />
                 </ActionIcon>

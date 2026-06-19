@@ -17,6 +17,7 @@ import {
   getMailReceiver,
   getServerCookieHeader,
   MAIL_DOCUMENT_TYPE,
+  resolveMailDocumentAccess,
 } from '@/lib/documents/mailDocuments';
 
 const createMailSchema = z.object({
@@ -119,7 +120,6 @@ export async function getMailsPage(
       {
         type: MAIL_DOCUMENT_TYPE,
         scopeId: dispensaryId,
-        ownerId: ctx.session.user.id,
         page,
         pageSize,
         nameSearch,
@@ -137,6 +137,7 @@ export async function getMailsPage(
           receiver: getMailReceiver(item.metadata),
           createdAt: new Date(item.createdAt),
           contentPreview: item.contentPreview,
+          ...resolveMailDocumentAccess(item, ctx.session.user.id),
         })),
         totalCount: result.totalCount,
         page: result.page,

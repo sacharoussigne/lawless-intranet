@@ -16,6 +16,8 @@ import type { MailListItem, MailTemplateListItem, MailsPageResult, MailTemplates
 import {
   defaultMailsPageFilters,
   defaultMailTemplatesPageFilters,
+  useInvalidateMailTemplates,
+  useInvalidateMails,
   useMailsPage,
   useUserMailTemplatesPage,
 } from './hooks/useMailsQueries';
@@ -68,6 +70,9 @@ export default function MailsPageClient({
     initialData: initialMailsPage,
     enabled: activeTab === 'mails',
   });
+
+  const invalidateMails = useInvalidateMails();
+  const invalidateMailTemplates = useInvalidateMailTemplates();
 
   const templatesQuery = useUserMailTemplatesPage(templatesFilters, {
     initialData: initialMailTemplatesPage,
@@ -166,6 +171,7 @@ export default function MailsPageClient({
                   type: 'template',
                   id: mailTemplate.id,
                   name: mailTemplate.name,
+                  ownerId: mailTemplate.ownerId,
                 });
                 setAccessModalOpened(true);
               }}
@@ -227,6 +233,7 @@ export default function MailsPageClient({
                   type: 'document',
                   id: mail.id,
                   name: mail.name,
+                  ownerId: mail.ownerId,
                 });
                 setAccessModalOpened(true);
               }}
@@ -272,6 +279,13 @@ export default function MailsPageClient({
         resourceId={accessResource?.id ?? null}
         resourceName={accessResource?.name ?? ''}
         ownerId={accessResource?.ownerId}
+        onSuccess={() => {
+          if (accessResource?.type === 'template') {
+            invalidateMailTemplates();
+          } else {
+            invalidateMails();
+          }
+        }}
       />
     </Container>
   );

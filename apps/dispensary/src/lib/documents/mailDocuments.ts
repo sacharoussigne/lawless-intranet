@@ -1,7 +1,9 @@
 import type {
+  DocumentAccessType,
   DocumentRecord,
   MailDocumentMetadata,
   MailTemplateMetadata,
+  ResourceAccess,
   TemplateRecord,
 } from '@lawless-intranet/types';
 
@@ -70,4 +72,49 @@ export function buildMailTemplateMetadata(
     return undefined;
   }
   return { defaultDocumentName: defaultMailName };
+}
+
+export type MailResourceAccessMeta = {
+  ownerId: string | null;
+  isOwner: boolean;
+  isSharedWithMe: boolean;
+  isSharedByMe: boolean;
+  accessType: DocumentAccessType | null;
+  canWrite: boolean;
+};
+
+function resolveResourceAccess(
+  ownerId: string | null,
+  accesses: ResourceAccess[] | undefined,
+  currentUserId: string,
+): MailResourceAccessMeta {
+  const isOwner = ownerId === currentUserId;
+  const sharedAccess = accesses?.find((access) => access.userId === currentUserId);
+  const isSharedWithMe = !isOwner && Boolean(sharedAccess);
+  const isSharedByMe = isOwner && (accesses?.length ?? 0) > 0;
+  const accessType = isOwner ? null : (sharedAccess?.accessType ?? null);
+  const canWrite = isOwner || sharedAccess?.accessType === 'WRITE';
+
+  return {
+    ownerId,
+    isOwner,
+    isSharedWithMe,
+    isSharedByMe,
+    accessType,
+    canWrite,
+  };
+}
+
+export function resolveMailTemplateAccess(
+  template: Pick<TemplateRecord, 'ownerId' | 'accesses'>,
+  currentUserId: string,
+): MailResourceAccessMeta {
+  return resolveResourceAccess(template.ownerId, template.accesses, currentUserId);
+}
+
+export function resolveMailDocumentAccess(
+  document: Pick<DocumentRecord, 'ownerId' | 'accesses'>,
+  currentUserId: string,
+): MailResourceAccessMeta {
+  return resolveResourceAccess(document.ownerId, document.accesses, currentUserId);
 }
