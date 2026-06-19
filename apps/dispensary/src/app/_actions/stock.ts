@@ -7,3 +7,9 @@ export { updateStock, craftItem, overwriteStockForDate } from '@/app/_actions/st
 export { transferMultipleStock } from '@/app/_actions/stock/transfer';
 export { getStockConsumptionStats } from '@/app/_actions/stock/statistics';
 export type { StockConsumptionStatsResult } from '@/app/_actions/stock/statistics';
+export {
+  getStockMovementsPage,
+  updateStockMovement,
+  deleteStockMovement,
+  getStockMovementReconciliation,
+} from '@/app/_actions/stock/movementHistory';

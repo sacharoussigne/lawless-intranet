@@ -176,6 +176,8 @@ model Chest {
   updatedAt     DateTime       @updatedAt
   stockHistory StockHistory[]
   stockCheckConfig ChestStockCheckConfig?
+  stockItemMovements StockItemMovement[] @relation("MovementChest")
+  stockItemMovementDestinations StockItemMovement[] @relation("MovementDestinationChest")
 
   @@index([dispensaryId])
   @@map("chest")
@@ -226,20 +228,30 @@ enum StockMovementKind {
   MANUAL_ADJUST
   CRAFT_CONSUME
   CRAFT_PRODUCE
+  TRANSFER_OUT
+  TRANSFER_IN
+  OVERWRITE
 }
 
 model StockItemMovement {
-  id        String            @id @default(uuid())
-  itemId    String
-  quantity  Int
-  kind      StockMovementKind
-  userId    String?
-  createdAt DateTime          @default(now())
+  id                 String            @id @default(uuid())
+  itemId             String
+  chestId            String?
+  destinationChestId String?
+  quantity           Int
+  kind               StockMovementKind
+  userId             String?
+  note               String?
+  createdAt          DateTime          @default(now())
 
-  item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item             Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  chest            Chest? @relation("MovementChest", fields: [chestId], references: [id], onDelete: SetNull)
+  destinationChest Chest? @relation("MovementDestinationChest", fields: [destinationChestId], references: [id], onDelete: SetNull)
 
   @@index([itemId, createdAt])
   @@index([createdAt])
+  @@index([chestId, createdAt])
+  @@index([itemId, chestId, createdAt])
   @@map("stock_item_movement")
 }
 

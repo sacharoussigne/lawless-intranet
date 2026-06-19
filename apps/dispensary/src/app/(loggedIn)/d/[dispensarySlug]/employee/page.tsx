@@ -6,6 +6,7 @@ import {
   IconCalendarEvent,
   IconCalendarWeek,
   IconCashRegister,
+  IconHistory,
   IconMail,
   IconNotebook,
   IconReportMoney,
@@ -114,6 +115,13 @@ export default async function EmployeePage({
       description: 'Visualisez les statistiques de stock.',
       icon: IconAbacus,
       href: t.employee.stockStatistics,
+      hasAccess: appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false),
+    },
+    {
+      title: 'Historique stock',
+      description: 'Consultez et corrigez le journal des mouvements de stock.',
+      icon: IconHistory,
+      href: t.employee.stockMovements,
       hasAccess: appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false),
     },
   ];

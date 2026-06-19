@@ -61,6 +61,18 @@ describe('buildManualMovements', () => {
       { itemId: 'b', quantity: 10, kind: StockMovementKind.MANUAL_FIRST_COUNT },
     ]);
   });
+
+  it('includes chestId when provided', () => {
+    expect(
+      buildManualMovements(
+        [{ itemId: 'a', newQty: 3, stockToday: null, stockYesterday: 0 }],
+        false,
+        'chest-1',
+      ),
+    ).toEqual([
+      { itemId: 'a', quantity: 3, kind: StockMovementKind.MANUAL_FIRST_COUNT, chestId: 'chest-1' },
+    ]);
+  });
 });
 
 describe('getDisplayValue', () => {
