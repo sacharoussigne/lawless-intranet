@@ -1,14 +1,10 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { changePassword, updateUser } from '@lawless-intranet/auth-client/admin';
 import { requireSession } from '@/lib/serverActionAuth';
+import { getAuthRequestContext } from '@/lib/authRequest';
 import { z } from 'zod/v3';
 import { actionErrorParser } from '@/lib/action';
-
-async function getCookieHeader() {
-  return (await headers()).get('cookie');
-}
 
 const updateMyProfileSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
@@ -50,7 +46,7 @@ export async function updateMyProfile(data: z.infer<typeof updateMyProfileSchema
         name: validated.name,
         image: validated.image === undefined ? undefined : validated.image,
       },
-      await getCookieHeader(),
+      await getAuthRequestContext(),
     );
 
     return { status: 200, data: result };
@@ -77,7 +73,7 @@ export async function changeMyPassword(data: z.infer<typeof changeMyPasswordSche
         newPassword: validated.newPassword,
         revokeOtherSessions: true,
       },
-      await getCookieHeader(),
+      await getAuthRequestContext(),
     );
 
     return { status: 200, data: result };

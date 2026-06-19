@@ -1,6 +1,5 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { z } from 'zod';
 import { z as zv3 } from 'zod/v3';
 import {
@@ -20,6 +19,7 @@ import { fetchAllUserProfiles } from '@/lib/authUsers';
 import { type Role } from '@/types/enum/roles';
 import { actionErrorParser } from '@/lib/action';
 import { requirePlatformAdminContext } from '@/lib/dispensary/serverActionContext';
+import { getAuthRequestContext } from '@/lib/authRequest';
 
 const roleEnum = z.enum([
   'user',
@@ -53,7 +53,7 @@ const deleteUserSchema = z.object({
 });
 
 async function getCookieHeader() {
-  return (await headers()).get('cookie');
+  return (await getAuthRequestContext()).cookieHeader;
 }
 
 export async function listUsers(params?: {
@@ -131,7 +131,7 @@ export async function listUsersForBankAccess() {
 export async function createUser(data: z.infer<typeof createUserSchema>) {
   try {
     const validated = createUserSchema.parse(data);
-    const cookieHeader = await getCookieHeader();
+    const authContext = await getAuthRequestContext();
 
     const result = await createAuthUser(
       {
@@ -143,7 +143,7 @@ export async function createUser(data: z.infer<typeof createUserSchema>) {
             ? validated.roles.join(',')
             : 'user',
       },
-      cookieHeader,
+      authContext,
     );
 
     return {
@@ -158,7 +158,7 @@ export async function createUser(data: z.infer<typeof createUserSchema>) {
 export async function updateUser(data: z.infer<typeof updateUserSchema>) {
   try {
     const validated = updateUserSchema.parse(data);
-    const cookieHeader = await getCookieHeader();
+    const authContext = await getAuthRequestContext();
 
     const result = await adminUpdateUser(
       {
@@ -167,7 +167,7 @@ export async function updateUser(data: z.infer<typeof updateUserSchema>) {
           name: validated.name,
         },
       },
-      cookieHeader,
+      authContext,
     );
 
     if (validated.roles) {
@@ -176,7 +176,7 @@ export async function updateUser(data: z.infer<typeof updateUserSchema>) {
           userId: validated.id,
           role: validated.roles as Role[],
         },
-        cookieHeader,
+        authContext,
       );
     }
 
@@ -192,14 +192,14 @@ export async function updateUser(data: z.infer<typeof updateUserSchema>) {
 export async function setPassword(data: z.infer<typeof setPasswordSchema>) {
   try {
     const validated = setPasswordSchema.parse(data);
-    const cookieHeader = await getCookieHeader();
+    const authContext = await getAuthRequestContext();
 
     const result = await setUserPassword(
       {
         userId: validated.userId,
         newPassword: validated.password,
       },
-      cookieHeader,
+      authContext,
     );
 
     return {
@@ -214,9 +214,9 @@ export async function setPassword(data: z.infer<typeof setPasswordSchema>) {
 export async function deleteUser(data: z.infer<typeof deleteUserSchema>) {
   try {
     const validated = deleteUserSchema.parse(data);
-    const cookieHeader = await getCookieHeader();
+    const authContext = await getAuthRequestContext();
 
-    await removeUser({ userId: validated.id }, cookieHeader);
+    await removeUser({ userId: validated.id }, authContext);
 
     return {
       status: 200,
@@ -229,8 +229,8 @@ export async function deleteUser(data: z.infer<typeof deleteUserSchema>) {
 
 export async function impersonateUser(userId: string) {
   try {
-    const cookieHeader = await getCookieHeader();
-    const result = await impersonateUserAdmin({ userId }, cookieHeader);
+    const authContext = await getAuthRequestContext();
+    const result = await impersonateUserAdmin({ userId }, authContext);
 
     return {
       status: 200,
@@ -284,14 +284,14 @@ export async function updateMyProfile(data: zv3.infer<typeof updateMyProfileSche
     }
 
     const validated = updateMyProfileSchema.parse(data);
-    const cookieHeader = await getCookieHeader();
+    const authContext = await getAuthRequestContext();
 
     const result = await updateAuthUser(
       {
         name: validated.name,
         image: validated.image === undefined ? undefined : validated.image,
       },
-      cookieHeader,
+      authContext,
     );
 
     return {
@@ -319,7 +319,7 @@ export async function changeMyPassword(data: zv3.infer<typeof changeMyPasswordSc
     }
 
     const validated = changeMyPasswordSchema.parse(data);
-    const cookieHeader = await getCookieHeader();
+    const authContext = await getAuthRequestContext();
 
     const result = await changePassword(
       {
@@ -327,7 +327,7 @@ export async function changeMyPassword(data: zv3.infer<typeof changeMyPasswordSc
         newPassword: validated.newPassword,
         revokeOtherSessions: true,
       },
-      cookieHeader,
+      authContext,
     );
 
     return {

@@ -1,4 +1,4 @@
-import { authFetch } from './config';
+import { authFetch, normalizeAuthRequestContext, type AuthRequestContext } from './config';
 
 type ListUsersParams = {
   searchValue?: string;
@@ -11,7 +11,10 @@ type ListUsersParams = {
 
 async function adminFetch(
   path: string,
-  init: RequestInit & { cookieHeader?: string | null } = {},
+  init: RequestInit & {
+    cookieHeader?: string | null;
+    origin?: string | null;
+  } = {},
 ) {
   const response = await authFetch(path, init);
   const data = await response.json().catch(() => null);
@@ -29,8 +32,9 @@ async function adminFetch(
 
 export async function listUsers(
   params: ListUsersParams | undefined,
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   const query = new URLSearchParams();
   if (params?.searchValue) query.set('searchValue', params.searchValue);
   if (params?.searchField) query.set('searchField', params.searchField);
@@ -42,6 +46,7 @@ export async function listUsers(
   const suffix = query.toString();
   return adminFetch(`/api/auth/admin/list-users${suffix ? `?${suffix}` : ''}`, {
     cookieHeader,
+    origin,
   });
 }
 
@@ -52,11 +57,13 @@ export async function createUser(
     name: string;
     role?: string | string[];
   },
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/admin/create-user', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -64,11 +71,13 @@ export async function createUser(
 
 export async function adminUpdateUser(
   body: Record<string, unknown>,
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/admin/update-user', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -76,11 +85,13 @@ export async function adminUpdateUser(
 
 export async function setRole(
   body: { userId: string; role: string | string[] },
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/admin/set-role', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -88,11 +99,13 @@ export async function setRole(
 
 export async function setUserPassword(
   body: { userId: string; newPassword: string },
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/admin/set-user-password', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -100,30 +113,36 @@ export async function setUserPassword(
 
 export async function impersonateUser(
   body: { userId: string },
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/admin/impersonate-user', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 }
 
-export async function stopImpersonating(cookieHeader?: string | null) {
+export async function stopImpersonating(context?: AuthRequestContext) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/admin/stop-impersonating', {
     method: 'POST',
     cookieHeader,
+    origin,
   });
 }
 
 export async function updateUser(
   body: Record<string, unknown>,
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/update-user', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -135,11 +154,13 @@ export async function changePassword(
     newPassword: string;
     revokeOtherSessions?: boolean;
   },
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/change-password', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
@@ -147,11 +168,13 @@ export async function changePassword(
 
 export async function removeUser(
   body: { userId: string },
-  cookieHeader?: string | null,
+  context?: AuthRequestContext,
 ) {
+  const { cookieHeader, origin } = normalizeAuthRequestContext(context);
   return adminFetch('/api/auth/admin/remove-user', {
     method: 'POST',
     cookieHeader,
+    origin,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
