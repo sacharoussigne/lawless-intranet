@@ -89,7 +89,15 @@ export function DetectedParameters({ content }: DetectedParametersProps) {
             </Text>
           </Group>
           {jsCodes.map((code, index) => (
-            <Code key={index} block>
+            <Code
+              key={index}
+              block
+              style={{
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              }}
+            >
               {code}
             </Code>
           ))}

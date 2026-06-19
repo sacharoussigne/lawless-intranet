@@ -60,6 +60,7 @@ services:
       NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       NEXT_PUBLIC_APP_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
+      DOCUMENTS_URL: "${DOCUMENTS_PUBLIC_URL:-http://documents:3002}"
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
@@ -68,6 +69,31 @@ services:
       LETSENCRYPT_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
+    networks:
+      - proxy
+
+  documents:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-documents"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: documents
+        APP_PORT: "3002"
+        NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+        DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      DATABASE_URL: "${DOCUMENTS_DATABASE_URL:?err}"
+      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      VIRTUAL_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3002"
+      LETSENCRYPT_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
     networks:
       - proxy
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { Modal, Text, Button, Group, Stack } from '@mantine/core';
+import type { OrderType, OrderStatus } from '@prisma/client';
 import { getOrderTypeLabel } from '@/types/enum/orderType';
 import { getOrderStatusLabel } from '@/types/enum/orderStatus';
 import type {
@@ -45,8 +46,8 @@ export function DeleteOrderLetterTemplateAssignmentModal({
         </Text>
         {assignmentToDelete && (
           <Text fw={500}>
-            Type : {getOrderTypeLabel(assignmentToDelete.orderType)} - Statut :{' '}
-            {getOrderStatusLabel(assignmentToDelete.orderStatus)}
+            Type : {getOrderTypeLabel(assignmentToDelete.orderType as OrderType)} - Statut :{' '}
+            {getOrderStatusLabel(assignmentToDelete.orderStatus as OrderStatus)}
           </Text>
         )}
         <Text c="dimmed" size="sm">

@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -24,9 +25,7 @@ model Dispensary {
   companyGroups CompanyGroup[]
   individualCustomers IndividualCustomer[]
   orders      Order[]
-  mailTemplates MailTemplate[]
   orderMailTemplateAssignments OrderMailTemplateAssignment[]
-  mails       Mail[]
   bankAccounts BankAccount[]
   transactionNameSuggestions TransactionNameSuggestion[]
   transactionDescriptionSuggestions TransactionDescriptionSuggestion[]
@@ -395,56 +394,20 @@ model OrderItem {
   @@map("order_item")
 }
 
-model MailTemplate {
-  id               String                          @id @default(uuid())
-  dispensaryId     String
-  dispensary       Dispensary                      @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name             String
-  description      String?
-  content          String
-  defaultMailName  String?
-  userId      String?
-  createdAt   DateTime                        @default(now())
-  updatedAt   DateTime                        @updatedAt
-  assignments OrderMailTemplateAssignment[]
-
-  @@index([userId])
-  @@index([dispensaryId])
-  @@map("mail_template")
-}
-
 model OrderMailTemplateAssignment {
   id              String         @id @default(uuid())
   dispensaryId    String
   dispensary      Dispensary     @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   orderType       OrderType
   orderStatus     OrderStatus
-  mailTemplateId  String
-  mailTemplate    MailTemplate @relation(fields: [mailTemplateId], references: [id], onDelete: Cascade)
+  templateId      String
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   @@unique([dispensaryId, orderType, orderStatus])
-  @@index([mailTemplateId])
+  @@index([templateId])
   @@index([orderType, orderStatus])
   @@map("order_mail_template_assignment")
-}
-
-model Mail {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  senderId  String
-  name      String
-  receiver  String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([senderId])
-  @@index([createdAt])
-  @@index([dispensaryId])
-  @@map("mail")
 }
 
 enum BankAccountAccessType {

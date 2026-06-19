@@ -15,31 +15,29 @@ export function TemplateEditorLayout({
 }: TemplateEditorLayoutProps) {
   return (
     <Grid gutter="xl">
-      <Grid.Col span={6}>
+      <Grid.Col span={6} style={{ minWidth: 0 }}>
         <Stack gap="md">
           <Text size="sm" fw={600}>
             Éditeur
           </Text>
           <Paper p="md" withBorder>
-            <ScrollArea h={500}>
-              <TemplateEditor
-                placeholder="Contenu du modèle de courrier"
-                value={content}
-                onChange={onContentChange}
-                hideParameters
-                fixedHeight
-              />
-            </ScrollArea>
+            <TemplateEditor
+              placeholder="Contenu du modèle de courrier"
+              value={content}
+              onChange={onContentChange}
+              hideParameters
+              fixedHeight
+            />
           </Paper>
         </Stack>
       </Grid.Col>
-      <Grid.Col span={6}>
+      <Grid.Col span={6} style={{ minWidth: 0 }}>
         <Stack gap="md">
           <Text size="sm" fw={600}>
             Paramètres détectés
           </Text>
           <Paper p="md" withBorder>
-            <ScrollArea h={500}>
+            <ScrollArea h={500} scrollbars="y" type="auto">
               <DetectedParameters content={content} />
             </ScrollArea>
           </Paper>

@@ -6,6 +6,8 @@
         "outputs": [".next/**", "dist/**"],
         "env": [
           "DATABASE_URL",
+          "DOCUMENTS_URL",
+          "DOCUMENTS_DATABASE_URL",
           "NEXT_PUBLIC_AUTH_URL",
           "NEXT_PUBLIC_DISPENSARY_URL",
           "NEXT_PUBLIC_APP_URL",

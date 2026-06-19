@@ -3,16 +3,10 @@
 import { DataTable } from 'mantine-datatable';
 import { Paper, ActionIcon, Group } from '@mantine/core';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
-import type { OrderMailTemplateAssignment } from '@prisma/client';
+import type { OrderType, OrderStatus } from '@prisma/client';
+import type { OrderMailTemplateAssignmentWithTemplate } from '@/types/mailTemplates';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
-
-interface OrderMailTemplateAssignmentWithTemplate extends OrderMailTemplateAssignment {
-  mailTemplate: {
-    id: string;
-    name: string;
-  };
-}
 
 interface OrderLetterTemplateAssignmentsTableProps {
   assignments: OrderMailTemplateAssignmentWithTemplate[];
@@ -36,23 +30,26 @@ export function OrderLetterTemplateAssignmentsTable({
             accessor: 'orderType',
             title: 'Type de commande',
             render: (assignment: OrderMailTemplateAssignmentWithTemplate) => (
-              <OrderTypeBadge type={assignment.orderType} />
+              <OrderTypeBadge type={assignment.orderType as OrderType} />
             ),
           },
           {
             accessor: 'orderStatus',
             title: 'Statut de commande',
             render: (assignment: OrderMailTemplateAssignmentWithTemplate) => (
-              <OrderStatusBadge status={assignment.orderStatus} />
+              <OrderStatusBadge status={assignment.orderStatus as OrderStatus} />
             ),
           },
           {
             accessor: 'mailTemplate.name',
-            title: 'Template assigné',
+            title: 'Modèle de courrier',
+            render: (assignment: OrderMailTemplateAssignmentWithTemplate) =>
+              assignment.mailTemplate?.name ?? '—',
           },
           {
             accessor: 'actions',
             title: 'Actions',
+            width: 100,
             render: (assignment: OrderMailTemplateAssignmentWithTemplate) => (
               <Group gap="xs" wrap="nowrap" justify="flex-end">
                 <ActionIcon
@@ -76,7 +73,7 @@ export function OrderLetterTemplateAssignmentsTable({
           },
         ]}
         fetching={loading}
-        noRecordsText="Aucune assignation"
+        noRecordsText="Aucune assignation trouvée"
         striped
         highlightOnHover
         minHeight={200}

@@ -10,6 +10,7 @@ import { DeleteOrderLetterTemplateAssignmentModal } from './components/DeleteOrd
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { MailTemplatesTable } from '@/app/_components/mails/MailTemplatesTable';
 import { OrderLetterTemplateAssignmentsTable } from './components/OrderLetterTemplateAssignmentsTable';
+import { ManageResourceAccessModal } from '../../employee/mails/components/ManageResourceAccessModal';
 import type { MailTemplateListItem } from '@/types/mailTemplates';
 import { normalizeString } from '@/lib/string/normalizeString';
 import {
@@ -54,6 +55,8 @@ export default function MailTemplatesPageClient({
   const [deleteAssignmentModalOpened, setDeleteAssignmentModalOpened] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] =
     useState<OrderLetterTemplateAssignmentWithTemplate | null>(null);
+  const [accessModalOpened, setAccessModalOpened] = useState(false);
+  const [templateForAccess, setTemplateForAccess] = useState<MailTemplateListItem | null>(null);
 
   const [nameFilter, setNameFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -162,6 +165,10 @@ export default function MailTemplatesPageClient({
               onPageChange={handlePageChange}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onManageAccess={(mailTemplate) => {
+                setTemplateForAccess(mailTemplate);
+                setAccessModalOpened(true);
+              }}
             />
           </Stack>
         </Tabs.Panel>
@@ -226,6 +233,18 @@ export default function MailTemplatesPageClient({
         }}
         assignmentToDelete={assignmentToDelete}
         deleteMutation={deleteAssignmentMutation}
+      />
+
+      <ManageResourceAccessModal
+        opened={accessModalOpened}
+        onClose={() => {
+          setAccessModalOpened(false);
+          setTemplateForAccess(null);
+        }}
+        resourceType="template"
+        resourceId={templateForAccess?.id ?? null}
+        resourceName={templateForAccess?.name ?? ''}
+        ownerId={null}
       />
     </Container>
   );
