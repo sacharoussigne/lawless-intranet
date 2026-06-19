@@ -32,31 +32,51 @@ export function TemplateEditor({
     return parameters.length > 0;
   }, [value, hideParameters]);
 
+  const editor = (
+    <Textarea
+      label={label}
+      placeholder={placeholder}
+      required={required}
+      minRows={fixedHeight ? undefined : minRows}
+      autosize={!fixedHeight}
+      value={value}
+      onChange={(e) => onChange(e.currentTarget.value)}
+      styles={
+        fixedHeight
+          ? {
+              input: {
+                border: 'none',
+                padding: 0,
+                height: '500px',
+                minHeight: '500px',
+                maxHeight: '500px',
+                resize: 'none',
+                overflow: 'auto',
+                width: '100%',
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              },
+              wrapper: {
+                border: 'none',
+                width: '100%',
+              },
+              label: {
+                display: 'none',
+              },
+            }
+          : undefined
+      }
+    />
+  );
+
+  if (fixedHeight && hideParameters) {
+    return editor;
+  }
+
   return (
     <Stack gap="sm">
-      <Textarea
-        label={label}
-        placeholder={placeholder}
-        required={required}
-        minRows={fixedHeight ? undefined : minRows}
-        autosize={!fixedHeight}
-        value={value}
-        onChange={(e) => onChange(e.currentTarget.value)}
-        styles={fixedHeight ? {
-          input: {
-            border: 'none',
-            padding: 0,
-            minHeight: '500px',
-            resize: 'none',
-          },
-          wrapper: {
-            border: 'none',
-          },
-          label: {
-            display: 'none',
-          },
-        } : undefined}
-      />
+      {editor}
 
       {!hideParameters && hasParameters && (
         <Paper p="md" withBorder>

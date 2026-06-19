@@ -26,7 +26,7 @@ import {
   TemplatePreviewWithForm,
   useTemplatePreviewActions,
 } from '@lawless-intranet/mail-template-ui';
-import { useUserMailTemplateDetail, useUserMailTemplateOptions } from '../hooks/useMailsQueries';
+import { useUserMailTemplateDetail, useUserMailTemplateOptions, useInvalidateMails } from '../hooks/useMailsQueries';
 
 interface NewMailPageClientProps {
   initialTemplateOptions: MailTemplateOption[];
@@ -38,6 +38,7 @@ export default function NewMailPageClient({
   const routes = useTenantRoutes();
   const dispensarySlug = useRequiredDispensarySlug();
   const router = useRouter();
+  const invalidateMails = useInvalidateMails();
   const { data: templateOptions = initialTemplateOptions } =
     useUserMailTemplateOptions(initialTemplateOptions);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -109,6 +110,7 @@ export default function NewMailPageClient({
         message: 'Courrier créé avec succès',
         color: 'moss',
       });
+      invalidateMails();
       router.push(routes.employee.mails);
     } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
