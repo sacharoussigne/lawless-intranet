@@ -6,6 +6,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Container, Title, Group, Button, Stack, Tabs } from '@mantine/core';
 import { IconPlus, IconTemplate, IconMail } from '@tabler/icons-react';
 import { DeleteMailTemplateModal } from './components/DeleteMailTemplateModal';
+import { ManageResourceAccessModal } from './components/ManageResourceAccessModal';
 import { DeleteMailModal } from './components/DeleteMailModal';
 import { ViewMailModal } from './components/ViewMailModal';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
@@ -55,6 +56,13 @@ export default function MailsPageClient({
   const [mailToDelete, setMailToDelete] = useState<MailListItem | null>(null);
   const [viewMailModalOpened, setViewMailModalOpened] = useState(false);
   const [mailToViewId, setMailToViewId] = useState<string | null>(null);
+  const [accessModalOpened, setAccessModalOpened] = useState(false);
+  const [accessResource, setAccessResource] = useState<{
+    type: 'template' | 'document';
+    id: string;
+    name: string;
+    ownerId?: string | null;
+  } | null>(null);
 
   const mailsQuery = useMailsPage(mailsFilters, {
     initialData: initialMailsPage,
@@ -126,7 +134,7 @@ export default function MailsPageClient({
               filters={[
                 {
                   label: 'Nom',
-                  value: templatesFilters.nameSearch,
+                  value: templatesFilters.nameSearch ?? null,
                   onRemove: () => handleTemplatesNameFilterChange(''),
                 },
               ]}
@@ -135,7 +143,7 @@ export default function MailsPageClient({
             <MailTemplatesTable
               mailTemplates={templatesPage?.items ?? []}
               loading={templatesQuery.isFetching}
-              nameFilter={templatesFilters.nameSearch}
+              nameFilter={templatesFilters.nameSearch ?? ''}
               page={templatesFilters.page}
               pageSize={templatesFilters.pageSize}
               totalRecords={templatesPage?.totalCount ?? 0}
@@ -153,6 +161,14 @@ export default function MailsPageClient({
               onTest={(mailTemplate) =>
                 router.push(routes.employee.testTemplate(mailTemplate.id))
               }
+              onManageAccess={(mailTemplate) => {
+                setAccessResource({
+                  type: 'template',
+                  id: mailTemplate.id,
+                  name: mailTemplate.name,
+                });
+                setAccessModalOpened(true);
+              }}
             />
           </Stack>
         </Tabs.Panel>
@@ -173,12 +189,12 @@ export default function MailsPageClient({
               filters={[
                 {
                   label: 'Nom',
-                  value: mailsFilters.nameSearch,
+                  value: mailsFilters.nameSearch ?? null,
                   onRemove: () => handleMailsNameFilterChange(''),
                 },
                 {
                   label: 'Destinataire',
-                  value: mailsFilters.receiverSearch,
+                  value: mailsFilters.receiverSearch ?? null,
                   onRemove: () => handleMailsReceiverFilterChange(''),
                 },
               ]}
@@ -187,8 +203,8 @@ export default function MailsPageClient({
             <MailsTable
               mails={mailsPage?.items ?? []}
               loading={mailsQuery.isFetching}
-              nameFilter={mailsFilters.nameSearch}
-              receiverFilter={mailsFilters.receiverSearch}
+              nameFilter={mailsFilters.nameSearch ?? ''}
+              receiverFilter={mailsFilters.receiverSearch ?? ''}
               page={mailsFilters.page}
               pageSize={mailsFilters.pageSize}
               totalRecords={mailsPage?.totalCount ?? 0}
@@ -205,6 +221,14 @@ export default function MailsPageClient({
               onView={(mail) => {
                 setMailToViewId(mail.id);
                 setViewMailModalOpened(true);
+              }}
+              onManageAccess={(mail) => {
+                setAccessResource({
+                  type: 'document',
+                  id: mail.id,
+                  name: mail.name,
+                });
+                setAccessModalOpened(true);
               }}
             />
           </Stack>
@@ -236,6 +260,18 @@ export default function MailsPageClient({
           setMailToViewId(null);
         }}
         mailId={mailToViewId}
+      />
+
+      <ManageResourceAccessModal
+        opened={accessModalOpened}
+        onClose={() => {
+          setAccessModalOpened(false);
+          setAccessResource(null);
+        }}
+        resourceType={accessResource?.type ?? 'document'}
+        resourceId={accessResource?.id ?? null}
+        resourceName={accessResource?.name ?? ''}
+        ownerId={accessResource?.ownerId}
       />
     </Container>
   );

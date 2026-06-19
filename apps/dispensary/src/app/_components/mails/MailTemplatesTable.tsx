@@ -2,7 +2,7 @@
 
 import { Paper, TextInput, Text } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconTrash, IconFlask } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconFlask, IconUsers } from '@tabler/icons-react';
 import { Group, ActionIcon } from '@mantine/core';
 
 export type MailTemplateTableRow = {
@@ -23,6 +23,7 @@ interface MailTemplatesTableProps<T extends MailTemplateTableRow> {
   onEdit: (mailTemplate: T) => void;
   onDelete: (mailTemplate: T) => void;
   onTest?: (mailTemplate: T) => void;
+  onManageAccess?: (mailTemplate: T) => void;
 }
 
 export function MailTemplatesTable<T extends MailTemplateTableRow>({
@@ -37,6 +38,7 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
   onEdit,
   onDelete,
   onTest,
+  onManageAccess,
 }: MailTemplatesTableProps<T>) {
   return (
     <Paper shadow="sm" p="md" withBorder w="100%">
@@ -89,6 +91,15 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
                     <IconFlask size={16} />
                   </ActionIcon>
                 )}
+                <ActionIcon
+                  variant="light"
+                  color="leather"
+                  onClick={() => onManageAccess?.(mailTemplate)}
+                  title="Partager"
+                  disabled={!onManageAccess}
+                >
+                  <IconUsers size={16} />
+                </ActionIcon>
                 <ActionIcon
                   variant="light"
                   color="slate"

@@ -2,7 +2,7 @@
 
 import { Paper, TextInput } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconTrash, IconEye } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconEye, IconUsers } from '@tabler/icons-react';
 import { Group, ActionIcon } from '@mantine/core';
 import type { MailListItem } from '@/types/mails';
 
@@ -20,6 +20,7 @@ interface MailsTableProps {
   onEdit: (mail: MailListItem) => void;
   onDelete: (mail: MailListItem) => void;
   onView: (mail: MailListItem) => void;
+  onManageAccess?: (mail: MailListItem) => void;
 }
 
 export function MailsTable({
@@ -36,6 +37,7 @@ export function MailsTable({
   onEdit,
   onDelete,
   onView,
+  onManageAccess,
 }: MailsTableProps) {
   return (
     <Paper shadow="sm" p="md" withBorder>
@@ -96,6 +98,15 @@ export function MailsTable({
                   title="Voir"
                 >
                   <IconEye size={16} />
+                </ActionIcon>
+                <ActionIcon
+                  variant="light"
+                  color="leather"
+                  onClick={() => onManageAccess?.(mail)}
+                  title="Partager"
+                  disabled={!onManageAccess}
+                >
+                  <IconUsers size={16} />
                 </ActionIcon>
                 <ActionIcon
                   variant="light"

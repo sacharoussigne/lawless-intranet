@@ -21,15 +21,15 @@ import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { mailTemplatesKeys } from '@/lib/mails/queryKeys';
 import { ordersKeys } from '@/lib/orders/queryKeys';
-import type { MailTemplate, MailTemplateListItem } from '@/types/mailTemplates';
-import type { OrderMailTemplateAssignment, OrderStatus, OrderType } from '@prisma/client';
+import type {
+  MailTemplate,
+  MailTemplateListItem,
+  OrderMailTemplateAssignmentWithTemplate,
+} from '@/types/mailTemplates';
+import type { OrderStatus, OrderType } from '@prisma/client';
 
-export type OrderLetterTemplateAssignmentWithTemplate = OrderMailTemplateAssignment & {
-  mailTemplate: {
-    id: string;
-    name: string;
-  };
-};
+export type OrderLetterTemplateAssignmentWithTemplate =
+  OrderMailTemplateAssignmentWithTemplate;
 
 function toMailTemplateListItem(template: MailTemplate): MailTemplateListItem {
   return {
