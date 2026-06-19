@@ -4,6 +4,7 @@ import {
   IconArchive,
   IconCalendarWeek,
   IconCashRegister,
+  IconHistory,
   IconMail,
   IconNotebook,
   IconReportMoney,
@@ -24,6 +25,7 @@ export type EmployeeNavId =
   | 'weeklyActivity'
   | 'payroll'
   | 'stockStatistics'
+  | 'stockMovements'
   | 'mails'
   | 'search';
 
@@ -80,6 +82,7 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
         appSettings.featurePayrollEnabled && (permissions?.payrollReports.view ?? false)
       );
     case 'stockStatistics':
+    case 'stockMovements':
       return (
         appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false)
       );
@@ -131,7 +134,7 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       shortLabel: 'Cabinet',
       href: t.cabinet.index,
       icon: IconStethoscope,
-      navOrder: 14,
+      navOrder: 15,
     },
     {
       id: 'weeklyActivity',
@@ -158,12 +161,20 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       navOrder: 12,
     },
     {
+      id: 'stockMovements',
+      label: 'Historique stock',
+      shortLabel: 'Historique',
+      href: t.employee.stockMovements,
+      icon: IconHistory,
+      navOrder: 13,
+    },
+    {
       id: 'mails',
       label: 'Courriers',
       shortLabel: 'Courriers',
       href: t.employee.mails,
       icon: IconMail,
-      navOrder: 13,
+      navOrder: 14,
     },
     {
       id: 'search',
@@ -171,7 +182,7 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       shortLabel: 'Recherche',
       href: t.searchItems.index,
       icon: IconSearch,
-      navOrder: 15,
+      navOrder: 16,
       iconOnly: true,
     },
   ];

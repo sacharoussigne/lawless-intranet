@@ -1,6 +1,6 @@
 'use server';
 
-import type { Prisma } from '@prisma/client';
+import { StockMovementKind, type Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -15,6 +15,7 @@ async function transferItemsInTransaction(
   destinationChestId: string,
   today: Date,
   tomorrow: Date,
+  userId: string,
 ) {
   const itemIds = validItems.map((i) => i.itemId);
 
@@ -86,6 +87,27 @@ async function transferItemsInTransaction(
         },
       });
     }
+
+    await tx.stockItemMovement.createMany({
+      data: [
+        {
+          itemId,
+          quantity: -quantity,
+          kind: StockMovementKind.TRANSFER_OUT,
+          chestId: sourceChestId,
+          destinationChestId,
+          userId,
+        },
+        {
+          itemId,
+          quantity,
+          kind: StockMovementKind.TRANSFER_IN,
+          chestId: destinationChestId,
+          destinationChestId: sourceChestId,
+          userId,
+        },
+      ],
+    });
   }
 }
 
@@ -122,6 +144,7 @@ export async function transferMultipleStock(
 
     const today = getTodayStart();
     const tomorrow = getTomorrowStart();
+    const userId = ctx.session.user.id;
 
     await prisma.$transaction(async (tx) => {
       await transferItemsInTransaction(
@@ -131,6 +154,7 @@ export async function transferMultipleStock(
         destinationChestId,
         today,
         tomorrow,
+        userId,
       );
     });
 

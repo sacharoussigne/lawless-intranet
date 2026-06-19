@@ -141,7 +141,9 @@ export async function middleware(req: NextRequest) {
       );
     } else if (
       pathname === t.employee.stockStatistics ||
-      pathname.startsWith(`${t.employee.stockStatistics}/`)
+      pathname.startsWith(`${t.employee.stockStatistics}/`) ||
+      pathname === t.employee.stockMovements ||
+      pathname.startsWith(`${t.employee.stockMovements}/`)
     ) {
       middlewares.push(hasStockStatisticsAccessMiddleware);
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>

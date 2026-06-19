@@ -120,13 +120,14 @@ export async function updateStock(
         }),
       );
 
-      const movements = buildManualMovements(movementInputs, skipHistory);
+      const movements = buildManualMovements(movementInputs, skipHistory, resolvedChestId);
       if (movements.length > 0) {
         await tx.stockItemMovement.createMany({
           data: movements.map((m) => ({
             itemId: m.itemId,
             quantity: m.quantity,
             kind: m.kind,
+            chestId: m.chestId,
             userId,
           })),
         });
@@ -311,12 +312,14 @@ export async function craftItem(
             itemId: data.craftedItemId,
             quantity: totalQuantityProduced,
             kind: StockMovementKind.CRAFT_PRODUCE,
+            chestId: destinationChestId,
             userId,
           },
-          ...ingredientRequirements.map(({ ingredient, requiredQuantity }) => ({
+          ...ingredientRequirements.map(({ ingredient, requiredQuantity, sourceChestId }) => ({
             itemId: ingredient.usedItemId,
             quantity: -requiredQuantity,
             kind: StockMovementKind.CRAFT_CONSUME,
+            chestId: sourceChestId,
             userId,
           })),
         ],
