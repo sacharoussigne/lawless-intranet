@@ -80,7 +80,9 @@ export async function middleware(req: NextRequest) {
       pathname === t.admin.members ||
       pathname.startsWith(`${t.admin.members}/`) ||
       pathname === t.admin.agendas ||
-      pathname.startsWith(`${t.admin.agendas}/`)
+      pathname.startsWith(`${t.admin.agendas}/`) ||
+      pathname === t.admin.cabinets ||
+      pathname.startsWith(`${t.admin.cabinets}/`)
     ) {
       middlewares.push(hasAdminRoleMiddleware);
       if (pathname === t.admin.settings || pathname.startsWith(`${t.admin.settings}/`)) {
@@ -124,6 +126,10 @@ export async function middleware(req: NextRequest) {
     } else if (pathname.startsWith(t.agenda.index)) {
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
         assertAppFeatureEnabledMiddleware(request, s, 'agenda'),
+      );
+    } else if (pathname.startsWith(t.cabinet.index)) {
+      middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
+        assertAppFeatureEnabledMiddleware(request, s, 'cabinet'),
       );
     } else if (
       pathname === t.employee.payroll ||

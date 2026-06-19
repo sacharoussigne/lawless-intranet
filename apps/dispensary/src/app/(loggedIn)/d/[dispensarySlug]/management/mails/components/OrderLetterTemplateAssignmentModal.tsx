@@ -48,9 +48,9 @@ export function OrderLetterTemplateAssignmentModal({
   useEffect(() => {
     if (editingAssignment) {
       form.setValues({
-        orderType: editingAssignment.orderType,
-        orderStatus: editingAssignment.orderStatus,
-        mailTemplateId: editingAssignment.mailTemplateId,
+        orderType: editingAssignment.orderType as OrderType,
+        orderStatus: editingAssignment.orderStatus as OrderStatus,
+        mailTemplateId: editingAssignment.templateId,
       });
     } else {
       form.reset();

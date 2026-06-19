@@ -21,12 +21,12 @@ import { handleAction } from '@/lib/action';
 import { handleApiZodError } from '@/lib/services/zod';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import type { MailTemplateOption } from '@/types/mails';
-import { TemplateEditor } from '../components/TemplateEditor';
 import {
+  TemplateEditor,
   TemplatePreviewWithForm,
   useTemplatePreviewActions,
-} from '../components/TemplatePreviewPanel';
-import { useUserMailTemplateDetail, useUserMailTemplateOptions } from '../hooks/useMailsQueries';
+} from '@lawless-intranet/mail-template-ui';
+import { useUserMailTemplateDetail, useUserMailTemplateOptions, useInvalidateMails } from '../hooks/useMailsQueries';
 
 interface NewMailPageClientProps {
   initialTemplateOptions: MailTemplateOption[];
@@ -38,6 +38,7 @@ export default function NewMailPageClient({
   const routes = useTenantRoutes();
   const dispensarySlug = useRequiredDispensarySlug();
   const router = useRouter();
+  const invalidateMails = useInvalidateMails();
   const { data: templateOptions = initialTemplateOptions } =
     useUserMailTemplateOptions(initialTemplateOptions);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -109,6 +110,7 @@ export default function NewMailPageClient({
         message: 'Courrier créé avec succès',
         color: 'moss',
       });
+      invalidateMails();
       router.push(routes.employee.mails);
     } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
@@ -178,7 +180,10 @@ export default function NewMailPageClient({
                 <Select
                   label="Template (optionnel)"
                   placeholder="Sélectionner un template ou laisser vide pour créer manuellement"
-                  data={templateOptions.map((t) => ({ value: t.id, label: t.name }))}
+                  data={templateOptions.map((t) => ({
+                    value: t.id,
+                    label: t.isSharedWithMe ? `${t.name} (partagé)` : t.name,
+                  }))}
                   value={selectedTemplateId}
                   onChange={handleTemplateChange}
                   clearable

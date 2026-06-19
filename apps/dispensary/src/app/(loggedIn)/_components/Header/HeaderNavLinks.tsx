@@ -74,6 +74,7 @@ export function HeaderNavLinks({
   isManagementSpace,
   canManage,
   isRouteActive,
+  cabinetModuleAccess = false,
 }: {
   t: ReturnType<typeof tenantRoutes>;
   appSettings: AppSettingsDTO;
@@ -82,6 +83,7 @@ export function HeaderNavLinks({
   isManagementSpace: boolean;
   canManage: boolean;
   isRouteActive: (route: string) => boolean;
+  cabinetModuleAccess?: boolean;
 }) {
   const [drawerOpened, { toggle: toggleDrawer, close: closeDrawer }] = useDisclosure(false);
   const isMobile = useMediaQuery('(max-width: 62em)');
@@ -180,6 +182,7 @@ export function HeaderNavLinks({
     appSettings,
     permissions,
     userRole,
+    cabinetModuleAccess,
   });
 
   const renderItem = (item: HeaderNavLinkItem) => (

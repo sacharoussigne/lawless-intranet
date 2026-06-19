@@ -3,7 +3,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { Permissions, PermissionsContextType, AccessibleDispensary } from '@/types/permissions';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
-import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
+import { APP_SETTINGS_DEFAULTS, normalizeAppSettings } from '@/lib/appSettingsShared';
 import { tenantRoutes } from '@/types/routes';
 
 const PermissionsContext = createContext<PermissionsContextType>({
@@ -16,6 +16,8 @@ const PermissionsContext = createContext<PermissionsContextType>({
   accessibleDispensaries: [],
   agendaModuleAccess: false,
   accessibleAgendaIds: [],
+  cabinetModuleAccess: false,
+  accessibleCabinetIds: [],
 });
 
 interface PermissionsProviderProps {
@@ -28,6 +30,8 @@ interface PermissionsProviderProps {
   accessibleDispensaries?: AccessibleDispensary[];
   agendaModuleAccess?: boolean;
   accessibleAgendaIds?: string[];
+  cabinetModuleAccess?: boolean;
+  accessibleCabinetIds?: string[];
 }
 
 export function PermissionsProvider({
@@ -40,6 +44,8 @@ export function PermissionsProvider({
   accessibleDispensaries = [],
   agendaModuleAccess = false,
   accessibleAgendaIds = [],
+  cabinetModuleAccess = false,
+  accessibleCabinetIds = [],
 }: PermissionsProviderProps) {
   return (
     <PermissionsContext.Provider
@@ -47,12 +53,14 @@ export function PermissionsProvider({
         permissions: initialPermissions,
         userRole: initialRole,
         loading: false,
-        appSettings: initialAppSettings,
+        appSettings: normalizeAppSettings(initialAppSettings),
         dispensarySlug,
         dispensaryId,
         accessibleDispensaries,
         agendaModuleAccess,
         accessibleAgendaIds,
+        cabinetModuleAccess,
+        accessibleCabinetIds,
       }}
     >
       {children}
