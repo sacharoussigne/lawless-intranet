@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3002 --webpack",
+    "dev": "prisma generate && next dev -p 3002 --webpack",
     "build": "prisma generate && next build --webpack",
     "start": "next start -p 3002",
     "lint": "eslint",
@@ -17,6 +17,7 @@
     "@lawless-intranet/types": "workspace:*",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "@prisma/client-runtime-utils": "^7.2.0",
     "dotenv": "^17.2.3",
     "next": "16.2.9",
     "pg": "^8.16.3",

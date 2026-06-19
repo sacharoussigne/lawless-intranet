@@ -37,6 +37,7 @@
     "@mantinex/dev-icons": "^2.0.0",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "@prisma/client-runtime-utils": "^7.2.0",
     "@tabler/icons-react": "^3.36.1",
     "@tanstack/react-query": "^5.101.0",
     "@types/react-big-calendar": "^1.16.3",

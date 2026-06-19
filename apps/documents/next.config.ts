@@ -9,7 +9,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: monorepoRoot,
   },
-  serverExternalPackages: ['pg', '@prisma/client', '@prisma/adapter-pg'],
+  serverExternalPackages: [
+    'pg',
+    '@prisma/client',
+    '@prisma/client-runtime-utils',
+    '@prisma/adapter-pg',
+  ],
 };
 
 export default nextConfig;
