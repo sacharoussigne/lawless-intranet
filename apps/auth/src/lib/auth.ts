@@ -16,6 +16,8 @@ import prisma from '@/lib/prisma';
 import { getCookieDomain, getTrustedOrigins } from '@/lib/constants';
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL,
+  secret: process.env.BETTER_AUTH_SECRET,
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),

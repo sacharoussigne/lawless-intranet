@@ -4,27 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { authClient } from '@/lib/client';
-
-function getSafeCallbackUrl(raw: string | null): string {
-  const fallback =
-    process.env.NEXT_PUBLIC_DISPENSARY_URL ?? 'http://localhost:3000';
-
-  if (!raw) {
-    return fallback;
-  }
-
-  try {
-    const url = new URL(raw);
-    const allowedHosts = ['dispensary.localhost', 'localhost'];
-    if (allowedHosts.includes(url.hostname)) {
-      return url.toString();
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
-}
+import { getSafeCallbackUrl } from '@/lib/callbackUrl';
 
 export default function SignupForm() {
   const router = useRouter();
