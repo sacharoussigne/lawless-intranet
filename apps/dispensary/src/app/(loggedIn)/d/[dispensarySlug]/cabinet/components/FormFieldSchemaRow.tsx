@@ -133,17 +133,8 @@ function FormFieldSchemaRowInner({
   }, [expanded, field]);
 
   useLayoutEffect(() => {
-    if (prevExpandedRef.current && !expanded) {
-      onChangeRef.current(draftFieldRef.current);
-    }
     prevExpandedRef.current = expanded;
   }, [expanded]);
-
-  useLayoutEffect(() => {
-    return () => {
-      onChangeRef.current(draftFieldRef.current);
-    };
-  }, []);
 
   const applyDraftField = useCallback(
     (updater: FormField | ((prev: FormField) => FormField)) => {
@@ -153,6 +144,7 @@ function FormFieldSchemaRowInner({
           : updater;
       draftFieldRef.current = next;
       setDraftField(next);
+      onChangeRef.current(next);
     },
     [],
   );

@@ -81,14 +81,18 @@ export async function getConsultation(dispensarySlug: string, consultationId: st
           select: {
             id: true,
             motif: true,
+            startedAt: true,
             patientId: true,
+            customValues: true,
             patient: {
               select: {
                 id: true,
                 firstName: true,
                 lastName: true,
+                birthDate: true,
                 cabinetId: true,
-                cabinet: { select: { formSchemas: true } },
+                customValues: true,
+                cabinet: { select: { name: true, formSchemas: true } },
               },
             },
           },
@@ -115,6 +119,14 @@ export async function getConsultation(dispensarySlug: string, consultationId: st
       data: {
         ...consultation,
         customValues: parseCustomValuesFromDb(consultation.customValues),
+        careEpisode: {
+          ...consultation.careEpisode,
+          customValues: parseCustomValuesFromDb(consultation.careEpisode.customValues),
+          patient: {
+            ...consultation.careEpisode.patient,
+            customValues: parseCustomValuesFromDb(consultation.careEpisode.patient.customValues),
+          },
+        },
         formSchemas: parseCabinetFormSchemas(
           consultation.careEpisode.patient.cabinet.formSchemas,
         ),

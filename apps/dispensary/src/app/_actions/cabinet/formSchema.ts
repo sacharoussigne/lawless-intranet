@@ -37,7 +37,7 @@ async function loadAndGuardSchemas(
 
   const cabinet = await prisma.cabinet.findFirst({
     where: { id: cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
-    select: { formSchemas: true },
+    select: { formSchemas: true, name: true },
   });
   if (!cabinet) {
     return { error: { status: 404, error: 'Cabinet introuvable' } };
@@ -45,8 +45,28 @@ async function loadAndGuardSchemas(
 
   return {
     ctx,
+    cabinetName: cabinet.name,
     schemas: parseCabinetFormSchemas(cabinet.formSchemas),
   };
+}
+
+export async function getCabinetFormSchemas(dispensarySlug: string, cabinetId: string) {
+  try {
+    const loaded = await loadAndGuardSchemas(dispensarySlug, cabinetId);
+    if ('error' in loaded && loaded.error) return loaded.error;
+
+    const { cabinetName, schemas } = loaded as {
+      cabinetName: string;
+      schemas: CabinetFormSchemas;
+    };
+
+    return {
+      status: 200,
+      data: { cabinetName, formSchemas: schemas },
+    };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du chargement des formulaires');
+  }
 }
 
 async function saveSchemas(cabinetId: string, dispensaryId: string, schemas: CabinetFormSchemas) {

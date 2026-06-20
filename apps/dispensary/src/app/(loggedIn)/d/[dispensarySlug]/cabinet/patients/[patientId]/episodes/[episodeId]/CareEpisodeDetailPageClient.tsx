@@ -14,7 +14,7 @@ import {
   Title,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconCalendar, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconCalendar, IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
@@ -30,7 +30,10 @@ import {
   deleteCareEpisode,
 } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
-import { canWriteCabinet, type ConsultationSummaryDTO } from '@/types/cabinet';
+import {
+  canWriteCabinet,
+  type ConsultationSummaryDTO,
+} from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import { formatRpDate, getTodayRealDate } from '@/lib/rpCalendar';
@@ -59,14 +62,12 @@ interface CareEpisodeDetailPageClientProps {
   dispensarySlug: string;
   episode: EpisodeData;
   initialConsultations: ConsultationSummaryDTO[];
-  canEditSchema: boolean;
 }
 
 export function CareEpisodeDetailPageClient({
   dispensarySlug,
   episode: initialEpisode,
   initialConsultations,
-  canEditSchema,
 }: CareEpisodeDetailPageClientProps) {
   const router = useRouter();
   const [consultations, setConsultations] = useState(initialConsultations);
@@ -102,21 +103,10 @@ export function CareEpisodeDetailPageClient({
     fieldErrors,
     formError,
     clearFieldError,
-    schemaEditing,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-    schemaNestedFlushToken,
-    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
-    dispensarySlug,
-    cabinetId: initialEpisode.patient.cabinetId,
     entityType: 'careEpisode',
     initialEntity: initialEpisode,
-    canEditSchema,
     onSave: handleSaveEpisode,
   });
 
@@ -203,31 +193,31 @@ export function CareEpisodeDetailPageClient({
     () =>
       editing
         ? {
-            care_episode_general: (
-              <Stack gap="md">
-                <TextInput
-                  label="Motif"
-                  value={episode.motif}
-                  onChange={(e) => {
-                    clearFieldError('motif');
-                    setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.motif}
-                  required
-                />
-                <RpDatePicker
-                  label="Date de début"
-                  value={episode.startedAt}
-                  onChange={(d) => {
-                    clearFieldError('startedAt');
-                    if (d) setEpisode((ep) => ({ ...ep, startedAt: d }));
-                  }}
-                  error={fieldErrors.startedAt}
-                  required
-                />
-              </Stack>
-            ),
-          }
+          care_episode_general: (
+            <Stack gap="md">
+              <TextInput
+                label="Motif"
+                value={episode.motif}
+                onChange={(e) => {
+                  clearFieldError('motif');
+                  setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }));
+                }}
+                error={fieldErrors.motif}
+                required
+              />
+              <RpDatePicker
+                label="Date de début"
+                value={episode.startedAt}
+                onChange={(d) => {
+                  clearFieldError('startedAt');
+                  if (d) setEpisode((ep) => ({ ...ep, startedAt: d }));
+                }}
+                error={fieldErrors.startedAt}
+                required
+              />
+            </Stack>
+          ),
+        }
         : systemCardsReadOnly,
     [
       clearFieldError,
@@ -241,41 +231,16 @@ export function CareEpisodeDetailPageClient({
     ],
   );
 
-  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
-
   return (
     <Container size="xl" py="xl">
       <PageHeader
         title="Prise en charge"
         description={`${episode.patient.firstName} ${episode.patient.lastName} — ${episode.motif}`}
         backHref={`${t.cabinet.index}/patients/${episode.patientId}?cabinetId=${episode.patient.cabinetId}`}
+        backLabel={`Patient : ${episode.patient.firstName} ${episode.patient.lastName}`}
         actions={
           <Group>
-            {canEditSchema && !schemaEditing && (
-              <Button
-                variant="light"
-                color="leather"
-                leftSection={<IconSettings size={16} />}
-                onClick={startSchemaEditing}
-              >
-                Configurer le formulaire
-              </Button>
-            )}
-            {canEditSchema && schemaEditing && (
-              <>
-                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
-                  Annuler
-                </Button>
-                <Button
-                  color="sage"
-                  loading={savingSchema}
-                  onClick={() => void saveSchemaEditing()}
-                >
-                  Enregistrer le schéma
-                </Button>
-              </>
-            )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
               </Button>
@@ -290,7 +255,7 @@ export function CareEpisodeDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <DeleteConfirmPopover
                 title="Supprimer la prise en charge ?"
                 message={`« ${episode.motif} » et toutes ses consultations seront supprimées.`}
@@ -319,15 +284,10 @@ export function CareEpisodeDetailPageClient({
           onChange={handleCustomChange}
           onBatchChange={handleCustomBatchChange}
           readOnly={!editing}
-          systemCards={activeSystemCards}
-          mode={schemaEditing ? 'schema' : 'values'}
-          onSchemaChange={setDraftEntitySchema}
-          schemaNestedFlushToken={schemaNestedFlushToken}
-          schemaFlushToken={schemaFlushToken}
+          systemCards={systemCards}
           fieldErrors={editing ? fieldErrors : undefined}
         />
 
-        {!schemaEditing && (
         <div>
           <Title order={3} className="disp-display-title" mb="md">
             Consultations
@@ -351,7 +311,7 @@ export function CareEpisodeDetailPageClient({
             withTableBorder
             borderRadius="sm"
             highlightOnHover
-            minHeight={200}
+            minHeight={consultations.length === 0 ? 200 : undefined}
             records={consultations}
             columns={[
               {
@@ -402,7 +362,6 @@ export function CareEpisodeDetailPageClient({
             }
           />
         </div>
-        )}
       </Stack>
     </Container>
   );
