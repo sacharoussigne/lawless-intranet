@@ -52,7 +52,7 @@ RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
 RUN mkdir -p "/app/apps/${APP_NAME}/public"
 
 # Self-contained Prisma CLI for runtime migrations (npm flat install).
-RUN npm install prisma@7.8.0 --prefix /prisma-tools --omit=dev
+RUN npm install prisma@7.8.0 dotenv@17.2.3 --prefix /prisma-tools --omit=dev
 
 # --- Runtime (Next.js standalone — traced node_modules) ---
 FROM node:22-alpine AS runner
