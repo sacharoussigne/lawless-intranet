@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Container, Stack, Text, Title } from '@mantine/core';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { hasRole } from '@lawless-intranet/auth-permissions';
+import { Role } from '@/types/enum/roles';
 import { getMondayOfCurrentWeek, getTodayStart } from '@/lib/date';
 import type { StockMovementListItem, StockMovementsPageResult } from '@/types/stock';
 import {
@@ -40,8 +42,11 @@ function buildPageFilters(
 export default function StockMovementsPageClient({
   initialPage,
 }: StockMovementsPageClientProps) {
-  const { permissions } = usePermissions();
-  const canEdit = permissions?.stock.update ?? false;
+  const { permissions, userRole } = usePermissions();
+  const canEdit =
+    (permissions?.stock.update ?? false) ||
+    hasRole(userRole, Role.ADMIN) ||
+    hasRole(userRole, Role.INVENTORY_MANAGER);
 
   const defaultFrom = getMondayOfCurrentWeek();
   const defaultTo = getTodayStart();
@@ -58,6 +63,8 @@ export default function StockMovementsPageClient({
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [selectedMovement, setSelectedMovement] = useState<StockMovementListItem | null>(null);
+  const [deleteMovements, setDeleteMovements] = useState<StockMovementListItem[]>([]);
+  const [clearSelectionSignal, setClearSelectionSignal] = useState(0);
 
   const pageFilters = useMemo(
     () => buildPageFilters(sharedFilters, page),
@@ -98,6 +105,11 @@ export default function StockMovementsPageClient({
     setPage(1);
   };
 
+  const handleBulkDelete = useCallback((movements: StockMovementListItem[]) => {
+    setDeleteMovements(movements);
+    setDeleteModalOpened(true);
+  }, []);
+
   return (
     <Container size="xl" py="xl">
       <Title order={1} mb="md" className="disp-display-title">
@@ -129,15 +141,17 @@ export default function StockMovementsPageClient({
           pageSize={pageFilters.pageSize}
           totalRecords={movementsQuery.data?.totalCount ?? 0}
           canEdit={canEdit}
+          clearSelectionSignal={clearSelectionSignal}
           onPageChange={setPage}
           onEdit={(movement) => {
             setSelectedMovement(movement);
             setEditModalOpened(true);
           }}
           onDelete={(movement) => {
-            setSelectedMovement(movement);
+            setDeleteMovements([movement]);
             setDeleteModalOpened(true);
           }}
+          onBulkDelete={handleBulkDelete}
         />
       </Stack>
 
@@ -154,9 +168,10 @@ export default function StockMovementsPageClient({
         opened={deleteModalOpened}
         onClose={() => {
           setDeleteModalOpened(false);
-          setSelectedMovement(null);
+          setDeleteMovements([]);
         }}
-        movement={selectedMovement}
+        movements={deleteMovements}
+        onDeleted={() => setClearSelectionSignal((value) => value + 1)}
       />
     </Container>
   );
