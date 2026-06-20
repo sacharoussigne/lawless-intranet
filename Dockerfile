@@ -48,6 +48,9 @@ ENV DISPENSARY_URL="${DISPENSARY_URL}"
 RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
     pnpm turbo build --filter="${APP_NAME}"
 
+# API-only apps (e.g. documents) may have no public/ — COPY in runner stage still expects the path.
+RUN mkdir -p "/app/apps/${APP_NAME}/public"
+
 # Self-contained Prisma CLI for runtime migrations (npm flat install).
 RUN npm install prisma@7.8.0 --prefix /prisma-tools --omit=dev
 
