@@ -65,7 +65,7 @@ export const TemplateFormGenerator = forwardRef<
   { template, variables, onSubmit, onCancel, onChange },
   ref
 ) {
-  const { username, userDescription } = useMailTemplateContext();
+  const { username, userDescription, userGender } = useMailTemplateContext();
   const inputs = useMemo(() => extractInputs(template), [template]);
 
   const dependentsByParent = useMemo(() => {
@@ -102,7 +102,7 @@ export const TemplateFormGenerator = forwardRef<
   const renderContent = (values: FormValues) => {
     return renderTemplate(
       template,
-      buildTemplateRenderContext(username, userDescription, {
+      buildTemplateRenderContext(username, userDescription, userGender, {
         inputs: Object.entries(values).reduce(
           (acc, [key, value]) => {
             if (typeof value === 'boolean') {

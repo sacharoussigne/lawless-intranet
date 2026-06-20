@@ -41,4 +41,28 @@ describe('processConditionalBlocks', () => {
     );
     expect(result).toBe('B');
   });
+
+  it('uses then branch when variable equals eq (case-insensitive)', () => {
+    const result = processConditionalBlocks(
+      '{if:[var="gender"][eq="female"][then="Je soussignée"][else="Je soussigné"]}',
+      { gender: 'female' },
+    );
+    expect(result).toBe('Je soussignée');
+  });
+
+  it('uses else branch when variable does not equal eq', () => {
+    const result = processConditionalBlocks(
+      '{if:[var="gender"][eq="female"][then="Je soussignée"][else="Je soussigné"]}',
+      { gender: 'male' },
+    );
+    expect(result).toBe('Je soussigné');
+  });
+
+  it('matches eq case-insensitively', () => {
+    const result = processConditionalBlocks(
+      '{if:[var="Gender"][eq="Female"][then="A"][else="B"]}',
+      { gender: 'female' },
+    );
+    expect(result).toBe('A');
+  });
 });

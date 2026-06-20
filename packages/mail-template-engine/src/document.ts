@@ -24,8 +24,11 @@ type DocumentToken =
       start: number;
       end: number;
       var: string;
-      empty: string;
-      filled: string;
+      empty?: string;
+      filled?: string;
+      eq?: string;
+      then?: string;
+      else?: string;
     }
   | { kind: 'js'; start: number; end: number; code: string };
 
@@ -52,10 +55,20 @@ function overlapsInputSpan(
 
 function parseConditionalAttributes(attributesString: string): {
   var: string;
-  empty: string;
-  filled: string;
+  empty?: string;
+  filled?: string;
+  eq?: string;
+  then?: string;
+  else?: string;
 } {
-  const attrs = { var: '', empty: '', filled: '' };
+  const attrs = {
+    var: '',
+    empty: undefined as string | undefined,
+    filled: undefined as string | undefined,
+    eq: undefined as string | undefined,
+    then: undefined as string | undefined,
+    else: undefined as string | undefined,
+  };
   let match;
 
   while ((match = ATTRIBUTE_PATTERN.exec(attributesString)) !== null) {
@@ -67,6 +80,9 @@ function parseConditionalAttributes(attributesString: string): {
     if (key === 'var') attrs.var = value;
     else if (key === 'empty') attrs.empty = value;
     else if (key === 'filled') attrs.filled = value;
+    else if (key === 'eq') attrs.eq = value;
+    else if (key === 'then') attrs.then = value;
+    else if (key === 'else') attrs.else = value;
   }
 
   return attrs;
@@ -111,6 +127,9 @@ function collectDocumentTokens(content: string): DocumentToken[] {
       var: attrs.var,
       empty: attrs.empty,
       filled: attrs.filled,
+      eq: attrs.eq,
+      then: attrs.then,
+      else: attrs.else,
     });
   }
 
@@ -162,12 +181,22 @@ export function parseTemplateDocument(content: string): {
         segments.push({ kind: 'category', title: token.title });
         break;
       case 'conditional':
-        segments.push({
-          kind: 'conditional',
-          var: token.var,
-          empty: token.empty,
-          filled: token.filled,
-        });
+        if (token.eq !== undefined) {
+          segments.push({
+            kind: 'conditional',
+            var: token.var,
+            eq: token.eq,
+            then: token.then ?? '',
+            else: token.else ?? '',
+          });
+        } else {
+          segments.push({
+            kind: 'conditional',
+            var: token.var,
+            empty: token.empty ?? '',
+            filled: token.filled ?? '',
+          });
+        }
         break;
       case 'js':
         segments.push({ kind: 'js', code: token.code });
@@ -239,6 +268,16 @@ export function serializeInput(input: TemplateInput): string {
 }
 
 export function serializeConditional(segment: Extract<TemplateSegment, { kind: 'conditional' }>): string {
+  if ('eq' in segment) {
+    const parts = [
+      `[var=${formatAttributeValue('var', segment.var)}]`,
+      `[eq=${formatAttributeValue('eq', segment.eq)}]`,
+      `[then=${formatAttributeValue('then', segment.then)}]`,
+      `[else=${formatAttributeValue('else', segment.else)}]`,
+    ];
+    return `{if:${parts.join('')}}`;
+  }
+
   const parts = [
     `[var=${formatAttributeValue('var', segment.var)}]`,
     `[empty=${formatAttributeValue('empty', segment.empty)}]`,

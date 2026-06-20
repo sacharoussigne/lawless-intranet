@@ -6,6 +6,7 @@ export const BUILTIN_VARIABLES = [
   'price',
   'username',
   'description',
+  'gender',
 ] as const;
 
 export function createDefaultSegment(kind: TemplateSegment['kind']): TemplateSegment {

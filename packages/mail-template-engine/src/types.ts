@@ -12,11 +12,17 @@ export interface TemplateInput {
   options?: string;
 }
 
+export type UserGender = 'male' | 'female';
+
+export type ConditionalSegment =
+  | { kind: 'conditional'; var: string; empty: string; filled: string }
+  | { kind: 'conditional'; var: string; eq: string; then: string; else: string };
+
 export type TemplateSegment =
   | { kind: 'text'; value: string }
   | { kind: 'input'; input: TemplateInput }
   | { kind: 'category'; title: string }
-  | { kind: 'conditional'; var: string; empty: string; filled: string }
+  | ConditionalSegment
   | { kind: 'js'; code: string };
 
 export interface TemplateDocument {
@@ -50,6 +56,8 @@ export interface RenderContext {
   username?: string;
   /** Resolved automatically into `${description}` when present. */
   userDescription?: string;
+  /** Resolved automatically into `${gender}` when present. */
+  userGender?: UserGender;
   variables?: Record<string, string>;
 }
 

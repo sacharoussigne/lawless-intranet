@@ -14,7 +14,7 @@ import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
-import { renderTemplate } from '@lawless-intranet/mail-template-engine';
+import { renderTemplate, buildUserTemplateRenderContext } from '@lawless-intranet/mail-template-engine';
 import type { OrderStatus, OrderType } from '@prisma/client';
 import {
   buildOrderMailVariables,
@@ -355,12 +355,16 @@ export async function generateOrderMailPreview(
     const memberDescription =
       (await getMemberDescription(dispensaryId, ctx.session.user.id)) ?? '';
 
-    const preview = renderTemplate(template.content, {
-      inputs: {},
-      username: ctx.session.user.name || 'Utilisateur',
-      userDescription: memberDescription,
-      variables: buildOrderMailVariables(order),
-    });
+    const preview = renderTemplate(
+      template.content,
+      buildUserTemplateRenderContext({
+        inputs: {},
+        username: ctx.session.user.name || 'Utilisateur',
+        userDescription: memberDescription,
+        userGender: ctx.session.user.gender ?? 'male',
+        variables: buildOrderMailVariables(order),
+      }),
+    );
 
     return {
       status: 200,

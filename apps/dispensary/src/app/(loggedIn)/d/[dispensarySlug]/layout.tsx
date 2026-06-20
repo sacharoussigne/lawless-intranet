@@ -109,6 +109,7 @@ export default async function DispensaryLayout({
           <MailTemplateProvider
             username={session?.user.name ?? 'Utilisateur'}
             userDescription={memberDescription}
+            userGender={session?.user.gender ?? 'male'}
           >
           <LoggedInShell>
           <Header

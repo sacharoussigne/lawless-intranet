@@ -10,6 +10,9 @@ type ConditionalAttributes = {
   var?: string;
   empty?: string;
   filled?: string;
+  eq?: string;
+  then?: string;
+  else?: string;
 };
 
 function parseConditionalAttributes(attributesString: string): ConditionalAttributes {
@@ -28,6 +31,12 @@ function parseConditionalAttributes(attributesString: string): ConditionalAttrib
       attrs.empty = value;
     } else if (key === 'filled') {
       attrs.filled = value;
+    } else if (key === 'eq') {
+      attrs.eq = value;
+    } else if (key === 'then') {
+      attrs.then = value;
+    } else if (key === 'else') {
+      attrs.else = value;
     }
   }
 
@@ -54,6 +63,18 @@ export function processConditionalBlocks(
 
   return content.replace(IF_PATTERN, (_fullMatch, attributesString: string) => {
     const attrs = parseConditionalAttributes(attributesString);
+
+    if (attrs.eq !== undefined) {
+      const then = attrs.then ?? '';
+      const elseBranch = attrs.else ?? '';
+      const actual = resolveVariable(variables, attrs.var ?? '');
+      const expected = attrs.eq ?? '';
+      const matches =
+        actual !== undefined &&
+        actual.localeCompare(expected, undefined, { sensitivity: 'accent' }) === 0;
+      return matches ? then : elseBranch;
+    }
+
     const empty = attrs.empty ?? '';
     const filled = attrs.filled ?? '';
 

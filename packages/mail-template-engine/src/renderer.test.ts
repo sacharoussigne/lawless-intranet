@@ -237,6 +237,14 @@ describe('renderTemplate with variables', () => {
     );
     expect(rendered).toBe('En ma qualité de Directeur,');
   });
+
+  it('applies gender equality conditionals with userGender', () => {
+    const rendered = render(
+      '{if:[var="gender"][eq="female"][then="Je soussignée"][else="Je soussigné"]}, certifie.',
+      { inputs: {}, userGender: 'female' },
+    );
+    expect(rendered).toBe('Je soussignée, certifie.');
+  });
 });
 
 describe('renderTemplate with greeting adaptation', () => {

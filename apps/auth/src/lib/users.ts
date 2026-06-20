@@ -1,4 +1,4 @@
-import type { AuthUser, AuthUserPublic } from '@lawless-intranet/types';
+import type { AuthUser, AuthUserPublic, UserGender } from '@lawless-intranet/types';
 import prisma from '@/lib/prisma';
 import { DISCORD_PROVIDER_ID } from '@/lib/constants';
 
@@ -8,6 +8,7 @@ type UserRecord = {
   email: string;
   image?: string | null;
   role?: string | null;
+  gender?: UserGender | null;
 };
 
 export async function getDiscordIdForUser(userId: string): Promise<string | null> {
@@ -59,6 +60,7 @@ export async function toAuthUser(user: UserRecord): Promise<AuthUser> {
     email: user.email,
     image: user.image ?? null,
     role: user.role ?? null,
+    gender: user.gender ?? 'male',
     discordId,
     hasCredentialPassword: Boolean(credentialAccount),
   };
@@ -73,6 +75,7 @@ export async function toAuthUsers(users: UserRecord[]): Promise<AuthUser[]> {
     email: user.email,
     image: user.image ?? null,
     role: user.role ?? null,
+    gender: user.gender ?? 'male',
     discordId: discordIds.get(user.id) ?? null,
   }));
 }
@@ -85,5 +88,6 @@ export function toAuthUserPublic(user: AuthUser): AuthUserPublic {
     discordId: user.discordId,
     email: user.email,
     role: user.role ?? null,
+    gender: user.gender ?? 'male',
   };
 }

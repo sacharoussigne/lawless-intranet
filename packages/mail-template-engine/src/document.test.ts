@@ -53,6 +53,12 @@ describe('parseTemplateDocument / serializeTemplateDocument round-trip', () => {
     expect(roundTrip(content)).toBe(content);
   });
 
+  it('preserves equality conditional block', () => {
+    const content =
+      '{if:[var="gender"][eq="female"][then="Je soussignée"][else="Je soussigné"]}';
+    expect(roundTrip(content)).toBe(content);
+  });
+
   it('preserves standalone js block', () => {
     const content = 'A {js:(()=>"value")():endjs} B';
     expect(roundTrip(content)).toBe(content);

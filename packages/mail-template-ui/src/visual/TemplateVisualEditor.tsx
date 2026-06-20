@@ -144,17 +144,8 @@ export function TemplateVisualEditor({
 
                 {segment.kind === 'conditional' && (
                   <ConditionalBlockEditor
-                    varName={segment.var}
-                    empty={segment.empty}
-                    filled={segment.filled}
-                    onChange={({ var: variableName, empty, filled }) =>
-                      updateAt(index, {
-                        kind: 'conditional',
-                        var: variableName,
-                        empty,
-                        filled,
-                      })
-                    }
+                    segment={segment}
+                    onChange={(nextSegment) => updateAt(index, nextSegment)}
                   />
                 )}
 

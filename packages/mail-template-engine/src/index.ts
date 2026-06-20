@@ -7,6 +7,7 @@ export type {
   TemplateInput,
   TemplateParameter,
   TemplateSegment,
+  UserGender,
 } from './types';
 
 export {
@@ -38,6 +39,7 @@ export {
 export { applyGreetingAdaptation } from './greeting';
 export {
   buildRenderContext,
+  buildUserTemplateRenderContext,
   DEFAULT_TEMPLATE_USERNAME,
   resolveRenderVariables,
 } from './context';
