@@ -21,6 +21,7 @@ import { useForm } from '@mantine/form';
 import {
   extractInputs,
   extractFormSections,
+  parseSelectOptions,
   renderTemplate,
   resolveJsValue,
   type TemplateInput,
@@ -162,7 +163,10 @@ export const TemplateFormGenerator = forwardRef<
           <Select
             key={input.name}
             {...commonProps}
-            data={[]}
+            data={parseSelectOptions(input.options).map((option) => ({
+              value: option,
+              label: option,
+            }))}
             searchable
             {...form.getInputProps(input.name)}
           />

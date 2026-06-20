@@ -366,6 +366,7 @@ export async function generateOrderMailPreview(
       status: 200,
       data: {
         preview,
+        templateContent: template.content,
         templateName: template.name,
       },
     };

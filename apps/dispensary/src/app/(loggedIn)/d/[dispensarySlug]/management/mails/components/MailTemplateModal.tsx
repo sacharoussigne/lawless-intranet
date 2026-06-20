@@ -10,16 +10,28 @@ import {
   Group,
   Loader,
   Center,
+  Tabs,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { handleApiZodError } from '@/lib/services/zod';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import type { MailTemplateListItem } from '@/types/mailTemplates';
 import {
+  TemplateEditorWithModes,
+  TemplatePreviewWithForm,
+  useTemplatePreviewActions,
+} from '@lawless-intranet/mail-template-ui';
+import {
   type useCreateMailTemplateMutation,
   useManagementMailTemplateDetail,
   type useUpdateMailTemplateMutation,
 } from '../hooks/useMailTemplatesQueries';
+
+const SAMPLE_ORDER_VARIABLES = {
+  name: 'Jean Dupont',
+  items: '- Bandage (x2)\n- Seringue (x1)',
+  price: '150.00 $',
+};
 
 interface MailTemplateModalProps {
   opened: boolean;
@@ -50,6 +62,10 @@ export function MailTemplateModal({
       name: (value) => (value.length < 1 ? 'Le nom est requis' : null),
       content: (value) => (value.length < 1 ? 'Le contenu est requis' : null),
     },
+  });
+
+  const orderPreview = useTemplatePreviewActions(form.values.content, SAMPLE_ORDER_VARIABLES, {
+    inputsMode: 'disabled',
   });
 
   useEffect(() => {
@@ -101,7 +117,7 @@ export function MailTemplateModal({
         form.reset();
       }}
       title={editingMailTemplate ? 'Modifier le modèle' : 'Créer un modèle'}
-      size="lg"
+      size="xl"
     >
       {isEditLoading ? (
         <Center py="xl">
@@ -124,18 +140,49 @@ export function MailTemplateModal({
             <Textarea
               label="Description"
               placeholder="Description du template (optionnel)"
-              minRows={3}
+              minRows={2}
               autosize
               {...form.getInputProps('description')}
             />
-            <Textarea
-              label="Contenu"
-              placeholder="Contenu du modèle de courrier"
-              required
-              minRows={10}
-              autosize
-              {...form.getInputProps('content')}
-            />
+
+            <Tabs defaultValue="editor">
+              <Tabs.List>
+                <Tabs.Tab value="editor">Éditeur</Tabs.Tab>
+                <Tabs.Tab value="order-preview">Aperçu commande</Tabs.Tab>
+              </Tabs.List>
+
+              <Tabs.Panel value="editor" pt="md">
+                <TemplateEditorWithModes
+                  key={`${editingMailTemplate?.id ?? 'new'}-${isEditLoading ? 'loading' : 'ready'}`}
+                  value={form.values.content}
+                  onChange={(value) => form.setFieldValue('content', value)}
+                  placeholder="Contenu du modèle de courrier"
+                  required
+                />
+              </Tabs.Panel>
+
+              <Tabs.Panel value="order-preview" pt="md">
+                {form.values.content ? (
+                  <TemplatePreviewWithForm
+                    templateContent={form.values.content}
+                    variables={SAMPLE_ORDER_VARIABLES}
+                    inputsMode="disabled"
+                    resultLabel="Aperçu commande (données fictives)"
+                    formRef={orderPreview.formRef}
+                    onFormChange={orderPreview.setFormContent}
+                    resultContent={orderPreview.resultContent}
+                    onResultChange={orderPreview.setEditedContent}
+                    isManuallyEdited={orderPreview.isManuallyEdited}
+                    onRegenerate={orderPreview.handleRegenerate}
+                  />
+                ) : (
+                  <Center py="xl" c="dimmed">
+                    Renseignez le contenu du modèle pour voir l&apos;aperçu commande.
+                  </Center>
+                )}
+              </Tabs.Panel>
+            </Tabs>
+
             <Group justify="flex-end" mt="md">
               <Button
                 variant="subtle"

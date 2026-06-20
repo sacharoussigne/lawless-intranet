@@ -8,6 +8,25 @@ export interface TemplateInput {
   checkedValue?: string;
   dependsOn?: string;
   layout?: 'inline' | 'below';
+  /** Pipe- or comma-separated options for type="select". */
+  options?: string;
+}
+
+export type TemplateSegment =
+  | { kind: 'text'; value: string }
+  | { kind: 'input'; input: TemplateInput }
+  | { kind: 'category'; title: string }
+  | { kind: 'conditional'; var: string; empty: string; filled: string }
+  | { kind: 'js'; code: string };
+
+export interface TemplateDocument {
+  segments: TemplateSegment[];
+}
+
+export interface ParseWarning {
+  message: string;
+  startIndex?: number;
+  endIndex?: number;
 }
 
 export interface FormSection {
@@ -38,4 +57,6 @@ export interface RenderOptions {
   /** Enabled by default. Pass `false` to keep literal Bonjour/Bonsoir text. */
   applyGreetingAdaptation?: boolean;
   now?: Date;
+  /** When true, {input:…} placeholders are removed instead of rendered. */
+  skipInputs?: boolean;
 }
