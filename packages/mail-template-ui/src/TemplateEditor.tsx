@@ -90,7 +90,10 @@ export function TemplateEditor({
               <br />
               JavaScript: {'{js:code:endjs}'}
               <br />
-              Variable: {'${name}'}, {'${items}'}, {'${price}'}, {'${username}'}
+              Variable: {'${name}'}, {'${items}'}, {'${price}'}, {'${username}'}, {'${description}'}
+              <br />
+              Conditionnel:{' '}
+              {'{if:[var="description"][empty="Madame, Monsieur,"][filled="En ma qualité de ${description},"]}'}
               <br />
               Input texte:{' '}
               {

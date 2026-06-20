@@ -13,6 +13,7 @@ import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { getMemberDescription } from '@/lib/dispensary/memberDescription';
 import { renderTemplate } from '@lawless-intranet/mail-template-engine';
 import type { OrderStatus, OrderType } from '@prisma/client';
 import {
@@ -351,10 +352,13 @@ export async function generateOrderMailPreview(
 
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(assignment.templateId, { cookieHeader });
+    const memberDescription =
+      (await getMemberDescription(dispensaryId, ctx.session.user.id)) ?? '';
 
     const preview = renderTemplate(template.content, {
       inputs: {},
       username: ctx.session.user.name || 'Utilisateur',
+      userDescription: memberDescription,
       variables: buildOrderMailVariables(order),
     });
 

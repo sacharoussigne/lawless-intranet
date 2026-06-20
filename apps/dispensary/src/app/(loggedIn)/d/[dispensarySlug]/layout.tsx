@@ -21,6 +21,7 @@ import {
 } from '@/lib/cabinet/access';
 import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
+import { getMemberDescription } from '@/lib/dispensary/memberDescription';
 import { MailTemplateProvider } from '@lawless-intranet/mail-template-ui';
 
 export default async function DispensaryLayout({
@@ -86,6 +87,9 @@ export default async function DispensaryLayout({
     userId && cabinetModuleAccess
       ? await listAccessibleCabinetIds(dispensary.id, userId)
       : [];
+  const memberDescription = userId
+    ? await getMemberDescription(dispensary.id, userId)
+    : null;
 
   return (
     <PermissionsProvider
@@ -102,7 +106,10 @@ export default async function DispensaryLayout({
     >
       <DispensaryRealtimeShell>
         <QueryProvider>
-          <MailTemplateProvider username={session?.user.name ?? 'Utilisateur'}>
+          <MailTemplateProvider
+            username={session?.user.name ?? 'Utilisateur'}
+            userDescription={memberDescription}
+          >
           <LoggedInShell>
           <Header
             session={authSession}

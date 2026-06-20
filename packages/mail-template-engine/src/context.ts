@@ -6,10 +6,11 @@ export function resolveRenderVariables(
   context: RenderContext
 ): Record<string, string> | undefined {
   const hasUsername = context.username !== undefined;
+  const hasUserDescription = context.userDescription !== undefined;
   const hasVariables =
     context.variables !== undefined && Object.keys(context.variables).length > 0;
 
-  if (!hasUsername && !hasVariables) {
+  if (!hasUsername && !hasUserDescription && !hasVariables) {
     return undefined;
   }
 
@@ -18,6 +19,11 @@ export function resolveRenderVariables(
       ? {
           username:
             context.username!.trim() || DEFAULT_TEMPLATE_USERNAME,
+        }
+      : {}),
+    ...(hasUserDescription
+      ? {
+          description: context.userDescription!.trim(),
         }
       : {}),
     ...context.variables,

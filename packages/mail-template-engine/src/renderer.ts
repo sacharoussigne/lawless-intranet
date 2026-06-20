@@ -4,6 +4,7 @@ import {
 } from './parser';
 import type { RenderContext, RenderOptions, TemplateInput, TemplateParameter } from './types';
 import { resolveRenderVariables } from './context';
+import { processConditionalBlocks } from './conditions';
 import { applyGreetingAdaptation } from './greeting';
 import { substituteVariables } from './variables';
 
@@ -187,6 +188,7 @@ export function renderTemplate(
 
   const variables = resolveRenderVariables(context);
   if (variables) {
+    result = processConditionalBlocks(result, variables);
     result = substituteVariables(result, variables);
   }
 

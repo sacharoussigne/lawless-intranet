@@ -24,6 +24,7 @@ import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { handleApiZodError } from '@/lib/services/zod';
 import { handleAction } from '@/lib/action';
 import { changeMyPassword, updateMyProfile } from '@/app/_actions/account';
+import { updateMyDispensaryGrade } from '@/app/_actions/dispensaryMemberProfile';
 import { updateMyStockUiPreferences } from '@/app/_actions/stockUiPreferences';
 import { useRouter } from 'next/navigation';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
@@ -54,11 +55,26 @@ export default function SettingsPageClient(props: {
   initialUser: { name: string; image: string | null };
   canChangePassword: boolean;
   initialStockUiPreferences: StockUiPreferences;
+  initialDispensaryGrades: Array<{
+    dispensaryId: string;
+    dispensarySlug: string;
+    dispensaryName: string;
+    description: string | null;
+  }>;
 }) {
   const router = useRouter();
   const [profileSaving, setProfileSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [stockUiSaving, setStockUiSaving] = useState(false);
+  const [gradeSavingSlug, setGradeSavingSlug] = useState<string | null>(null);
+  const [gradeEdits, setGradeEdits] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      props.initialDispensaryGrades.map((grade) => [
+        grade.dispensarySlug,
+        grade.description ?? '',
+      ]),
+    ),
+  );
   const [imageMode, setImageMode] = useState<SettingsImageMode>('url');
 
   const profileForm = useForm({
@@ -230,6 +246,30 @@ export default function SettingsPageClient(props: {
     }
   };
 
+  const handleSaveGrade = async (dispensarySlug: string) => {
+    try {
+      setGradeSavingSlug(dispensarySlug);
+      const result = await updateMyDispensaryGrade(dispensarySlug, {
+        description: gradeEdits[dispensarySlug] ?? null,
+      });
+      handleAction(result);
+      notifications.show({
+        title: 'Succès',
+        message: 'Grade mis à jour',
+        color: 'green',
+      });
+      router.refresh();
+    } catch (error: any) {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la mise à jour du grade',
+        color: 'red',
+      });
+    } finally {
+      setGradeSavingSlug(null);
+    }
+  };
+
   const handleSaveStockUi = async () => {
     try {
       const validated = stockUiForm.validate();
@@ -336,6 +376,55 @@ export default function SettingsPageClient(props: {
             </Group>
           </Stack>
         </Card>
+
+        {props.initialDispensaryGrades.length > 0 && (
+          <Card withBorder shadow="sm" radius="md" padding="lg">
+            <Title order={3} mb="md">
+              Grades par dispensaire
+            </Title>
+            <Text c="dimmed" size="sm" mb="md">
+              Grade affiché dans vos courriers pour chaque dispensaire.
+            </Text>
+            <Stack gap="md">
+              {props.initialDispensaryGrades.map((grade) => {
+                const currentValue = gradeEdits[grade.dispensarySlug] ?? '';
+                const originalValue = grade.description ?? '';
+                const changed = currentValue.trim() !== originalValue.trim();
+
+                return (
+                  <Stack key={grade.dispensaryId} gap="xs">
+                    <Text fw={600}>{grade.dispensaryName}</Text>
+                    <Group align="flex-end" wrap="nowrap">
+                      <TextInput
+                        style={{ flex: 1 }}
+                        label="Grade"
+                        placeholder="Directeur, Co-directrice…"
+                        value={currentValue}
+                        onChange={(event) => {
+                          const nextValue =
+                            typeof event === 'string'
+                              ? event
+                              : (event.currentTarget?.value ?? event.target?.value ?? '');
+                          setGradeEdits((prev) => ({
+                            ...prev,
+                            [grade.dispensarySlug]: nextValue,
+                          }));
+                        }}
+                      />
+                      <Button
+                        onClick={() => handleSaveGrade(grade.dispensarySlug)}
+                        loading={gradeSavingSlug === grade.dispensarySlug}
+                        disabled={!changed}
+                      >
+                        Enregistrer
+                      </Button>
+                    </Group>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          </Card>
+        )}
 
         {props.canChangePassword && (
           <Card withBorder shadow="sm" radius="md" padding="lg">

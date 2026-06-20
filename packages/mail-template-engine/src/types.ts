@@ -29,6 +29,8 @@ export interface RenderContext {
   inputs: Record<string, string>;
   /** Resolved automatically into `${username}` when present. */
   username?: string;
+  /** Resolved automatically into `${description}` when present. */
+  userDescription?: string;
   variables?: Record<string, string>;
 }
 
