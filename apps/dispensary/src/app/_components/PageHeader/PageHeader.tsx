@@ -23,7 +23,7 @@ export function PageHeader({
     <header className={classes.root}>
       {backHref && (
         <Link href={backHref} className={classes.backLink}>
-          <IconArrowLeft size={16} stroke={1.6} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+          <IconArrowLeft size={16} stroke={1.6} />
           {backLabel}
         </Link>
       )}

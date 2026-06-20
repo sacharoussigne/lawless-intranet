@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -14,7 +15,6 @@ model Dispensary {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdById String?
-  createdBy   User?    @relation("DispensaryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   members     DispensaryMember[]
   settings    AppSettings?
@@ -25,18 +25,15 @@ model Dispensary {
   companyGroups CompanyGroup[]
   individualCustomers IndividualCustomer[]
   orders      Order[]
-  mailTemplates MailTemplate[]
   orderMailTemplateAssignments OrderMailTemplateAssignment[]
-  mails       Mail[]
   bankAccounts BankAccount[]
   transactionNameSuggestions TransactionNameSuggestion[]
   transactionDescriptionSuggestions TransactionDescriptionSuggestion[]
-  patientIdentitySuggestions PatientIdentitySuggestion[]
-  privatePracticeWeeks PrivatePracticeWeek[]
   payrollWeeklyReports PayrollWeeklyReport[]
   dispensaryWeeklyActivities DispensaryWeeklyActivity[]
   craftRecipes CraftRecipe[]
   agendas Agenda[]
+  cabinets Cabinet[]
 
   @@index([createdById])
   @@map("dispensary")
@@ -50,44 +47,10 @@ model DispensaryMember {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([dispensaryId, userId])
   @@index([userId])
   @@map("dispensary_member")
-}
-
-model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  role          String?
-  banned        Boolean?  @default(false)
-  banReason     String?
-  banExpires    DateTime?
-  sessions      Session[]
-  accounts      Account[]
-  bankAccounts  BankAccount[]
-  bankAccountAccesses BankAccountAccess[]
-  mailTemplates MailTemplate[]
-  mails        Mail[]
-  uiPreferences UserUiPreferences?
-  payrollWeeklyReports PayrollWeeklyReport[]
-  dispensaryWeeklyActivities DispensaryWeeklyActivity[]
-  dispensaryWeeklyActivityHistoryAsActor DispensaryWeeklyActivityHistory[] @relation("DispensaryWeeklyActivityHistoryActor")
-  stockItemMovements StockItemMovement[]
-  dispensariesCreated Dispensary[] @relation("DispensaryCreatedBy")
-  dispensaryMemberships DispensaryMember[]
-  agendaMemberships AgendaMember[]
-  agendaEventsCreated AgendaEvent[] @relation("AgendaEventCreatedBy")
-  agendaEventParticipations AgendaEventParticipant[]
-
-  @@unique([email])
-  @@map("user")
 }
 
 model PayrollWeeklyReport {
@@ -100,7 +63,6 @@ model PayrollWeeklyReport {
   resultJson      Json?
   errorMessage    String?
   createdById     String
-  createdBy       User                      @relation(fields: [createdById], references: [id], onDelete: Cascade)
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
 
@@ -115,7 +77,6 @@ model PayrollWeeklyReport {
 model UserUiPreferences {
   id                   String   @id @default(uuid())
   userId               String   @unique
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   lowStockCraftableBg  String   @default("#fff3cd")
   lowStockNormalBg     String   @default("#f8d7da")
@@ -131,68 +92,19 @@ model UserUiPreferences {
   @@map("user_ui_preferences")
 }
 
-model Session {
-  id             String   @id
-  expiresAt      DateTime
-  token          String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  ipAddress      String?
-  userAgent      String?
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  impersonatedBy String?
-
-  @@unique([token])
-  @@index([userId])
-  @@map("session")
-}
-
-model Account {
-  id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-  @@map("verification")
-}
-
 model AppSettings {
   dispensaryId                 String   @id
   dispensary                   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   dispensaryName               String   @default("Saint-Denis")
   featureStockEnabled          Boolean  @default(true)
   featureBankEnabled           Boolean  @default(true)
-  featurePrivatePracticeEnabled Boolean @default(true)
   featureOrdersEnabled         Boolean  @default(true)
   featureSearchEnabled         Boolean  @default(true)
   featureMailsEnabled          Boolean  @default(true)
   featurePayrollEnabled        Boolean  @default(true)
   featureWeeklyDispensaryActivityEnabled Boolean @default(true)
   featureAgendaEnabled                 Boolean @default(true)
+  featureCabinetEnabled                Boolean @default(true)
   weeklyActivityChestDaysVisible       Boolean @default(true)
   weeklyActivityPresenceDaysVisible    Boolean @default(true)
   weeklyActivityPatientsVisible        Boolean @default(true)
@@ -264,6 +176,8 @@ model Chest {
   updatedAt     DateTime       @updatedAt
   stockHistory StockHistory[]
   stockCheckConfig ChestStockCheckConfig?
+  stockItemMovements StockItemMovement[] @relation("MovementChest")
+  stockItemMovementDestinations StockItemMovement[] @relation("MovementDestinationChest")
 
   @@index([dispensaryId])
   @@map("chest")
@@ -314,21 +228,30 @@ enum StockMovementKind {
   MANUAL_ADJUST
   CRAFT_CONSUME
   CRAFT_PRODUCE
+  TRANSFER_OUT
+  TRANSFER_IN
+  OVERWRITE
 }
 
 model StockItemMovement {
-  id        String            @id @default(uuid())
-  itemId    String
-  quantity  Int
-  kind      StockMovementKind
-  userId    String?
-  createdAt DateTime          @default(now())
+  id                 String            @id @default(uuid())
+  itemId             String
+  chestId            String?
+  destinationChestId String?
+  quantity           Int
+  kind               StockMovementKind
+  userId             String?
+  note               String?
+  createdAt          DateTime          @default(now())
 
-  item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  item             Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  chest            Chest? @relation("MovementChest", fields: [chestId], references: [id], onDelete: SetNull)
+  destinationChest Chest? @relation("MovementDestinationChest", fields: [destinationChestId], references: [id], onDelete: SetNull)
 
   @@index([itemId, createdAt])
   @@index([createdAt])
+  @@index([chestId, createdAt])
+  @@index([itemId, chestId, createdAt])
   @@map("stock_item_movement")
 }
 
@@ -483,58 +406,20 @@ model OrderItem {
   @@map("order_item")
 }
 
-model MailTemplate {
-  id               String                          @id @default(uuid())
-  dispensaryId     String
-  dispensary       Dispensary                      @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name             String
-  description      String?
-  content          String
-  defaultMailName  String?
-  userId      String?
-  user        User?                           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime                        @default(now())
-  updatedAt   DateTime                        @updatedAt
-  assignments OrderMailTemplateAssignment[]
-
-  @@index([userId])
-  @@index([dispensaryId])
-  @@map("mail_template")
-}
-
 model OrderMailTemplateAssignment {
   id              String         @id @default(uuid())
   dispensaryId    String
   dispensary      Dispensary     @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   orderType       OrderType
   orderStatus     OrderStatus
-  mailTemplateId  String
-  mailTemplate    MailTemplate @relation(fields: [mailTemplateId], references: [id], onDelete: Cascade)
+  templateId      String
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   @@unique([dispensaryId, orderType, orderStatus])
-  @@index([mailTemplateId])
+  @@index([templateId])
   @@index([orderType, orderStatus])
   @@map("order_mail_template_assignment")
-}
-
-model Mail {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  senderId  String
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  name      String
-  receiver  String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([senderId])
-  @@index([createdAt])
-  @@index([dispensaryId])
-  @@map("mail")
 }
 
 enum BankAccountAccessType {
@@ -548,7 +433,6 @@ model BankAccount {
   dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   name      String
   ownerId   String
-  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   accesses  BankAccountAccess[]
@@ -564,7 +448,6 @@ model BankAccountAccess {
   accountId String
   account   BankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessType BankAccountAccessType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -641,56 +524,6 @@ model TransactionDescriptionSuggestion {
   @@map("transaction_description_suggestion")
 }
 
-model PatientIdentitySuggestion {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([dispensaryId, value])
-  @@map("patient_identity_suggestion")
-}
-
-model PrivatePracticeWeek {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  weekStart DateTime
-  weekEnd   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  patients  PrivatePracticePatient[]
-
-  @@unique([dispensaryId, weekStart])
-  @@index([weekStart])
-  @@index([dispensaryId])
-  @@map("private_practice_week")
-}
-
-model PrivatePracticePatient {
-  id                      String   @id @default(uuid())
-  weekId                  String
-  week                    PrivatePracticeWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  date                    DateTime
-  type                    String
-  identity                String
-  description             String?
-  consultationPrice       Decimal  @db.Decimal(10, 2)
-  otherPrice              Decimal  @db.Decimal(10, 2)
-  amountForCashRegister   Decimal  @db.Decimal(10, 2)
-  depositedInCashRegister Boolean  @default(false)
-  retrievedFromCashRegister Boolean @default(false)
-  order                   Int      @default(0)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  @@index([weekId])
-  @@index([date])
-  @@map("private_practice_patient")
-}
-
 enum DispensaryWeeklyActivityHistoryAction {
   CREATE
   DELETE
@@ -725,7 +558,6 @@ model DispensaryWeeklyActivity {
   displayName          String
   discordUserId        String
   userId               String?
-  user                 User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   chestDays            Json
   presenceDays         Json
   sherifCount          Int      @default(0)
@@ -751,7 +583,6 @@ model DispensaryWeeklyActivityHistory {
   action             DispensaryWeeklyActivityHistoryAction
   source             DispensaryWeeklyActivityHistorySource
   actorUserId        String?
-  actorUser          User?                             @relation("DispensaryWeeklyActivityHistoryActor", fields: [actorUserId], references: [id], onDelete: SetNull)
   actorDiscordUserId String?
   previousValues     Json?
   nextValues         Json?
@@ -790,7 +621,6 @@ model AgendaMember {
   agendaId    String
   agenda      Agenda            @relation(fields: [agendaId], references: [id], onDelete: Cascade)
   userId      String
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessLevel AgendaAccessLevel
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -810,7 +640,6 @@ model AgendaEvent {
   endAt       DateTime
   allDay      Boolean  @default(false)
   createdById String?
-  createdBy   User?    @relation("AgendaEventCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   participants AgendaEventParticipant[]
@@ -825,7 +654,6 @@ model AgendaEventParticipant {
   eventId String
   event   AgendaEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId  String
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
 
   @@unique([eventId, userId])
@@ -891,4 +719,87 @@ model AgendaEventTodoTask {
 
   @@index([eventId])
   @@map("agenda_event_todo_task")
+}
+
+enum CabinetAccessLevel {
+  OWNER
+  WRITE
+  READ
+}
+
+model Cabinet {
+  id           String   @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  formSchemas  Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  members      CabinetMember[]
+  patients     CabinetPatient[]
+
+  @@index([dispensaryId])
+  @@map("cabinet")
+}
+
+model CabinetMember {
+  id          String             @id @default(uuid())
+  cabinetId   String
+  cabinet     Cabinet            @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  userId      String
+  accessLevel CabinetAccessLevel
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([cabinetId, userId])
+  @@index([userId])
+  @@map("cabinet_member")
+}
+
+model CabinetPatient {
+  id               String        @id @default(uuid())
+  cabinetId        String
+  cabinet          Cabinet       @relation(fields: [cabinetId], references: [id], onDelete: Cascade)
+  firstName        String
+  lastName         String
+  birthDate        DateTime?
+  emergencyContact String?
+  customValues     Json          @default("{}")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  careEpisodes     CareEpisode[]
+
+  @@index([cabinetId])
+  @@index([cabinetId, lastName, firstName])
+  @@map("cabinet_patient")
+}
+
+model CareEpisode {
+  id            String         @id @default(uuid())
+  patientId     String
+  patient       CabinetPatient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  motif         String
+  startedAt     DateTime
+  customValues  Json           @default("{}")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  consultations Consultation[]
+
+  @@index([patientId])
+  @@index([patientId, startedAt])
+  @@map("care_episode")
+}
+
+model Consultation {
+  id            String      @id @default(uuid())
+  careEpisodeId String
+  careEpisode   CareEpisode @relation(fields: [careEpisodeId], references: [id], onDelete: Cascade)
+  date          DateTime
+  customValues  Json        @default("{}")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([careEpisodeId, date])
+  @@map("consultation")
 }

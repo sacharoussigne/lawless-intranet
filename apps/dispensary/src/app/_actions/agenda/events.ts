@@ -25,6 +25,7 @@ import {
 } from '@/app/_actions/agenda/internals';
 import { emitAgendaEventsChange } from '@/lib/agenda/realtime/broadcast';
 import type { AgendaMutationMeta } from '@/lib/agenda/realtime/mutationMeta';
+import { enrichEventParticipants } from '@/lib/enrichUsers';
 
 const eventListInclude = {
   agenda: { select: { name: true } },
@@ -32,11 +33,7 @@ const eventListInclude = {
 };
 
 const eventDetailInclude = {
-  participants: {
-    include: {
-      user: { select: { id: true, name: true, email: true, image: true } },
-    },
-  },
+  participants: true,
   todoTasks: { orderBy: { order: 'asc' as const } },
   agenda: { select: { name: true } },
 };
@@ -61,7 +58,6 @@ type EventDetailRow = EventBaseRow & {
   participants: {
     id: string;
     userId: string;
-    user: { id: string; name: string; email: string; image: string | null };
   }[];
   todoTasks: {
     id: string;
@@ -91,7 +87,20 @@ function mapListEvent(event: EventListRow, currentUserId: string): AgendaEventDT
   };
 }
 
-function mapDetailEvent(event: EventDetailRow, currentUserId: string): AgendaEventDTO {
+async function mapDetailEventFromRow(event: EventDetailRow, currentUserId: string) {
+  const participants = await enrichEventParticipants(event.participants);
+  return mapDetailEvent(event, currentUserId, participants);
+}
+
+function mapDetailEvent(
+  event: EventDetailRow,
+  currentUserId: string,
+  participants: Array<{
+    id: string;
+    userId: string;
+    user: { id: string; name: string; email: string; image: string | null } | null;
+  }>,
+): AgendaEventDTO {
   return {
     id: event.id,
     agendaId: event.agendaId,
@@ -101,13 +110,18 @@ function mapDetailEvent(event: EventDetailRow, currentUserId: string): AgendaEve
     endAt: event.endAt,
     allDay: event.allDay,
     createdById: event.createdById,
-    participants: event.participants.map((p) => ({
+    participants: participants.map((p) => ({
       id: p.id,
       userId: p.userId,
-      user: p.user,
+      user: p.user ?? {
+        id: p.userId,
+        name: 'Utilisateur',
+        email: '',
+        image: null,
+      },
     })),
     todoTasks: event.todoTasks,
-    isParticipant: event.participants.some((p) => p.userId === currentUserId),
+    isParticipant: participants.some((p) => p.userId === currentUserId),
     agendaName: event.agenda.name,
   };
 }
@@ -215,7 +229,7 @@ export async function getAgendaEvent(dispensarySlug: string, eventId: string) {
       }
     }
 
-    return { status: 200, data: mapDetailEvent(event, ctx.session.user.id) };
+    return { status: 200, data: await mapDetailEventFromRow(event, ctx.session.user.id) };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement de l\'événement');
   }
@@ -298,7 +312,7 @@ export async function createAgendaEvent(
 
     await emitAgendaEventsChange(ctx.tenant.dispensaryId, validated.agendaId, meta);
 
-    return { status: 201, data: mapDetailEvent(event, ctx.session.user.id) };
+    return { status: 201, data: await mapDetailEventFromRow(event, ctx.session.user.id) };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la création de l\'événement');
   }
@@ -428,7 +442,7 @@ export async function updateAgendaEvent(
 
     await emitAgendaEventsChange(ctx.tenant.dispensaryId, existing.agendaId, meta);
 
-    return { status: 200, data: mapDetailEvent(event, ctx.session.user.id) };
+    return { status: 200, data: await mapDetailEventFromRow(event, ctx.session.user.id) };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la mise à jour de l\'événement');
   }

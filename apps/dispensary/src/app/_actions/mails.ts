@@ -1,10 +1,25 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
+import {
+  createDocument,
+  deleteDocument,
+  getDocument,
+  listDocuments,
+  updateDocument,
+} from '@lawless-intranet/documents-client/server';
+import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import {
+  buildMailDocumentMetadata,
+  documentToMail,
+  getMailReceiver,
+  getServerCookieHeader,
+  MAIL_DOCUMENT_TYPE,
+  resolveMailDocumentAccess,
+  attachOwnerNames,
+} from '@/lib/documents/mailDocuments';
 
 const createMailSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
@@ -34,13 +49,14 @@ const getMailByIdSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-const CONTENT_PREVIEW_LENGTH = 120;
-
-function truncateContentPreview(content: string): string {
-  if (content.length <= CONTENT_PREVIEW_LENGTH) {
-    return content;
+function documentsActionError(error: unknown, fallback: string) {
+  if (error instanceof DocumentsClientError) {
+    return {
+      status: error.status,
+      error: error.message,
+    };
   }
-  return `${content.substring(0, CONTENT_PREVIEW_LENGTH)}...`;
+  return actionErrorParser(error, fallback);
 }
 
 export async function createMail(
@@ -59,23 +75,25 @@ export async function createMail(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createMailSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const mail = await prisma.mail.create({
-      data: {
-        dispensaryId,
+    const document = await createDocument(
+      {
+        type: MAIL_DOCUMENT_TYPE,
+        scopeId: dispensaryId,
         name: validatedData.name,
-        receiver: validatedData.receiver,
         content: validatedData.content,
-        senderId: ctx.session.user.id,
+        metadata: buildMailDocumentMetadata(validatedData.receiver),
       },
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 201,
-      data: mail,
+      data: documentToMail(document),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création du courrier');
+    return documentsActionError(error, 'Erreur lors de la création du courrier');
   }
 }
 
@@ -97,61 +115,40 @@ export async function getMailsPage(
 
     const { page, pageSize, nameSearch, receiverSearch } =
       getMailsPageSchema.parse(params);
-    const nameTerm = nameSearch?.trim();
-    const receiverTerm = receiverSearch?.trim();
+    const cookieHeader = await getServerCookieHeader();
 
-    const where = {
-      senderId: ctx.session.user.id,
-      ...tenantWhere(dispensaryId),
-      ...(nameTerm
-        ? {
-            name: {
-              contains: nameTerm,
-              mode: 'insensitive' as const,
-            },
-          }
-        : {}),
-      ...(receiverTerm
-        ? {
-            receiver: {
-              contains: receiverTerm,
-              mode: 'insensitive' as const,
-            },
-          }
-        : {}),
-    };
+    const result = await listDocuments(
+      {
+        type: MAIL_DOCUMENT_TYPE,
+        scopeId: dispensaryId,
+        page,
+        pageSize,
+        nameSearch,
+        receiverSearch,
+      },
+      { cookieHeader },
+    );
 
-    const [mails, totalCount] = await Promise.all([
-      prisma.mail.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        select: {
-          id: true,
-          name: true,
-          receiver: true,
-          createdAt: true,
-          content: true,
-        },
-      }),
-      prisma.mail.count({ where }),
-    ]);
+    const mappedItems = result.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      receiver: getMailReceiver(item.metadata),
+      createdAt: new Date(item.createdAt),
+      contentPreview: item.contentPreview,
+      ...resolveMailDocumentAccess(item, ctx.session.user.id),
+    }));
 
     return {
       status: 200,
       data: {
-        items: mails.map(({ content, ...mail }) => ({
-          ...mail,
-          contentPreview: truncateContentPreview(content),
-        })),
-        totalCount,
-        page,
-        pageSize,
+        items: await attachOwnerNames(mappedItems),
+        totalCount: result.totalCount,
+        page: result.page,
+        pageSize: result.pageSize,
       },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des courriers');
+    return documentsActionError(error, 'Erreur lors de la récupération des courriers');
   }
 }
 
@@ -164,31 +161,18 @@ export async function getMailById(
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
 
     const { id } = getMailByIdSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const mail = await prisma.mail.findFirst({
-      where: {
-        id,
-        senderId: ctx.session.user.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!mail) {
-      return {
-        status: 404,
-        error: 'Courrier introuvable',
-      };
-    }
+    const document = await getDocument(id, { cookieHeader });
 
     return {
       status: 200,
-      data: mail,
+      data: documentToMail(document),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération du courrier');
+    return documentsActionError(error, 'Erreur lors de la récupération du courrier');
   }
 }
 
@@ -206,49 +190,26 @@ export async function updateMail(
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
 
     const validatedData = updateMailSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const existingMail = await prisma.mail.findFirst({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!existingMail) {
-      return {
-        status: 404,
-        error: 'Courrier introuvable',
-      };
-    }
-
-    if (existingMail.senderId !== ctx.session.user.id) {
-      return {
-        status: 403,
-        error: 'Vous n\'êtes pas autorisé à modifier ce courrier',
-      };
-    }
-
-    const mail = await prisma.mail.update({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-      data: {
+    const document = await updateDocument(
+      validatedData.id,
+      {
         name: validatedData.name,
-        receiver: validatedData.receiver,
         content: validatedData.content,
+        metadata: buildMailDocumentMetadata(validatedData.receiver),
       },
-    });
+      { cookieHeader },
+    );
 
     return {
       status: 200,
-      data: mail,
+      data: documentToMail(document),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification du courrier');
+    return documentsActionError(error, 'Erreur lors de la modification du courrier');
   }
 }
 
@@ -258,43 +219,17 @@ export async function deleteMail(dispensarySlug: string, data: { id: string }) {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
 
     const validatedData = deleteMailSchema.parse(data);
+    const cookieHeader = await getServerCookieHeader();
 
-    const existingMail = await prisma.mail.findFirst({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    if (!existingMail) {
-      return {
-        status: 404,
-        error: 'Courrier introuvable',
-      };
-    }
-
-    if (existingMail.senderId !== ctx.session.user.id) {
-      return {
-        status: 403,
-        error: 'Vous n\'êtes pas autorisé à supprimer ce courrier',
-      };
-    }
-
-    await prisma.mail.delete({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
+    await deleteDocument(validatedData.id, { cookieHeader });
 
     return {
       status: 200,
       data: { success: true },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du courrier');
+    return documentsActionError(error, 'Erreur lors de la suppression du courrier');
   }
 }

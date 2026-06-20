@@ -20,7 +20,7 @@ import CreateOrderModal from './components/CreateOrderModal';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import type { OrderSummary, OrdersPageResult } from '@/types/orders';
-import type { OrderMailTemplateAssignment } from '@prisma/client';
+import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import {
   defaultOrdersPageFilters,
   useOrderLetterAssignments,

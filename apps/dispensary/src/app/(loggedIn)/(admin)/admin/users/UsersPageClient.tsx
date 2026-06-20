@@ -8,7 +8,7 @@ import {
   Button,
 } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import { listUsers, impersonateUser } from '@/app/_actions/users';
+import { listUsers } from '@/app/_actions/users';
 import { handleAction } from '@/lib/action';
 import { notifications } from '@mantine/notifications';
 import { UserModal } from './components/UserModal';
@@ -16,7 +16,7 @@ import { DeleteUserModal } from './components/DeleteUserModal';
 import { PasswordModal } from './components/PasswordModal';
 import { UsersTable } from './components/UsersTable';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
-import { authClient } from '@/lib/client';
+import { authClient } from '@lawless-intranet/auth-client/browser';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types/users';
 
@@ -108,11 +108,10 @@ export default function UsersPageClient({
 
   const handleImpersonate = async (userId: string) => {
     try {
-      const result = await impersonateUser(userId);
-      const data = handleAction(result);
-      
-      if (!data) {
-        throw new Error('Erreur lors de l\'impersonation');
+      const result = await authClient.admin.impersonateUser({ userId });
+
+      if (result.error) {
+        throw new Error(result.error.message || 'Erreur lors de l\'impersonation');
       }
 
       notifications.show({
@@ -120,14 +119,14 @@ export default function UsersPageClient({
         message: 'Connexion en tant qu\'utilisateur réussie',
         color: 'green',
       });
-      
-      // Recharger la page pour mettre à jour la session
+
       router.refresh();
       window.location.href = '/';
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de l\'impersonation',
+        message:
+          error instanceof Error ? error.message : 'Erreur lors de l\'impersonation',
         color: 'red',
       });
     }

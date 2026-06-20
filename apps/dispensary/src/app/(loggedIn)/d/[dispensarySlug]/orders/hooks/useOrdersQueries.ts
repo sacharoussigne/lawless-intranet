@@ -22,7 +22,7 @@ import {
 import { normalizeItemPrice } from '@/lib/orders/calculateOrderPriceFromItems';
 import type { OrdersPageResult, OrderWithRelations } from '@/types/orders';
 import type { ItemWithRelations } from '@/types/stock';
-import type { OrderMailTemplateAssignment } from '@prisma/client';
+import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 
 const DEFAULT_PAGE_SIZE = 10;
 

@@ -4,6 +4,7 @@ import {
   IconArchive,
   IconCalendarWeek,
   IconCashRegister,
+  IconHistory,
   IconMail,
   IconNotebook,
   IconReportMoney,
@@ -11,7 +12,8 @@ import {
   IconStethoscope,
 } from '@tabler/icons-react';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
-import { checkRolePermission } from '@/lib/auth/permissions';
+import { isAppFeatureEnabled } from '@/lib/appSettingsShared';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import type { Permissions } from '@/types/permissions';
 import type { tenantRoutes } from '@/types/routes';
 
@@ -19,10 +21,11 @@ export type EmployeeNavId =
   | 'stock'
   | 'orders'
   | 'bank'
-  | 'privatePractice'
+  | 'cabinet'
   | 'weeklyActivity'
   | 'payroll'
   | 'stockStatistics'
+  | 'stockMovements'
   | 'mails'
   | 'search';
 
@@ -42,6 +45,7 @@ export type EmployeeNavContext = {
   appSettings: AppSettingsDTO;
   permissions: Permissions | null;
   userRole: string | null;
+  cabinetModuleAccess?: boolean;
 };
 
 const PRIMARY_SLOT_COUNT = 4;
@@ -64,10 +68,9 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
         appSettings.featureBankEnabled &&
         checkRolePermission(userRole, 'bank', 'access')
       );
-    case 'privatePractice':
+    case 'cabinet':
       return (
-        appSettings.featurePrivatePracticeEnabled &&
-        checkRolePermission(userRole, 'private_practice', 'access')
+        isAppFeatureEnabled(appSettings, 'cabinet') && (ctx.cabinetModuleAccess ?? false)
       );
     case 'weeklyActivity':
       return (
@@ -79,6 +82,7 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
         appSettings.featurePayrollEnabled && (permissions?.payrollReports.view ?? false)
       );
     case 'stockStatistics':
+    case 'stockMovements':
       return (
         appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false)
       );
@@ -125,12 +129,12 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       navOrder: 3,
     },
     {
-      id: 'privatePractice',
-      label: 'Cabinet privé',
+      id: 'cabinet',
+      label: 'Cabinet',
       shortLabel: 'Cabinet',
-      href: t.privatePractice.index,
+      href: t.cabinet.index,
       icon: IconStethoscope,
-      navOrder: 4,
+      navOrder: 15,
     },
     {
       id: 'weeklyActivity',
@@ -157,12 +161,20 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       navOrder: 12,
     },
     {
+      id: 'stockMovements',
+      label: 'Historique stock',
+      shortLabel: 'Historique',
+      href: t.employee.stockMovements,
+      icon: IconHistory,
+      navOrder: 13,
+    },
+    {
       id: 'mails',
       label: 'Courriers',
       shortLabel: 'Courriers',
       href: t.employee.mails,
       icon: IconMail,
-      navOrder: 13,
+      navOrder: 14,
     },
     {
       id: 'search',
@@ -170,7 +182,7 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       shortLabel: 'Recherche',
       href: t.searchItems.index,
       icon: IconSearch,
-      navOrder: 14,
+      navOrder: 16,
       iconOnly: true,
     },
   ];

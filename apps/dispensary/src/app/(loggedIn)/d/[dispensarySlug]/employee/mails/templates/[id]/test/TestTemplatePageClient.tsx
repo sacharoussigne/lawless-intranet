@@ -17,7 +17,7 @@ import type { MailTemplate } from '@/types/mails';
 import {
   TemplatePreviewWithForm,
   useTemplatePreviewActions,
-} from '../../../components/TemplatePreviewPanel';
+} from '@lawless-intranet/mail-template-ui';
 
 interface TestTemplatePageClientProps {
   template: MailTemplate;

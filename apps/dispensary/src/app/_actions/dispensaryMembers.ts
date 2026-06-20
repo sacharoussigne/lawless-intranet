@@ -6,6 +6,12 @@ import { actionErrorParser } from '@/lib/action';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { DISPENSARY_MEMBER_ROLES, serializeRoleList } from '@/types/enum/roles';
+import {
+  attachUserProfiles,
+  fetchUserProfile,
+  fetchUserProfiles,
+  searchAuthUsers,
+} from '@/lib/authUsers';
 
 const dispensaryRoleEnum = z.enum(DISPENSARY_MEMBER_ROLES);
 
@@ -22,13 +28,15 @@ export async function listDispensaryMembers(dispensarySlug: string) {
 
   const members = await prisma.dispensaryMember.findMany({
     where: { dispensaryId: auth.ctx.dispensaryId },
-    include: {
-      user: { select: { id: true, name: true, image: true } },
-    },
-    orderBy: { user: { name: 'asc' } },
+    orderBy: { createdAt: 'asc' },
   });
 
-  return { status: 200, data: members };
+  const usersById = await fetchUserProfiles(members.map((member) => member.userId));
+  const enriched = attachUserProfiles(members, usersById).sort((a, b) =>
+    (a.user?.name ?? a.userId).localeCompare(b.user?.name ?? b.userId, 'fr'),
+  );
+
+  return { status: 200, data: enriched };
 }
 
 export async function upsertDispensaryMember(
@@ -42,7 +50,7 @@ export async function upsertDispensaryMember(
     }
 
     const validated = upsertMemberSchema.parse(data);
-    const user = await prisma.user.findUnique({ where: { id: validated.userId } });
+    const user = await fetchUserProfile(validated.userId);
     if (!user) {
       return { status: 404, error: 'Utilisateur introuvable' };
     }
@@ -101,13 +109,10 @@ export async function searchUsersForDispensaryInvite(dispensarySlug: string, que
     return { status: 200, data: [] };
   }
 
-  const users = await prisma.user.findMany({
-    where: {
-      name: { contains: q, mode: 'insensitive' },
-    },
-    select: { id: true, name: true },
-    take: 20,
-  });
+  const users = await searchAuthUsers(q);
 
-  return { status: 200, data: users };
+  return {
+    status: 200,
+    data: users.map((user) => ({ id: user.id, name: user.name })),
+  };
 }

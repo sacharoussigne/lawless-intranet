@@ -6,18 +6,20 @@ import {
   IconCalendarEvent,
   IconCalendarWeek,
   IconCashRegister,
+  IconHistory,
   IconMail,
   IconNotebook,
   IconReportMoney,
   IconStethoscope,
 } from '@tabler/icons-react';
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession } from '@/lib/authSession';
 import { calculatePermissions } from '@/lib/auth/calculatePermissions';
-import { checkRolePermission } from '@/lib/auth/permissions';
-import { dispensarySiteTitle, getAppSettings } from '@/lib/appSettings';
+import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { dispensarySiteTitle, getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
+import { userHasAnyCabinetAccess } from '@/lib/cabinet/access';
 import { ModuleCard, type ModuleCardProps } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 
@@ -42,6 +44,9 @@ export default async function EmployeePage({
         session.user.role,
         effectiveRole,
       )
+    : false;
+  const cabinetModuleAccess = userId
+    ? await userHasAnyCabinetAccess(dispensary.id, userId)
     : false;
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
@@ -69,15 +74,6 @@ export default async function EmployeePage({
         appSettings.featureBankEnabled && checkRolePermission(effectiveRole, 'bank', 'access'),
     },
     {
-      title: 'Cabinet privé',
-      description: 'Gérez les consultations et patients du cabinet privé.',
-      icon: IconStethoscope,
-      href: t.privatePractice.index,
-      hasAccess:
-        appSettings.featurePrivatePracticeEnabled &&
-        checkRolePermission(effectiveRole, 'private_practice', 'access'),
-    },
-    {
       title: 'Courriers',
       description: 'Rédigez et gérez les courriers et modèles.',
       icon: IconMail,
@@ -99,6 +95,13 @@ export default async function EmployeePage({
       hasAccess: appSettings.featureAgendaEnabled && agendaModuleAccess,
     },
     {
+      title: 'Cabinet',
+      description: 'Dossiers patients et consultations des cabinets médicaux.',
+      icon: IconStethoscope,
+      href: t.cabinet.index,
+      hasAccess: isAppFeatureEnabled(appSettings, 'cabinet') && cabinetModuleAccess,
+    },
+    {
       title: 'Activité hebdo',
       description: 'Suivez l’activité hebdomadaire du dispensaire.',
       icon: IconCalendarWeek,
@@ -112,6 +115,13 @@ export default async function EmployeePage({
       description: 'Visualisez les statistiques de stock.',
       icon: IconAbacus,
       href: t.employee.stockStatistics,
+      hasAccess: appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false),
+    },
+    {
+      title: 'Historique stock',
+      description: 'Consultez et corrigez le journal des mouvements de stock.',
+      icon: IconHistory,
+      href: t.employee.stockMovements,
       hasAccess: appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false),
     },
   ];

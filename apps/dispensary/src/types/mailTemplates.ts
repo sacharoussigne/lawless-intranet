@@ -1,15 +1,24 @@
-import type { MailTemplate } from '@prisma/client';
+import type { MailTemplate, MailTemplateListItem } from '@/types/mails';
 
-export type { MailTemplate };
+export type { MailTemplate, MailTemplateListItem };
 
-export type MailTemplateListItem = Pick<
-  MailTemplate,
-  | 'id'
-  | 'name'
-  | 'description'
-  | 'defaultMailName'
-  | 'createdAt'
-  | 'updatedAt'
-  | 'dispensaryId'
-  | 'userId'
->;
+export type OrderMailTemplateAssignment = {
+  id: string;
+  dispensaryId: string;
+  orderType: string;
+  orderStatus: string;
+  templateId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  mailTemplate?: {
+    id: string;
+    name: string;
+  } | null;
+};
+
+export type OrderMailTemplateAssignmentWithTemplate = OrderMailTemplateAssignment & {
+  mailTemplate: {
+    id: string;
+    name: string;
+  } | null;
+};

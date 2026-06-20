@@ -1,13 +1,13 @@
 'use server';
 
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession } from '@/lib/authSession';
 import {
   requireDispensaryAccess,
   requireDispensaryFromSlug,
   type DispensaryContext,
 } from '@/lib/dispensary/context';
 import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
-import { hasRole } from '@/lib/auth/permissions';
+import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 
 export type TenantActionContext = {

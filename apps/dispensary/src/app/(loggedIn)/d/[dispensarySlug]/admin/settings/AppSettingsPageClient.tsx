@@ -36,8 +36,6 @@ export default function AppSettingsPageClient({
   const [featureBankEnabled, setFeatureBankEnabled] = useState(
     initial.featureBankEnabled,
   );
-  const [featurePrivatePracticeEnabled, setFeaturePrivatePracticeEnabled] =
-    useState(initial.featurePrivatePracticeEnabled);
   const [featureOrdersEnabled, setFeatureOrdersEnabled] = useState(
     initial.featureOrdersEnabled,
   );
@@ -54,6 +52,9 @@ export default function AppSettingsPageClient({
     useState(initial.featureWeeklyDispensaryActivityEnabled);
   const [featureAgendaEnabled, setFeatureAgendaEnabled] = useState(
     initial.featureAgendaEnabled,
+  );
+  const [featureCabinetEnabled, setFeatureCabinetEnabled] = useState(
+    initial.featureCabinetEnabled ?? true,
   );
   const [weeklyActivityChestDaysVisible, setWeeklyActivityChestDaysVisible] = useState(
     initial.weeklyActivityChestDaysVisible ?? true,
@@ -82,13 +83,13 @@ export default function AppSettingsPageClient({
       slug: slug.trim().toLowerCase(),
       featureStockEnabled,
       featureBankEnabled,
-      featurePrivatePracticeEnabled,
       featureOrdersEnabled,
       featureSearchEnabled,
       featureMailsEnabled,
       featurePayrollEnabled,
       featureWeeklyDispensaryActivityEnabled,
       featureAgendaEnabled,
+      featureCabinetEnabled,
       weeklyActivityChestDaysVisible,
       weeklyActivityPresenceDaysVisible,
       weeklyActivityPatientsVisible,
@@ -176,15 +177,6 @@ export default function AppSettingsPageClient({
             </Paper>
             <Paper withBorder p="md" radius="md" bg="var(--mantine-color-body)">
               <Switch
-                label="Cabinet privé"
-                checked={featurePrivatePracticeEnabled}
-                onChange={(e) =>
-                  setFeaturePrivatePracticeEnabled(e.currentTarget.checked)
-                }
-              />
-            </Paper>
-            <Paper withBorder p="md" radius="md" bg="var(--mantine-color-body)">
-              <Switch
                 label="Commandes"
                 checked={featureOrdersEnabled}
                 onChange={(e) =>
@@ -233,6 +225,13 @@ export default function AppSettingsPageClient({
                 label="Agenda & to-do"
                 checked={featureAgendaEnabled}
                 onChange={(e) => setFeatureAgendaEnabled(e.currentTarget.checked)}
+              />
+            </Paper>
+            <Paper withBorder p="md" radius="md" bg="var(--mantine-color-body)">
+              <Switch
+                label="Cabinet médical"
+                checked={featureCabinetEnabled}
+                onChange={(e) => setFeatureCabinetEnabled(e.currentTarget.checked)}
               />
             </Paper>
           </SimpleGrid>

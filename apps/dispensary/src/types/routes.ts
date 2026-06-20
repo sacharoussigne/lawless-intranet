@@ -14,6 +14,7 @@ export function tenantRoutes(slug: string) {
       payrollNew: `${base}/employee/payroll/new`,
       payrollDetail: (id: string) => `${base}/employee/payroll/${id}`,
       stockStatistics: `${base}/employee/stock-statistics`,
+      stockMovements: `${base}/employee/stock-movements`,
       mails: `${base}/employee/mails`,
       newMail: `${base}/employee/mails/new`,
       editMail: (id: string) => `${base}/employee/mails/${id}/edit`,
@@ -25,9 +26,9 @@ export function tenantRoutes(slug: string) {
     orders: { index: `${base}/orders` },
     searchItems: { index: `${base}/search-items` },
     bank: { index: `${base}/bank` },
-    privatePractice: { index: `${base}/private-practice` },
     weeklyActivity: { index: `${base}/weekly-activity` },
     agenda: { index: `${base}/agenda` },
+    cabinet: { index: `${base}/cabinet` },
     management: {
       index: `${base}/management`,
       companies: `${base}/management/companies`,
@@ -46,6 +47,7 @@ export function tenantRoutes(slug: string) {
       payrollNew: `${base}/admin/payroll/new`,
       payrollDetail: (id: string) => `${base}/admin/payroll/${id}`,
       agendas: `${base}/admin/agendas`,
+      cabinets: `${base}/admin/cabinets`,
     },
   };
 }
@@ -82,7 +84,6 @@ export const routes = {
   orders: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/orders` },
   searchItems: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/search-items` },
   bank: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/bank` },
-  privatePractice: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/private-practice` },
   weeklyActivity: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/weekly-activity` },
   employee: {
     index: `/d/${DEFAULT_DISPENSARY_SLUG}/employee`,
@@ -90,6 +91,7 @@ export const routes = {
     payrollNew: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/payroll/new`,
     payrollDetail: (id: string) => `/d/${DEFAULT_DISPENSARY_SLUG}/employee/payroll/${id}`,
     stockStatistics: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/stock-statistics`,
+    stockMovements: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/stock-movements`,
     mails: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails`,
     newMail: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails/new`,
     editMail: (id: string) => `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails/${id}/edit`,
@@ -118,7 +120,6 @@ export const LEGACY_TENANT_PATHS = [
   '/orders',
   '/search-items',
   '/bank',
-  '/private-practice',
   '/weekly-activity',
   '/employee',
   '/management',

@@ -4,7 +4,7 @@ type SessionLike = {
   user: { id: string; role?: string | null };
 } | null;
 import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
-import { hasRole } from '@/lib/auth/permissions';
+import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { rewritePathWithDispensarySlug } from '@/lib/dispensary/slug';
 import { routes } from '@/types/routes';

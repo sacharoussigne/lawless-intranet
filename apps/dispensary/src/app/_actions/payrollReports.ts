@@ -23,6 +23,7 @@ import type {
   SerializedPayrollReportListItem,
 } from '@/lib/payroll/apiRow';
 import { extractPayrollListSummary } from '@/lib/payroll/listSummary';
+import { fetchUserProfiles } from '@/lib/authUsers';
 
 const MAX_CAISSE_PRICE_USD = 1_000_000;
 const MAX_HTML_CHARS = 600_000;
@@ -73,10 +74,12 @@ export async function listPayrollReports(dispensarySlug: string) {
       weekEnd: true,
       reportType: true,
       createdAt: true,
-      createdBy: { select: { name: true, id: true } },
+      createdById: true,
       resultJson: true,
     },
   });
+
+  const creatorsById = await fetchUserProfiles(rows.map((row) => row.createdById));
 
   const reports: SerializedPayrollReportListItem[] = rows.map((r) => ({
     id: r.id,
@@ -84,7 +87,10 @@ export async function listPayrollReports(dispensarySlug: string) {
     weekEnd: r.weekEnd.toISOString(),
     reportType: r.reportType,
     createdAt: r.createdAt.toISOString(),
-    createdBy: r.createdBy,
+    createdBy: {
+      id: r.createdById,
+      name: creatorsById.get(r.createdById)?.name ?? 'Utilisateur',
+    },
     summary: extractPayrollListSummary(r.resultJson),
   }));
 
@@ -98,12 +104,13 @@ export async function getPayrollReportById(dispensarySlug: string, id: string) {
 
   const report = await prisma.payrollWeeklyReport.findFirst({
     where: { id, ...tenantWhere(dispensaryId) },
-    include: { createdBy: { select: { name: true, email: true } } },
   });
 
   if (!report) {
     return { status: 404, error: 'Not found' };
   }
+
+  const creator = (await fetchUserProfiles([report.createdById])).get(report.createdById);
 
   const serialized: SerializedPayrollReportDetail = {
     id: report.id,
@@ -113,7 +120,10 @@ export async function getPayrollReportById(dispensarySlug: string, id: string) {
     resultJson: report.resultJson,
     errorMessage: report.errorMessage,
     createdAt: report.createdAt.toISOString(),
-    createdBy: report.createdBy,
+    createdBy: {
+      name: creator?.name ?? 'Utilisateur',
+      email: creator?.email ?? '',
+    },
   };
 
   return { status: 200, data: { report: serialized } };

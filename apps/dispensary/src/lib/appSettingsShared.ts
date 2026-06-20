@@ -1,25 +1,25 @@
 export type AppFeatureKey =
   | 'stock'
   | 'bank'
-  | 'privatePractice'
   | 'orders'
   | 'search'
   | 'mails'
   | 'payroll'
   | 'weeklyDispensaryActivity'
-  | 'agenda';
+  | 'agenda'
+  | 'cabinet';
 
 export type AppSettingsDTO = {
   dispensaryName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
-  featurePrivatePracticeEnabled: boolean;
   featureOrdersEnabled: boolean;
   featureSearchEnabled: boolean;
   featureMailsEnabled: boolean;
   featurePayrollEnabled: boolean;
   featureWeeklyDispensaryActivityEnabled: boolean;
   featureAgendaEnabled: boolean;
+  featureCabinetEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   weeklyActivityPatientsVisible: boolean;
@@ -32,13 +32,13 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   dispensaryName: 'Saint-Denis',
   featureStockEnabled: true,
   featureBankEnabled: true,
-  featurePrivatePracticeEnabled: true,
   featureOrdersEnabled: true,
   featureSearchEnabled: true,
   featureMailsEnabled: true,
   featurePayrollEnabled: true,
   featureWeeklyDispensaryActivityEnabled: true,
   featureAgendaEnabled: true,
+  featureCabinetEnabled: true,
   weeklyActivityChestDaysVisible: true,
   weeklyActivityPresenceDaysVisible: true,
   weeklyActivityPatientsVisible: true,
@@ -46,6 +46,12 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   weeklyActivityInfusionsVisible: true,
   weeklyActivityPoppyMilkVisible: true,
 };
+
+export function normalizeAppSettings(
+  settings: Partial<AppSettingsDTO>,
+): AppSettingsDTO {
+  return { ...APP_SETTINGS_DEFAULTS, ...settings };
+}
 
 export function appSettingsCacheTag(dispensaryId: string): string {
   return `app-settings-${dispensaryId}`;
@@ -63,8 +69,6 @@ export function isAppFeatureEnabled(
       return settings.featureStockEnabled;
     case 'bank':
       return settings.featureBankEnabled;
-    case 'privatePractice':
-      return settings.featurePrivatePracticeEnabled;
     case 'orders':
       return settings.featureOrdersEnabled;
     case 'search':
@@ -77,6 +81,8 @@ export function isAppFeatureEnabled(
       return settings.featureWeeklyDispensaryActivityEnabled;
     case 'agenda':
       return settings.featureAgendaEnabled;
+    case 'cabinet':
+      return settings.featureCabinetEnabled ?? APP_SETTINGS_DEFAULTS.featureCabinetEnabled;
     default: {
       const _exhaustive: never = feature;
       return _exhaustive;

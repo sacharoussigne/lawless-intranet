@@ -5,6 +5,7 @@ import {
   APP_FEATURE_DISABLED_MESSAGE,
   appSettingsCacheTag,
   isAppFeatureEnabled,
+  normalizeAppSettings,
   type AppFeatureKey,
   type AppSettingsDTO,
 } from '@/lib/appSettingsShared';
@@ -15,6 +16,7 @@ export {
   APP_FEATURE_DISABLED_MESSAGE,
   appSettingsCacheTag,
   isAppFeatureEnabled,
+  normalizeAppSettings,
   dispensarySiteTitle,
 } from '@/lib/appSettingsShared';
 
@@ -22,13 +24,13 @@ function mapFromDb(row: {
   dispensaryName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
-  featurePrivatePracticeEnabled: boolean;
   featureOrdersEnabled: boolean;
   featureSearchEnabled: boolean;
   featureMailsEnabled: boolean;
   featurePayrollEnabled: boolean;
   featureWeeklyDispensaryActivityEnabled: boolean;
   featureAgendaEnabled: boolean;
+  featureCabinetEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   weeklyActivityPatientsVisible: boolean;
@@ -40,7 +42,6 @@ function mapFromDb(row: {
     dispensaryName: row.dispensaryName?.trim() || APP_SETTINGS_DEFAULTS.dispensaryName,
     featureStockEnabled: row.featureStockEnabled,
     featureBankEnabled: row.featureBankEnabled,
-    featurePrivatePracticeEnabled: row.featurePrivatePracticeEnabled,
     featureOrdersEnabled: row.featureOrdersEnabled,
     featureSearchEnabled: row.featureSearchEnabled,
     featureMailsEnabled: row.featureMailsEnabled,
@@ -48,6 +49,8 @@ function mapFromDb(row: {
     featureWeeklyDispensaryActivityEnabled: row.featureWeeklyDispensaryActivityEnabled,
     featureAgendaEnabled:
       row.featureAgendaEnabled ?? APP_SETTINGS_DEFAULTS.featureAgendaEnabled,
+    featureCabinetEnabled:
+      row.featureCabinetEnabled ?? APP_SETTINGS_DEFAULTS.featureCabinetEnabled,
     weeklyActivityChestDaysVisible:
       row.weeklyActivityChestDaysVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityChestDaysVisible,
     weeklyActivityPresenceDaysVisible:
@@ -70,18 +73,18 @@ export async function loadAppSettingsFromDb(dispensaryId: string): Promise<AppSe
       where: { dispensaryId },
     });
     if (!row) {
-      return { ...APP_SETTINGS_DEFAULTS };
+      return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
     }
-    return mapFromDb(row);
+    return normalizeAppSettings(mapFromDb(row));
   } catch {
-    return { ...APP_SETTINGS_DEFAULTS };
+    return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
   }
 }
 
 export function getAppSettings(dispensaryId: string) {
   return unstable_cache(
     () => loadAppSettingsFromDb(dispensaryId),
-    ['app-settings', dispensaryId],
+    ['app-settings', dispensaryId, 'v2'],
     {
       tags: [appSettingsCacheTag(dispensaryId)],
       revalidate: 86400,

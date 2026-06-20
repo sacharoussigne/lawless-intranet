@@ -1,4 +1,4 @@
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession } from '@/lib/authSession';
 import { routes } from '@/types/routes';
 import { listAccessibleDispensaries } from '@/lib/dispensary/context';
 import { redirect } from 'next/navigation';

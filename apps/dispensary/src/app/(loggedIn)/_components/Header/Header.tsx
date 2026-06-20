@@ -11,7 +11,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import classes from './Header.module.scss';
-import { authClient } from '@/lib/client';
+import { authClient } from '@lawless-intranet/auth-client/browser';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
@@ -23,8 +23,8 @@ import { IconArrowBackUp, IconLogout, IconSettings } from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { dispensarySiteTitle } from '@/lib/appSettingsShared';
-import { hasRole } from '@/lib/auth/permissions';
+import { dispensarySiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
+import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
 import { DEFAULT_DISPENSARY_SLUG } from '@/lib/dispensary/constants';
@@ -43,7 +43,7 @@ export default function Header({
   const pathname = usePathname();
   const [userMenuOpened, setUserMenuOpened] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
-  const { permissions, userRole, appSettings, accessibleDispensaries, agendaModuleAccess, dispensarySlug: ctxSlug } = usePermissions();
+  const { permissions, userRole, appSettings, accessibleDispensaries, agendaModuleAccess, cabinetModuleAccess, dispensarySlug: ctxSlug } = usePermissions();
   const dispensarySlug = dispensarySlugProp ?? ctxSlug;
   const t = dispensarySlug ? tenantRoutes(dispensarySlug) : null;
   const isPlatformAdminUser = isPlatformAdmin(session?.user?.role);
@@ -173,6 +173,7 @@ export default function Header({
                 isManagementSpace={isAdminOrManagementSpace}
                 canManage={permissions?.application.management === true}
                 isRouteActive={isRouteActive}
+                cabinetModuleAccess={cabinetModuleAccess}
                 />
               </div>
 
@@ -240,6 +241,11 @@ export default function Header({
                         {appSettings.featureAgendaEnabled && (
                           <Link href={t.admin.agendas}>
                             <Menu.Item>Agendas</Menu.Item>
+                          </Link>
+                        )}
+                        {isAppFeatureEnabled(appSettings, 'cabinet') && (
+                          <Link href={t.admin.cabinets}>
+                            <Menu.Item>Cabinets</Menu.Item>
                           </Link>
                         )}
                         {appSettings.featureStockEnabled && (

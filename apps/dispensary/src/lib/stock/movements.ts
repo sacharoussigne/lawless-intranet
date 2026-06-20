@@ -12,6 +12,8 @@ export type ManualStockMovementRecord = {
   itemId: string;
   quantity: number;
   kind: StockMovementKind;
+  chestId?: string | null;
+  destinationChestId?: string | null;
 };
 
 export function computeManualStockDelta({
@@ -37,6 +39,7 @@ export function computeManualStockDelta({
 export function buildManualMovements(
   items: ManualStockMovementInput[],
   skipHistory: boolean,
+  chestId?: string | null,
 ): ManualStockMovementRecord[] {
   if (skipHistory) return [];
 
@@ -53,10 +56,35 @@ export function buildManualMovements(
       itemId: item.itemId,
       quantity: result.delta,
       kind: result.kind,
+      chestId,
     });
   }
 
   return movements;
+}
+
+const STOCK_MOVEMENT_KIND_LABELS: Record<StockMovementKind, string> = {
+  [StockMovementKind.MANUAL_FIRST_COUNT]: 'Premier comptage',
+  [StockMovementKind.MANUAL_ADJUST]: 'Ajustement manuel',
+  [StockMovementKind.CRAFT_CONSUME]: 'Craft (consommation)',
+  [StockMovementKind.CRAFT_PRODUCE]: 'Craft (production)',
+  [StockMovementKind.TRANSFER_OUT]: 'Transfert (sortie)',
+  [StockMovementKind.TRANSFER_IN]: 'Transfert (entrée)',
+  [StockMovementKind.OVERWRITE]: 'Écrasement admin',
+};
+
+export function getStockMovementKindLabel(kind: StockMovementKind): string {
+  return STOCK_MOVEMENT_KIND_LABELS[kind];
+}
+
+export const STOCK_MOVEMENT_KIND_OPTIONS = Object.entries(STOCK_MOVEMENT_KIND_LABELS).map(
+  ([value, label]) => ({ value: value as StockMovementKind, label }),
+);
+
+export function getStockMovementQuantityColor(quantity: number): 'moss' | 'danger' | 'slate' {
+  if (quantity > 0) return 'moss';
+  if (quantity < 0) return 'danger';
+  return 'slate';
 }
 
 export type StockStatsDisplayMode = 'consumed' | 'added' | 'net';

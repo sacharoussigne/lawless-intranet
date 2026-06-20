@@ -1,8 +1,24 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 
+const monorepoRoot = path.join(__dirname, '../..');
+
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  outputFileTracingRoot: monorepoRoot,
+  turbopack: {
+    root: monorepoRoot,
+  },
+  serverExternalPackages: [
+    'pg',
+    '@prisma/client',
+    '@prisma/client-runtime-utils',
+    '@prisma/adapter-pg',
+  ],
   experimental: {
     optimizePackageImports: [
+      '@lawless-intranet/mail-template-engine',
+      '@lawless-intranet/mail-template-ui',
       '@mantine/core',
       '@mantine/hooks',
       '@mantine/dates',

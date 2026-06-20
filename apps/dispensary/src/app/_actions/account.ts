@@ -1,8 +1,8 @@
 'use server';
 
-import { auth } from '@/lib/auth';
+import { changePassword, updateUser } from '@lawless-intranet/auth-client/admin';
 import { requireSession } from '@/lib/serverActionAuth';
-import { headers } from 'next/headers';
+import { getAuthRequestContext } from '@/lib/authRequest';
 import { z } from 'zod/v3';
 import { actionErrorParser } from '@/lib/action';
 
@@ -41,13 +41,13 @@ export async function updateMyProfile(data: z.infer<typeof updateMyProfileSchema
 
     const validated = updateMyProfileSchema.parse(data);
 
-    const result = await auth.api.updateUser({
-      body: {
+    const result = await updateUser(
+      {
         name: validated.name,
         image: validated.image === undefined ? undefined : validated.image,
       },
-      headers: await headers(),
-    });
+      await getAuthRequestContext(),
+    );
 
     return { status: 200, data: result };
   } catch (error) {
@@ -67,18 +67,17 @@ export async function changeMyPassword(data: z.infer<typeof changeMyPasswordSche
 
     const validated = changeMyPasswordSchema.parse(data);
 
-    const result = await auth.api.changePassword({
-      body: {
+    const result = await changePassword(
+      {
         currentPassword: validated.currentPassword,
         newPassword: validated.newPassword,
         revokeOtherSessions: true,
       },
-      headers: await headers(),
-    });
+      await getAuthRequestContext(),
+    );
 
     return { status: 200, data: result };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du changement de mot de passe');
   }
 }
-

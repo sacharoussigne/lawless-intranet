@@ -3,13 +3,27 @@
     "tasks": {
       "build": {
         "dependsOn": ["^build"],
-        "outputs": [".next/**", "dist/**"]
+        "outputs": [".next/**", "dist/**"],
+        "env": [
+          "DATABASE_URL",
+          "DOCUMENTS_URL",
+          "DOCUMENTS_DATABASE_URL",
+          "NEXT_PUBLIC_AUTH_URL",
+          "NEXT_PUBLIC_DISPENSARY_URL",
+          "NEXT_PUBLIC_APP_URL",
+          "AUTH_URL",
+          "BETTER_AUTH_URL",
+          "DISPENSARY_URL"
+        ]
       },
       "dev": {
         "cache": false,
         "persistent": true
       },
       "lint": {},
+      "test": {
+        "dependsOn": ["^test"]
+      },
       "typecheck": {
         "dependsOn": ["^typecheck"]
       }
