@@ -221,6 +221,30 @@ describe('renderTemplate with variables', () => {
     );
     expect(rendered).toBe('Signé Dr. Martin');
   });
+
+  it('substitutes ${description} from context.userDescription', () => {
+    const rendered = render(
+      'Grade: ${description}',
+      { inputs: {}, userDescription: 'Co-directrice' },
+    );
+    expect(rendered).toBe('Grade: Co-directrice');
+  });
+
+  it('applies conditional blocks before variable substitution', () => {
+    const rendered = render(
+      '{if:[var="description"][empty="Madame, Monsieur,"][filled="En ma qualité de ${description},"]}',
+      { inputs: {}, userDescription: 'Directeur' },
+    );
+    expect(rendered).toBe('En ma qualité de Directeur,');
+  });
+
+  it('applies gender equality conditionals with userGender', () => {
+    const rendered = render(
+      '{if:[var="gender"][eq="female"][then="Je soussignée"][else="Je soussigné"]}, certifie.',
+      { inputs: {}, userGender: 'female' },
+    );
+    expect(rendered).toBe('Je soussignée, certifie.');
+  });
 });
 
 describe('renderTemplate with greeting adaptation', () => {

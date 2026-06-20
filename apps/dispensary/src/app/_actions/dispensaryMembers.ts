@@ -18,6 +18,16 @@ const dispensaryRoleEnum = z.enum(DISPENSARY_MEMBER_ROLES);
 const upsertMemberSchema = z.object({
   userId: z.string().min(1),
   roles: z.array(dispensaryRoleEnum).min(1, 'Au moins un rôle est requis'),
+  description: z
+    .string()
+    .max(200)
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === undefined || value === null) return undefined;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }),
 });
 
 export async function listDispensaryMembers(dispensarySlug: string) {
@@ -41,7 +51,11 @@ export async function listDispensaryMembers(dispensarySlug: string) {
 
 export async function upsertDispensaryMember(
   dispensarySlug: string,
-  data: { userId: string; roles: z.infer<typeof dispensaryRoleEnum>[] },
+  data: {
+    userId: string;
+    roles: z.infer<typeof dispensaryRoleEnum>[];
+    description?: string | null;
+  },
 ) {
   try {
     const auth = await requireDispensaryAdminContext(dispensarySlug);
@@ -56,6 +70,7 @@ export async function upsertDispensaryMember(
     }
 
     const role = serializeRoleList(validated.roles);
+    const descriptionProvided = validated.description !== undefined;
 
     const member = await prisma.dispensaryMember.upsert({
       where: {
@@ -68,8 +83,12 @@ export async function upsertDispensaryMember(
         dispensaryId: auth.ctx.dispensaryId,
         userId: validated.userId,
         role,
+        description: validated.description ?? null,
       },
-      update: { role },
+      update: {
+        role,
+        ...(descriptionProvided ? { description: validated.description ?? null } : {}),
+      },
     });
 
     return { status: 200, data: member };

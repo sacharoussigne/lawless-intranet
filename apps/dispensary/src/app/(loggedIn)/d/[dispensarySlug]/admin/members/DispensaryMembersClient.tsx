@@ -9,6 +9,7 @@ import {
   MultiSelect,
   Stack,
   Text,
+  TextInput,
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -35,6 +36,7 @@ const ROLE_OPTIONS = DISPENSARY_MEMBER_ROLES.map((role) => ({
 type MemberRow = {
   id: string;
   role: string;
+  description: string | null;
   user: { id: string; name: string };
 };
 
@@ -54,6 +56,11 @@ export function DispensaryMembersClient({
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [roleEdits, setRoleEdits] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(initialMembers.map((m) => [m.user.id, parseRoleList(m.role)])),
+  );
+  const [descriptionEdits, setDescriptionEdits] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      initialMembers.map((m) => [m.user.id, m.description ?? '']),
+    ),
   );
 
   const memberUserIds = useMemo(
@@ -80,6 +87,9 @@ export function DispensaryMembersClient({
       setRoleEdits(
         Object.fromEntries(rows.map((m) => [m.user.id, parseRoleList(m.role)])),
       );
+      setDescriptionEdits(
+        Object.fromEntries(rows.map((m) => [m.user.id, m.description ?? ''])),
+      );
     }
   };
 
@@ -93,7 +103,7 @@ export function DispensaryMembersClient({
   const saveMemberRoles = async (
     userId: string,
     roles: string[],
-    options?: { successMessage?: string },
+    options?: { successMessage?: string; description?: string | null },
   ) => {
     if (roles.length === 0) {
       notifications.show({
@@ -107,6 +117,7 @@ export function DispensaryMembersClient({
     const result = await upsertDispensaryMember(dispensarySlug, {
       userId,
       roles: roles as DispensaryMemberRole[],
+      description: options?.description,
     });
 
     if (result.status !== 200) {
@@ -142,14 +153,29 @@ export function DispensaryMembersClient({
     }
   };
 
-  const handleSaveRoles = async (userId: string) => {
+  const handleSaveMember = async (userId: string) => {
     const roles = roleEdits[userId] ?? [];
     setSavingUserId(userId);
     try {
-      await saveMemberRoles(userId, roles, { successMessage: 'Rôles mis à jour' });
+      await saveMemberRoles(userId, roles, {
+        successMessage: 'Membre mis à jour',
+        description: descriptionEdits[userId] ?? null,
+      });
     } finally {
       setSavingUserId(null);
     }
+  };
+
+  const rolesChangedForMember = (member: MemberRow) => {
+    const current = getRolesForMember(member).slice().sort().join(',');
+    const original = parseRoleList(member.role).slice().sort().join(',');
+    return current !== original;
+  };
+
+  const memberChanged = (member: MemberRow) => {
+    const currentDescription = (descriptionEdits[member.user.id] ?? '').trim();
+    const originalDescription = (member.description ?? '').trim();
+    return rolesChangedForMember(member) || currentDescription !== originalDescription;
   };
 
   const handleRemove = async (userId: string) => {
@@ -161,12 +187,6 @@ export function DispensaryMembersClient({
       return;
     }
     await refresh();
-  };
-
-  const rolesChanged = (member: MemberRow) => {
-    const current = getRolesForMember(member).slice().sort().join(',');
-    const original = parseRoleList(member.role).slice().sort().join(',');
-    return current !== original;
   };
 
   return (
@@ -239,15 +259,30 @@ export function DispensaryMembersClient({
                   searchable
                   clearable={false}
                 />
+                <TextInput
+                  label="Grade"
+                  placeholder="Directeur, Co-directrice…"
+                  value={descriptionEdits[m.user.id] ?? ''}
+                  onChange={(event) => {
+                    const nextValue =
+                      typeof event === 'string'
+                        ? event
+                        : (event.currentTarget?.value ?? event.target?.value ?? '');
+                    setDescriptionEdits((prev) => ({
+                      ...prev,
+                      [m.user.id]: nextValue,
+                    }));
+                  }}
+                />
                 <Group justify="flex-end">
                   <Button
                     variant="light"
                     color="sage"
                     loading={savingUserId === m.user.id}
-                    disabled={!rolesChanged(m) || memberRoles.length === 0}
-                    onClick={() => handleSaveRoles(m.user.id)}
+                    disabled={!memberChanged(m) || memberRoles.length === 0}
+                    onClick={() => handleSaveMember(m.user.id)}
                   >
-                    Enregistrer les rôles
+                    Enregistrer
                   </Button>
                 </Group>
               </Stack>

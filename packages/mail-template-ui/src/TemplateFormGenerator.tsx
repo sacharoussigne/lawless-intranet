@@ -21,6 +21,7 @@ import { useForm } from '@mantine/form';
 import {
   extractInputs,
   extractFormSections,
+  parseSelectOptions,
   renderTemplate,
   resolveJsValue,
   type TemplateInput,
@@ -50,7 +51,7 @@ export interface TemplateFormGeneratorHandle {
 
 interface TemplateFormGeneratorProps {
   template: string;
-  /** Additional template variables beyond built-in `${username}`. */
+  /** Additional template variables beyond built-in `${username}` and `${description}`. */
   variables?: Record<string, string>;
   onSubmit?: (renderedContent: string) => void;
   onCancel?: () => void;
@@ -64,7 +65,7 @@ export const TemplateFormGenerator = forwardRef<
   { template, variables, onSubmit, onCancel, onChange },
   ref
 ) {
-  const { username } = useMailTemplateContext();
+  const { username, userDescription, userGender } = useMailTemplateContext();
   const inputs = useMemo(() => extractInputs(template), [template]);
 
   const dependentsByParent = useMemo(() => {
@@ -101,7 +102,7 @@ export const TemplateFormGenerator = forwardRef<
   const renderContent = (values: FormValues) => {
     return renderTemplate(
       template,
-      buildTemplateRenderContext(username, {
+      buildTemplateRenderContext(username, userDescription, userGender, {
         inputs: Object.entries(values).reduce(
           (acc, [key, value]) => {
             if (typeof value === 'boolean') {
@@ -162,7 +163,10 @@ export const TemplateFormGenerator = forwardRef<
           <Select
             key={input.name}
             {...commonProps}
-            data={[]}
+            data={parseSelectOptions(input.options).map((option) => ({
+              value: option,
+              label: option,
+            }))}
             searchable
             {...form.getInputProps(input.name)}
           />

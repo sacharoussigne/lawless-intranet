@@ -29,24 +29,53 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
    - `DATABASE_URL` in auth → auth DB
    - `DATABASE_URL` in dispensary → dispensary DB (no user/session tables)
 
+Optional root `.env` for one-shot migration scripts:
+
+| Variable | Role |
+|----------|------|
+| `OLD_DISPENSARY_DATABASE_URL` | Legacy mono-app DB backup (still has `user` / `account` tables) |
+| `AUTH_DATABASE_URL` | Target auth DB |
+| `DISPENSARY_DATABASE_URL` | Current dispensary DB (orphan check after migration) |
+
 ## Migration from legacy single-DB setup
+
+**Order matters.** User IDs in dispensary data must match auth user IDs.
+
+### Fresh split (prod or local, auth tables still in source DB)
+
+```bash
+# 1. Create auth schema
+cd apps/auth && pnpm db:migrate
+
+# 2. Copy users (preserves IDs)
+pnpm migrate:users-to-auth
+
+# 3. Remove local auth tables from dispensary
+cd apps/dispensary && pnpm db:migrate
+```
+
+### Local recovery (dispensary already migrated, backup available)
+
+If `remove_local_auth_tables` was already applied on the dispensary DB, point the script at a backup that still contains auth tables:
+
+```bash
+# Root .env example:
+# OLD_DISPENSARY_DATABASE_URL=postgresql://.../dispensaire
+# AUTH_DATABASE_URL=postgresql://.../lawless_auth
+# DISPENSARY_DATABASE_URL=postgresql://.../lawless_dispensary
+
+cd apps/auth && pnpm db:migrate
+pnpm migrate:users-to-auth
+# Re-run with --reset-auth if test users were created in auth first:
+# pnpm migrate:users-to-auth -- --reset-auth
+```
+
+Explicit env vars (without root `.env`):
 
 ```bash
 SOURCE_DATABASE_URL=postgresql://...legacy \
 AUTH_DATABASE_URL=postgresql://...auth \
 pnpm migrate:users-to-auth
-```
-
-Then apply dispensary migration:
-
-```bash
-cd apps/dispensary && pnpm db:migrate
-```
-
-Initialize auth DB:
-
-```bash
-cd apps/auth && pnpm db:migrate
 ```
 
 ## Discord OAuth

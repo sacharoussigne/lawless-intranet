@@ -32,4 +32,31 @@ describe('resolveRenderVariables', () => {
       })
     ).toEqual({ username: 'Override' });
   });
+
+  it('injects description from userDescription', () => {
+    expect(
+      resolveRenderVariables({
+        inputs: {},
+        userDescription: '  Directeur  ',
+      })
+    ).toEqual({ description: 'Directeur' });
+  });
+
+  it('keeps empty description for conditionals', () => {
+    expect(
+      resolveRenderVariables({
+        inputs: {},
+        userDescription: '',
+      })
+    ).toEqual({ description: '' });
+  });
+
+  it('injects gender from userGender', () => {
+    expect(
+      resolveRenderVariables({
+        inputs: {},
+        userGender: 'female',
+      })
+    ).toEqual({ gender: 'female' });
+  });
 });

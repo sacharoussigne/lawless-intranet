@@ -71,6 +71,15 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: getTrustedOrigins(),
+  user: {
+    additionalFields: {
+      gender: {
+        type: 'string',
+        defaultValue: 'male',
+        input: true,
+      },
+    },
+  },
   advanced: {
     crossSubDomainCookies: {
       enabled: true,

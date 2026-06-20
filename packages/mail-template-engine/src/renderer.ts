@@ -4,6 +4,7 @@ import {
 } from './parser';
 import type { RenderContext, RenderOptions, TemplateInput, TemplateParameter } from './types';
 import { resolveRenderVariables } from './context';
+import { processConditionalBlocks } from './conditions';
 import { applyGreetingAdaptation } from './greeting';
 import { substituteVariables } from './variables';
 
@@ -143,7 +144,11 @@ export function getReplacementSpan(
   return { startIndex, endIndex };
 }
 
-function renderDslTemplate(template: string, context: RenderContext): string {
+function renderDslTemplate(
+  template: string,
+  context: RenderContext,
+  skipInputs = false,
+): string {
   const parameters = parseTemplateParameters(template);
   const allInputs = extractInputs(template);
   let result = template;
@@ -155,18 +160,24 @@ function renderDslTemplate(template: string, context: RenderContext): string {
     if (param.type === 'js' && param.jsCode) {
       replacement = executeJsCode(param.jsCode);
     } else if (param.type === 'input' && param.input) {
-      replacement = resolveInputReplacement(
-        param.input,
-        context.inputs[param.input.name],
-        context,
-        allInputs
-      );
+      if (skipInputs) {
+        replacement = '';
+      } else {
+        replacement = resolveInputReplacement(
+          param.input,
+          context.inputs[param.input.name],
+          context,
+          allInputs,
+        );
+      }
+    } else if (param.type === 'category') {
+      replacement = '';
     }
 
     const { startIndex, endIndex } = getReplacementSpan(
       result,
       param,
-      replacement
+      replacement,
     );
 
     result =
@@ -183,10 +194,11 @@ export function renderTemplate(
   context: RenderContext,
   options?: RenderOptions
 ): string {
-  let result = renderDslTemplate(template, context);
+  let result = renderDslTemplate(template, context, options?.skipInputs === true);
 
   const variables = resolveRenderVariables(context);
   if (variables) {
+    result = processConditionalBlocks(result, variables);
     result = substituteVariables(result, variables);
   }
 

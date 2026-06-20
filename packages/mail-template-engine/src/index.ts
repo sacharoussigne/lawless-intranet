@@ -1,17 +1,32 @@
 export type {
   FormSection,
+  ParseWarning,
   RenderContext,
   RenderOptions,
+  TemplateDocument,
   TemplateInput,
   TemplateParameter,
+  TemplateSegment,
+  UserGender,
 } from './types';
 
 export {
   extractFormSections,
   extractInputs,
   extractJsCode,
+  parseInputAttributes,
   parseTemplateParameters,
 } from './parser';
+
+export {
+  escapeAttributeValue,
+  parseSelectOptions,
+  parseTemplateDocument,
+  serializeConditional,
+  serializeInput,
+  serializeSegment,
+  serializeTemplateDocument,
+} from './document';
 
 export {
   executeJsCode,
@@ -24,7 +39,9 @@ export {
 export { applyGreetingAdaptation } from './greeting';
 export {
   buildRenderContext,
+  buildUserTemplateRenderContext,
   DEFAULT_TEMPLATE_USERNAME,
   resolveRenderVariables,
 } from './context';
-export { extractVariables, substituteVariables } from './variables';
+export { extractVariables, resolveVariable, substituteVariables } from './variables';
+export { processConditionalBlocks } from './conditions';

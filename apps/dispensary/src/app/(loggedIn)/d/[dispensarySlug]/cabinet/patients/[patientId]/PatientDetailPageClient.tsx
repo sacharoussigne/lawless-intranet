@@ -13,7 +13,7 @@ import {
   Title,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconPlus, IconSettings, IconStethoscope, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconStethoscope, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
@@ -57,14 +57,12 @@ interface PatientDetailPageClientProps {
   dispensarySlug: string;
   patient: PatientData;
   initialEpisodes: CareEpisodeSummaryDTO[];
-  canEditSchema: boolean;
 }
 
 export function PatientDetailPageClient({
   dispensarySlug,
   patient: initialPatient,
   initialEpisodes,
-  canEditSchema,
 }: PatientDetailPageClientProps) {
   const [episodes, setEpisodes] = useState(initialEpisodes);
   const [episodeModalOpen, setEpisodeModalOpen] = useState(false);
@@ -99,21 +97,10 @@ export function PatientDetailPageClient({
     fieldErrors,
     formError,
     clearFieldError,
-    schemaEditing,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-    schemaNestedFlushToken,
-    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
-    dispensarySlug,
-    cabinetId: initialPatient.cabinetId,
     entityType: 'patient',
     initialEntity: initialPatient,
-    canEditSchema,
     onSave: handleSavePatient,
   });
 
@@ -182,50 +169,50 @@ export function PatientDetailPageClient({
     () =>
       editing
         ? {
-            patient_identity: (
-              <Stack gap="md">
-                <TextInput
-                  label="Prénom"
-                  value={patient.firstName}
-                  onChange={(e) => {
-                    clearFieldError('firstName');
-                    setPatient((p) => ({ ...p, firstName: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.firstName}
-                  required
-                />
-                <TextInput
-                  label="Nom"
-                  value={patient.lastName}
-                  onChange={(e) => {
-                    clearFieldError('lastName');
-                    setPatient((p) => ({ ...p, lastName: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.lastName}
-                  required
-                />
-                <RpDatePicker
-                  label="Date de naissance"
-                  value={patient.birthDate}
-                  onChange={(d) => {
-                    clearFieldError('birthDate');
-                    setPatient((p) => ({ ...p, birthDate: d }));
-                  }}
-                  error={fieldErrors.birthDate}
-                  clearable
-                />
-                <TextInput
-                  label="Personne à contacter en cas d'urgence"
-                  value={patient.emergencyContact ?? ''}
-                  onChange={(e) => {
-                    clearFieldError('emergencyContact');
-                    setPatient((p) => ({ ...p, emergencyContact: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.emergencyContact}
-                />
-              </Stack>
-            ),
-          }
+          patient_identity: (
+            <Stack gap="md">
+              <TextInput
+                label="Prénom"
+                value={patient.firstName}
+                onChange={(e) => {
+                  clearFieldError('firstName');
+                  setPatient((p) => ({ ...p, firstName: e.currentTarget.value }));
+                }}
+                error={fieldErrors.firstName}
+                required
+              />
+              <TextInput
+                label="Nom"
+                value={patient.lastName}
+                onChange={(e) => {
+                  clearFieldError('lastName');
+                  setPatient((p) => ({ ...p, lastName: e.currentTarget.value }));
+                }}
+                error={fieldErrors.lastName}
+                required
+              />
+              <RpDatePicker
+                label="Date de naissance"
+                value={patient.birthDate}
+                onChange={(d) => {
+                  clearFieldError('birthDate');
+                  setPatient((p) => ({ ...p, birthDate: d }));
+                }}
+                error={fieldErrors.birthDate}
+                clearable
+              />
+              <TextInput
+                label="Personne à contacter en cas d'urgence"
+                value={patient.emergencyContact ?? ''}
+                onChange={(e) => {
+                  clearFieldError('emergencyContact');
+                  setPatient((p) => ({ ...p, emergencyContact: e.currentTarget.value }));
+                }}
+                error={fieldErrors.emergencyContact}
+              />
+            </Stack>
+          ),
+        }
         : systemCardsReadOnly,
     [
       clearFieldError,
@@ -243,41 +230,16 @@ export function PatientDetailPageClient({
     ],
   );
 
-  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
-
   return (
     <Container size="xl" py="xl">
       <PageHeader
         title={`${patient.lastName} ${patient.firstName}`}
         description="Fiche patient"
         backHref={`${t.cabinet.index}?cabinetId=${patient.cabinetId}`}
+        backLabel="Liste des patients"
         actions={
           <Group>
-            {canEditSchema && !schemaEditing && (
-              <Button
-                variant="light"
-                color="leather"
-                leftSection={<IconSettings size={16} />}
-                onClick={startSchemaEditing}
-              >
-                Configurer le formulaire
-              </Button>
-            )}
-            {canEditSchema && schemaEditing && (
-              <>
-                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
-                  Annuler
-                </Button>
-                <Button
-                  color="sage"
-                  loading={savingSchema}
-                  onClick={() => void saveSchemaEditing()}
-                >
-                  Enregistrer le schéma
-                </Button>
-              </>
-            )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
               </Button>
@@ -292,7 +254,7 @@ export function PatientDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <DeleteConfirmPopover
                 title="Supprimer le patient ?"
                 message={`« ${patient.lastName} ${patient.firstName} » et toutes ses données seront supprimées.`}
@@ -321,15 +283,10 @@ export function PatientDetailPageClient({
           onChange={handleCustomChange}
           onBatchChange={handleCustomBatchChange}
           readOnly={!editing}
-          systemCards={activeSystemCards}
-          mode={schemaEditing ? 'schema' : 'values'}
-          onSchemaChange={setDraftEntitySchema}
-          schemaNestedFlushToken={schemaNestedFlushToken}
-          schemaFlushToken={schemaFlushToken}
+          systemCards={systemCards}
           fieldErrors={editing ? fieldErrors : undefined}
         />
 
-        {!schemaEditing && (
         <div>
           <Group justify="space-between" mb="md">
             <Title order={3} className="disp-display-title">
@@ -350,7 +307,7 @@ export function PatientDetailPageClient({
             withTableBorder
             borderRadius="sm"
             highlightOnHover
-            minHeight={200}
+            minHeight={episodes.length === 0 ? 200 : undefined}
             records={episodes}
             columns={[
               { accessor: 'motif', title: 'Motif' },
@@ -403,7 +360,6 @@ export function PatientDetailPageClient({
             }
           />
         </div>
-        )}
       </Stack>
 
       <CareEpisodeFormModal

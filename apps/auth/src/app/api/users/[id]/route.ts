@@ -33,6 +33,7 @@ export async function GET(request: Request, context: RouteContext) {
       email: true,
       image: true,
       role: true,
+      gender: true,
     },
   });
 

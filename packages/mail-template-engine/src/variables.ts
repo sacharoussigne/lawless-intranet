@@ -1,6 +1,6 @@
 const VARIABLE_PATTERN = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
 
-function resolveVariable(
+export function resolveVariable(
   variables: Record<string, string>,
   name: string
 ): string | undefined {

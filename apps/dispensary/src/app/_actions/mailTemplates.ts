@@ -13,7 +13,8 @@ import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { renderTemplate } from '@lawless-intranet/mail-template-engine';
+import { getMemberDescription } from '@/lib/dispensary/memberDescription';
+import { renderTemplate, buildUserTemplateRenderContext } from '@lawless-intranet/mail-template-engine';
 import type { OrderStatus, OrderType } from '@prisma/client';
 import {
   buildOrderMailVariables,
@@ -24,6 +25,7 @@ import {
   getDefaultMailName,
   getServerCookieHeader,
   MAIL_DOCUMENT_TYPE,
+  ORDER_TEMPLATE_TYPE,
   resolveMailTemplateAccess,
   attachOwnerNames,
   templateToMailTemplate,
@@ -98,7 +100,7 @@ export async function createMailTemplate(
 
     const template = await createTemplate(
       {
-        type: MAIL_DOCUMENT_TYPE,
+        type: ORDER_TEMPLATE_TYPE,
         scopeId: dispensaryId,
         ownerId: null,
         name: validatedData.name,
@@ -129,7 +131,7 @@ export async function getMailTemplates(dispensarySlug: string) {
     const cookieHeader = await getServerCookieHeader();
     const result = await listTemplates(
       {
-        type: MAIL_DOCUMENT_TYPE,
+        type: ORDER_TEMPLATE_TYPE,
         scopeId: dispensaryId,
         ownerScope: 'org',
         pageSize: 50,
@@ -161,7 +163,11 @@ export async function getManagementMailTemplateById(
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(id, { cookieHeader });
 
-    if (template.scopeId !== dispensaryId || template.ownerId !== null) {
+    if (
+      template.scopeId !== dispensaryId ||
+      template.ownerId !== null ||
+      template.type !== ORDER_TEMPLATE_TYPE
+    ) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -205,7 +211,10 @@ export async function updateMailTemplate(
       };
     }
 
-    if (existingTemplate.ownerId !== null) {
+    if (
+      existingTemplate.ownerId !== null ||
+      existingTemplate.type !== ORDER_TEMPLATE_TYPE
+    ) {
       return {
         status: 403,
         error: 'Ce template est un template personnel et ne peut pas être modifié depuis le panneau management',
@@ -251,7 +260,10 @@ export async function deleteMailTemplate(dispensarySlug: string, data: { id: str
       };
     }
 
-    if (existingTemplate.ownerId !== null) {
+    if (
+      existingTemplate.ownerId !== null ||
+      existingTemplate.type !== ORDER_TEMPLATE_TYPE
+    ) {
       return {
         status: 403,
         error: 'Ce template est un template personnel et ne peut pas être supprimé depuis le panneau management',
@@ -351,17 +363,25 @@ export async function generateOrderMailPreview(
 
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(assignment.templateId, { cookieHeader });
+    const memberDescription =
+      (await getMemberDescription(dispensaryId, ctx.session.user.id)) ?? '';
 
-    const preview = renderTemplate(template.content, {
-      inputs: {},
-      username: ctx.session.user.name || 'Utilisateur',
-      variables: buildOrderMailVariables(order),
-    });
+    const preview = renderTemplate(
+      template.content,
+      buildUserTemplateRenderContext({
+        inputs: {},
+        username: ctx.session.user.name || 'Utilisateur',
+        userDescription: memberDescription,
+        userGender: ctx.session.user.gender ?? 'male',
+        variables: buildOrderMailVariables(order),
+      }),
+    );
 
     return {
       status: 200,
       data: {
         preview,
+        templateContent: template.content,
         templateName: template.name,
       },
     };
