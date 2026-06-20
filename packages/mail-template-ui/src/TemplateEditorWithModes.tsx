@@ -71,16 +71,6 @@ export function TemplateEditorWithModes({
   useEffect(() => {
     if (mode !== 'visual') return;
 
-    const serialized = serializeTemplateDocument({ segments: debouncedSegments });
-    if (serialized !== value) {
-      pendingEmitRef.current = serialized;
-      onChange(serialized);
-    }
-  }, [debouncedSegments, mode, onChange, value]);
-
-  useEffect(() => {
-    if (mode !== 'visual') return;
-
     if (pendingEmitRef.current !== null) {
       if (value === pendingEmitRef.current) {
         pendingEmitRef.current = null;
@@ -93,6 +83,25 @@ export function TemplateEditorWithModes({
       syncVisualFromContent(value);
     }
   }, [value, mode, debouncedSegments, syncVisualFromContent]);
+
+  useEffect(() => {
+    if (mode !== 'visual') return;
+
+    const serializedDebounced = serializeTemplateDocument({ segments: debouncedSegments });
+    const serializedImmediate = serializeTemplateDocument({ segments });
+
+    // Wait for debounce to catch up after an external value sync.
+    if (serializedDebounced !== serializedImmediate) {
+      return;
+    }
+
+    if (serializedDebounced === value) {
+      return;
+    }
+
+    pendingEmitRef.current = serializedDebounced;
+    onChange(serializedDebounced);
+  }, [debouncedSegments, segments, mode, value, onChange]);
 
   const handleModeChange = (nextMode: string) => {
     const typedMode = nextMode as EditorMode;

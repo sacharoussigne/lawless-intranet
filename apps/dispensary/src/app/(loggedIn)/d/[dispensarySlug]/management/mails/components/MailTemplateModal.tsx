@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Modal,
   Stack,
@@ -48,6 +48,7 @@ export function MailTemplateModal({
   createMutation,
   updateMutation,
 }: MailTemplateModalProps) {
+  const [formHydrated, setFormHydrated] = useState(false);
   const { data: editingDetail, isFetching: isLoadingDetail } =
     useManagementMailTemplateDetail(editingMailTemplate?.id ?? null, opened && Boolean(editingMailTemplate));
 
@@ -69,7 +70,10 @@ export function MailTemplateModal({
   });
 
   useEffect(() => {
-    if (!opened) return;
+    if (!opened) {
+      setFormHydrated(false);
+      return;
+    }
 
     if (editingMailTemplate && editingDetail) {
       form.setValues({
@@ -78,13 +82,16 @@ export function MailTemplateModal({
         defaultMailName: editingDetail.defaultMailName || '',
         content: editingDetail.content,
       });
+      setFormHydrated(true);
     } else if (!editingMailTemplate) {
       form.reset();
+      setFormHydrated(true);
     }
   }, [editingMailTemplate, editingDetail, opened]);
 
   const isPending = createMutation.isPending || updateMutation.isPending;
-  const isEditLoading = Boolean(editingMailTemplate) && isLoadingDetail && !editingDetail;
+  const isEditLoading =
+    Boolean(editingMailTemplate) && (!formHydrated || (isLoadingDetail && !editingDetail));
 
   const handleSubmit = async (values: typeof form.values) => {
     try {
@@ -153,7 +160,7 @@ export function MailTemplateModal({
 
               <Tabs.Panel value="editor" pt="md">
                 <TemplateEditorWithModes
-                  key={`${editingMailTemplate?.id ?? 'new'}-${isEditLoading ? 'loading' : 'ready'}`}
+                  key={editingMailTemplate?.id ?? 'new'}
                   value={form.values.content}
                   onChange={(value) => form.setFieldValue('content', value)}
                   placeholder="Contenu du modèle de courrier"
