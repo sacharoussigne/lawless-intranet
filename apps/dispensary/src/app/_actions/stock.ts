@@ -11,5 +11,6 @@ export {
   getStockMovementsPage,
   updateStockMovement,
   deleteStockMovement,
+  deleteStockMovements,
   getStockMovementReconciliation,
 } from '@/app/_actions/stock/movementHistory';
