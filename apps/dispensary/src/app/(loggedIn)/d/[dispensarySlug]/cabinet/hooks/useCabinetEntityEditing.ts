@@ -6,12 +6,10 @@ import type { CabinetAccessLevel } from '@prisma/client';
 import type {
   CabinetFormSchemas,
   CustomValues,
-  FormEntitySchema,
   FormEntityType,
 } from '@/lib/cabinet/formSchema';
 import { getEntitySchema } from '@/lib/cabinet/formSchema';
 import { useCabinetFieldErrors } from './useCabinetFieldErrors';
-import { useCabinetSchemaEditing } from './useCabinetSchemaEditing';
 
 type EntityWithFormData = {
   customValues: CustomValues;
@@ -20,20 +18,14 @@ type EntityWithFormData = {
 };
 
 type UseCabinetEntityEditingOptions<T extends EntityWithFormData> = {
-  dispensarySlug: string;
-  cabinetId: string;
   entityType: FormEntityType;
   initialEntity: T;
-  canEditSchema: boolean;
   onSave: (entity: T, customValues: CustomValues) => Promise<void>;
 };
 
 export function useCabinetEntityEditing<T extends EntityWithFormData>({
-  dispensarySlug,
-  cabinetId,
   entityType,
   initialEntity,
-  canEditSchema,
   onSave,
 }: UseCabinetEntityEditingOptions<T>) {
   const [entity, setEntity] = useState(initialEntity);
@@ -49,27 +41,7 @@ export function useCabinetEntityEditing<T extends EntityWithFormData>({
     applySubmitError,
   } = useCabinetFieldErrors();
 
-  const {
-    schemaEditing,
-    draftEntitySchema,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-    schemaNestedFlushToken,
-    schemaFlushToken,
-  } = useCabinetSchemaEditing({
-    dispensarySlug,
-    cabinetId,
-    entityType,
-    formSchemas: entity.formSchemas,
-    onSchemasSaved: (schemas) => setEntity((current) => ({ ...current, formSchemas: schemas })),
-  });
-
-  const entitySchema: FormEntitySchema = schemaEditing
-    ? draftEntitySchema
-    : getEntitySchema(entity.formSchemas, entityType);
+  const entitySchema = getEntitySchema(entity.formSchemas, entityType);
 
   const startEditing = useCallback(() => {
     resetErrors();
@@ -114,7 +86,7 @@ export function useCabinetEntityEditing<T extends EntityWithFormData>({
     } finally {
       setSaving(false);
     }
-  }, [applySubmitError, customValues, onSave, resetErrors]);
+  }, [applySubmitError, customValues, entity, onSave, resetErrors]);
 
   return {
     entity,
@@ -130,16 +102,6 @@ export function useCabinetEntityEditing<T extends EntityWithFormData>({
     fieldErrors,
     formError,
     clearFieldError,
-    schemaEditing,
-    draftEntitySchema,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-    schemaNestedFlushToken,
-    schemaFlushToken,
     entitySchema,
-    canEditSchema,
   };
 }

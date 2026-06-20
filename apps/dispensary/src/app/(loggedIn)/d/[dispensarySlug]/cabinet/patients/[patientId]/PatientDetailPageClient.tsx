@@ -29,6 +29,7 @@ import {
 } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
 import {
+  canOwnCabinet,
   canWriteCabinet,
   type CareEpisodeSummaryDTO,
 } from '@/types/cabinet';
@@ -57,14 +58,12 @@ interface PatientDetailPageClientProps {
   dispensarySlug: string;
   patient: PatientData;
   initialEpisodes: CareEpisodeSummaryDTO[];
-  canEditSchema: boolean;
 }
 
 export function PatientDetailPageClient({
   dispensarySlug,
   patient: initialPatient,
   initialEpisodes,
-  canEditSchema,
 }: PatientDetailPageClientProps) {
   const [episodes, setEpisodes] = useState(initialEpisodes);
   const [episodeModalOpen, setEpisodeModalOpen] = useState(false);
@@ -99,25 +98,15 @@ export function PatientDetailPageClient({
     fieldErrors,
     formError,
     clearFieldError,
-    schemaEditing,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-    schemaNestedFlushToken,
-    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
-    dispensarySlug,
-    cabinetId: initialPatient.cabinetId,
     entityType: 'patient',
     initialEntity: initialPatient,
-    canEditSchema,
     onSave: handleSavePatient,
   });
 
   const canWrite = canWriteCabinet(patient.accessLevel);
+  const canConfigureForms = canOwnCabinet(patient.accessLevel);
   const t = tenantRoutes(dispensarySlug);
 
   const reloadEpisodes = useCallback(async () => {
@@ -243,8 +232,6 @@ export function PatientDetailPageClient({
     ],
   );
 
-  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
-
   return (
     <Container size="xl" py="xl">
       <PageHeader
@@ -253,31 +240,18 @@ export function PatientDetailPageClient({
         backHref={`${t.cabinet.index}?cabinetId=${patient.cabinetId}`}
         actions={
           <Group>
-            {canEditSchema && !schemaEditing && (
+            {canConfigureForms && !editing && (
               <Button
-                variant="light"
+                component={Link}
+                href={t.cabinet.forms(patient.cabinetId, 'patient')}
+                variant="subtle"
                 color="leather"
                 leftSection={<IconSettings size={16} />}
-                onClick={startSchemaEditing}
               >
-                Configurer le formulaire
+                Champs personnalisés
               </Button>
             )}
-            {canEditSchema && schemaEditing && (
-              <>
-                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
-                  Annuler
-                </Button>
-                <Button
-                  color="sage"
-                  loading={savingSchema}
-                  onClick={() => void saveSchemaEditing()}
-                >
-                  Enregistrer le schéma
-                </Button>
-              </>
-            )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
               </Button>
@@ -292,7 +266,7 @@ export function PatientDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <DeleteConfirmPopover
                 title="Supprimer le patient ?"
                 message={`« ${patient.lastName} ${patient.firstName} » et toutes ses données seront supprimées.`}
@@ -321,15 +295,10 @@ export function PatientDetailPageClient({
           onChange={handleCustomChange}
           onBatchChange={handleCustomBatchChange}
           readOnly={!editing}
-          systemCards={activeSystemCards}
-          mode={schemaEditing ? 'schema' : 'values'}
-          onSchemaChange={setDraftEntitySchema}
-          schemaNestedFlushToken={schemaNestedFlushToken}
-          schemaFlushToken={schemaFlushToken}
+          systemCards={systemCards}
           fieldErrors={editing ? fieldErrors : undefined}
         />
 
-        {!schemaEditing && (
         <div>
           <Group justify="space-between" mb="md">
             <Title order={3} className="disp-display-title">
@@ -403,7 +372,6 @@ export function PatientDetailPageClient({
             }
           />
         </div>
-        )}
       </Stack>
 
       <CareEpisodeFormModal

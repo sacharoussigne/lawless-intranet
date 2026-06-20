@@ -30,7 +30,11 @@ import {
   deleteCareEpisode,
 } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
-import { canWriteCabinet, type ConsultationSummaryDTO } from '@/types/cabinet';
+import {
+  canOwnCabinet,
+  canWriteCabinet,
+  type ConsultationSummaryDTO,
+} from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import { formatRpDate, getTodayRealDate } from '@/lib/rpCalendar';
@@ -59,14 +63,12 @@ interface CareEpisodeDetailPageClientProps {
   dispensarySlug: string;
   episode: EpisodeData;
   initialConsultations: ConsultationSummaryDTO[];
-  canEditSchema: boolean;
 }
 
 export function CareEpisodeDetailPageClient({
   dispensarySlug,
   episode: initialEpisode,
   initialConsultations,
-  canEditSchema,
 }: CareEpisodeDetailPageClientProps) {
   const router = useRouter();
   const [consultations, setConsultations] = useState(initialConsultations);
@@ -102,25 +104,15 @@ export function CareEpisodeDetailPageClient({
     fieldErrors,
     formError,
     clearFieldError,
-    schemaEditing,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-    schemaNestedFlushToken,
-    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
-    dispensarySlug,
-    cabinetId: initialEpisode.patient.cabinetId,
     entityType: 'careEpisode',
     initialEntity: initialEpisode,
-    canEditSchema,
     onSave: handleSaveEpisode,
   });
 
   const canWrite = canWriteCabinet(episode.accessLevel);
+  const canConfigureForms = canOwnCabinet(episode.accessLevel);
   const t = tenantRoutes(dispensarySlug);
 
   const reloadConsultations = useCallback(async () => {
@@ -241,8 +233,6 @@ export function CareEpisodeDetailPageClient({
     ],
   );
 
-  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
-
   return (
     <Container size="xl" py="xl">
       <PageHeader
@@ -251,31 +241,18 @@ export function CareEpisodeDetailPageClient({
         backHref={`${t.cabinet.index}/patients/${episode.patientId}?cabinetId=${episode.patient.cabinetId}`}
         actions={
           <Group>
-            {canEditSchema && !schemaEditing && (
+            {canConfigureForms && !editing && (
               <Button
-                variant="light"
+                component={Link}
+                href={t.cabinet.forms(episode.patient.cabinetId, 'careEpisode')}
+                variant="subtle"
                 color="leather"
                 leftSection={<IconSettings size={16} />}
-                onClick={startSchemaEditing}
               >
-                Configurer le formulaire
+                Champs personnalisés
               </Button>
             )}
-            {canEditSchema && schemaEditing && (
-              <>
-                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
-                  Annuler
-                </Button>
-                <Button
-                  color="sage"
-                  loading={savingSchema}
-                  onClick={() => void saveSchemaEditing()}
-                >
-                  Enregistrer le schéma
-                </Button>
-              </>
-            )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
               </Button>
@@ -290,7 +267,7 @@ export function CareEpisodeDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <DeleteConfirmPopover
                 title="Supprimer la prise en charge ?"
                 message={`« ${episode.motif} » et toutes ses consultations seront supprimées.`}
@@ -319,15 +296,10 @@ export function CareEpisodeDetailPageClient({
           onChange={handleCustomChange}
           onBatchChange={handleCustomBatchChange}
           readOnly={!editing}
-          systemCards={activeSystemCards}
-          mode={schemaEditing ? 'schema' : 'values'}
-          onSchemaChange={setDraftEntitySchema}
-          schemaNestedFlushToken={schemaNestedFlushToken}
-          schemaFlushToken={schemaFlushToken}
+          systemCards={systemCards}
           fieldErrors={editing ? fieldErrors : undefined}
         />
 
-        {!schemaEditing && (
         <div>
           <Title order={3} className="disp-display-title" mb="md">
             Consultations
@@ -402,7 +374,6 @@ export function CareEpisodeDetailPageClient({
             }
           />
         </div>
-        )}
       </Stack>
     </Container>
   );

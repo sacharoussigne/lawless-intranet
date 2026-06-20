@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_DISPENSARY_SLUG } from '@/lib/dispensary/constants';
+import type { FormEntityType } from '@/lib/cabinet/formSchema';
 
 export function dispensaryBase(slug: string): string {
   return `/d/${encodeURIComponent(slug)}`;
@@ -28,7 +29,14 @@ export function tenantRoutes(slug: string) {
     bank: { index: `${base}/bank` },
     weeklyActivity: { index: `${base}/weekly-activity` },
     agenda: { index: `${base}/agenda` },
-    cabinet: { index: `${base}/cabinet` },
+    cabinet: {
+      index: `${base}/cabinet`,
+      forms: (cabinetId: string, tab?: FormEntityType) => {
+        const params = new URLSearchParams({ cabinetId });
+        if (tab) params.set('tab', tab);
+        return `${base}/cabinet/forms?${params.toString()}`;
+      },
+    },
     management: {
       index: `${base}/management`,
       companies: `${base}/management/companies`,

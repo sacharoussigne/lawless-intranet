@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { notifications } from '@mantine/notifications';
 import { saveFormSchemaEntity } from '@/app/_actions/cabinet/formSchema';
@@ -14,6 +14,8 @@ type UseCabinetSchemaEditingOptions = {
   entityType: FormEntityType;
   formSchemas: CabinetFormSchemas;
   onSchemasSaved: (schemas: CabinetFormSchemas) => void;
+  autoStart?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export function useCabinetSchemaEditing({
@@ -22,8 +24,10 @@ export function useCabinetSchemaEditing({
   entityType,
   formSchemas,
   onSchemasSaved,
+  autoStart = false,
+  onDirtyChange,
 }: UseCabinetSchemaEditingOptions) {
-  const [schemaEditing, setSchemaEditing] = useState(false);
+  const [schemaEditing, setSchemaEditing] = useState(autoStart);
   const [draftEntitySchema, setDraftEntitySchema] = useState<FormEntitySchema>(() =>
     getEntitySchema(formSchemas, entityType),
   );
@@ -32,6 +36,26 @@ export function useCabinetSchemaEditing({
   const [schemaFlushToken, setSchemaFlushToken] = useState(0);
   const draftEntitySchemaRef = useRef(draftEntitySchema);
   draftEntitySchemaRef.current = draftEntitySchema;
+
+  const savedEntitySchema = useMemo(
+    () => getEntitySchema(formSchemas, entityType),
+    [formSchemas, entityType],
+  );
+
+  const isDirty = useMemo(
+    () => JSON.stringify(draftEntitySchema) !== JSON.stringify(savedEntitySchema),
+    [draftEntitySchema, savedEntitySchema],
+  );
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    const schema = getEntitySchema(formSchemas, entityType);
+    draftEntitySchemaRef.current = schema;
+    setDraftEntitySchema(schema);
+  }, [formSchemas, entityType]);
 
   const setDraftEntitySchemaTracked = useCallback(
     (value: FormEntitySchema | ((prev: FormEntitySchema) => FormEntitySchema)) => {
@@ -44,21 +68,25 @@ export function useCabinetSchemaEditing({
     [],
   );
 
-  const startSchemaEditing = useCallback(() => {
-    const schema = getEntitySchema(formSchemas, entityType);
-    draftEntitySchemaRef.current = schema;
-    setDraftEntitySchema(schema);
-    setSchemaEditing(true);
-  }, [formSchemas, entityType]);
-
-  const cancelSchemaEditing = useCallback(() => {
+  const resetDraftToSaved = useCallback(() => {
     flushSync(() => setSchemaNestedFlushToken((t) => t + 1));
     flushSync(() => setSchemaFlushToken((t) => t + 1));
     const schema = getEntitySchema(formSchemas, entityType);
     draftEntitySchemaRef.current = schema;
     setDraftEntitySchema(schema);
-    setSchemaEditing(false);
   }, [formSchemas, entityType]);
+
+  const startSchemaEditing = useCallback(() => {
+    resetDraftToSaved();
+    setSchemaEditing(true);
+  }, [resetDraftToSaved]);
+
+  const cancelSchemaEditing = useCallback(() => {
+    resetDraftToSaved();
+    if (!autoStart) {
+      setSchemaEditing(false);
+    }
+  }, [autoStart, resetDraftToSaved]);
 
   const saveSchemaEditing = useCallback(async () => {
     setSavingSchema(true);
@@ -73,7 +101,12 @@ export function useCabinetSchemaEditing({
       const data = handleAction(result) as CabinetFormSchemas | undefined;
       if (data) {
         onSchemasSaved(data);
-        setSchemaEditing(false);
+        const schema = getEntitySchema(data, entityType);
+        draftEntitySchemaRef.current = schema;
+        setDraftEntitySchema(schema);
+        if (!autoStart) {
+          setSchemaEditing(false);
+        }
         notifications.show({ title: 'Schéma enregistré', message: '', color: 'moss' });
       }
     } catch (error: unknown) {
@@ -85,12 +118,13 @@ export function useCabinetSchemaEditing({
     } finally {
       setSavingSchema(false);
     }
-  }, [dispensarySlug, cabinetId, entityType, onSchemasSaved]);
+  }, [autoStart, dispensarySlug, cabinetId, entityType, onSchemasSaved]);
 
   return {
-    schemaEditing,
+    schemaEditing: autoStart || schemaEditing,
     draftEntitySchema,
     savingSchema,
+    isDirty,
     schemaNestedFlushToken,
     schemaFlushToken,
     startSchemaEditing,

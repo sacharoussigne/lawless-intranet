@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Button,
   Container,
@@ -18,7 +19,7 @@ import {
   updateConsultation,
 } from '@/app/_actions/cabinet/consultations';
 import { handleAction } from '@/lib/action';
-import { canWriteCabinet } from '@/types/cabinet';
+import { canOwnCabinet, canWriteCabinet } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import { formatRpDate } from '@/lib/rpCalendar';
@@ -50,13 +51,11 @@ type ConsultationData = {
 interface ConsultationDetailPageClientProps {
   dispensarySlug: string;
   consultation: ConsultationData;
-  canEditSchema: boolean;
 }
 
 export function ConsultationDetailPageClient({
   dispensarySlug,
   consultation: initialConsultation,
-  canEditSchema,
 }: ConsultationDetailPageClientProps) {
   const handleSaveConsultation = useCallback(
     async (consultation: ConsultationData, customValues: CustomValues) => {
@@ -85,26 +84,16 @@ export function ConsultationDetailPageClient({
     fieldErrors,
     formError,
     clearFieldError,
-    schemaEditing,
-    savingSchema,
-    startSchemaEditing,
-    cancelSchemaEditing,
-    saveSchemaEditing,
-    setDraftEntitySchema,
-    schemaNestedFlushToken,
-    schemaFlushToken,
     entitySchema,
   } = useCabinetEntityEditing({
-    dispensarySlug,
-    cabinetId: initialConsultation.careEpisode.patient.cabinetId,
     entityType: 'consultation',
     initialEntity: initialConsultation,
-    canEditSchema,
     onSave: handleSaveConsultation,
   });
 
   const { careEpisode } = consultation;
   const canWrite = canWriteCabinet(consultation.accessLevel);
+  const canConfigureForms = canOwnCabinet(consultation.accessLevel);
   const t = tenantRoutes(dispensarySlug);
 
   const handleDelete = async () => {
@@ -160,8 +149,6 @@ export function ConsultationDetailPageClient({
     ],
   );
 
-  const activeSystemCards = schemaEditing ? systemCardsReadOnly : systemCards;
-
   return (
     <Container size="xl" py="xl">
       <PageHeader
@@ -170,31 +157,18 @@ export function ConsultationDetailPageClient({
         backHref={`${t.cabinet.index}/patients/${careEpisode.patientId}/episodes/${careEpisode.id}?cabinetId=${careEpisode.patient.cabinetId}`}
         actions={
           <Group>
-            {canEditSchema && !schemaEditing && (
+            {canConfigureForms && !editing && (
               <Button
-                variant="light"
+                component={Link}
+                href={t.cabinet.forms(careEpisode.patient.cabinetId, 'consultation')}
+                variant="subtle"
                 color="leather"
                 leftSection={<IconSettings size={16} />}
-                onClick={startSchemaEditing}
               >
-                Configurer le formulaire
+                Champs personnalisés
               </Button>
             )}
-            {canEditSchema && schemaEditing && (
-              <>
-                <Button variant="subtle" color="slate" onClick={cancelSchemaEditing}>
-                  Annuler
-                </Button>
-                <Button
-                  color="sage"
-                  loading={savingSchema}
-                  onClick={() => void saveSchemaEditing()}
-                >
-                  Enregistrer le schéma
-                </Button>
-              </>
-            )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
               </Button>
@@ -209,7 +183,7 @@ export function ConsultationDetailPageClient({
                 </Button>
               </>
             )}
-            {canWrite && !editing && !schemaEditing && (
+            {canWrite && !editing && (
               <DeleteConfirmPopover
                 title="Supprimer la consultation ?"
                 message={`La consultation du ${formatRpDate(consultation.date)} sera supprimée.`}
@@ -238,11 +212,7 @@ export function ConsultationDetailPageClient({
           onChange={handleCustomChange}
           onBatchChange={handleCustomBatchChange}
           readOnly={!editing}
-          systemCards={activeSystemCards}
-          mode={schemaEditing ? 'schema' : 'values'}
-          onSchemaChange={setDraftEntitySchema}
-          schemaNestedFlushToken={schemaNestedFlushToken}
-          schemaFlushToken={schemaFlushToken}
+          systemCards={systemCards}
           fieldErrors={editing ? fieldErrors : undefined}
         />
       </Stack>

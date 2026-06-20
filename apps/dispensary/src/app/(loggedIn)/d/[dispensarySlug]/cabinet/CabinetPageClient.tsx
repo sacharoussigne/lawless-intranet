@@ -13,7 +13,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEye, IconPlus, IconTrash, IconUser } from '@tabler/icons-react';
+import { IconEye, IconPlus, IconSettings, IconTrash, IconUser } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
@@ -22,6 +22,7 @@ import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/Del
 import { deleteCabinetPatient, listCabinetPatients } from '@/app/_actions/cabinet/patients';
 import { handleAction } from '@/lib/action';
 import {
+  canOwnCabinet,
   canWriteCabinet,
   type CabinetPatientSummaryDTO,
   type CabinetSummaryDTO,
@@ -36,6 +37,7 @@ interface CabinetPageClientProps {
   cabinets: CabinetSummaryDTO[];
   initialCabinetId: string | null;
   initialPatients: CabinetPatientSummaryDTO[];
+  isAdmin: boolean;
 }
 
 export function CabinetPageClient({
@@ -43,6 +45,7 @@ export function CabinetPageClient({
   cabinets: initialCabinets,
   initialCabinetId,
   initialPatients,
+  isAdmin,
 }: CabinetPageClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -68,6 +71,9 @@ export function CabinetPageClient({
   const selectedCabinetId = urlCabinetId ?? initialCabinetId ?? cabinets[0]?.id ?? null;
   const selectedCabinet = cabinets.find((c) => c.id === selectedCabinetId) ?? null;
   const canWrite = canWriteCabinet(selectedCabinet?.accessLevel);
+  const canConfigureForms =
+    selectedCabinetId !== null &&
+    (canOwnCabinet(selectedCabinet?.accessLevel) || isAdmin);
 
   const setCabinetInUrl = useCallback(
     (cabinetId: string) => {
@@ -158,6 +164,17 @@ export function CabinetPageClient({
               value={selectedCabinetId}
               onChange={setCabinetInUrl}
             />
+            {canConfigureForms && (
+              <Button
+                component={Link}
+                href={t.cabinet.forms(selectedCabinetId!)}
+                variant="light"
+                color="leather"
+                leftSection={<IconSettings size={16} />}
+              >
+                Formulaires
+              </Button>
+            )}
             {canWrite && selectedCabinetId && (
               <Button
                 color="sage"
