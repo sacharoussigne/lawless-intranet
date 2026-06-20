@@ -14,7 +14,7 @@ import {
   Title,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconCalendar, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconCalendar, IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
@@ -31,7 +31,6 @@ import {
 } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
 import {
-  canOwnCabinet,
   canWriteCabinet,
   type ConsultationSummaryDTO,
 } from '@/types/cabinet';
@@ -112,7 +111,6 @@ export function CareEpisodeDetailPageClient({
   });
 
   const canWrite = canWriteCabinet(episode.accessLevel);
-  const canConfigureForms = canOwnCabinet(episode.accessLevel);
   const t = tenantRoutes(dispensarySlug);
 
   const reloadConsultations = useCallback(async () => {
@@ -195,31 +193,31 @@ export function CareEpisodeDetailPageClient({
     () =>
       editing
         ? {
-            care_episode_general: (
-              <Stack gap="md">
-                <TextInput
-                  label="Motif"
-                  value={episode.motif}
-                  onChange={(e) => {
-                    clearFieldError('motif');
-                    setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.motif}
-                  required
-                />
-                <RpDatePicker
-                  label="Date de début"
-                  value={episode.startedAt}
-                  onChange={(d) => {
-                    clearFieldError('startedAt');
-                    if (d) setEpisode((ep) => ({ ...ep, startedAt: d }));
-                  }}
-                  error={fieldErrors.startedAt}
-                  required
-                />
-              </Stack>
-            ),
-          }
+          care_episode_general: (
+            <Stack gap="md">
+              <TextInput
+                label="Motif"
+                value={episode.motif}
+                onChange={(e) => {
+                  clearFieldError('motif');
+                  setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }));
+                }}
+                error={fieldErrors.motif}
+                required
+              />
+              <RpDatePicker
+                label="Date de début"
+                value={episode.startedAt}
+                onChange={(d) => {
+                  clearFieldError('startedAt');
+                  if (d) setEpisode((ep) => ({ ...ep, startedAt: d }));
+                }}
+                error={fieldErrors.startedAt}
+                required
+              />
+            </Stack>
+          ),
+        }
         : systemCardsReadOnly,
     [
       clearFieldError,
@@ -242,17 +240,6 @@ export function CareEpisodeDetailPageClient({
         backLabel={`Patient : ${episode.patient.firstName} ${episode.patient.lastName}`}
         actions={
           <Group>
-            {canConfigureForms && !editing && (
-              <Button
-                component={Link}
-                href={t.cabinet.forms(episode.patient.cabinetId, 'careEpisode')}
-                variant="subtle"
-                color="leather"
-                leftSection={<IconSettings size={16} />}
-              >
-                Champs personnalisés
-              </Button>
-            )}
             {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier

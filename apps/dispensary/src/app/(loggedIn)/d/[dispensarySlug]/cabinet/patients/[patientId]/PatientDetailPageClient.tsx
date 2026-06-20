@@ -13,7 +13,7 @@ import {
   Title,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconPlus, IconSettings, IconStethoscope, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconPlus, IconStethoscope, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
@@ -29,7 +29,6 @@ import {
 } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
 import {
-  canOwnCabinet,
   canWriteCabinet,
   type CareEpisodeSummaryDTO,
 } from '@/types/cabinet';
@@ -106,7 +105,6 @@ export function PatientDetailPageClient({
   });
 
   const canWrite = canWriteCabinet(patient.accessLevel);
-  const canConfigureForms = canOwnCabinet(patient.accessLevel);
   const t = tenantRoutes(dispensarySlug);
 
   const reloadEpisodes = useCallback(async () => {
@@ -171,50 +169,50 @@ export function PatientDetailPageClient({
     () =>
       editing
         ? {
-            patient_identity: (
-              <Stack gap="md">
-                <TextInput
-                  label="Prénom"
-                  value={patient.firstName}
-                  onChange={(e) => {
-                    clearFieldError('firstName');
-                    setPatient((p) => ({ ...p, firstName: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.firstName}
-                  required
-                />
-                <TextInput
-                  label="Nom"
-                  value={patient.lastName}
-                  onChange={(e) => {
-                    clearFieldError('lastName');
-                    setPatient((p) => ({ ...p, lastName: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.lastName}
-                  required
-                />
-                <RpDatePicker
-                  label="Date de naissance"
-                  value={patient.birthDate}
-                  onChange={(d) => {
-                    clearFieldError('birthDate');
-                    setPatient((p) => ({ ...p, birthDate: d }));
-                  }}
-                  error={fieldErrors.birthDate}
-                  clearable
-                />
-                <TextInput
-                  label="Personne à contacter en cas d'urgence"
-                  value={patient.emergencyContact ?? ''}
-                  onChange={(e) => {
-                    clearFieldError('emergencyContact');
-                    setPatient((p) => ({ ...p, emergencyContact: e.currentTarget.value }));
-                  }}
-                  error={fieldErrors.emergencyContact}
-                />
-              </Stack>
-            ),
-          }
+          patient_identity: (
+            <Stack gap="md">
+              <TextInput
+                label="Prénom"
+                value={patient.firstName}
+                onChange={(e) => {
+                  clearFieldError('firstName');
+                  setPatient((p) => ({ ...p, firstName: e.currentTarget.value }));
+                }}
+                error={fieldErrors.firstName}
+                required
+              />
+              <TextInput
+                label="Nom"
+                value={patient.lastName}
+                onChange={(e) => {
+                  clearFieldError('lastName');
+                  setPatient((p) => ({ ...p, lastName: e.currentTarget.value }));
+                }}
+                error={fieldErrors.lastName}
+                required
+              />
+              <RpDatePicker
+                label="Date de naissance"
+                value={patient.birthDate}
+                onChange={(d) => {
+                  clearFieldError('birthDate');
+                  setPatient((p) => ({ ...p, birthDate: d }));
+                }}
+                error={fieldErrors.birthDate}
+                clearable
+              />
+              <TextInput
+                label="Personne à contacter en cas d'urgence"
+                value={patient.emergencyContact ?? ''}
+                onChange={(e) => {
+                  clearFieldError('emergencyContact');
+                  setPatient((p) => ({ ...p, emergencyContact: e.currentTarget.value }));
+                }}
+                error={fieldErrors.emergencyContact}
+              />
+            </Stack>
+          ),
+        }
         : systemCardsReadOnly,
     [
       clearFieldError,
@@ -241,17 +239,6 @@ export function PatientDetailPageClient({
         backLabel="Liste des patients"
         actions={
           <Group>
-            {canConfigureForms && !editing && (
-              <Button
-                component={Link}
-                href={t.cabinet.forms(patient.cabinetId, 'patient')}
-                variant="subtle"
-                color="leather"
-                leftSection={<IconSettings size={16} />}
-              >
-                Champs personnalisés
-              </Button>
-            )}
             {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier

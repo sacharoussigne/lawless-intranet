@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
   ActionIcon,
   Button,
@@ -13,7 +12,7 @@ import {
   Text,
   Textarea,
 } from '@mantine/core';
-import { IconCheck, IconCopy, IconEdit, IconEye, IconFileText, IconPencil, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconEdit, IconEye, IconFileText, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
@@ -29,7 +28,7 @@ import {
   updateConsultationDocument,
 } from '@/app/_actions/cabinet/consultationDocuments';
 import { handleAction } from '@/lib/action';
-import { canOwnCabinet, canWriteCabinet } from '@/types/cabinet';
+import { canWriteCabinet } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import { formatRpDate } from '@/lib/rpCalendar';
@@ -128,7 +127,6 @@ export function ConsultationDetailPageClient({
 
   const { careEpisode } = consultation;
   const canWrite = canWriteCabinet(consultation.accessLevel);
-  const canConfigureForms = canOwnCabinet(consultation.accessLevel);
   const t = tenantRoutes(dispensarySlug);
   const templateVariables = useMemo(
     () =>
@@ -327,17 +325,6 @@ export function ConsultationDetailPageClient({
         backLabel={`Prise en charge : ${careEpisode.motif}`}
         actions={
           <Group>
-            {canConfigureForms && !editing && (
-              <Button
-                component={Link}
-                href={t.cabinet.forms(careEpisode.patient.cabinetId, 'consultation')}
-                variant="subtle"
-                color="leather"
-                leftSection={<IconSettings size={16} />}
-              >
-                Champs personnalisés
-              </Button>
-            )}
             {canWrite && !editing && (
               <Button color="sage" leftSection={<IconEdit size={16} />} onClick={startEditing}>
                 Modifier
@@ -393,11 +380,7 @@ export function ConsultationDetailPageClient({
               )}
             </Group>
 
-            {documents.length === 0 ? (
-              <Text size="sm" c="dimmed">
-                Aucun document pour cette consultation.
-              </Text>
-            ) : (
+            {documents.length > 0 && (
               <Stack gap="sm">
                 {documents.map((document) => (
                   <Paper key={document.id} withBorder p="md" radius="md">
@@ -413,7 +396,7 @@ export function ConsultationDetailPageClient({
                         </Text>
                       </div>
                       <Group gap="xs" wrap="nowrap">
-                        <ActionIcon
+                        <ActionIcon 
                           variant="light"
                           color="slate"
                           aria-label={`Voir ${document.name}`}
