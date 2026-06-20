@@ -30,8 +30,8 @@ const updateStockMovementSchema = z.object({
   note: z.string().max(500).nullable().optional(),
 });
 
-const deleteStockMovementSchema = z.object({
-  id: z.string().uuid('ID invalide'),
+const deleteStockMovementsSchema = z.object({
+  ids: z.array(z.string().uuid('ID invalide')).min(1).max(200),
 });
 
 const getStockMovementReconciliationSchema = z.object({
@@ -255,6 +255,13 @@ export async function deleteStockMovement(
   dispensarySlug: string,
   data: { id: string },
 ) {
+  return deleteStockMovements(dispensarySlug, { ids: [data.id] });
+}
+
+export async function deleteStockMovements(
+  dispensarySlug: string,
+  data: { ids: string[] },
+) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'stock',
@@ -267,17 +274,29 @@ export async function deleteStockMovement(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const validated = deleteStockMovementSchema.parse(data);
-    const existing = await assertMovementBelongsToTenant(validated.id, dispensaryId);
-    if (!existing) {
-      return { status: 404, error: 'Mouvement introuvable' };
+    const validated = deleteStockMovementsSchema.parse(data);
+    const uniqueIds = [...new Set(validated.ids)];
+
+    const count = await prisma.stockItemMovement.count({
+      where: {
+        id: { in: uniqueIds },
+        item: { dispensaryId },
+      },
+    });
+    if (count !== uniqueIds.length) {
+      return { status: 404, error: 'Un ou plusieurs mouvements introuvables' };
     }
 
-    await prisma.stockItemMovement.delete({ where: { id: validated.id } });
+    await prisma.stockItemMovement.deleteMany({
+      where: {
+        id: { in: uniqueIds },
+        item: { dispensaryId },
+      },
+    });
 
-    return { status: 200, data: { success: true } };
+    return { status: 200, data: { success: true, deletedCount: uniqueIds.length } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du mouvement');
+    return actionErrorParser(error, 'Erreur lors de la suppression des mouvements');
   }
 }
 

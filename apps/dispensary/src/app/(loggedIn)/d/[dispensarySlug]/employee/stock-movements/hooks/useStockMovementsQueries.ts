@@ -4,7 +4,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
-  deleteStockMovement,
+  deleteStockMovements,
   getStockMovementReconciliation,
   getStockMovementsPage,
   updateStockMovement,
@@ -182,21 +182,24 @@ export function useUpdateStockMovementMutation() {
   });
 }
 
-export function useDeleteStockMovementMutation() {
+export function useDeleteStockMovementsMutation() {
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidate = useInvalidateStockMovements();
 
   return useMutation({
-    mutationFn: async (vars: { id: string }) => {
-      const result = await deleteStockMovement(dispensarySlug, vars);
+    mutationFn: async (vars: { ids: string[] }) => {
+      const result = await deleteStockMovements(dispensarySlug, vars);
       handleAction(result);
-      return vars;
+      return vars.ids.length;
     },
-    onSuccess: () => {
+    onSuccess: (count) => {
       invalidate();
       notifications.show({
         title: 'Succès',
-        message: 'Mouvement supprimé (audit uniquement, stock actuel inchangé)',
+        message:
+          count === 1
+            ? 'Mouvement supprimé (audit uniquement, stock actuel inchangé)'
+            : `${count} mouvements supprimés (audit uniquement, stock actuel inchangé)`,
         color: 'moss',
       });
     },
