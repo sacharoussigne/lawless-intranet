@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Stack,
   SegmentedControl,
@@ -10,7 +10,6 @@ import {
   ScrollArea,
   Alert,
 } from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import {
   parseTemplateDocument,
@@ -59,8 +58,10 @@ export function TemplateEditorWithModes({
   const initial = buildSegmentsFromContent(value);
   const [segments, setSegments] = useState<TemplateSegment[]>(initial.segments);
   const [warnings, setWarnings] = useState<string[]>(initial.warnings);
-  const [debouncedSegments] = useDebouncedValue(segments, 150);
-  const pendingEmitRef = useRef<string | null>(null);
+  const lastEmittedRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const pendingParentSyncRef = useRef(false);
 
   const syncVisualFromContent = useCallback((content: string) => {
     const parsed = buildSegmentsFromContent(content);
@@ -68,58 +69,55 @@ export function TemplateEditorWithModes({
     setWarnings(parsed.warnings);
   }, []);
 
+  const handleSegmentsChange = useCallback((nextSegments: TemplateSegment[]) => {
+    setSegments(nextSegments);
+    const serialized = serializeTemplateDocument({ segments: nextSegments });
+    if (serialized === lastEmittedRef.current) {
+      return;
+    }
+    lastEmittedRef.current = serialized;
+    pendingParentSyncRef.current = true;
+    onChangeRef.current(serialized);
+  }, []);
+
   useEffect(() => {
     if (mode !== 'visual') return;
 
-    if (pendingEmitRef.current !== null) {
-      if (value === pendingEmitRef.current) {
-        pendingEmitRef.current = null;
+    if (pendingParentSyncRef.current) {
+      if (value === lastEmittedRef.current) {
+        pendingParentSyncRef.current = false;
       }
       return;
     }
 
-    const serialized = serializeTemplateDocument({ segments: debouncedSegments });
-    if (value !== serialized) {
-      syncVisualFromContent(value);
-    }
-  }, [value, mode, debouncedSegments, syncVisualFromContent]);
+    if (value === lastEmittedRef.current) return;
 
-  useEffect(() => {
-    if (mode !== 'visual') return;
-
-    const serializedDebounced = serializeTemplateDocument({ segments: debouncedSegments });
-    const serializedImmediate = serializeTemplateDocument({ segments });
-
-    // Wait for debounce to catch up after an external value sync.
-    if (serializedDebounced !== serializedImmediate) {
-      return;
-    }
-
-    if (serializedDebounced === value) {
-      return;
-    }
-
-    pendingEmitRef.current = serializedDebounced;
-    onChange(serializedDebounced);
-  }, [debouncedSegments, segments, mode, value, onChange]);
+    lastEmittedRef.current = value;
+    syncVisualFromContent(value);
+  }, [value, mode, syncVisualFromContent]);
 
   const handleModeChange = (nextMode: string) => {
     const typedMode = nextMode as EditorMode;
     if (typedMode === mode) return;
 
-    pendingEmitRef.current = null;
-
     if (typedMode === 'visual') {
+      lastEmittedRef.current = value;
       syncVisualFromContent(value);
     } else {
       const serialized = serializeTemplateDocument({ segments });
       if (serialized !== value) {
-        onChange(serialized);
+        lastEmittedRef.current = serialized;
+        onChangeRef.current(serialized);
       }
     }
 
     setMode(typedMode);
   };
+
+  const detectedContent = useMemo(
+    () => serializeTemplateDocument({ segments }),
+    [segments],
+  );
 
   const modeControl = (
     <SegmentedControl
@@ -150,7 +148,7 @@ export function TemplateEditorWithModes({
             {warnings.join(' ')}
           </Alert>
         )}
-        <TemplateVisualEditor segments={segments} onChange={setSegments} />
+        <TemplateVisualEditor segments={segments} onChange={handleSegmentsChange} />
       </Stack>
     );
 
@@ -184,7 +182,7 @@ export function TemplateEditorWithModes({
             </Text>
             <Paper p="md" withBorder>
               <ScrollArea h={500} scrollbars="y" type="auto">
-                <DetectedParameters content={value} />
+                <DetectedParameters content={detectedContent} />
               </ScrollArea>
             </Paper>
           </Stack>

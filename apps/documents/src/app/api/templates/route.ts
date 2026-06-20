@@ -106,12 +106,18 @@ export async function POST(request: Request) {
   const { type, scopeId, ownerId, name, description, content, metadata } =
     parsed.data;
 
+  const resolvedOwnerId = ownerId === undefined ? auth.userId : ownerId;
+  const createdById =
+    type === 'order' && resolvedOwnerId === null
+      ? `system:${scopeId}`
+      : auth.userId;
+
   const template = await prisma.template.create({
     data: {
       type,
       scopeId,
-      ownerId: ownerId === undefined ? auth.userId : ownerId,
-      createdById: auth.userId,
+      ownerId: resolvedOwnerId,
+      createdById,
       name,
       description,
       content,

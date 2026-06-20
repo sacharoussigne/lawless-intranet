@@ -12,7 +12,7 @@ interface ConditionalBlockEditorProps {
 }
 
 function isEqualsMode(segment: ConditionalSegment): segment is Extract<ConditionalSegment, { eq: string }> {
-  return 'eq' in segment;
+  return 'eq' in segment && typeof segment.eq === 'string';
 }
 
 export function ConditionalBlockEditor({
@@ -22,6 +22,8 @@ export function ConditionalBlockEditor({
   const mode = isEqualsMode(segment) ? 'equals' : 'emptyFilled';
 
   const handleModeChange = (nextMode: string) => {
+    if (nextMode === mode) return;
+
     if (nextMode === 'equals') {
       onChange({
         kind: 'conditional',

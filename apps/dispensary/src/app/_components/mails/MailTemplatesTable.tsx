@@ -26,6 +26,7 @@ interface MailTemplatesTableProps<T extends MailTemplateTableRow> {
   page: number;
   pageSize: number;
   totalRecords: number;
+  showAccessControls?: boolean;
   onNameFilterChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onEdit: (mailTemplate: T) => void;
@@ -41,6 +42,7 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
   page,
   pageSize,
   totalRecords,
+  showAccessControls = true,
   onNameFilterChange,
   onPageChange,
   onEdit,
@@ -48,11 +50,9 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
   onTest,
   onManageAccess,
 }: MailTemplatesTableProps<T>) {
-  return (
-    <Paper shadow="sm" p="md" withBorder w="100%">
-      <DataTable
-        records={mailTemplates}
-        columns={[
+  const columns = [
+    ...(showAccessControls
+      ? [
           {
             accessor: 'access',
             title: 'Accès',
@@ -66,83 +66,93 @@ export function MailTemplatesTable<T extends MailTemplateTableRow>({
               />
             ),
           },
-          {
-            accessor: 'name',
-            title: 'Nom',
-            filter: (
-              <TextInput
-                placeholder="Rechercher un nom..."
-                value={nameFilter}
-                onChange={(e) => onNameFilterChange(e.currentTarget.value)}
-                style={{ minWidth: 200 }}
-              />
-            ),
-          },
-          {
-            accessor: 'description',
-            title: 'Description',
-            render: (mailTemplate: T) => {
-              if (!mailTemplate.description) {
-                return (
-                  <Text c="dimmed" span>
-                    —
-                  </Text>
-                );
-              }
-              const preview =
-                mailTemplate.description.length > 100
-                  ? `${mailTemplate.description.substring(0, 100)}...`
-                  : mailTemplate.description;
-              return <span>{preview}</span>;
-            },
-          },
-          {
-            accessor: 'actions',
-            title: 'Actions',
-            width: 120,
-            render: (mailTemplate: T) => (
-              <Group gap="xs" wrap="nowrap" justify="flex-end">
-                {onTest && (
-                  <ActionIcon
-                    variant="light"
-                    color="moss"
-                    onClick={() => onTest(mailTemplate)}
-                    title="Tester le template"
-                  >
-                    <IconFlask size={16} />
-                  </ActionIcon>
-                )}
-                <ActionIcon
-                  variant="light"
-                  color="leather"
-                  onClick={() => onManageAccess?.(mailTemplate)}
-                  title="Partager"
-                  disabled={!onManageAccess || mailTemplate.canWrite === false}
-                >
-                  <IconUsers size={16} />
-                </ActionIcon>
-                <ActionIcon
-                  variant="light"
-                  color="slate"
-                  onClick={() => onEdit(mailTemplate)}
-                  title="Modifier"
-                  disabled={mailTemplate.canWrite === false}
-                >
-                  <IconEdit size={16} />
-                </ActionIcon>
-                <ActionIcon
-                  variant="light"
-                  color="danger"
-                  onClick={() => onDelete(mailTemplate)}
-                  title="Supprimer"
-                  disabled={mailTemplate.canWrite === false}
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Group>
-            ),
-          },
-        ]}
+        ]
+      : []),
+    {
+      accessor: 'name',
+      title: 'Nom',
+      filter: (
+        <TextInput
+          placeholder="Rechercher un nom..."
+          value={nameFilter}
+          onChange={(e) => onNameFilterChange(e.currentTarget.value)}
+          style={{ minWidth: 200 }}
+        />
+      ),
+    },
+    {
+      accessor: 'description',
+      title: 'Description',
+      render: (mailTemplate: T) => {
+        if (!mailTemplate.description) {
+          return (
+            <Text c="dimmed" span>
+              —
+            </Text>
+          );
+        }
+        const preview =
+          mailTemplate.description.length > 100
+            ? `${mailTemplate.description.substring(0, 100)}...`
+            : mailTemplate.description;
+        return <span>{preview}</span>;
+      },
+    },
+    {
+      accessor: 'actions',
+      title: 'Actions',
+      width: 120,
+      render: (mailTemplate: T) => (
+        <Group gap="xs" wrap="nowrap" justify="flex-end">
+          {onTest && (
+            <ActionIcon
+              variant="light"
+              color="moss"
+              onClick={() => onTest(mailTemplate)}
+              title="Tester le template"
+            >
+              <IconFlask size={16} />
+            </ActionIcon>
+          )}
+          {showAccessControls && (
+            <ActionIcon
+              variant="light"
+              color="leather"
+              onClick={() => onManageAccess?.(mailTemplate)}
+              title="Partager"
+              disabled={!onManageAccess || mailTemplate.canWrite === false}
+            >
+              <IconUsers size={16} />
+            </ActionIcon>
+          )}
+          <ActionIcon
+            variant="light"
+            color="slate"
+            onClick={() => onEdit(mailTemplate)}
+            title="Modifier"
+            disabled={showAccessControls && mailTemplate.canWrite === false}
+          >
+            <IconEdit size={16} />
+          </ActionIcon>
+          <ActionIcon
+            variant="light"
+            color="danger"
+            onClick={() => onDelete(mailTemplate)}
+            title="Supprimer"
+            disabled={showAccessControls && mailTemplate.canWrite === false}
+          >
+            <IconTrash size={16} />
+          </ActionIcon>
+        </Group>
+      ),
+    },
+  ];
+
+  return (
+    <Paper shadow="sm" p="md" withBorder w="100%">
+      <DataTable
+        records={mailTemplates}
+        columns={columns}
         fetching={loading}
         noRecordsText={
           nameFilter

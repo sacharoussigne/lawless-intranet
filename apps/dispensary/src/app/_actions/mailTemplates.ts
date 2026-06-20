@@ -25,6 +25,7 @@ import {
   getDefaultMailName,
   getServerCookieHeader,
   MAIL_DOCUMENT_TYPE,
+  ORDER_TEMPLATE_TYPE,
   resolveMailTemplateAccess,
   attachOwnerNames,
   templateToMailTemplate,
@@ -99,7 +100,7 @@ export async function createMailTemplate(
 
     const template = await createTemplate(
       {
-        type: MAIL_DOCUMENT_TYPE,
+        type: ORDER_TEMPLATE_TYPE,
         scopeId: dispensaryId,
         ownerId: null,
         name: validatedData.name,
@@ -130,7 +131,7 @@ export async function getMailTemplates(dispensarySlug: string) {
     const cookieHeader = await getServerCookieHeader();
     const result = await listTemplates(
       {
-        type: MAIL_DOCUMENT_TYPE,
+        type: ORDER_TEMPLATE_TYPE,
         scopeId: dispensaryId,
         ownerScope: 'org',
         pageSize: 50,
@@ -162,7 +163,11 @@ export async function getManagementMailTemplateById(
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(id, { cookieHeader });
 
-    if (template.scopeId !== dispensaryId || template.ownerId !== null) {
+    if (
+      template.scopeId !== dispensaryId ||
+      template.ownerId !== null ||
+      template.type !== ORDER_TEMPLATE_TYPE
+    ) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -206,7 +211,10 @@ export async function updateMailTemplate(
       };
     }
 
-    if (existingTemplate.ownerId !== null) {
+    if (
+      existingTemplate.ownerId !== null ||
+      existingTemplate.type !== ORDER_TEMPLATE_TYPE
+    ) {
       return {
         status: 403,
         error: 'Ce template est un template personnel et ne peut pas être modifié depuis le panneau management',
@@ -252,7 +260,10 @@ export async function deleteMailTemplate(dispensarySlug: string, data: { id: str
       };
     }
 
-    if (existingTemplate.ownerId !== null) {
+    if (
+      existingTemplate.ownerId !== null ||
+      existingTemplate.type !== ORDER_TEMPLATE_TYPE
+    ) {
       return {
         status: 403,
         error: 'Ce template est un template personnel et ne peut pas être supprimé depuis le panneau management',

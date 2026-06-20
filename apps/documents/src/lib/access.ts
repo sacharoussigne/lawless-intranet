@@ -8,6 +8,7 @@ type AccessRecord = {
 type OwnableResource = {
   ownerId: string | null;
   createdById?: string;
+  type?: string;
   accesses: AccessRecord[];
 };
 
@@ -37,6 +38,10 @@ export function canWriteTemplate(
   template: OwnableResource,
   userId: string,
 ): boolean {
+  if (template.type === 'order' && template.ownerId === null) {
+    return true;
+  }
+
   if (template.ownerId === userId) {
     return true;
   }

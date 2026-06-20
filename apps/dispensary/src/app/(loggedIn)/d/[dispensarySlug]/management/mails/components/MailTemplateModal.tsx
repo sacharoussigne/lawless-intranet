@@ -124,7 +124,11 @@ export function MailTemplateModal({
         form.reset();
       }}
       title={editingMailTemplate ? 'Modifier le modèle' : 'Créer un modèle'}
-      size="xl"
+      size="90%"
+      styles={{
+        content: { maxWidth: '75rem' },
+        body: { maxHeight: 'calc(100dvh - 10rem)' },
+      }}
     >
       {isEditLoading ? (
         <Center py="xl">

@@ -8,6 +8,7 @@ import type {
 } from '@lawless-intranet/types';
 
 export const MAIL_DOCUMENT_TYPE = 'mail';
+export const ORDER_TEMPLATE_TYPE = 'order';
 
 export async function getServerCookieHeader(): Promise<string | null> {
   const { headers } = await import('next/headers');
