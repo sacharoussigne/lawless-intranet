@@ -60,10 +60,33 @@ docker build \
 
 ## Migration depuis l’ancien déploiement mono-app
 
-1. Copier les users vers la DB auth : `pnpm migrate:users-to-auth`
-2. Déployer **auth** en premier (migrations auth)
-3. Déployer **dispensary** (migrations sans tables User)
-4. Mettre à jour Discord : callback sur le domaine auth
+**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `remove_local_auth_tables` :
+
+```bash
+# 1. Créer la BDD auth et appliquer les migrations auth (tables vides)
+#    → déployer le conteneur auth OU prisma migrate deploy sur AUTH_DATABASE_URL
+
+# 2. Copier les comptes (préserve les IDs — indispensable pour dispensary_member, etc.)
+SOURCE_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
+AUTH_DATABASE_URL="$AUTH_DATABASE_URL" \
+pnpm migrate:users-to-auth
+
+# 3. Déployer dispensary (migrate deploy supprime user/account locaux)
+# 4. Mettre à jour Discord : callback sur le domaine auth
+```
+
+Si des comptes test ont déjà été créés dans la BDD auth, relancer avec `--reset-auth` :
+
+```bash
+pnpm migrate:users-to-auth -- --reset-auth
+```
+
+Résumé :
+
+1. Migrations auth sur `AUTH_DATABASE_URL` (schéma vide)
+2. `pnpm migrate:users-to-auth` avec source = ancienne BDD dispensary (encore avec tables `user`)
+3. Déployer **auth**, puis **dispensary**
+4. Discord redirect URI → domaine auth
 
 ## Notes
 
