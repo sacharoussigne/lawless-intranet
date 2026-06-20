@@ -27,7 +27,7 @@ function overlapsInputSpan(
   return inputSpans.some((s) => start < s.end && end > s.start);
 }
 
-function unescapeAttributeValue(value: string): string {
+export function unescapeAttributeValue(value: string): string {
   return value.replace(/\\([ntr\\])/g, (_, char) => {
     switch (char) {
       case 'n':

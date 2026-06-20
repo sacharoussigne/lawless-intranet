@@ -44,6 +44,7 @@ model DispensaryMember {
   dispensaryId String
   userId       String
   role         String
+  description  String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)

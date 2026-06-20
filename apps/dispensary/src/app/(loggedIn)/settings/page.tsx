@@ -1,6 +1,7 @@
 import { getAuthSession } from '@/lib/authSession';
 import SettingsPageClient from './SettingsPageClient';
 import { getMyStockUiPreferences } from '@/app/_actions/stockUiPreferences';
+import { listMyDispensaryGrades } from '@/app/_actions/dispensaryMemberProfile';
 import { getDataOrThrow } from '@/lib/response';
 
 export default async function SettingsPage() {
@@ -9,6 +10,11 @@ export default async function SettingsPage() {
 
   const stockUiPreferencesResult = await getMyStockUiPreferences();
   const stockUiPreferences = getDataOrThrow(stockUiPreferencesResult, 'Erreur lors du chargement des préférences');
+  const gradesResult = await listMyDispensaryGrades();
+  const dispensaryGrades =
+    gradesResult.status === 200 && 'data' in gradesResult && gradesResult.data
+      ? gradesResult.data
+      : [];
 
   return (
     <SettingsPageClient
@@ -18,6 +24,7 @@ export default async function SettingsPage() {
       }}
       canChangePassword={canChangePassword}
       initialStockUiPreferences={stockUiPreferences}
+      initialDispensaryGrades={dispensaryGrades}
     />
   );
 }

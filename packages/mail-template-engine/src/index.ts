@@ -27,4 +27,5 @@ export {
   DEFAULT_TEMPLATE_USERNAME,
   resolveRenderVariables,
 } from './context';
-export { extractVariables, substituteVariables } from './variables';
+export { extractVariables, resolveVariable, substituteVariables } from './variables';
+export { processConditionalBlocks } from './conditions';

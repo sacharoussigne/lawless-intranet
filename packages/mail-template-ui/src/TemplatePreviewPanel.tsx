@@ -26,7 +26,7 @@ export function useTemplatePreviewActions(
   templateContent: string,
   variables?: Record<string, string>
 ) {
-  const { username } = useMailTemplateContext();
+  const { username, userDescription } = useMailTemplateContext();
   const formRef = useRef<TemplateFormGeneratorHandle>(null);
   const [formContent, setFormContent] = useState('');
   const [editedContent, setEditedContent] = useState<string | null>(null);
@@ -41,9 +41,9 @@ export function useTemplatePreviewActions(
     if (hasInputs) return '';
     return renderTemplate(
       templateContent,
-      buildTemplateRenderContext(username, { inputs: {}, variables }),
+      buildTemplateRenderContext(username, userDescription, { inputs: {}, variables }),
     );
-  }, [templateContent, hasInputs, variables, username]);
+  }, [templateContent, hasInputs, variables, username, userDescription]);
 
   const autoContent = hasInputs ? formContent : staticContent;
   const resultContent = editedContent ?? autoContent;
