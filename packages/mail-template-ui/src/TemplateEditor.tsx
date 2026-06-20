@@ -90,10 +90,13 @@ export function TemplateEditor({
               <br />
               JavaScript: {'{js:code:endjs}'}
               <br />
-              Variable: {'${name}'}, {'${items}'}, {'${price}'}, {'${username}'}, {'${description}'}
+              Variable: {'${name}'}, {'${items}'}, {'${price}'}, {'${username}'}, {'${description}'}, {'${gender}'}
               <br />
-              Conditionnel:{' '}
+              Conditionnel (vide/rempli):{' '}
               {'{if:[var="description"][empty="Madame, Monsieur,"][filled="En ma qualité de ${description},"]}'}
+              <br />
+              Conditionnel (égalité):{' '}
+              {'{if:[var="gender"][eq="female"][then="Je soussignée"][else="Je soussigné"]}'}
               <br />
               Input texte:{' '}
               {

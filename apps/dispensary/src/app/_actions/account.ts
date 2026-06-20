@@ -8,6 +8,7 @@ import { actionErrorParser } from '@/lib/action';
 
 const updateMyProfileSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
+  gender: z.enum(['male', 'female']),
   image: z
     .string()
     .nullable()
@@ -44,6 +45,7 @@ export async function updateMyProfile(data: z.infer<typeof updateMyProfileSchema
     const result = await updateUser(
       {
         name: validated.name,
+        gender: validated.gender,
         image: validated.image === undefined ? undefined : validated.image,
       },
       await getAuthRequestContext(),

@@ -1,13 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Stack, Text, Button, Loader, Paper } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+import { Stack, Button, Loader, Text } from '@mantine/core';
 import { IconCopy, IconCheck } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { generateOrderMailPreview } from '@/app/_actions/mailTemplates';
 import { handleAction } from '@/lib/action';
+import { buildOrderMailVariables } from '@/lib/mailTemplate/buildOrderMailVariables';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
+import {
+  TemplatePreviewWithForm,
+  useTemplatePreviewActions,
+} from '@lawless-intranet/mail-template-ui';
 import { useOrderDetail } from '../hooks/useOrdersQueries';
 
 interface OrderLetterPreviewModalProps {
@@ -26,15 +31,34 @@ export function OrderLetterPreviewModal({
     orderId,
     opened && Boolean(orderId),
   );
-  const [preview, setPreview] = useState<string | null>(null);
+  const [templateContent, setTemplateContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const orderVariables = useMemo(() => {
+    if (!order) return undefined;
+    return buildOrderMailVariables({
+      type: order.type,
+      status: order.status,
+      price: order.price,
+      company: order.company,
+      individualCustomer: order.individualCustomer,
+      items: order.items.map((orderItem) => ({
+        quantity: orderItem.quantity,
+        item: { name: orderItem.item.name },
+      })),
+    });
+  }, [order]);
+
+  const preview = useTemplatePreviewActions(templateContent ?? '', orderVariables, {
+    inputsMode: 'disabled',
+  });
 
   useEffect(() => {
     if (opened && order) {
       void loadPreview(order);
     } else {
-      setPreview(null);
+      setTemplateContent(null);
     }
   }, [opened, order]);
 
@@ -55,8 +79,8 @@ export function OrderLetterPreviewModal({
         },
       });
       const data = handleAction(result);
-      if (data) {
-        setPreview(data.preview);
+      if (data?.templateContent) {
+        setTemplateContent(data.templateContent);
       }
     } catch (error: unknown) {
       const message =
@@ -72,10 +96,10 @@ export function OrderLetterPreviewModal({
   };
 
   const handleCopy = async () => {
-    if (!preview) return;
+    if (!preview.resultContent) return;
 
     try {
-      await navigator.clipboard.writeText(preview);
+      await navigator.clipboard.writeText(preview.resultContent);
       setCopied(true);
       notifications.show({
         title: 'Succès',
@@ -99,9 +123,9 @@ export function OrderLetterPreviewModal({
       opened={opened}
       onClose={onClose}
       title="Aperçu du courrier"
-      size="lg"
+      size="xl"
       footer={
-        preview ? (
+        preview.resultContent ? (
           <AppModalFooter>
             <Button
               leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
@@ -121,17 +145,19 @@ export function OrderLetterPreviewModal({
             Génération de l&apos;aperçu...
           </Text>
         </Stack>
-      ) : preview ? (
-        <Paper p="md" withBorder>
-          <Text
-            style={{
-              whiteSpace: 'pre-wrap',
-              fontFamily: 'var(--disp-font-ui)',
-            }}
-          >
-            {preview}
-          </Text>
-        </Paper>
+      ) : templateContent ? (
+        <TemplatePreviewWithForm
+          templateContent={templateContent}
+          variables={orderVariables}
+          inputsMode="disabled"
+          resultLabel="Courrier généré"
+          formRef={preview.formRef}
+          onFormChange={preview.setFormContent}
+          resultContent={preview.resultContent}
+          onResultChange={preview.setEditedContent}
+          isManuallyEdited={preview.isManuallyEdited}
+          onRegenerate={preview.handleRegenerate}
+        />
       ) : (
         <Text c="dimmed" ta="center">
           Aucun aperçu disponible

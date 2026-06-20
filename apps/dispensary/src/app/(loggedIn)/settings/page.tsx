@@ -3,6 +3,7 @@ import SettingsPageClient from './SettingsPageClient';
 import { getMyStockUiPreferences } from '@/app/_actions/stockUiPreferences';
 import { listMyDispensaryGrades } from '@/app/_actions/dispensaryMemberProfile';
 import { getDataOrThrow } from '@/lib/response';
+import type { UserGender } from '@lawless-intranet/types';
 
 export default async function SettingsPage() {
   const session = await getAuthSession();
@@ -21,6 +22,7 @@ export default async function SettingsPage() {
       initialUser={{
         name: session?.user?.name ?? '',
         image: session?.user?.image ?? null,
+        gender: (session?.user?.gender ?? 'male') as UserGender,
       }}
       canChangePassword={canChangePassword}
       initialStockUiPreferences={stockUiPreferences}
