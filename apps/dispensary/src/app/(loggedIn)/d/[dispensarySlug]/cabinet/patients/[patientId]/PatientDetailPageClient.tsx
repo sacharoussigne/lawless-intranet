@@ -238,6 +238,7 @@ export function PatientDetailPageClient({
         title={`${patient.lastName} ${patient.firstName}`}
         description="Fiche patient"
         backHref={`${t.cabinet.index}?cabinetId=${patient.cabinetId}`}
+        backLabel="Liste des patients"
         actions={
           <Group>
             {canConfigureForms && !editing && (
@@ -319,7 +320,7 @@ export function PatientDetailPageClient({
             withTableBorder
             borderRadius="sm"
             highlightOnHover
-            minHeight={200}
+            minHeight={episodes.length === 0 ? 200 : undefined}
             records={episodes}
             columns={[
               { accessor: 'motif', title: 'Motif' },

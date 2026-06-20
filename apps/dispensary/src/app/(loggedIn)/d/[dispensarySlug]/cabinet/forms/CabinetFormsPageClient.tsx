@@ -134,6 +134,7 @@ export function CabinetFormsPageClient({
         title="Formulaires"
         description={`Configuration des champs personnalisés — ${cabinetName}`}
         backHref={`${t.cabinet.index}?cabinetId=${selectedCabinetId}`}
+        backLabel="Liste des patients"
         actions={
           cabinets.length > 1 ? (
             <CabinetSelector

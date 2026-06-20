@@ -200,7 +200,7 @@ export function CabinetPageClient({
           borderRadius="sm"
           highlightOnHover
           fetching={loading || isSearchDebouncing}
-          minHeight={200}
+          minHeight={patients.length === 0 ? 200 : undefined}
           records={patients}
           columns={[
             {

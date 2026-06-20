@@ -239,6 +239,7 @@ export function CareEpisodeDetailPageClient({
         title="Prise en charge"
         description={`${episode.patient.firstName} ${episode.patient.lastName} — ${episode.motif}`}
         backHref={`${t.cabinet.index}/patients/${episode.patientId}?cabinetId=${episode.patient.cabinetId}`}
+        backLabel={`Patient : ${episode.patient.firstName} ${episode.patient.lastName}`}
         actions={
           <Group>
             {canConfigureForms && !editing && (
@@ -323,7 +324,7 @@ export function CareEpisodeDetailPageClient({
             withTableBorder
             borderRadius="sm"
             highlightOnHover
-            minHeight={200}
+            minHeight={consultations.length === 0 ? 200 : undefined}
             records={consultations}
             columns={[
               {

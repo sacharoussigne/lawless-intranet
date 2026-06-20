@@ -155,6 +155,7 @@ export function ConsultationDetailPageClient({
         title={`Consultation — ${formatRpDate(consultation.date)}`}
         description={`${careEpisode.patient.firstName} ${careEpisode.patient.lastName} — ${careEpisode.motif}`}
         backHref={`${t.cabinet.index}/patients/${careEpisode.patientId}/episodes/${careEpisode.id}?cabinetId=${careEpisode.patient.cabinetId}`}
+        backLabel={`Prise en charge : ${careEpisode.motif}`}
         actions={
           <Group>
             {canConfigureForms && !editing && (
