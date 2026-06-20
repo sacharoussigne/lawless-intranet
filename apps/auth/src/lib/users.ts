@@ -8,8 +8,12 @@ type UserRecord = {
   email: string;
   image?: string | null;
   role?: string | null;
-  gender?: UserGender | null;
+  gender?: string | null;
 };
+
+function normalizeUserGender(gender: string | null | undefined): UserGender {
+  return gender === 'female' ? 'female' : 'male';
+}
 
 export async function getDiscordIdForUser(userId: string): Promise<string | null> {
   const account = await prisma.account.findFirst({
@@ -60,7 +64,7 @@ export async function toAuthUser(user: UserRecord): Promise<AuthUser> {
     email: user.email,
     image: user.image ?? null,
     role: user.role ?? null,
-    gender: user.gender ?? 'male',
+    gender: normalizeUserGender(user.gender),
     discordId,
     hasCredentialPassword: Boolean(credentialAccount),
   };
@@ -75,7 +79,7 @@ export async function toAuthUsers(users: UserRecord[]): Promise<AuthUser[]> {
     email: user.email,
     image: user.image ?? null,
     role: user.role ?? null,
-    gender: user.gender ?? 'male',
+    gender: normalizeUserGender(user.gender),
     discordId: discordIds.get(user.id) ?? null,
   }));
 }
