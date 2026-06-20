@@ -7,11 +7,13 @@ import {
   Button,
   Container,
   Group,
+  Modal,
   Paper,
   Stack,
   Text,
+  Textarea,
 } from '@mantine/core';
-import { IconEdit, IconFileText, IconPencil, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconEdit, IconEye, IconFileText, IconPencil, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
@@ -87,6 +89,8 @@ export function ConsultationDetailPageClient({
   const [documents, setDocuments] = useState(initialDocuments);
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<ConsultationDocumentListItem | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<ConsultationDocumentListItem | null>(null);
+  const [copiedPrescription, setCopiedPrescription] = useState(false);
 
   const handleSaveConsultation = useCallback(
     async (consultation: ConsultationData, customValues: CustomValues) => {
@@ -243,6 +247,27 @@ export function ConsultationDetailPageClient({
     }
   };
 
+  const handleCopyPrescription = async () => {
+    if (!viewingDocument?.content) return;
+
+    try {
+      await navigator.clipboard.writeText(viewingDocument.content);
+      setCopiedPrescription(true);
+      notifications.show({
+        title: 'Succès',
+        message: 'Prescription copiée dans le presse-papiers',
+        color: 'moss',
+      });
+      setTimeout(() => setCopiedPrescription(false), 2000);
+    } catch {
+      notifications.show({
+        title: 'Erreur',
+        message: 'Impossible de copier la prescription',
+        color: 'danger',
+      });
+    }
+  };
+
   const handleDeleteDocument = async (document: ConsultationDocumentListItem) => {
     try {
       const result = await deleteConsultationDocument(dispensarySlug, {
@@ -348,19 +373,6 @@ export function ConsultationDetailPageClient({
       />
 
       <Stack gap="xl">
-        {editing && (
-          <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
-        )}
-        <DynamicFormRenderer
-          schema={entitySchema}
-          values={customValues}
-          onChange={handleCustomChange}
-          onBatchChange={handleCustomBatchChange}
-          readOnly={!editing}
-          systemCards={systemCards}
-          fieldErrors={editing ? fieldErrors : undefined}
-        />
-
         <Paper withBorder p="lg" radius="md">
           <Stack gap="md">
             <Group justify="space-between">
@@ -389,23 +401,32 @@ export function ConsultationDetailPageClient({
               <Stack gap="sm">
                 {documents.map((document) => (
                   <Paper key={document.id} withBorder p="md" radius="md">
-                    <Stack gap="xs">
-                      <Group justify="space-between" align="flex-start">
-                        <div>
-                          <Group gap="xs">
-                            <IconFileText size={16} />
-                            <Text fw={500}>{document.name}</Text>
-                          </Group>
-                          <Text size="xs" c="dimmed">
-                            {document.source === 'template' ? 'Depuis un template' : 'Texte libre'} ·{' '}
-                            {formatRpDate(document.createdAt)}
-                          </Text>
-                        </div>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                      <div>
+                        <Group gap="xs">
+                          <IconFileText size={16} />
+                          <Text fw={500}>{document.name}</Text>
+                        </Group>
+                        <Text size="xs" c="dimmed">
+                          {document.source === 'template' ? 'Depuis un template' : 'Texte libre'} ·{' '}
+                          {formatRpDate(document.createdAt)}
+                        </Text>
+                      </div>
+                      <Group gap="xs" wrap="nowrap">
+                        <ActionIcon
+                          variant="light"
+                          color="slate"
+                          aria-label={`Voir ${document.name}`}
+                          onClick={() => setViewingDocument(document)}
+                        >
+                          <IconEye size={16} />
+                        </ActionIcon>
                         {canWrite && (
-                          <Group gap="xs">
+                          <>
                             <ActionIcon
                               variant="light"
                               color="slate"
+                              aria-label={`Modifier ${document.name}`}
                               onClick={() => openEditDocumentModal(document)}
                             >
                               <IconPencil size={16} />
@@ -415,24 +436,80 @@ export function ConsultationDetailPageClient({
                               message={`Le document « ${document.name} » sera supprimé.`}
                               onConfirm={() => handleDeleteDocument(document)}
                             >
-                              <ActionIcon variant="light" color="danger">
+                              <ActionIcon
+                                variant="light"
+                                color="danger"
+                                aria-label={`Supprimer ${document.name}`}
+                              >
                                 <IconTrash size={16} />
                               </ActionIcon>
                             </DeleteConfirmPopover>
-                          </Group>
+                          </>
                         )}
                       </Group>
-                      <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                        {document.content}
-                      </Text>
-                    </Stack>
+                    </Group>
                   </Paper>
                 ))}
               </Stack>
             )}
           </Stack>
         </Paper>
+
+        {editing && (
+          <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
+        )}
+        <DynamicFormRenderer
+          schema={entitySchema}
+          values={customValues}
+          onChange={handleCustomChange}
+          onBatchChange={handleCustomBatchChange}
+          readOnly={!editing}
+          systemCards={systemCards}
+          fieldErrors={editing ? fieldErrors : undefined}
+        />
       </Stack>
+
+      <Modal
+        opened={viewingDocument !== null}
+        onClose={() => {
+          setViewingDocument(null);
+          setCopiedPrescription(false);
+        }}
+        title={viewingDocument?.name ?? 'Prescription'}
+        size="lg"
+      >
+        {viewingDocument && (
+          <Stack gap="sm">
+            <Group justify="space-between" align="center">
+              <Text size="xs" c="dimmed">
+                {viewingDocument.source === 'template' ? 'Depuis un template' : 'Texte libre'} ·{' '}
+                {formatRpDate(viewingDocument.createdAt)}
+              </Text>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={copiedPrescription ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                onClick={handleCopyPrescription}
+                color={copiedPrescription ? 'moss' : 'sage'}
+              >
+                {copiedPrescription ? 'Copié !' : 'Copier'}
+              </Button>
+            </Group>
+            <Textarea
+              value={viewingDocument.content}
+              readOnly
+              minRows={16}
+              autosize
+              styles={{
+                input: {
+                  fontFamily: 'inherit',
+                  lineHeight: 1.5,
+                },
+              }}
+            />
+          </Stack>
+        )}
+      </Modal>
 
       {documentModalOpen && (
         <ConsultationDocumentModal
