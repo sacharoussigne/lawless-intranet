@@ -13,7 +13,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEye, IconPlus, IconSettings, IconTrash, IconUser } from '@tabler/icons-react';
+import { IconEye, IconPlus, IconSettings, IconTemplate, IconTrash, IconUser } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
@@ -164,16 +164,27 @@ export function CabinetPageClient({
               value={selectedCabinetId}
               onChange={setCabinetInUrl}
             />
-            {canConfigureForms && (
-              <Button
-                component={Link}
-                href={t.cabinet.forms(selectedCabinetId!)}
-                variant="light"
-                color="leather"
-                leftSection={<IconSettings size={16} />}
-              >
-                Formulaires
-              </Button>
+            {canConfigureForms && selectedCabinetId && (
+              <>
+                <Button
+                  component={Link}
+                  href={t.cabinet.forms(selectedCabinetId)}
+                  variant="light"
+                  color="leather"
+                  leftSection={<IconSettings size={16} />}
+                >
+                  Formulaires
+                </Button>
+                <Button
+                  component={Link}
+                  href={t.cabinet.templates(selectedCabinetId)}
+                  variant="light"
+                  color="leather"
+                  leftSection={<IconTemplate size={16} />}
+                >
+                  Templates
+                </Button>
+              </>
             )}
             {canWrite && selectedCabinetId && (
               <Button

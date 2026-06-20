@@ -36,6 +36,11 @@ export function tenantRoutes(slug: string) {
         if (tab) params.set('tab', tab);
         return `${base}/cabinet/forms?${params.toString()}`;
       },
+      templates: (cabinetId: string) => `${base}/cabinet/templates?cabinetId=${encodeURIComponent(cabinetId)}`,
+      newTemplate: (cabinetId: string) =>
+        `${base}/cabinet/templates/new?cabinetId=${encodeURIComponent(cabinetId)}`,
+      editTemplate: (cabinetId: string, id: string) =>
+        `${base}/cabinet/templates/${encodeURIComponent(id)}/edit?cabinetId=${encodeURIComponent(cabinetId)}`,
     },
     management: {
       index: `${base}/management`,

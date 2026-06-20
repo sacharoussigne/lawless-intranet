@@ -1,15 +1,17 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  ActionIcon,
   Button,
   Container,
   Group,
+  Paper,
   Stack,
   Text,
 } from '@mantine/core';
-import { IconEdit, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconFileText, IconPencil, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
@@ -18,6 +20,12 @@ import {
   deleteConsultation,
   updateConsultation,
 } from '@/app/_actions/cabinet/consultations';
+import {
+  createConsultationDocumentFromTemplate,
+  createFreeTextConsultationDocument,
+  deleteConsultationDocument,
+  updateConsultationDocument,
+} from '@/app/_actions/cabinet/consultationDocuments';
 import { handleAction } from '@/lib/action';
 import { canOwnCabinet, canWriteCabinet } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
@@ -27,6 +35,14 @@ import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
 import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
 import { useCabinetEntityEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetEntityEditing';
+import {
+  buildConsultationTemplateVariables,
+} from '@/lib/cabinet/documents';
+import type {
+  ConsultationDocumentListItem,
+  ConsultationDocumentTemplateListItem,
+} from '@/types/cabinetDocuments';
+import { ConsultationDocumentModal } from './ConsultationDocumentModal';
 
 type ConsultationData = {
   id: string;
@@ -43,20 +59,35 @@ type ConsultationData = {
       id: string;
       firstName: string;
       lastName: string;
+      birthDate: Date | null;
       cabinetId: string;
+      customValues: CustomValues;
+      cabinet: {
+        name: string;
+      };
     };
+    startedAt: Date;
+    customValues: CustomValues;
   };
 };
 
 interface ConsultationDetailPageClientProps {
   dispensarySlug: string;
   consultation: ConsultationData;
+  initialDocuments: ConsultationDocumentListItem[];
+  availableTemplates: ConsultationDocumentTemplateListItem[];
 }
 
 export function ConsultationDetailPageClient({
   dispensarySlug,
   consultation: initialConsultation,
+  initialDocuments,
+  availableTemplates,
 }: ConsultationDetailPageClientProps) {
+  const [documents, setDocuments] = useState(initialDocuments);
+  const [documentModalOpen, setDocumentModalOpen] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<ConsultationDocumentListItem | null>(null);
+
   const handleSaveConsultation = useCallback(
     async (consultation: ConsultationData, customValues: CustomValues) => {
       const result = await updateConsultation(dispensarySlug, {
@@ -95,6 +126,28 @@ export function ConsultationDetailPageClient({
   const canWrite = canWriteCabinet(consultation.accessLevel);
   const canConfigureForms = canOwnCabinet(consultation.accessLevel);
   const t = tenantRoutes(dispensarySlug);
+  const templateVariables = useMemo(
+    () =>
+      buildConsultationTemplateVariables({
+        cabinetName: consultation.careEpisode.patient.cabinet.name,
+        patient: {
+          firstName: consultation.careEpisode.patient.firstName,
+          lastName: consultation.careEpisode.patient.lastName,
+          birthDate: consultation.careEpisode.patient.birthDate,
+          customValues: consultation.careEpisode.patient.customValues,
+        },
+        careEpisode: {
+          motif: consultation.careEpisode.motif,
+          startedAt: consultation.careEpisode.startedAt,
+          customValues: consultation.careEpisode.customValues,
+        },
+        consultation: {
+          date: consultation.date,
+          customValues,
+        },
+      }),
+    [consultation.careEpisode, consultation.date, customValues],
+  );
 
   const handleDelete = async () => {
     try {
@@ -120,6 +173,97 @@ export function ConsultationDetailPageClient({
     }),
     [consultation.date],
   );
+
+  const openCreateDocumentModal = () => {
+    setEditingDocument(null);
+    setDocumentModalOpen(true);
+  };
+
+  const openEditDocumentModal = (document: ConsultationDocumentListItem) => {
+    setEditingDocument(document);
+    setDocumentModalOpen(true);
+  };
+
+  const handleCreateFreeTextDocument = async (values: {
+    name: string;
+    content: string;
+  }) => {
+    const result = await createFreeTextConsultationDocument(dispensarySlug, {
+      consultationId: consultation.id,
+      ...values,
+    });
+    const created = handleAction(result);
+    if (created) {
+      setDocuments((current) => [created, ...current]);
+      notifications.show({
+        title: 'Prescription créée',
+        message: '',
+        color: 'moss',
+      });
+    }
+  };
+
+  const handleCreateDocumentFromTemplate = async (values: {
+    templateId: string;
+    name: string;
+    content: string;
+  }) => {
+    const result = await createConsultationDocumentFromTemplate(dispensarySlug, {
+      consultationId: consultation.id,
+      ...values,
+    });
+    const created = handleAction(result);
+    if (created) {
+      setDocuments((current) => [created, ...current]);
+      notifications.show({
+        title: 'Prescription créée',
+        message: '',
+        color: 'moss',
+      });
+    }
+  };
+
+  const handleUpdateDocument = async (values: {
+    id: string;
+    name: string;
+    content: string;
+  }) => {
+    const result = await updateConsultationDocument(dispensarySlug, {
+      consultationId: consultation.id,
+      ...values,
+    });
+    const updated = handleAction(result);
+    if (updated) {
+      setDocuments((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      notifications.show({
+        title: 'Prescription mise à jour',
+        message: '',
+        color: 'moss',
+      });
+    }
+  };
+
+  const handleDeleteDocument = async (document: ConsultationDocumentListItem) => {
+    try {
+      const result = await deleteConsultationDocument(dispensarySlug, {
+        id: document.id,
+        consultationId: consultation.id,
+      });
+      handleAction(result);
+      setDocuments((current) => current.filter((item) => item.id !== document.id));
+      notifications.show({
+        title: 'Prescription supprimée',
+        message: '',
+        color: 'moss',
+      });
+    } catch (error: unknown) {
+      notifications.show({
+        title: 'Erreur',
+        message: error instanceof Error ? error.message : 'Échec de la suppression',
+        color: 'danger',
+      });
+    }
+  };
 
   const systemCards = useMemo(
     () =>
@@ -216,7 +360,97 @@ export function ConsultationDetailPageClient({
           systemCards={systemCards}
           fieldErrors={editing ? fieldErrors : undefined}
         />
+
+        <Paper withBorder p="lg" radius="md">
+          <Stack gap="md">
+            <Group justify="space-between">
+              <div>
+                <Text fw={600}>Prescriptions</Text>
+                <Text size="sm" c="dimmed">
+                  Documents rattachés à cette consultation.
+                </Text>
+              </div>
+              {canWrite && (
+                <Button
+                  color="sage"
+                  leftSection={<IconPlus size={16} />}
+                  onClick={openCreateDocumentModal}
+                >
+                  Nouvelle prescription
+                </Button>
+              )}
+            </Group>
+
+            {documents.length === 0 ? (
+              <Text size="sm" c="dimmed">
+                Aucune prescription pour cette consultation.
+              </Text>
+            ) : (
+              <Stack gap="sm">
+                {documents.map((document) => (
+                  <Paper key={document.id} withBorder p="md" radius="md">
+                    <Stack gap="xs">
+                      <Group justify="space-between" align="flex-start">
+                        <div>
+                          <Group gap="xs">
+                            <IconFileText size={16} />
+                            <Text fw={500}>{document.name}</Text>
+                          </Group>
+                          <Text size="xs" c="dimmed">
+                            {document.source === 'template' ? 'Depuis un template' : 'Texte libre'} ·{' '}
+                            {formatRpDate(document.createdAt)}
+                          </Text>
+                        </div>
+                        {canWrite && (
+                          <Group gap="xs">
+                            <ActionIcon
+                              variant="light"
+                              color="slate"
+                              onClick={() => openEditDocumentModal(document)}
+                            >
+                              <IconPencil size={16} />
+                            </ActionIcon>
+                            <DeleteConfirmPopover
+                              title="Supprimer la prescription ?"
+                              message={`Le document « ${document.name} » sera supprimé.`}
+                              onConfirm={() => handleDeleteDocument(document)}
+                            >
+                              <ActionIcon variant="light" color="danger">
+                                <IconTrash size={16} />
+                              </ActionIcon>
+                            </DeleteConfirmPopover>
+                          </Group>
+                        )}
+                      </Group>
+                      <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                        {document.content}
+                      </Text>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Paper>
       </Stack>
+
+      {documentModalOpen && (
+        <ConsultationDocumentModal
+          key={editingDocument?.id ?? 'create'}
+          opened
+          onClose={() => {
+            setDocumentModalOpen(false);
+            setEditingDocument(null);
+          }}
+          mode={editingDocument ? 'edit' : 'create'}
+          document={editingDocument}
+          templates={availableTemplates}
+          variables={templateVariables}
+          onCreateFreeText={handleCreateFreeTextDocument}
+          onCreateFromTemplate={handleCreateDocumentFromTemplate}
+          onUpdate={handleUpdateDocument}
+        />
+      )}
     </Container>
   );
 }
