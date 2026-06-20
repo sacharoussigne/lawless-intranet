@@ -8,7 +8,7 @@ import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import type { OrderType, OrderStatus } from '@prisma/client';
-import { getServerCookieHeader, MAIL_DOCUMENT_TYPE } from '@/lib/documents/mailDocuments';
+import { getServerCookieHeader, ORDER_TEMPLATE_TYPE } from '@/lib/documents/mailDocuments';
 
 const createAssignmentSchema = z.object({
   orderType: z.enum(['INCOMING', 'OUTGOING']),
@@ -43,7 +43,7 @@ async function validateOrgTemplate(
   const template = await getTemplate(templateId, { cookieHeader });
 
   if (
-    template.type !== MAIL_DOCUMENT_TYPE ||
+    template.type !== ORDER_TEMPLATE_TYPE ||
     template.scopeId !== dispensaryId ||
     template.ownerId !== null
   ) {

@@ -58,7 +58,11 @@ async function main() {
     let mailsMigrated = 0;
 
     for (const row of templatesResult.rows) {
-      const createdById = row.userId ?? `system:${row.dispensaryId}`;
+      const isOrgTemplate = row.userId === null;
+      const templateType = isOrgTemplate ? 'order' : 'mail';
+      const createdById = isOrgTemplate
+        ? `system:${row.dispensaryId}`
+        : row.userId;
       const metadata = row.defaultMailName
         ? JSON.stringify({ defaultDocumentName: row.defaultMailName })
         : null;
@@ -69,7 +73,7 @@ async function main() {
          ON CONFLICT (id) DO NOTHING`,
         [
           row.id,
-          'mail',
+          templateType,
           row.dispensaryId,
           row.userId,
           createdById,
@@ -106,9 +110,15 @@ async function main() {
       mailsMigrated += 1;
     }
 
-    const [{ count: templateCount }] = (
+    const [{ count: mailTemplateCount }] = (
       await documentsDb.query<{ count: string }>(
         `SELECT COUNT(*)::text AS count FROM template WHERE type = 'mail'`,
+      )
+    ).rows;
+
+    const [{ count: orderTemplateCount }] = (
+      await documentsDb.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM template WHERE type = 'order'`,
       )
     ).rows;
 
@@ -121,7 +131,8 @@ async function main() {
     console.log('Migration completed');
     console.log(`Templates migrated: ${templatesMigrated}`);
     console.log(`Mails migrated: ${mailsMigrated}`);
-    console.log(`Documents DB templates (mail): ${templateCount}`);
+    console.log(`Documents DB templates (mail): ${mailTemplateCount}`);
+    console.log(`Documents DB templates (order): ${orderTemplateCount}`);
     console.log(`Documents DB documents (mail): ${documentCount}`);
   } finally {
     await dispensaryDb.end();

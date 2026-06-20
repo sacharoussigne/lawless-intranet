@@ -1,3 +1,5 @@
+export type UserGender = 'male' | 'female';
+
 export type AuthUser = {
   id: string;
   name: string;
@@ -5,6 +7,7 @@ export type AuthUser = {
   image: string | null;
   role: string | null;
   discordId: string | null;
+  gender?: UserGender;
   hasCredentialPassword?: boolean;
 };
 
@@ -19,7 +22,7 @@ export type AuthSession = {
 
 export type AuthUserPublic = Pick<
   AuthUser,
-  "id" | "name" | "image" | "discordId" | "email" | "role"
+  "id" | "name" | "image" | "discordId" | "email" | "role" | "gender"
 >;
 
 export type DocumentAccessType = "READ" | "WRITE";

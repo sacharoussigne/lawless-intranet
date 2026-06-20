@@ -29,6 +29,7 @@ import { updateMyStockUiPreferences } from '@/app/_actions/stockUiPreferences';
 import { useRouter } from 'next/navigation';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
 import { STOCK_UI_DEFAULTS } from '@/types/stockUiPreferences';
+import type { UserGender } from '@lawless-intranet/types';
 import { IconX } from '@tabler/icons-react';
 
 type SettingsImageMode = 'url' | 'upload';
@@ -52,7 +53,7 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 export default function SettingsPageClient(props: {
-  initialUser: { name: string; image: string | null };
+  initialUser: { name: string; image: string | null; gender: UserGender };
   canChangePassword: boolean;
   initialStockUiPreferences: StockUiPreferences;
   initialDispensaryGrades: Array<{
@@ -80,6 +81,7 @@ export default function SettingsPageClient(props: {
   const profileForm = useForm({
     initialValues: {
       name: props.initialUser.name,
+      gender: props.initialUser.gender,
       imageUrl: typeof props.initialUser.image === 'string' ? props.initialUser.image : '',
       imageFile: null as File | null,
     },
@@ -184,6 +186,7 @@ export default function SettingsPageClient(props: {
 
       const result = await updateMyProfile({
         name: profileForm.values.name.trim(),
+        gender: profileForm.values.gender,
         image,
       });
       handleAction(result);
@@ -328,7 +331,7 @@ export default function SettingsPageClient(props: {
             <div>
               <Title order={3}>Profil</Title>
               <Text c="dimmed" size="sm" mt={4}>
-                Username et avatar.
+                Username, genre et avatar.
               </Text>
             </div>
             <Avatar src={avatarPreviewSrc} radius="xl" size={56} />
@@ -339,6 +342,18 @@ export default function SettingsPageClient(props: {
               label="Username"
               required
               {...profileForm.getInputProps('name')}
+            />
+
+            <SegmentedControl
+              value={profileForm.values.gender}
+              onChange={(value) =>
+                profileForm.setFieldValue('gender', value as UserGender)
+              }
+              data={[
+                { label: 'Masculin', value: 'male' },
+                { label: 'Féminin', value: 'female' },
+              ]}
+              fullWidth
             />
 
             <SegmentedControl

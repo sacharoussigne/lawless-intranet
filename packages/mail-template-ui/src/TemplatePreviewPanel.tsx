@@ -24,26 +24,29 @@ import { buildTemplateRenderContext, useMailTemplateContext } from './MailTempla
 
 export function useTemplatePreviewActions(
   templateContent: string,
-  variables?: Record<string, string>
+  variables?: Record<string, string>,
+  options?: { inputsMode?: 'form' | 'disabled' },
 ) {
-  const { username, userDescription } = useMailTemplateContext();
+  const { username, userDescription, userGender } = useMailTemplateContext();
   const formRef = useRef<TemplateFormGeneratorHandle>(null);
   const [formContent, setFormContent] = useState('');
   const [editedContent, setEditedContent] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const inputsMode = options?.inputsMode ?? 'form';
 
   const hasInputs = useMemo(
-    () => extractInputs(templateContent).length > 0,
-    [templateContent],
+    () => inputsMode === 'form' && extractInputs(templateContent).length > 0,
+    [templateContent, inputsMode],
   );
 
   const staticContent = useMemo(() => {
     if (hasInputs) return '';
     return renderTemplate(
       templateContent,
-      buildTemplateRenderContext(username, userDescription, { inputs: {}, variables }),
+      buildTemplateRenderContext(username, userDescription, userGender, { inputs: {}, variables }),
+      { applyGreetingAdaptation: false, skipInputs: inputsMode === 'disabled' },
     );
-  }, [templateContent, hasInputs, variables, username, userDescription]);
+  }, [templateContent, hasInputs, variables, username, userDescription, userGender, inputsMode]);
 
   const autoContent = hasInputs ? formContent : staticContent;
   const resultContent = editedContent ?? autoContent;
@@ -106,6 +109,7 @@ interface TemplatePreviewWithFormProps {
   templateContent: string;
   variables?: Record<string, string>;
   resultLabel?: string;
+  inputsMode?: 'form' | 'disabled';
   formRef: React.RefObject<TemplateFormGeneratorHandle | null>;
   onFormChange: (content: string) => void;
   resultContent: string;
@@ -118,6 +122,7 @@ export function TemplatePreviewWithForm({
   templateContent,
   variables,
   resultLabel = 'Aperçu',
+  inputsMode = 'form',
   formRef,
   onFormChange,
   resultContent,
@@ -125,32 +130,36 @@ export function TemplatePreviewWithForm({
   isManuallyEdited,
   onRegenerate,
 }: TemplatePreviewWithFormProps) {
+  const showForm = inputsMode === 'form';
+
   return (
     <Grid gutter="xl">
-      <Grid.Col span={5}>
-        <Stack gap="md">
-          <Text size="sm" fw={600}>
-            Formulaire
-          </Text>
-          <Paper p="md" withBorder>
-            <ScrollArea h={600} scrollbars="y" type="auto">
-              <TemplateFormGenerator
-                ref={formRef}
-                template={templateContent}
-                variables={variables}
-                onChange={onFormChange}
-              />
-            </ScrollArea>
-          </Paper>
-        </Stack>
-      </Grid.Col>
-      <Grid.Col span={7}>
+      {showForm && (
+        <Grid.Col span={5}>
+          <Stack gap="md">
+            <Text size="sm" fw={600}>
+              Formulaire
+            </Text>
+            <Paper p="md" withBorder>
+              <ScrollArea h={600} scrollbars="y" type="auto">
+                <TemplateFormGenerator
+                  ref={formRef}
+                  template={templateContent}
+                  variables={variables}
+                  onChange={onFormChange}
+                />
+              </ScrollArea>
+            </Paper>
+          </Stack>
+        </Grid.Col>
+      )}
+      <Grid.Col span={showForm ? 7 : 12}>
         <Stack gap="md">
           <Group justify="space-between">
             <Text size="sm" fw={600}>
               {resultLabel}
             </Text>
-            {isManuallyEdited && (
+            {isManuallyEdited && showForm && (
               <Button variant="subtle" size="xs" onClick={onRegenerate}>
                 Réappliquer le formulaire
               </Button>
@@ -160,7 +169,11 @@ export function TemplatePreviewWithForm({
             <Textarea
               value={resultContent}
               onChange={(e) => onResultChange(e.currentTarget.value)}
-              placeholder="Remplissez le formulaire pour générer le résultat…"
+              placeholder={
+                showForm
+                  ? 'Remplissez le formulaire pour générer le résultat…'
+                  : 'Aperçu du courrier…'
+              }
               minRows={24}
               autosize
               styles={{

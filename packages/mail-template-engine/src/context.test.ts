@@ -50,4 +50,13 @@ describe('resolveRenderVariables', () => {
       })
     ).toEqual({ description: '' });
   });
+
+  it('injects gender from userGender', () => {
+    expect(
+      resolveRenderVariables({
+        inputs: {},
+        userGender: 'female',
+      })
+    ).toEqual({ gender: 'female' });
+  });
 });

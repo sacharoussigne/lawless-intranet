@@ -44,7 +44,7 @@ export function unescapeAttributeValue(value: string): string {
   });
 }
 
-function parseInputAttributes(attributesString: string): TemplateInput {
+export function parseInputAttributes(attributesString: string): TemplateInput {
   const input: TemplateInput = {
     type: 'text',
     name: '',
@@ -96,6 +96,9 @@ function parseInputAttributes(attributesString: string): TemplateInput {
         if (value === 'below' || value === 'inline') {
           input.layout = value;
         }
+        break;
+      case 'options':
+        input.options = value;
         break;
     }
   }
