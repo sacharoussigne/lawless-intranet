@@ -204,7 +204,7 @@ export async function listConsultationDocuments(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors du chargement des prescriptions de la consultation',
+      'Erreur lors du chargement des documents de la consultation',
     );
   }
 }
@@ -262,7 +262,7 @@ export async function createFreeTextConsultationDocument(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la création de la prescription',
+      'Erreur lors de la création du document',
     );
   }
 }
@@ -339,7 +339,7 @@ export async function createConsultationDocumentFromTemplate(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la création de la prescription depuis le template',
+      'Erreur lors de la création du document depuis le template',
     );
   }
 }
@@ -401,7 +401,7 @@ export async function updateConsultationDocument(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la mise à jour de la prescription',
+      'Erreur lors de la mise à jour du document',
     );
   }
 }
@@ -449,7 +449,7 @@ export async function deleteConsultationDocument(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la suppression de la prescription',
+      'Erreur lors de la suppression du document',
     );
   }
 }
@@ -538,7 +538,7 @@ export async function generateConsultationDocumentPreview(
       getDefaultConsultationDocumentName(
         template.metadata as Record<string, unknown> | null | undefined,
       ) ??
-      `Prescription - ${source.patientFirstName} ${source.patientLastName}`;
+      `Document - ${source.patientFirstName} ${source.patientLastName}`;
 
     return {
       status: 200,
@@ -554,7 +554,7 @@ export async function generateConsultationDocumentPreview(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la génération de l’aperçu de la prescription',
+      'Erreur lors de la génération de l’aperçu du document',
     );
   }
 }

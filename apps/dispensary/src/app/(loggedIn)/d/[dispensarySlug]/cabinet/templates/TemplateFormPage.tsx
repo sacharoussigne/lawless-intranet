@@ -144,7 +144,7 @@ export function TemplateFormPage({
       <Stack gap="md">
         <PageHeader
           title={mode === 'create' ? 'Nouveau template' : `Modifier ${template?.name ?? 'le template'}`}
-          description="Template de prescription du cabinet"
+          description="Template de document du cabinet"
           backHref={routes.cabinet.templates(cabinetId)}
           backLabel="Retour aux templates"
           actions={
@@ -187,7 +187,7 @@ export function TemplateFormPage({
               <Grid.Col span={6}>
                 <TextInput
                   label="Nom du document par défaut"
-                  placeholder="Nom proposé à la création d’une prescription"
+                  placeholder="Nom proposé à la création d’un document"
                   {...form.getInputProps('defaultDocumentName')}
                 />
               </Grid.Col>

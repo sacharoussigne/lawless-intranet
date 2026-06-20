@@ -138,7 +138,7 @@ export async function listConsultationDocumentTemplates(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors du chargement des templates de prescription',
+      'Erreur lors du chargement des templates de documents',
     );
   }
 }
@@ -179,7 +179,7 @@ export async function getConsultationDocumentTemplate(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors du chargement du template de prescription',
+      'Erreur lors du chargement du template de document',
     );
   }
 }
@@ -223,7 +223,7 @@ export async function createConsultationDocumentTemplate(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la création du template de prescription',
+      'Erreur lors de la création du template de document',
     );
   }
 }
@@ -274,7 +274,7 @@ export async function updateConsultationDocumentTemplate(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la modification du template de prescription',
+      'Erreur lors de la modification du template de document',
     );
   }
 }
@@ -306,7 +306,7 @@ export async function deleteConsultationDocumentTemplate(
   } catch (error) {
     return documentsActionError(
       error,
-      'Erreur lors de la suppression du template de prescription',
+      'Erreur lors de la suppression du template de document',
     );
   }
 }

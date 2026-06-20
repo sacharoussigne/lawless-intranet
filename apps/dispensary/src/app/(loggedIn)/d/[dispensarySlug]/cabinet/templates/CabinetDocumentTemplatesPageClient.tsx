@@ -84,7 +84,7 @@ export function CabinetDocumentTemplatesPageClient({
   return (
     <Container size="xl" py="xl">
       <PageHeader
-        title="Templates de prescription"
+        title="Templates de documents"
         description={`Gestion des templates du cabinet ${selectedCabinet?.name ?? ''}`}
         backHref={`${t.cabinet.index}?cabinetId=${cabinetId}`}
         backLabel="Retour au cabinet"

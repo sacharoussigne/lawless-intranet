@@ -90,7 +90,7 @@ export function ConsultationDetailPageClient({
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<ConsultationDocumentListItem | null>(null);
   const [viewingDocument, setViewingDocument] = useState<ConsultationDocumentListItem | null>(null);
-  const [copiedPrescription, setCopiedPrescription] = useState(false);
+  const [copiedDocument, setCopiedDocument] = useState(false);
 
   const handleSaveConsultation = useCallback(
     async (consultation: ConsultationData, customValues: CustomValues) => {
@@ -200,7 +200,7 @@ export function ConsultationDetailPageClient({
     if (created) {
       setDocuments((current) => [created, ...current]);
       notifications.show({
-        title: 'Prescription créée',
+        title: 'Document créé',
         message: '',
         color: 'moss',
       });
@@ -220,7 +220,7 @@ export function ConsultationDetailPageClient({
     if (created) {
       setDocuments((current) => [created, ...current]);
       notifications.show({
-        title: 'Prescription créée',
+        title: 'Document créé',
         message: '',
         color: 'moss',
       });
@@ -240,29 +240,29 @@ export function ConsultationDetailPageClient({
     if (updated) {
       setDocuments((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       notifications.show({
-        title: 'Prescription mise à jour',
+        title: 'Document mis à jour',
         message: '',
         color: 'moss',
       });
     }
   };
 
-  const handleCopyPrescription = async () => {
+  const handleCopyDocument = async () => {
     if (!viewingDocument?.content) return;
 
     try {
       await navigator.clipboard.writeText(viewingDocument.content);
-      setCopiedPrescription(true);
+      setCopiedDocument(true);
       notifications.show({
         title: 'Succès',
-        message: 'Prescription copiée dans le presse-papiers',
+        message: 'Document copié dans le presse-papiers',
         color: 'moss',
       });
-      setTimeout(() => setCopiedPrescription(false), 2000);
+      setTimeout(() => setCopiedDocument(false), 2000);
     } catch {
       notifications.show({
         title: 'Erreur',
-        message: 'Impossible de copier la prescription',
+        message: 'Impossible de copier le document',
         color: 'danger',
       });
     }
@@ -277,7 +277,7 @@ export function ConsultationDetailPageClient({
       handleAction(result);
       setDocuments((current) => current.filter((item) => item.id !== document.id));
       notifications.show({
-        title: 'Prescription supprimée',
+        title: 'Document supprimé',
         message: '',
         color: 'moss',
       });
@@ -377,7 +377,7 @@ export function ConsultationDetailPageClient({
           <Stack gap="md">
             <Group justify="space-between">
               <div>
-                <Text fw={600}>Prescriptions</Text>
+                <Text fw={600}>Documents</Text>
                 <Text size="sm" c="dimmed">
                   Documents rattachés à cette consultation.
                 </Text>
@@ -388,14 +388,14 @@ export function ConsultationDetailPageClient({
                   leftSection={<IconPlus size={16} />}
                   onClick={openCreateDocumentModal}
                 >
-                  Nouvelle prescription
+                  Nouveau document
                 </Button>
               )}
             </Group>
 
             {documents.length === 0 ? (
               <Text size="sm" c="dimmed">
-                Aucune prescription pour cette consultation.
+                Aucun document pour cette consultation.
               </Text>
             ) : (
               <Stack gap="sm">
@@ -432,7 +432,7 @@ export function ConsultationDetailPageClient({
                               <IconPencil size={16} />
                             </ActionIcon>
                             <DeleteConfirmPopover
-                              title="Supprimer la prescription ?"
+                              title="Supprimer le document ?"
                               message={`Le document « ${document.name} » sera supprimé.`}
                               onConfirm={() => handleDeleteDocument(document)}
                             >
@@ -473,9 +473,9 @@ export function ConsultationDetailPageClient({
         opened={viewingDocument !== null}
         onClose={() => {
           setViewingDocument(null);
-          setCopiedPrescription(false);
+          setCopiedDocument(false);
         }}
-        title={viewingDocument?.name ?? 'Prescription'}
+        title={viewingDocument?.name ?? 'Document'}
         size="lg"
       >
         {viewingDocument && (
@@ -488,11 +488,11 @@ export function ConsultationDetailPageClient({
               <Button
                 variant="light"
                 size="xs"
-                leftSection={copiedPrescription ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                onClick={handleCopyPrescription}
-                color={copiedPrescription ? 'moss' : 'sage'}
+                leftSection={copiedDocument ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                onClick={handleCopyDocument}
+                color={copiedDocument ? 'moss' : 'sage'}
               >
-                {copiedPrescription ? 'Copié !' : 'Copier'}
+                {copiedDocument ? 'Copié !' : 'Copier'}
               </Button>
             </Group>
             <Textarea

@@ -213,7 +213,7 @@ export function ConsultationDocumentModal({
     <Modal
       opened={opened}
       onClose={handleClose}
-      title={isEdit ? 'Modifier la prescription' : 'Nouvelle prescription'}
+      title={isEdit ? 'Modifier le document' : 'Nouveau document'}
       size="90%"
       styles={{
         content: { maxWidth: '75rem' },
@@ -272,7 +272,7 @@ export function ConsultationDocumentModal({
                 />
               ) : (
                 <Center py="xl">
-                  <Text c="dimmed">Sélectionnez un template pour préparer la prescription.</Text>
+                  <Text c="dimmed">Sélectionnez un template pour préparer le document.</Text>
                 </Center>
               )}
             </>
@@ -281,7 +281,7 @@ export function ConsultationDocumentModal({
           {(isEdit || createMode === 'freeText') && (
             <Textarea
               label="Contenu"
-              placeholder="Contenu de la prescription"
+              placeholder="Contenu du document"
               minRows={24}
               autosize
               required

@@ -156,7 +156,7 @@ export function CabinetDocumentTemplateModal({
             <TextInput label="Nom" required {...form.getInputProps('name')} />
             <TextInput
               label="Nom du document par défaut"
-              placeholder="Nom proposé à la création d’une prescription"
+              placeholder="Nom proposé à la création d’un document"
               {...form.getInputProps('defaultDocumentName')}
             />
             <Textarea
