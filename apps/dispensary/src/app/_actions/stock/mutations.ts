@@ -127,7 +127,7 @@ export async function updateStock(
             itemId: m.itemId,
             quantity: m.quantity,
             kind: m.kind,
-            chestId: m.chestId,
+            chestId: resolvedChestId,
             userId,
           })),
         });
