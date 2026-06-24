@@ -18,7 +18,7 @@ export default async function NoManagementAccessPage() {
           Vous n'avez pas accès à cette page de gestion. Seuls les administrateurs peuvent accéder à cette section.
         </Text>
         <Group justify="center" gap="md">
-          <Link href={routes.employee.index}>
+          <Link href={routes.platform.dispensaries}>
             <Button variant="light">
               Retour à l'accueil
             </Button>

@@ -75,9 +75,6 @@ Préférer `OrderStatusBadge`, `OrderTypeBadge`, ou `apothecaryBooleanPills` dep
 
 Fichiers bank/payroll/TransferModal etc. utilisent encore `red`/`blue`/`gray`. Migrer vers palettes apothecary **uniquement quand on modifie le fichier** — pas de refactor massif non demandé.
 
-- `getOrderStatusColor` / `getOrderTypeColor` → `@deprecated`, utiliser pill styles ou badges dédiés
-- `ManagementSectionThemeProvider` est un no-op — ne pas recréer de thèmes par section
-
 ## Checklist avant livraison UI
 
 - [ ] Aucune couleur Mantine default (`red`, `blue`, `green`, `gray`…)
