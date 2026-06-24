@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, Group, Paper, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Alert, Button, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import {
   IconCashRegister,
   IconDroplet,
@@ -18,6 +18,7 @@ import {
   useMarkOwnWeeklyPresenceTodayMutation,
 } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
+import classes from './WeeklyActivityQuickActionsPanel.module.scss';
 
 type WeeklyActivityQuickActionsPanelProps = {
   row: WeeklyActivityListItem | null;
@@ -36,7 +37,7 @@ const COUNTER_ACTIONS: {
 }[] = [
   { field: 'patientsCount', label: 'Patients', icon: IconUserPlus },
   { field: 'sherifCount', label: 'Shérifs', icon: IconShield },
-  { field: 'infusionsCount', label: 'Inf. ginseng', icon: IconDroplet },
+  { field: 'infusionsCount', label: 'Infusion', icon: IconDroplet },
   { field: 'poppyMilkCount', label: 'Lait pavot', icon: IconMilk },
 ];
 
@@ -104,47 +105,36 @@ export function WeeklyActivityQuickActionsPanel({
           </SimpleGrid>
 
           {visibleCounters.length > 0 && (
-            <Stack gap="xs">
+            <SimpleGrid cols={2} spacing="sm">
               {visibleCounters.map((action) => {
                 const Icon = action.icon;
                 const value = row?.[action.field] ?? 0;
                 return (
-                  <Group
+                  <UnstyledButton
                     key={action.field}
-                    justify="space-between"
-                    wrap="nowrap"
-                    gap="sm"
-                    p="xs"
-                    style={{
-                      border: '1px solid var(--mantine-color-sage-3)',
-                      borderRadius: 'var(--mantine-radius-sm)',
-                    }}
+                    className={classes.counterTile}
+                    disabled={isLoading}
+                    aria-label={`${action.label} : ${value}, ajouter 1`}
+                    onClick={() =>
+                      incrementMutation.mutate({ field: action.field, weekBounds })
+                    }
                   >
-                    <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-                      <Icon size={16} stroke={1.75} />
-                      <Text size="sm" truncate>
-                        {action.label}
-                      </Text>
-                      <Text size="sm" fw={600}>
-                        {value}
-                      </Text>
-                    </Group>
-                    <Button
-                      size="compact-sm"
-                      color="sage"
-                      variant="filled"
-                      disabled={isLoading}
-                      loading={incrementMutation.isPending}
-                      onClick={() =>
-                        incrementMutation.mutate({ field: action.field, weekBounds })
-                      }
-                    >
-                      +1
-                    </Button>
-                  </Group>
+                    <div className={classes.counterTileInner}>
+                      <div className={classes.counterTileLabel}>
+                        <Icon size={16} stroke={1.75} />
+                        <Text size="sm" truncate>
+                          {action.label}
+                        </Text>
+                        <Text size="sm" fw={600}>
+                          {value}
+                        </Text>
+                      </div>
+                      <span className={classes.counterTilePlus}>+1</span>
+                    </div>
+                  </UnstyledButton>
                 );
               })}
-            </Stack>
+            </SimpleGrid>
           )}
         </Stack>
       )}
