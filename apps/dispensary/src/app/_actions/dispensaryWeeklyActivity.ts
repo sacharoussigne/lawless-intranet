@@ -262,6 +262,8 @@ export async function getDispensaryWeeklyActivityHistory(
           actorDiscordUserId,
           actorResolvedName,
           createdAt: h.createdAt.toISOString(),
+          previousValues: h.previousValues,
+          nextValues: h.nextValues,
         };
       }),
     };

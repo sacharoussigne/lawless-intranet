@@ -9,6 +9,7 @@ import { WeeklyActivityCompactTeamList } from '@/app/_components/weeklyActivity/
 import { WeeklyActivityQuickActionsPanel } from '@/app/_components/weeklyActivity/WeeklyActivityQuickActionsPanel';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { EditWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/EditWeeklyActivityModal';
+import { HistoryWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/HistoryWeeklyActivityModal';
 import {
   useWeeklyActivities,
   type WeeklyActivityListItem,
@@ -65,6 +66,8 @@ export function EmployeeWeeklyDashboard({
   );
 
   const [editRow, setEditRow] = useState<WeeklyActivityListItem | null>(null);
+  const [historyActivityId, setHistoryActivityId] = useState<string | null>(null);
+  const [historyTitle, setHistoryTitle] = useState('');
   const [periodWeekDateValue, setPeriodWeekDateValue] = useState<Date>(() =>
     getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,
   );
@@ -159,6 +162,10 @@ export function EmployeeWeeklyDashboard({
             fieldVisibility={fieldVisibility}
             canEditRow={canEditRow}
             onEdit={setEditRow}
+            onHistory={(row) => {
+              setHistoryActivityId(row.id);
+              setHistoryTitle(row.resolvedDisplayName);
+            }}
           />
         )}
       </Stack>
@@ -169,6 +176,12 @@ export function EmployeeWeeklyDashboard({
         canEditAll={canEditAll}
         fieldVisibility={fieldVisibility}
         weekBounds={queryWeekBounds}
+      />
+
+      <HistoryWeeklyActivityModal
+        activityId={historyActivityId}
+        title={historyTitle}
+        onClose={() => setHistoryActivityId(null)}
       />
     </>
   );

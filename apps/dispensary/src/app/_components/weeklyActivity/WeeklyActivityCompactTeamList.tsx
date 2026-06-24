@@ -12,6 +12,7 @@ type WeeklyActivityCompactTeamListProps = {
   fieldVisibility: WeeklyActivityFieldVisibility;
   canEditRow: (row: WeeklyActivityListItem) => boolean;
   onEdit: (row: WeeklyActivityListItem) => void;
+  onHistory: (row: WeeklyActivityListItem) => void;
   title?: string;
 };
 
@@ -20,6 +21,7 @@ export function WeeklyActivityCompactTeamList({
   fieldVisibility,
   canEditRow,
   onEdit,
+  onHistory,
   title = "Activité de l'équipe",
 }: WeeklyActivityCompactTeamListProps) {
   const showDayGrid = fieldVisibility.chestDays || fieldVisibility.presenceDays;
@@ -59,6 +61,7 @@ export function WeeklyActivityCompactTeamList({
               fieldVisibility={fieldVisibility}
               canEdit={canEditRow(row)}
               onEdit={() => onEdit(row)}
+              onHistory={() => onHistory(row)}
               showDayHeaders={false}
             />
           ))

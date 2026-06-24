@@ -34,6 +34,8 @@ export type WeeklyActivityHistoryEntry = {
   actorResolvedName: string | null;
   actorDiscordUserId: string | null;
   createdAt: string;
+  previousValues: unknown;
+  nextValues: unknown;
 };
 
 export type WeeklyActivityTargetUser = {

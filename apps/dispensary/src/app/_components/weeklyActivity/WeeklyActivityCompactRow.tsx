@@ -1,7 +1,7 @@
 'use client';
 
 import { ActionIcon, Group, Stack, Text } from '@mantine/core';
-import { IconPencil } from '@tabler/icons-react';
+import { IconHistory, IconPencil } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import { emptyWeekdayFlags } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
@@ -19,6 +19,7 @@ type WeeklyActivityCompactRowProps = {
   fieldVisibility: WeeklyActivityFieldVisibility;
   canEdit?: boolean;
   onEdit?: () => void;
+  onHistory?: () => void;
   showName?: boolean;
   showDayHeaders?: boolean;
 };
@@ -29,6 +30,7 @@ export function WeeklyActivityCompactRow({
   fieldVisibility,
   canEdit = false,
   onEdit,
+  onHistory,
   showName = true,
   showDayHeaders = true,
 }: WeeklyActivityCompactRowProps) {
@@ -86,16 +88,31 @@ export function WeeklyActivityCompactRow({
             <Text className={classes.counterLine}>{counterLine}</Text>
           ) : null}
         </Group>
-        {canEdit && onEdit && row ? (
-          <ActionIcon
-            variant="subtle"
-            color="gray.0"
-            onClick={onEdit}
-            aria-label={`Modifier l'activité de ${displayName}`}
-            style={{ flexShrink: 0, color: 'var(--mantine-color-sage-1)' }}
-          >
-            <IconPencil size={16} />
-          </ActionIcon>
+        {row && (onHistory || (canEdit && onEdit)) ? (
+          <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
+            {onHistory ? (
+              <ActionIcon
+                variant="subtle"
+                color="gray.0"
+                onClick={onHistory}
+                aria-label={`Historique de ${displayName}`}
+                style={{ color: 'var(--mantine-color-sage-1)' }}
+              >
+                <IconHistory size={16} />
+              </ActionIcon>
+            ) : null}
+            {canEdit && onEdit ? (
+              <ActionIcon
+                variant="subtle"
+                color="gray.0"
+                onClick={onEdit}
+                aria-label={`Modifier l'activité de ${displayName}`}
+                style={{ color: 'var(--mantine-color-sage-1)' }}
+              >
+                <IconPencil size={16} />
+              </ActionIcon>
+            ) : null}
+          </Group>
         ) : null}
       </Group>
     </div>
