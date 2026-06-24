@@ -44,10 +44,16 @@ export function tenantRoutes(slug: string) {
     },
     management: {
       index: `${base}/management`,
-      companies: `${base}/management/companies`,
-      companyGroups: `${base}/management/companygroups`,
-      categoryItems: `${base}/management/categoryitems`,
-      items: `${base}/management/items`,
+      companies: (tab?: 'groups') => {
+        const url = `${base}/management/companies`;
+        if (tab === 'groups') return `${url}?tab=groups`;
+        return url;
+      },
+      items: (tab?: 'categories') => {
+        const url = `${base}/management/items`;
+        if (tab === 'categories') return `${url}?tab=categories`;
+        return url;
+      },
       mails: `${base}/management/mails`,
       chests: `${base}/management/chests`,
     },
@@ -65,7 +71,6 @@ export function tenantRoutes(slug: string) {
   };
 }
 
-/** @deprecated Use tenantRoutes(slug) for tenant-scoped navigation */
 export const routes = {
   test: {
     index: '/test',
@@ -74,43 +79,9 @@ export const routes = {
     dispensaries: '/platform/dispensaries',
     users: '/platform/users',
   },
-  admin: {
-    index: '/admin',
-    /** @deprecated Use routes.platform.users */
-    users: '/platform/users',
-  },
-  /** Legacy paths — redirect to default dispensary */
-  management: {
-    index: `/d/${DEFAULT_DISPENSARY_SLUG}/management`,
-    companies: `/d/${DEFAULT_DISPENSARY_SLUG}/management/companies`,
-    companyGroups: `/d/${DEFAULT_DISPENSARY_SLUG}/management/companygroups`,
-    categoryItems: `/d/${DEFAULT_DISPENSARY_SLUG}/management/categoryitems`,
-    items: `/d/${DEFAULT_DISPENSARY_SLUG}/management/items`,
-    mails: `/d/${DEFAULT_DISPENSARY_SLUG}/management/mails`,
-    chests: `/d/${DEFAULT_DISPENSARY_SLUG}/management/chests`,
-  },
   api: {},
   settings: {
     index: '/settings',
-  },
-  stock: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/stock` },
-  orders: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/orders` },
-  searchItems: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/search-items` },
-  bank: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/bank` },
-  weeklyActivity: { index: `/d/${DEFAULT_DISPENSARY_SLUG}/weekly-activity` },
-  employee: {
-    index: `/d/${DEFAULT_DISPENSARY_SLUG}/employee`,
-    payroll: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/payroll`,
-    payrollNew: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/payroll/new`,
-    payrollDetail: (id: string) => `/d/${DEFAULT_DISPENSARY_SLUG}/employee/payroll/${id}`,
-    stockStatistics: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/stock-statistics`,
-    stockMovements: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/stock-movements`,
-    mails: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails`,
-    newMail: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails/new`,
-    editMail: (id: string) => `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails/${id}/edit`,
-    newTemplate: `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails/templates/new`,
-    editTemplate: (id: string) => `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails/templates/${id}/edit`,
-    testTemplate: (id: string) => `/d/${DEFAULT_DISPENSARY_SLUG}/employee/mails/templates/${id}/test`,
   },
   auth: {
     index: '/auth',

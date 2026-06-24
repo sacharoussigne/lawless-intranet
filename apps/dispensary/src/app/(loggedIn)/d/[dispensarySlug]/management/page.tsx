@@ -5,9 +5,7 @@ import {
   IconBottle,
   IconBuildingStore,
   IconSettings,
-  IconTags,
   IconClipboardText,
-  IconUsers,
 } from '@tabler/icons-react';
 import { getAuthSession } from '@/lib/authSession';
 import { hasRole } from '@lawless-intranet/auth-permissions';
@@ -32,19 +30,11 @@ export default async function ManagementPage({
 
   const managementSections: (ModuleCardProps & { visible: boolean })[] = [
     {
-      title: "Catégories d'objets",
-      description:
-        "Organisez les objets par catégories pour avoir un stock plus clair et structuré.",
-      icon: IconTags,
-      href: t.management.categoryItems,
-      visible: true,
-    },
-    {
       title: 'Objets',
       description:
-        "Créez et mettez à jour les objets disponibles dans le stock, leurs paramètres et options.",
+        "Créez et organisez les objets et leurs catégories pour structurer le stock du dispensaire.",
       icon: IconBottle,
-      href: t.management.items,
+      href: t.management.items(),
       visible: true,
     },
     {
@@ -56,19 +46,11 @@ export default async function ManagementPage({
       visible: true,
     },
     {
-      title: "Groupes d'entreprises",
-      description:
-        "Regroupez les entreprises par structure pour simplifier le suivi et les conventions.",
-      icon: IconUsers,
-      href: t.management.companyGroups,
-      visible: true,
-    },
-    {
       title: 'Entreprises',
       description:
-        'Gérez le référentiel des entreprises partenaires liées aux groupes et aux commandes.',
+        'Gérez le référentiel des entreprises partenaires et leurs regroupements par structure.',
       icon: IconBuildingStore,
-      href: t.management.companies,
+      href: t.management.companies(),
       visible: true,
     },
     {

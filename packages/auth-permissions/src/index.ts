@@ -46,7 +46,7 @@ const employee = ac.newRole({
   application: ["access"],
   mails: ["access"],
   payroll_reports: [],
-  weekly_dispensary_activity: [],
+  weekly_dispensary_activity: ["view", "edit_own"],
   stock_statistics: [],
 });
 

@@ -7,14 +7,18 @@ import {
   createDispensaryWeeklyActivity,
   deleteDispensaryWeeklyActivity,
   getDispensaryWeeklyActivityHistory,
+  incrementOwnWeeklyCounter,
   listDispensaryWeeklyActivities,
   listDispensaryWeeklyActivityTargets,
+  markOwnWeeklyChestToday,
+  markOwnWeeklyPresenceToday,
   updateDispensaryWeeklyActivity,
 } from '@/app/_actions/dispensaryWeeklyActivity';
 import { handleAction } from '@/lib/action';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import {
   isSameWeeklyActivityWeek,
+  normalizeWeeklyActivityWeekBounds,
   weeklyActivityWeekKey,
   type WeeklyActivityWeekBounds,
 } from '@/lib/dispensaryWeeklyActivity/queryKeys';
@@ -30,6 +34,8 @@ export type WeeklyActivityHistoryEntry = {
   actorResolvedName: string | null;
   actorDiscordUserId: string | null;
   createdAt: string;
+  previousValues: unknown;
+  nextValues: unknown;
 };
 
 export type WeeklyActivityTargetUser = {
@@ -51,7 +57,8 @@ async function fetchWeeklyActivities(
   dispensarySlug: string,
   bounds: WeeklyActivityWeekBounds,
 ): Promise<WeeklyActivityListItem[]> {
-  const result = await listDispensaryWeeklyActivities(dispensarySlug, bounds);
+  const normalized = normalizeWeeklyActivityWeekBounds(bounds);
+  const result = await listDispensaryWeeklyActivities(dispensarySlug, normalized);
   const data = handleAction(result);
   return Array.isArray(data) ? data : [];
 }
@@ -214,6 +221,111 @@ export function useDeleteWeeklyActivityMutation() {
     onSuccess: ({ weekBounds }) => {
       invalidate(weekBounds);
       notifications.show({ title: 'Supprimé', message: '', color: 'moss' });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useMarkOwnWeeklyChestTodayMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const invalidate = useInvalidateWeeklyActivities();
+
+  return useMutation({
+    mutationFn: async (vars: { weekBounds: WeeklyActivityWeekBounds }) => {
+      const result = await markOwnWeeklyChestToday(dispensarySlug);
+      const data = handleAction<{
+        row: WeeklyActivityListItem;
+        alreadyDone?: boolean;
+        message?: string;
+      }>(result)!;
+      return { ...vars, row: data.row, alreadyDone: data.alreadyDone, message: data.message };
+    },
+    onSuccess: ({ weekBounds, alreadyDone, message }) => {
+      invalidate(weekBounds);
+      if (alreadyDone) {
+        notifications.show({
+          title: 'Déjà enregistré',
+          message: message ?? '',
+          color: 'amber',
+        });
+        return;
+      }
+      notifications.show({ title: 'Caisse enregistrée', message: '', color: 'moss' });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useMarkOwnWeeklyPresenceTodayMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const invalidate = useInvalidateWeeklyActivities();
+
+  return useMutation({
+    mutationFn: async (vars: { weekBounds: WeeklyActivityWeekBounds }) => {
+      const result = await markOwnWeeklyPresenceToday(dispensarySlug);
+      const data = handleAction<{
+        row: WeeklyActivityListItem;
+        alreadyDone?: boolean;
+        message?: string;
+      }>(result)!;
+      return { ...vars, row: data.row, alreadyDone: data.alreadyDone, message: data.message };
+    },
+    onSuccess: ({ weekBounds, alreadyDone, message }) => {
+      invalidate(weekBounds);
+      if (alreadyDone) {
+        notifications.show({
+          title: 'Déjà enregistré',
+          message: message ?? '',
+          color: 'amber',
+        });
+        return;
+      }
+      notifications.show({ title: 'Présence enregistrée', message: '', color: 'moss' });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+type WeeklyCounterField =
+  | 'sherifCount'
+  | 'patientsCount'
+  | 'infusionsCount'
+  | 'poppyMilkCount';
+
+export function useIncrementOwnWeeklyCounterMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const invalidate = useInvalidateWeeklyActivities();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      field: WeeklyCounterField;
+      weekBounds: WeeklyActivityWeekBounds;
+    }) => {
+      const result = await incrementOwnWeeklyCounter(dispensarySlug, { field: vars.field });
+      handleAction(result);
+      return vars;
+    },
+    onSuccess: ({ weekBounds }) => {
+      invalidate(weekBounds);
+      notifications.show({ title: 'Compteur mis à jour', message: '', color: 'moss' });
     },
     onError: (error: Error) => {
       notifications.show({
