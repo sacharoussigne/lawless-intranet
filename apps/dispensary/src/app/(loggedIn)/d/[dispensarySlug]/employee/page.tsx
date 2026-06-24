@@ -1,5 +1,6 @@
+import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
 import { tenantRoutes } from '@/types/routes';
-import { Container, SimpleGrid } from '@mantine/core';
+import { Container, SimpleGrid, Text } from '@mantine/core';
 import {
   IconAbacus,
   IconArchive,
@@ -22,6 +23,16 @@ import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
 import { userHasAnyCabinetAccess } from '@/lib/cabinet/access';
 import { ModuleCard, type ModuleCardProps } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { getBankWeekBounds } from '@/lib/bankWeek';
+import dayjs from '@/lib/dayjs';
+import {
+  getDiscordAccountIdForUser,
+  resolveDiscordDisplayName,
+} from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import prisma from '@/lib/prisma';
+import { getDataOrThrow } from '@/lib/response';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
 
 export default async function EmployeePage({
   params,
@@ -36,18 +47,24 @@ export default async function EmployeePage({
   const appSettings = await getAppSettings(dispensary.id);
   const t = tenantRoutes(dispensarySlug);
   const siteTitle = dispensarySiteTitle(appSettings);
-  const userId = session?.user?.id;
+  const userId = session?.user?.id ?? '';
   const agendaModuleAccess = userId
     ? await userHasAnyAgendaAccess(
         dispensary.id,
         userId,
-        session.user.role,
+        session!.user.role,
         effectiveRole,
       )
     : false;
   const cabinetModuleAccess = userId
     ? await userHasAnyCabinetAccess(dispensary.id, userId)
     : false;
+
+  const weeklyFeatureEnabled = appSettings.featureWeeklyDispensaryActivityEnabled;
+  const canViewWeekly = permissions?.weeklyDispensaryActivity.view ?? false;
+  const canEditAll = checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_all');
+  const canEdit =
+    canEditAll || checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
     {
@@ -103,12 +120,10 @@ export default async function EmployeePage({
     },
     {
       title: 'Activité hebdo',
-      description: 'Suivez l’activité hebdomadaire du dispensaire.',
+      description: 'Historique, filtres et détails complets de l’activité.',
       icon: IconCalendarWeek,
       href: t.weeklyActivity.index,
-      hasAccess:
-        appSettings.featureWeeklyDispensaryActivityEnabled &&
-        (permissions?.weeklyDispensaryActivity.view ?? false),
+      hasAccess: weeklyFeatureEnabled && canViewWeekly,
     },
     {
       title: 'Stats stock',
@@ -126,7 +141,32 @@ export default async function EmployeePage({
     },
   ];
 
-  const visibleSections = employeeSections.filter((s) => s.hasAccess);
+  const visibleSections = employeeSections
+    .filter((s) => s.hasAccess)
+    .map(({ hasAccess: _access, ...section }) => section);
+
+  let initialWeekBounds = {
+    periodStart: new Date(),
+    periodEnd: new Date(),
+  };
+  let initialRows: WeeklyActivityListItem[] = [];
+  let viewerDiscordId: string | null = null;
+  let defaultDisplayName = session?.user?.name ?? 'Moi';
+
+  if (weeklyFeatureEnabled && canViewWeekly && session?.user) {
+    const week = getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate());
+    initialWeekBounds = { periodStart: week.start, periodEnd: week.end };
+
+    const [result, discordId] = await Promise.all([
+      listDispensaryWeeklyActivities(dispensarySlug, initialWeekBounds),
+      getDiscordAccountIdForUser(prisma, session.user.id),
+    ]);
+    initialRows = getDataOrThrow(result, 'Erreur lors du chargement de l’activité hebdomadaire');
+    viewerDiscordId = discordId;
+    defaultDisplayName = discordId
+      ? await resolveDiscordDisplayName(prisma, discordId)
+      : session.user.name;
+  }
 
   return (
     <Container size="xl" py="xl">
@@ -135,8 +175,30 @@ export default async function EmployeePage({
         description={`Retrouvez ici les outils du quotidien pour le ${siteTitle}.`}
       />
 
+      {weeklyFeatureEnabled && canViewWeekly && (
+        <EmployeeWeeklyDashboard
+          dispensarySlug={dispensarySlug}
+          canEdit={canEdit}
+          canEditAll={canEditAll}
+          sessionUserId={userId}
+          viewerDiscordId={viewerDiscordId}
+          defaultDisplayName={defaultDisplayName}
+          initialWeekBounds={initialWeekBounds}
+          initialRows={initialRows}
+        />
+      )}
+
+      <hr
+        className="disp-section-divider"
+        style={{ marginTop: 'var(--mantine-spacing-xl)' }}
+      />
+
+      <Text className="disp-display-title" mb="lg">
+        Accès aux modules
+      </Text>
+
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
-        {visibleSections.map(({ hasAccess: _access, ...section }) => (
+        {visibleSections.map((section) => (
           <ModuleCard key={section.title} {...section} />
         ))}
       </SimpleGrid>

@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   assertBotEditableParisDay,
+  assertIntranetWeekdayFlagsEditAllowed,
   assertParisDayInCurrentWeek,
   BotDayEditError,
   buildBotDayFieldHistoryPayload,
+  isIntranetActivityWeekdayEditable,
   resolveParisDayAnchor,
 } from '@/lib/dispensaryWeeklyActivity/botDayEdit';
+import { emptyWeekdayFlags } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 import dayjs from '@/lib/dayjs';
 
 describe('botDayEdit', () => {
@@ -80,5 +83,26 @@ describe('botDayEdit', () => {
       date: '2026-05-13',
       presence: false,
     });
+  });
+
+  it('isIntranetActivityWeekdayEditable allows past and today for employees', () => {
+    const periodStart = resolveParisDayAnchor({ weekday: 'lundi' });
+    expect(isIntranetActivityWeekdayEditable(periodStart, 'jeudi', false)).toBe(true);
+    expect(isIntranetActivityWeekdayEditable(periodStart, 'vendredi', false)).toBe(true);
+    expect(isIntranetActivityWeekdayEditable(periodStart, 'dimanche', false)).toBe(false);
+  });
+
+  it('isIntranetActivityWeekdayEditable allows all days for direction', () => {
+    const periodStart = resolveParisDayAnchor({ weekday: 'lundi' });
+    expect(isIntranetActivityWeekdayEditable(periodStart, 'dimanche', true)).toBe(true);
+  });
+
+  it('assertIntranetWeekdayFlagsEditAllowed rejects future day edits for employees', () => {
+    const periodStart = resolveParisDayAnchor({ weekday: 'lundi' });
+    const previous = emptyWeekdayFlags();
+    const next = { ...previous, dimanche: true };
+    expect(() =>
+      assertIntranetWeekdayFlagsEditAllowed(periodStart, previous, next, false),
+    ).toThrow(/pas encore éditable/);
   });
 });

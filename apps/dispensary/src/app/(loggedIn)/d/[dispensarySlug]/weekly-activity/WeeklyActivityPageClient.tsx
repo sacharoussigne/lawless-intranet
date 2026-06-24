@@ -10,7 +10,7 @@ import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { addParisWeeks, getBankWeekBounds } from '@/lib/bankWeek';
+import { addParisWeeks, clampParisWeekDateToMax, getBankWeekBounds, getCurrentParisWeekStart } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import { weeklyActivityFieldVisibilityFromSettings } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
@@ -56,6 +56,7 @@ export default function WeeklyActivityPageClient({
     () => getBankWeekBounds(new Date()).start,
     [],
   );
+  const currentParisWeekStart = useMemo(() => getCurrentParisWeekStart(), []);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editRow, setEditRow] = useState<WeeklyActivityListItem | null>(null);
@@ -174,13 +175,18 @@ export default function WeeklyActivityPageClient({
             weekStart={currentWeekBounds.start}
             weekEnd={currentWeekBounds.end}
             weekDateValue={periodWeekDateValue}
+            maxWeekStart={currentParisWeekStart}
             onWeekChange={(d) => {
-              if (d) setPeriodWeekDateValue(d);
+              if (d) setPeriodWeekDateValue(clampParisWeekDateToMax(d, currentParisWeekStart));
             }}
             onPreviousWeek={() =>
               setPeriodWeekDateValue((prev) => addParisWeeks(prev, -1))
             }
-            onNextWeek={() => setPeriodWeekDateValue((prev) => addParisWeeks(prev, 1))}
+            onNextWeek={() =>
+              setPeriodWeekDateValue((prev) =>
+                clampParisWeekDateToMax(addParisWeeks(prev, 1), currentParisWeekStart),
+              )
+            }
           />
         </Group>
 

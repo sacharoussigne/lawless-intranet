@@ -22,10 +22,12 @@ export function DayFlagFields({
   title,
   flags,
   onToggle,
+  disabledKeys,
 }: {
   title: string;
   flags: WeekdayFlags;
   onToggle: (key: WeekdayKey, value: boolean) => void;
+  disabledKeys?: ReadonlySet<WeekdayKey>;
 }) {
   return (
     <div>
@@ -38,6 +40,8 @@ export function DayFlagFields({
             key={k}
             label={DAY_SHORT[k]}
             checked={flags[k]}
+            disabled={disabledKeys?.has(k)}
+            title={disabledKeys?.has(k) ? "Ce jour n'est pas encore éditable" : undefined}
             onChange={(e) => onToggle(k, e.currentTarget.checked)}
           />
         ))}

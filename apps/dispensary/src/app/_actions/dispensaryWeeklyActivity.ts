@@ -29,18 +29,29 @@ import {
 import {
   createDispensaryWeeklyActivityWithHistory,
   deleteDispensaryWeeklyActivityWithHistory,
+  findOrCreateDispensaryActivityForParisDay,
   findWeeklyActivityByDoctorAndPeriod,
+  botMarkChestForParisToday,
+  botMarkPresenceForParisRelativeDay,
   updateDispensaryWeeklyActivityWithHistory,
   WEEKLY_ACTIVITY_DUPLICATE_MESSAGE,
 } from '@/lib/dispensaryWeeklyActivity/service';
-import { getAppSettings } from '@/lib/appSettings';
+import { loadSerializedWeeklyActivityByIdForDispensary } from '@/lib/dispensaryWeeklyActivity/loadSerializedRow';
 import {
   applyVisibilityToCreateInput,
   applyVisibilityToUpdateInput,
+  botPatchFieldVisibilityError,
+  botWeekdayFieldVisibilityError,
   weeklyActivityFieldVisibilityFromSettings,
 } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
+import { getAppSettings } from '@/lib/appSettings';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import {
+  assertIntranetWeekdayFlagsEditAllowed,
+  BotDayEditError,
+} from '@/lib/dispensaryWeeklyActivity/botDayEdit';
+import { parseWeekdayFlagsJson } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 
 async function requireWeeklyActivityView(dispensarySlug: string) {
   const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -82,11 +93,42 @@ async function listWhereForSession(
     return tenantFilter;
   }
   const discordId = await getDiscordAccountIdForUser(prisma, sessionUserId);
-  const or: { userId?: string; discordUserId?: string }[] = [{ userId: sessionUserId }];
-  if (discordId) {
-    or.push({ discordUserId: discordId });
+  if (!discordId) {
+    return { ...tenantFilter, userId: sessionUserId };
   }
-  return { ...tenantFilter, OR: or };
+  return {
+    ...tenantFilter,
+    OR: [{ userId: sessionUserId }, { discordUserId: discordId }],
+  };
+}
+
+async function appendOwnWeeklyRowByDiscordIfMissing(
+  dispensaryId: string,
+  rows: Awaited<ReturnType<typeof listSerializedWeeklyActivities>>,
+  discordUserId: string | null,
+  periodStart: Date,
+  periodEnd: Date,
+) {
+  if (!discordUserId || rows.some((row) => row.discordUserId === discordUserId)) {
+    return rows;
+  }
+
+  const extra = await listSerializedWeeklyActivities(
+    {
+      ...tenantWhere(dispensaryId),
+      discordUserId,
+      periodStart: { lte: periodEnd },
+      periodEnd: { gte: periodStart },
+    },
+    dispensaryId,
+  );
+
+  if (extra.length === 0) {
+    return rows;
+  }
+
+  const knownIds = new Set(rows.map((row) => row.id));
+  return [...rows, ...extra.filter((row) => !knownIds.has(row.id))];
 }
 
 export async function listDispensaryWeeklyActivities(
@@ -102,6 +144,7 @@ export async function listDispensaryWeeklyActivities(
     const { dispensaryId } = tenant;
 
     const where = await listWhereForSession(dispensaryId, session.user.id, tenant.effectiveRole);
+    const viewerDiscordId = await getDiscordAccountIdForUser(prisma, session.user.id);
 
     if (options) {
       Object.assign(where, {
@@ -110,7 +153,17 @@ export async function listDispensaryWeeklyActivities(
       });
     }
 
-    const data = await listSerializedWeeklyActivities(where, dispensaryId);
+    let data = await listSerializedWeeklyActivities(where, dispensaryId);
+
+    if (options && viewerDiscordId) {
+      data = await appendOwnWeeklyRowByDiscordIfMissing(
+        dispensaryId,
+        data,
+        viewerDiscordId,
+        options.periodStart,
+        options.periodEnd,
+      );
+    }
 
     return {
       status: 200 as const,
@@ -209,6 +262,8 @@ export async function getDispensaryWeeklyActivityHistory(
           actorDiscordUserId,
           actorResolvedName,
           createdAt: h.createdAt.toISOString(),
+          previousValues: h.previousValues,
+          nextValues: h.nextValues,
         };
       }),
     };
@@ -425,6 +480,27 @@ export async function updateDispensaryWeeklyActivity(
     const settings = await getAppSettings(dispensaryId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
     const updateInput = applyVisibilityToUpdateInput(parsedBody.data, visibility);
+    const canEditAll = canEditAllWeeklyDispensaryActivity(gate.tenant.effectiveRole);
+    const existingChest = parseWeekdayFlagsJson(existing.chestDays);
+    const existingPresence = parseWeekdayFlagsJson(existing.presenceDays);
+
+    if (updateInput.chestDays) {
+      assertIntranetWeekdayFlagsEditAllowed(
+        existing.periodStart,
+        existingChest,
+        updateInput.chestDays,
+        canEditAll,
+      );
+    }
+    if (updateInput.presenceDays) {
+      assertIntranetWeekdayFlagsEditAllowed(
+        existing.periodStart,
+        existingPresence,
+        updateInput.presenceDays,
+        canEditAll,
+      );
+    }
+
     const actorDiscordUserId = await getDiscordAccountIdForUser(prisma, gate.session.user.id);
 
     await updateDispensaryWeeklyActivityWithHistory(parsedId.data.id, updateInput, {
@@ -435,6 +511,9 @@ export async function updateDispensaryWeeklyActivity(
 
     return { status: 200 as const, data: { ok: true } };
   } catch (error) {
+    if (error instanceof BotDayEditError) {
+      return { status: 400 as const, error: error.message };
+    }
     return actionErrorParser(error, 'Erreur lors de la mise à jour');
   }
 }
@@ -484,5 +563,175 @@ export async function deleteDispensaryWeeklyActivity(
     return { status: 200 as const, data: { ok: true } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression');
+  }
+}
+
+const weeklyCounterFieldSchema = z.enum([
+  'sherifCount',
+  'patientsCount',
+  'infusionsCount',
+  'poppyMilkCount',
+]);
+
+async function requireOwnDiscordUserId(
+  sessionUserId: string,
+): Promise<{ ok: true; discordUserId: string } | { ok: false; response: { status: 400; error: string } }> {
+  const discordUserId = await getDiscordAccountIdForUser(prisma, sessionUserId);
+  if (!discordUserId) {
+    return {
+      ok: false,
+      response: {
+        status: 400 as const,
+        error: 'Compte Discord requis (liez Discord dans les paramètres).',
+      },
+    };
+  }
+  return { ok: true, discordUserId };
+}
+
+async function serializeQuickActionRow(dispensaryId: string, activityId: string) {
+  const row = await loadSerializedWeeklyActivityByIdForDispensary(activityId, dispensaryId);
+  if (!row) {
+    throw new Error('Activité introuvable après mise à jour');
+  }
+  return row;
+}
+
+export async function markOwnWeeklyChestToday(dispensarySlug: string) {
+  try {
+    const gate = await requireWeeklyActivityEdit(dispensarySlug);
+    if (!gate.ok) {
+      return gate.response;
+    }
+
+    const discordGate = await requireOwnDiscordUserId(gate.session.user.id);
+    if (!discordGate.ok) {
+      return discordGate.response;
+    }
+
+    const { dispensaryId } = gate.tenant;
+    const settings = await getAppSettings(dispensaryId);
+    const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
+    const visibilityError = botWeekdayFieldVisibilityError('chest', visibility);
+    if (visibilityError) {
+      return { status: 403 as const, error: visibilityError };
+    }
+
+    const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
+    const result = await botMarkChestForParisToday(dispensaryId, discordGate.discordUserId, {
+      displayName,
+    });
+
+    const row = await serializeQuickActionRow(dispensaryId, result.activity.id);
+    if (result.outcome === 'already_done') {
+      return {
+        status: 200 as const,
+        data: { row, alreadyDone: true as const, message: result.message },
+      };
+    }
+    return { status: 200 as const, data: { row, alreadyDone: false as const } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de l’enregistrement de la caisse');
+  }
+}
+
+export async function markOwnWeeklyPresenceToday(dispensarySlug: string) {
+  try {
+    const gate = await requireWeeklyActivityEdit(dispensarySlug);
+    if (!gate.ok) {
+      return gate.response;
+    }
+
+    const discordGate = await requireOwnDiscordUserId(gate.session.user.id);
+    if (!discordGate.ok) {
+      return discordGate.response;
+    }
+
+    const { dispensaryId } = gate.tenant;
+    const settings = await getAppSettings(dispensaryId);
+    const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
+    const visibilityError = botWeekdayFieldVisibilityError('presence', visibility);
+    if (visibilityError) {
+      return { status: 403 as const, error: visibilityError };
+    }
+
+    const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
+    const result = await botMarkPresenceForParisRelativeDay(
+      dispensaryId,
+      discordGate.discordUserId,
+      'today',
+      { displayName },
+    );
+
+    const row = await serializeQuickActionRow(dispensaryId, result.activity.id);
+    if (result.outcome === 'already_done') {
+      return {
+        status: 200 as const,
+        data: { row, alreadyDone: true as const, message: result.message },
+      };
+    }
+    return { status: 200 as const, data: { row, alreadyDone: false as const } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de l’enregistrement de la présence');
+  }
+}
+
+export async function incrementOwnWeeklyCounter(
+  dispensarySlug: string,
+  input: { field: z.infer<typeof weeklyCounterFieldSchema> },
+) {
+  try {
+    const gate = await requireWeeklyActivityEdit(dispensarySlug);
+    if (!gate.ok) {
+      return gate.response;
+    }
+
+    const parsed = weeklyCounterFieldSchema.safeParse(input.field);
+    if (!parsed.success) {
+      return { status: 400 as const, error: 'Compteur invalide' };
+    }
+
+    const discordGate = await requireOwnDiscordUserId(gate.session.user.id);
+    if (!discordGate.ok) {
+      return discordGate.response;
+    }
+
+    const { dispensaryId } = gate.tenant;
+    const settings = await getAppSettings(dispensaryId);
+    const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
+    const visibilityError = botPatchFieldVisibilityError(
+      { [parsed.data]: 0 },
+      visibility,
+    );
+    if (visibilityError) {
+      return { status: 403 as const, error: visibilityError };
+    }
+
+    const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
+    const existing = await findOrCreateDispensaryActivityForParisDay(
+      prisma,
+      dispensaryId,
+      discordGate.discordUserId,
+      new Date(),
+      displayName,
+    );
+
+    const currentValue = existing[parsed.data];
+    const actorDiscordUserId = discordGate.discordUserId;
+
+    await updateDispensaryWeeklyActivityWithHistory(
+      existing.id,
+      { [parsed.data]: currentValue + 1 },
+      {
+        source: 'INTRANET',
+        actorUserId: gate.session.user.id,
+        actorDiscordUserId,
+      },
+    );
+
+    const row = await serializeQuickActionRow(dispensaryId, existing.id);
+    return { status: 200 as const, data: { row } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de l’incrémentation');
   }
 }

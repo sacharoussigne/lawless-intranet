@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Button,
   Divider,
@@ -14,7 +14,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
-import { addParisWeeks, getBankWeekBounds } from '@/lib/bankWeek';
+import { addParisWeeks, clampParisWeekDateToMax, getBankWeekBounds, getCurrentParisWeekStart } from '@/lib/bankWeek';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import { emptyWeekdayFlags, type WeekdayFlags, type WeekdayKey } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 import { DayFlagFields } from './weeklyActivityUtils';
@@ -43,6 +43,7 @@ export function CreateWeeklyActivityModal({
 }: CreateWeeklyActivityModalProps) {
   const createMutation = useCreateWeeklyActivityMutation();
   const { data: targetUsers = [] } = useWeeklyActivityTargets(opened && canEditAll);
+  const currentParisWeekStart = useMemo(() => getCurrentParisWeekStart(), []);
 
   const [cWeekDateValue, setCWeekDateValue] = useState<Date | null>(defaultWeekMonday);
   const [cTargetUserId, setCTargetUserId] = useState<string | null>(null);
@@ -186,11 +187,18 @@ export function CreateWeeklyActivityModal({
               weekStart={createWeekBounds.start}
               weekEnd={createWeekBounds.end}
               weekDateValue={cWeekDateValue}
+              maxWeekStart={currentParisWeekStart}
               onWeekChange={(d) => {
-                if (d) setCWeekDateValue(d);
+                if (d) {
+                  setCWeekDateValue(clampParisWeekDateToMax(d, currentParisWeekStart));
+                }
               }}
               onPreviousWeek={() => setCWeekDateValue((prev) => (prev ? addParisWeeks(prev, -1) : prev))}
-              onNextWeek={() => setCWeekDateValue((prev) => (prev ? addParisWeeks(prev, 1) : prev))}
+              onNextWeek={() =>
+                setCWeekDateValue((prev) =>
+                  prev ? clampParisWeekDateToMax(addParisWeeks(prev, 1), currentParisWeekStart) : prev,
+                )
+              }
             />
           )}
         </div>
