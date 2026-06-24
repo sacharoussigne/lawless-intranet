@@ -47,6 +47,11 @@ import {
 import { getAppSettings } from '@/lib/appSettings';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import {
+  assertIntranetWeekdayFlagsEditAllowed,
+  BotDayEditError,
+} from '@/lib/dispensaryWeeklyActivity/botDayEdit';
+import { parseWeekdayFlagsJson } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 
 async function requireWeeklyActivityView(dispensarySlug: string) {
   const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -473,6 +478,27 @@ export async function updateDispensaryWeeklyActivity(
     const settings = await getAppSettings(dispensaryId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
     const updateInput = applyVisibilityToUpdateInput(parsedBody.data, visibility);
+    const canEditAll = canEditAllWeeklyDispensaryActivity(gate.tenant.effectiveRole);
+    const existingChest = parseWeekdayFlagsJson(existing.chestDays);
+    const existingPresence = parseWeekdayFlagsJson(existing.presenceDays);
+
+    if (updateInput.chestDays) {
+      assertIntranetWeekdayFlagsEditAllowed(
+        existing.periodStart,
+        existingChest,
+        updateInput.chestDays,
+        canEditAll,
+      );
+    }
+    if (updateInput.presenceDays) {
+      assertIntranetWeekdayFlagsEditAllowed(
+        existing.periodStart,
+        existingPresence,
+        updateInput.presenceDays,
+        canEditAll,
+      );
+    }
+
     const actorDiscordUserId = await getDiscordAccountIdForUser(prisma, gate.session.user.id);
 
     await updateDispensaryWeeklyActivityWithHistory(parsedId.data.id, updateInput, {
@@ -483,6 +509,9 @@ export async function updateDispensaryWeeklyActivity(
 
     return { status: 200 as const, data: { ok: true } };
   } catch (error) {
+    if (error instanceof BotDayEditError) {
+      return { status: 400 as const, error: error.message };
+    }
     return actionErrorParser(error, 'Erreur lors de la mise à jour');
   }
 }

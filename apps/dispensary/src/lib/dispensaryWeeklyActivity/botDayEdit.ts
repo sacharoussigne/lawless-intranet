@@ -3,6 +3,7 @@ import { getBankWeekBounds } from '@/lib/bankWeek';
 import {
   parisWeekdayKey,
   WEEKDAY_KEYS,
+  type WeekdayFlags,
   type WeekdayKey,
 } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 
@@ -102,6 +103,39 @@ export function assertActivityInCurrentParisWeek(
 
 export function weekdayKeyForParisAnchor(anchor: Date): WeekdayKey {
   return parisWeekdayKey(anchor);
+}
+
+export function parisAnchorForActivityWeekday(periodStart: Date, key: WeekdayKey): Date {
+  const weekStartParis = dayjs(periodStart).tz(TZ).startOf('day');
+  const index = WEEKDAY_KEYS.indexOf(key);
+  return weekStartParis.add(index, 'day').toDate();
+}
+
+export function isIntranetActivityWeekdayEditable(
+  periodStart: Date,
+  key: WeekdayKey,
+  canEditAll: boolean,
+): boolean {
+  if (canEditAll) return true;
+  const anchor = parisAnchorForActivityWeekday(periodStart, key);
+  const target = dayjs(anchor).tz(TZ).startOf('day');
+  const now = dayjs().tz(TZ).startOf('day');
+  return !target.isAfter(now);
+}
+
+export function assertIntranetWeekdayFlagsEditAllowed(
+  periodStart: Date,
+  previous: WeekdayFlags,
+  next: WeekdayFlags,
+  canEditAll: boolean,
+): void {
+  if (canEditAll) return;
+  for (const key of WEEKDAY_KEYS) {
+    if (previous[key] === next[key]) continue;
+    if (!isIntranetActivityWeekdayEditable(periodStart, key, false)) {
+      throw new BotDayEditError("Ce jour n'est pas encore éditable.");
+    }
+  }
 }
 
 export type BotDayFieldHistoryPayload = {

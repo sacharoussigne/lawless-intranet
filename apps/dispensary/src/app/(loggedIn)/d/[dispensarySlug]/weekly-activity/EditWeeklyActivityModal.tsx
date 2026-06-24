@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Divider, NumberInput, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import { emptyWeekdayFlags, type WeekdayFlags, type WeekdayKey } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
+import { isIntranetActivityWeekdayEditable } from '@/lib/dispensaryWeeklyActivity/botDayEdit';
+import { emptyWeekdayFlags, WEEKDAY_KEYS, type WeekdayFlags, type WeekdayKey } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import { DayFlagFields } from './weeklyActivityUtils';
 import {
@@ -43,6 +44,14 @@ export function EditWeeklyActivityModal({
     fieldVisibility.patientsCount ||
     fieldVisibility.infusionsCount ||
     fieldVisibility.poppyMilkCount;
+
+  const disabledWeekdayKeys = useMemo(() => {
+    if (!row || canEditAll) return new Set<WeekdayKey>();
+    const periodStart = new Date(row.periodStart);
+    return new Set(
+      WEEKDAY_KEYS.filter((key) => !isIntranetActivityWeekdayEditable(periodStart, key, false)),
+    );
+  }, [row, canEditAll]);
 
   useEffect(() => {
     if (!row) return;
@@ -108,6 +117,7 @@ export function EditWeeklyActivityModal({
             <DayFlagFields
               title="Caisses (par jour de semaine)"
               flags={eChestFlags}
+              disabledKeys={disabledWeekdayKeys}
               onToggle={(key: WeekdayKey, value: boolean) =>
                 setEChestFlags((p) => ({ ...p, [key]: value }))
               }
@@ -117,6 +127,7 @@ export function EditWeeklyActivityModal({
             <DayFlagFields
               title="Présences (par jour)"
               flags={ePresenceFlags}
+              disabledKeys={disabledWeekdayKeys}
               onToggle={(key: WeekdayKey, value: boolean) =>
                 setEPresenceFlags((p) => ({ ...p, [key]: value }))
               }
