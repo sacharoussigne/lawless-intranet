@@ -1,0 +1,44 @@
+.counterTile {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--mantine-color-sage-3);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  background: var(--disp-surface);
+  color: var(--disp-ink);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--mantine-color-sage-0);
+    border-color: var(--mantine-color-sage-5);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+.counterTileInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+}
+
+.counterTileLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+  flex: 1;
+}
+
+.counterTilePlus {
+  flex-shrink: 0;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  color: var(--mantine-color-sage-7);
+}

@@ -1,18 +1,34 @@
 export type WeeklyActivityWeekBounds = {
-  periodStart: Date;
-  periodEnd: Date;
+  periodStart: Date | string;
+  periodEnd: Date | string;
 };
 
+export function normalizeWeeklyActivityWeekBounds(
+  bounds: WeeklyActivityWeekBounds,
+): { periodStart: Date; periodEnd: Date } {
+  return {
+    periodStart:
+      bounds.periodStart instanceof Date
+        ? bounds.periodStart
+        : new Date(bounds.periodStart),
+    periodEnd:
+      bounds.periodEnd instanceof Date ? bounds.periodEnd : new Date(bounds.periodEnd),
+  };
+}
+
 export function weeklyActivityWeekKey(bounds: WeeklyActivityWeekBounds): string {
-  return `${bounds.periodStart.toISOString()}__${bounds.periodEnd.toISOString()}`;
+  const normalized = normalizeWeeklyActivityWeekBounds(bounds);
+  return `${normalized.periodStart.toISOString()}__${normalized.periodEnd.toISOString()}`;
 }
 
 export function isSameWeeklyActivityWeek(
   a: WeeklyActivityWeekBounds,
   b: WeeklyActivityWeekBounds,
 ): boolean {
+  const normA = normalizeWeeklyActivityWeekBounds(a);
+  const normB = normalizeWeeklyActivityWeekBounds(b);
   return (
-    a.periodStart.getTime() === b.periodStart.getTime() &&
-    a.periodEnd.getTime() === b.periodEnd.getTime()
+    normA.periodStart.getTime() === normB.periodStart.getTime() &&
+    normA.periodEnd.getTime() === normB.periodEnd.getTime()
   );
 }
