@@ -41,6 +41,7 @@ export function WeeklyActivityCompactPanel({
         fieldVisibility={fieldVisibility}
         canEdit={canEdit}
         onEdit={onEdit}
+        showName={false}
       />
     </Paper>
   );

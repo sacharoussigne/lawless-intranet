@@ -41,7 +41,7 @@ export function buildCompactCounterStats(
     stats.push({ label: 'Shérifs', value: row.sherifCount });
   }
   if (visibility.infusionsCount) {
-    stats.push({ label: 'Inf. ginseng', value: row.infusionsCount });
+    stats.push({ label: 'Infusion', value: row.infusionsCount });
   }
   if (visibility.poppyMilkCount) {
     stats.push({ label: 'Lait pavot', value: row.poppyMilkCount });
@@ -50,5 +50,5 @@ export function buildCompactCounterStats(
 }
 
 export function formatCompactCounterLine(stats: CompactCounterStat[]): string {
-  return stats.map((s) => `${s.label} : ${s.value}`).join('  |  ');
+  return stats.map((s) => `${s.label}: ${s.value}`).join('  |  ');
 }
