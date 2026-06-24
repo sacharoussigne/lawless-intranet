@@ -8,8 +8,10 @@ import {
   getDiscordAccountIdForUser,
   resolveDiscordDisplayName,
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import prisma from '@/lib/prisma';
 import { getDataOrThrow } from '@/lib/response';
+import type { AuthSession } from '@/types/session';
 import WeeklyActivityPageClient from './WeeklyActivityPageClient';
 
 async function WeeklyActivityContent({ dispensarySlug }: { dispensarySlug: string }) {
@@ -17,6 +19,9 @@ async function WeeklyActivityContent({ dispensarySlug }: { dispensarySlug: strin
   if (!session?.user) {
     return null;
   }
+
+  const dispensary = await requireDispensaryFromSlug(dispensarySlug);
+  const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession, dispensary.id);
 
   const week = getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate());
   const initialWeekBounds = { periodStart: week.start, periodEnd: week.end };
@@ -27,10 +32,10 @@ async function WeeklyActivityContent({ dispensarySlug }: { dispensarySlug: strin
   ]);
   const rows = getDataOrThrow(result, 'Erreur lors du chargement de l’activité hebdomadaire');
 
-  const canEditAll = checkRolePermission(session.user.role, 'weekly_dispensary_activity', 'edit_all');
+  const canEditAll = checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_all');
   const canEdit =
     canEditAll ||
-    checkRolePermission(session.user.role, 'weekly_dispensary_activity', 'edit_own');
+    checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
 
   const defaultDisplayName = viewerDiscordId
     ? await resolveDiscordDisplayName(prisma, viewerDiscordId)
