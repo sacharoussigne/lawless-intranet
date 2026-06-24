@@ -1,13 +1,13 @@
+@mixin mono {
+  font-family: var(--disp-font-ui);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 .panel {
   background-color: var(--mantine-color-sage-9);
   border-color: var(--mantine-color-sage-8);
   color: var(--mantine-color-sage-0);
-}
-
-.mono {
-  font-family: var(--disp-font-ui);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
 }
 
 .name {
@@ -19,7 +19,7 @@
 }
 
 .dayHeader {
-  composes: mono;
+  @include mono;
   font-size: var(--mantine-font-size-xs);
   font-weight: 600;
   color: var(--mantine-color-sage-2);
@@ -28,7 +28,7 @@
 }
 
 .dayCell {
-  composes: mono;
+  @include mono;
   font-size: var(--mantine-font-size-md);
   font-weight: 600;
   color: var(--mantine-color-sage-0);
@@ -38,7 +38,7 @@
 }
 
 .counterLine {
-  composes: mono;
+  @include mono;
   font-size: var(--mantine-font-size-sm);
   font-weight: 500;
   color: var(--mantine-color-sage-1);
@@ -60,7 +60,7 @@
 }
 
 .emptyHint {
-  composes: mono;
+  @include mono;
   font-size: var(--mantine-font-size-sm);
   color: var(--mantine-color-sage-3);
   margin-top: var(--mantine-spacing-xs);
