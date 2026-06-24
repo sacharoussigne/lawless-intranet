@@ -179,8 +179,3 @@ export function formatHistoryValueChanges(
 
   return [];
 }
-
-/** @deprecated Use formatHistoryValueChanges */
-export function formatManualHistoryChanges(previous: unknown, next: unknown): string[] {
-  return formatHistoryValueChanges('UPDATE', previous, next);
-}

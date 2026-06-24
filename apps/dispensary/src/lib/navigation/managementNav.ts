@@ -1,19 +1,15 @@
 import type { Icon } from '@tabler/icons-react';
 import {
   IconBuildingSkyscraper,
-  IconCategory2,
   IconClipboardText,
   IconInbox,
   IconLayoutGrid,
-  IconUsersGroup,
 } from '@tabler/icons-react';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
 import type { tenantRoutes } from '@/types/routes';
 
 export type ManagementNavId =
-| 'categoryItems'
   | 'items'
-  | 'companyGroups'
   | 'companies'
   | 'chests'
   | 'mails';
@@ -41,36 +37,20 @@ function isItemVisible(id: ManagementNavId, appSettings: AppSettingsDTO): boolea
 function buildAllItems(t: ReturnType<typeof tenantRoutes>): ManagementNavItem[] {
   return [
     {
-      id: 'categoryItems',
-      label: "Catégories d'objets",
-      shortLabel: 'Catégories',
-      href: t.management.categoryItems,
-      icon: IconCategory2,
-      navOrder: 1,
-    },
-    {
       id: 'items',
       label: 'Objets',
       shortLabel: 'Objets',
-      href: t.management.items,
+      href: t.management.items(),
       icon: IconLayoutGrid,
-      navOrder: 2,
-    },
-    {
-      id: 'companyGroups',
-      label: "Groupes d'entreprises",
-      shortLabel: 'Groupes',
-      href: t.management.companyGroups,
-      icon: IconUsersGroup,
-      navOrder: 3,
+      navOrder: 1,
     },
     {
       id: 'companies',
       label: 'Entreprises',
       shortLabel: 'Entreprises',
-      href: t.management.companies,
+      href: t.management.companies(),
       icon: IconBuildingSkyscraper,
-      navOrder: 4,
+      navOrder: 2,
     },
     {
       id: 'chests',

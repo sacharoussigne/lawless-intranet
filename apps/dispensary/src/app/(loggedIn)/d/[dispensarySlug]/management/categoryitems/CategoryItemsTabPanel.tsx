@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Container, Title, Group, Button } from '@mantine/core';
+import { Title, Group, Button, Stack } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { CategoryItemModal } from './components/CategoryItemModal';
 import { DeleteCategoryItemModal } from './components/DeleteCategoryItemModal';
@@ -19,13 +19,11 @@ import {
   useReorderCategoryItemsMutation,
 } from './hooks/useCategoryItemsQueries';
 
-interface CategoryItemsPageClientProps {
+interface CategoryItemsTabPanelProps {
   initialCategoryItems: CategoryItemWithCount[];
 }
 
-export default function CategoryItemsPageClient({
-  initialCategoryItems,
-}: CategoryItemsPageClientProps) {
+export function CategoryItemsTabPanel({ initialCategoryItems }: CategoryItemsTabPanelProps) {
   const { data: categoryItems = [], isFetching } = useManagementCategoryItems(initialCategoryItems);
   const createMutation = useCreateCategoryItemMutation();
   const updateMutation = useUpdateCategoryItemMutation();
@@ -69,9 +67,9 @@ export default function CategoryItemsPageClient({
   };
 
   return (
-    <Container size="xl" py="xl">
-      <Group justify="space-between" mb="xl">
-        <Title order={1}>Catégories d&apos;objets</Title>
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Title order={2}>Catégories d&apos;objets</Title>
         <Group>
           <Button
             variant="light"
@@ -139,6 +137,6 @@ export default function CategoryItemsPageClient({
         categoryItems={categoryItems}
         reorderMutation={reorderMutation}
       />
-    </Container>
+    </Stack>
   );
 }
