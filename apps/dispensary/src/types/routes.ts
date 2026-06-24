@@ -46,8 +46,13 @@ export function tenantRoutes(slug: string) {
       index: `${base}/management`,
       companies: `${base}/management/companies`,
       companyGroups: `${base}/management/companygroups`,
-      categoryItems: `${base}/management/categoryitems`,
-      items: `${base}/management/items`,
+      items: (tab?: 'categories') => {
+        const url = `${base}/management/items`;
+        if (tab === 'categories') return `${url}?tab=categories`;
+        return url;
+      },
+      /** @deprecated Use management.items('categories') */
+      categoryItems: `${base}/management/items?tab=categories`,
       mails: `${base}/management/mails`,
       chests: `${base}/management/chests`,
     },
@@ -84,8 +89,13 @@ export const routes = {
     index: `/d/${DEFAULT_DISPENSARY_SLUG}/management`,
     companies: `/d/${DEFAULT_DISPENSARY_SLUG}/management/companies`,
     companyGroups: `/d/${DEFAULT_DISPENSARY_SLUG}/management/companygroups`,
-    categoryItems: `/d/${DEFAULT_DISPENSARY_SLUG}/management/categoryitems`,
-    items: `/d/${DEFAULT_DISPENSARY_SLUG}/management/items`,
+    items: (tab?: 'categories') => {
+      const url = `/d/${DEFAULT_DISPENSARY_SLUG}/management/items`;
+      if (tab === 'categories') return `${url}?tab=categories`;
+      return url;
+    },
+    /** @deprecated Use management.items('categories') */
+    categoryItems: `/d/${DEFAULT_DISPENSARY_SLUG}/management/items?tab=categories`,
     mails: `/d/${DEFAULT_DISPENSARY_SLUG}/management/mails`,
     chests: `/d/${DEFAULT_DISPENSARY_SLUG}/management/chests`,
   },

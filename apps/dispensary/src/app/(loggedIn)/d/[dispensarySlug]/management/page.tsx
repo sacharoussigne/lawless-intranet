@@ -5,7 +5,6 @@ import {
   IconBottle,
   IconBuildingStore,
   IconSettings,
-  IconTags,
   IconClipboardText,
   IconUsers,
 } from '@tabler/icons-react';
@@ -32,19 +31,11 @@ export default async function ManagementPage({
 
   const managementSections: (ModuleCardProps & { visible: boolean })[] = [
     {
-      title: "Catégories d'objets",
-      description:
-        "Organisez les objets par catégories pour avoir un stock plus clair et structuré.",
-      icon: IconTags,
-      href: t.management.categoryItems,
-      visible: true,
-    },
-    {
       title: 'Objets',
       description:
-        "Créez et mettez à jour les objets disponibles dans le stock, leurs paramètres et options.",
+        "Créez et organisez les objets et leurs catégories pour structurer le stock du dispensaire.",
       icon: IconBottle,
-      href: t.management.items,
+      href: t.management.items(),
       visible: true,
     },
     {

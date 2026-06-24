@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Container, Group, Button } from '@mantine/core';
-import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { Group, Button, Title, Stack } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { ItemModal } from './components/ItemModal';
 import { DeleteItemModal } from './components/DeleteItemModal';
@@ -22,17 +21,17 @@ import {
   useReorderItemsMutation,
 } from './hooks/useItemsQueries';
 
-interface ItemsPageClientProps {
+interface ItemsTabPanelProps {
   initialItems: ItemWithRelations[];
   categoryItems: CategoryItemWithCount[];
   companyGroups: CompanyGroupSelect[];
 }
 
-export default function ItemsPageClient({
+export function ItemsTabPanel({
   initialItems,
   categoryItems,
   companyGroups,
-}: ItemsPageClientProps) {
+}: ItemsTabPanelProps) {
   const { data: items = [], isFetching } = useManagementItems(initialItems);
   const createMutation = useCreateItemMutation();
   const updateMutation = useUpdateItemMutation();
@@ -91,25 +90,22 @@ export default function ItemsPageClient({
   };
 
   return (
-    <Container size="xl" py="xl">
-      <PageHeader
-        title="Objets"
-        description="Catalogue des objets du dispensaire, catégories et paramètres de stock."
-        actions={
-          <Group>
-            <Button
-              variant="light"
-              onClick={() => setReorderModalOpened(true)}
-              disabled={items.length === 0}
-            >
-              Réordonner
-            </Button>
-            <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
-              Créer un objet
-            </Button>
-          </Group>
-        }
-      />
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Title order={2}>Catalogue des objets</Title>
+        <Group>
+          <Button
+            variant="light"
+            onClick={() => setReorderModalOpened(true)}
+            disabled={items.length === 0}
+          >
+            Réordonner
+          </Button>
+          <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
+            Créer un objet
+          </Button>
+        </Group>
+      </Group>
 
       <ActiveFilters
         filters={[
@@ -211,6 +207,6 @@ export default function ItemsPageClient({
         categoryItems={categoryItems}
         reorderMutation={reorderMutation}
       />
-    </Container>
+    </Stack>
   );
 }
