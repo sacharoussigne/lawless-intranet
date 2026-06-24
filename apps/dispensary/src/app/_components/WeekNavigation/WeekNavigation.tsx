@@ -4,6 +4,7 @@ import { ActionIcon, Group, Text } from '@mantine/core';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { formatDate, parsePickerDate } from '@/lib/date';
+import { getBankWeekBounds, isParisWeekAfter } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 
 interface WeekNavigationProps {
@@ -14,6 +15,8 @@ interface WeekNavigationProps {
   onPreviousWeek: () => void;
   onNextWeek: () => void;
   loading?: boolean;
+  /** Latest selectable week (Monday, Europe/Paris). Blocks future weeks in picker and next button. */
+  maxWeekStart?: Date;
 }
 
 export function WeekNavigation({
@@ -24,9 +27,13 @@ export function WeekNavigation({
   onPreviousWeek,
   onNextWeek,
   loading = false,
+  maxWeekStart,
 }: WeekNavigationProps) {
   const weekRange = `${dayjs(weekStart).tz('Europe/Paris').format('D MMM')} - ${dayjs(weekEnd).tz('Europe/Paris').format('D MMM YYYY')}`;
   const pickerValue = weekDateValue ? formatDate(weekDateValue) : null;
+  const maxWeekBounds = maxWeekStart ? getBankWeekBounds(maxWeekStart) : null;
+  const isAtMaxWeek =
+    maxWeekBounds != null && weekStart.getTime() >= maxWeekBounds.start.getTime();
 
   return (
     <DatesProvider settings={{ locale: 'fr' }}>
@@ -47,7 +54,15 @@ export function WeekNavigation({
           <DatePickerInput
             value={pickerValue}
             onChange={(date) => {
-              onWeekChange(parsePickerDate(date as Date | string | null));
+              const parsed = parsePickerDate(date as Date | string | null);
+              if (!parsed) {
+                onWeekChange(null);
+                return;
+              }
+              if (maxWeekStart && isParisWeekAfter(parsed, maxWeekStart)) {
+                return;
+              }
+              onWeekChange(parsed);
             }}
             placeholder="Sélectionner le lundi"
             valueFormat="D MMMM YYYY"
@@ -55,12 +70,13 @@ export function WeekNavigation({
             clearable={false}
             radius="md"
             size="sm"
+            maxDate={maxWeekBounds?.end}
           />
         </Group>
         <ActionIcon
           variant="light"
           onClick={onNextWeek}
-          disabled={loading}
+          disabled={loading || isAtMaxWeek}
           size="md"
           radius="md"
         >

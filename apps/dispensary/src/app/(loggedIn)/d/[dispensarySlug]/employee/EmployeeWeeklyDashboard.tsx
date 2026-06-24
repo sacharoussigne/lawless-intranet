@@ -14,7 +14,7 @@ import {
   useWeeklyActivities,
   type WeeklyActivityListItem,
 } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
-import { addParisWeeks, getBankWeekBounds } from '@/lib/bankWeek';
+import { addParisWeeks, clampParisWeekDateToMax, getBankWeekBounds, getCurrentParisWeekStart } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import { findOwnWeeklyActivityRow } from '@/lib/dispensaryWeeklyActivity/findOwnRow';
 import { weeklyActivityFieldVisibilityFromSettings } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
@@ -117,6 +117,8 @@ export function EmployeeWeeklyDashboard({
     [canEdit, canEditAll, sessionUserId, viewerDiscordId],
   );
 
+  const currentParisWeekStart = useMemo(() => getCurrentParisWeekStart(), []);
+
   const weeklyActivityHref = tenantRoutes(dispensarySlug).weeklyActivity.index;
 
   return (
@@ -127,11 +129,18 @@ export function EmployeeWeeklyDashboard({
             weekStart={currentWeekBounds.start}
             weekEnd={currentWeekBounds.end}
             weekDateValue={periodWeekDateValue}
+            maxWeekStart={currentParisWeekStart}
             onWeekChange={(date) => {
-              if (date) setPeriodWeekDateValue(date);
+              if (date) {
+                setPeriodWeekDateValue(clampParisWeekDateToMax(date, currentParisWeekStart));
+              }
             }}
             onPreviousWeek={() => setPeriodWeekDateValue((d) => addParisWeeks(d, -1))}
-            onNextWeek={() => setPeriodWeekDateValue((d) => addParisWeeks(d, 1))}
+            onNextWeek={() =>
+              setPeriodWeekDateValue((d) =>
+                clampParisWeekDateToMax(addParisWeeks(d, 1), currentParisWeekStart),
+              )
+            }
             loading={isFetching}
           />
           <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed">
