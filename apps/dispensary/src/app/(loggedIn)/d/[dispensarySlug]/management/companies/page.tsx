@@ -1,34 +1,63 @@
-import { getCompanies } from '@/app/_actions/companies';
-import { getCompanyGroupsForSelect } from '@/app/_actions/companyGroups';
-import CompaniesPageClient from './CompaniesPageClient';
+import { getCompanies, getCompaniesForSelect } from '@/app/_actions/companies';
+import { getCompanyGroups, getCompanyGroupsForSelect } from '@/app/_actions/companyGroups';
+import CompaniesManagementPageClient from './CompaniesManagementPageClient';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getDataOrThrow } from '@/lib/response';
 
-async function CompaniesContent({ dispensarySlug }: { dispensarySlug: string }) {
-  const [companiesResult, companyGroupsResult] = await Promise.all([
-    getCompanies(dispensarySlug),
-    getCompanyGroupsForSelect(dispensarySlug),
-  ]);
+async function CompaniesContent({
+  dispensarySlug,
+  initialTab,
+}: {
+  dispensarySlug: string;
+  initialTab: 'companies' | 'groups';
+}) {
+  const [companiesResult, companyGroupsResult, companiesForSelectResult, companyGroupsForSelectResult] =
+    await Promise.all([
+      getCompanies(dispensarySlug),
+      getCompanyGroups(dispensarySlug),
+      getCompaniesForSelect(dispensarySlug),
+      getCompanyGroupsForSelect(dispensarySlug),
+    ]);
 
   const companies = getDataOrThrow(companiesResult, 'Erreur lors du chargement des entreprises');
   const companyGroups = getDataOrThrow(
     companyGroupsResult,
     'Erreur lors du chargement des groupes d\'entreprises',
   );
+  const companiesForSelect = getDataOrThrow(
+    companiesForSelectResult,
+    'Erreur lors du chargement des entreprises',
+  );
+  const companyGroupsForSelect = getDataOrThrow(
+    companyGroupsForSelectResult,
+    'Erreur lors du chargement des groupes d\'entreprises',
+  );
 
   return (
-    <CompaniesPageClient
+    <CompaniesManagementPageClient
+      initialTab={initialTab}
       initialCompanies={companies}
       initialCompanyGroups={companyGroups}
+      initialCompaniesForSelect={companiesForSelect}
+      initialCompanyGroupsForSelect={companyGroupsForSelect}
     />
   );
 }
 
-export default async function CompaniesPage({ params }: { params: Promise<{ dispensarySlug: string }> }) {
+export default async function CompaniesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ dispensarySlug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { dispensarySlug } = await params;
+  const { tab } = await searchParams;
+  const initialTab = tab === 'groups' ? 'groups' : 'companies';
+
   return (
     <SuspenseLoader>
-      <CompaniesContent dispensarySlug={dispensarySlug} />
+      <CompaniesContent dispensarySlug={dispensarySlug} initialTab={initialTab} />
     </SuspenseLoader>
   );
 }

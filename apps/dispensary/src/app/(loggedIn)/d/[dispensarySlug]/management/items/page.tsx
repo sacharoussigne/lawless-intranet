@@ -1,11 +1,17 @@
 import { getItems } from '@/app/_actions/items';
 import { getManagementCategoryItems } from '@/app/_actions/categoryItems';
 import { getCompanyGroupsForSelect } from '@/app/_actions/companyGroups';
-import ItemsPageClient from './ItemsPageClient';
+import ItemsManagementPageClient from './ItemsManagementPageClient';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getDataOrThrow } from '@/lib/response';
 
-async function ItemsContent({ dispensarySlug }: { dispensarySlug: string }) {
+async function ItemsContent({
+  dispensarySlug,
+  initialTab,
+}: {
+  dispensarySlug: string;
+  initialTab: 'items' | 'categories';
+}) {
   const [itemsResult, categoryItemsResult, companyGroupsResult] = await Promise.all([
     getItems(dispensarySlug),
     getManagementCategoryItems(dispensarySlug),
@@ -17,19 +23,29 @@ async function ItemsContent({ dispensarySlug }: { dispensarySlug: string }) {
   const companyGroups = getDataOrThrow(companyGroupsResult, 'Erreur lors du chargement des groupes d\'entreprises');
 
   return (
-    <ItemsPageClient
+    <ItemsManagementPageClient
+      initialTab={initialTab}
       initialItems={items}
-      categoryItems={categoryItems}
-      companyGroups={companyGroups}
+      initialCategoryItems={categoryItems}
+      initialCompanyGroups={companyGroups}
     />
   );
 }
 
-export default async function ItemsPage({ params }: { params: Promise<{ dispensarySlug: string }> }) {
+export default async function ItemsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ dispensarySlug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { dispensarySlug } = await params;
+  const { tab } = await searchParams;
+  const initialTab = tab === 'categories' ? 'categories' : 'items';
+
   return (
     <SuspenseLoader>
-      <ItemsContent dispensarySlug={dispensarySlug} />
+      <ItemsContent dispensarySlug={dispensarySlug} initialTab={initialTab} />
     </SuspenseLoader>
   );
 }
