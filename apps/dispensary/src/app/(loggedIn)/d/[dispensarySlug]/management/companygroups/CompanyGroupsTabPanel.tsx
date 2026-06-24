@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Container, Button } from '@mantine/core';
+import { Title, Group, Button, Stack } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { CompanyGroupModal } from './components/CompanyGroupModal';
 import { DeleteCompanyGroupModal } from './components/DeleteCompanyGroupModal';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
-import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { CompanyGroupsTable } from './components/CompanyGroupsTable';
 import type { CompanyGroupWithRelations } from '@/types/companyGroups';
 import type { CompanySelect } from '@/types/companies';
@@ -20,15 +19,15 @@ import {
   useDeleteCompanyGroupMutation,
 } from './hooks/useCompanyGroupsQueries';
 
-interface CompanyGroupsPageClientProps {
+interface CompanyGroupsTabPanelProps {
   initialCompanyGroups: CompanyGroupWithRelations[];
   initialCompanies: CompanySelect[];
 }
 
-export default function CompanyGroupsPageClient({
+export function CompanyGroupsTabPanel({
   initialCompanyGroups,
   initialCompanies,
-}: CompanyGroupsPageClientProps) {
+}: CompanyGroupsTabPanelProps) {
   const { data: companyGroups = [], isFetching } = useManagementCompanyGroups(initialCompanyGroups);
   const { data: companies = [] } = useCompaniesForSelect(initialCompanies);
   const createMutation = useCreateCompanyGroupMutation();
@@ -80,16 +79,13 @@ export default function CompanyGroupsPageClient({
   };
 
   return (
-    <Container size="xl" py="xl">
-      <PageHeader
-        title="Groupes d'entreprises"
-        description="Regroupez les entreprises par structure pour simplifier le suivi et les conventions."
-        actions={
-          <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
-            Créer un groupe d'entreprises
-          </Button>
-        }
-      />
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Title order={2}>Groupes d&apos;entreprises</Title>
+        <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
+          Créer un groupe d&apos;entreprises
+        </Button>
+      </Group>
 
       <ActiveFilters
         filters={[
@@ -145,6 +141,6 @@ export default function CompanyGroupsPageClient({
         companyGroupToDelete={companyGroupToDelete}
         deleteMutation={deleteMutation}
       />
-    </Container>
+    </Stack>
   );
 }

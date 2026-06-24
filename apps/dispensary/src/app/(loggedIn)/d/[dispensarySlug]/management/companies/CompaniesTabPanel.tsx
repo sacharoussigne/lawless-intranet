@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Container, Button } from '@mantine/core';
+import { Group, Button, Title, Stack } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { CompanyModal } from './components/CompanyModal';
 import { DeleteCompanyModal } from './components/DeleteCompanyModal';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
-import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { CompaniesTable } from './components/CompaniesTable';
 import type { CompanyWithRelations } from '@/types/companies';
 import type { CompanyGroupSelect } from '@/types/items';
@@ -20,15 +19,15 @@ import {
   useDeleteCompanyMutation,
 } from './hooks/useCompaniesQueries';
 
-interface CompaniesPageClientProps {
+interface CompaniesTabPanelProps {
   initialCompanies: CompanyWithRelations[];
   initialCompanyGroups: CompanyGroupSelect[];
 }
 
-export default function CompaniesPageClient({
+export function CompaniesTabPanel({
   initialCompanies,
   initialCompanyGroups,
-}: CompaniesPageClientProps) {
+}: CompaniesTabPanelProps) {
   const { data: companies = [], isFetching } = useManagementCompanies(initialCompanies);
   const { data: companyGroups = [] } = useCompanyGroupsForSelect(initialCompanyGroups);
   const createMutation = useCreateCompanyMutation();
@@ -71,16 +70,13 @@ export default function CompaniesPageClient({
   };
 
   return (
-    <Container size="xl" py="xl">
-      <PageHeader
-        title="Entreprises"
-        description="Référentiel des entreprises liées aux groupes et aux objets."
-        actions={
-          <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
-            Créer une entreprise
-          </Button>
-        }
-      />
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Title order={2}>Référentiel des entreprises</Title>
+        <Button leftSection={<IconPlus size={16} />} onClick={openCreateModal}>
+          Créer une entreprise
+        </Button>
+      </Group>
 
       <ActiveFilters
         filters={[
@@ -129,6 +125,6 @@ export default function CompaniesPageClient({
         companyToDelete={companyToDelete}
         deleteMutation={deleteMutation}
       />
-    </Container>
+    </Stack>
   );
 }

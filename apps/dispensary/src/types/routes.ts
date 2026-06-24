@@ -44,8 +44,13 @@ export function tenantRoutes(slug: string) {
     },
     management: {
       index: `${base}/management`,
-      companies: `${base}/management/companies`,
-      companyGroups: `${base}/management/companygroups`,
+      companies: (tab?: 'groups') => {
+        const url = `${base}/management/companies`;
+        if (tab === 'groups') return `${url}?tab=groups`;
+        return url;
+      },
+      /** @deprecated Use management.companies('groups') */
+      companyGroups: `${base}/management/companies?tab=groups`,
       items: (tab?: 'categories') => {
         const url = `${base}/management/items`;
         if (tab === 'categories') return `${url}?tab=categories`;
@@ -87,8 +92,13 @@ export const routes = {
   /** Legacy paths — redirect to default dispensary */
   management: {
     index: `/d/${DEFAULT_DISPENSARY_SLUG}/management`,
-    companies: `/d/${DEFAULT_DISPENSARY_SLUG}/management/companies`,
-    companyGroups: `/d/${DEFAULT_DISPENSARY_SLUG}/management/companygroups`,
+    companies: (tab?: 'groups') => {
+      const url = `/d/${DEFAULT_DISPENSARY_SLUG}/management/companies`;
+      if (tab === 'groups') return `${url}?tab=groups`;
+      return url;
+    },
+    /** @deprecated Use management.companies('groups') */
+    companyGroups: `/d/${DEFAULT_DISPENSARY_SLUG}/management/companies?tab=groups`,
     items: (tab?: 'categories') => {
       const url = `/d/${DEFAULT_DISPENSARY_SLUG}/management/items`;
       if (tab === 'categories') return `${url}?tab=categories`;

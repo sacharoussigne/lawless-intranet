@@ -4,14 +4,12 @@ import {
   IconClipboardText,
   IconInbox,
   IconLayoutGrid,
-  IconUsersGroup,
 } from '@tabler/icons-react';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
 import type { tenantRoutes } from '@/types/routes';
 
 export type ManagementNavId =
   | 'items'
-  | 'companyGroups'
   | 'companies'
   | 'chests'
   | 'mails';
@@ -47,20 +45,12 @@ function buildAllItems(t: ReturnType<typeof tenantRoutes>): ManagementNavItem[] 
       navOrder: 1,
     },
     {
-      id: 'companyGroups',
-      label: "Groupes d'entreprises",
-      shortLabel: 'Groupes',
-      href: t.management.companyGroups,
-      icon: IconUsersGroup,
-      navOrder: 2,
-    },
-    {
       id: 'companies',
       label: 'Entreprises',
       shortLabel: 'Entreprises',
-      href: t.management.companies,
+      href: t.management.companies(),
       icon: IconBuildingSkyscraper,
-      navOrder: 3,
+      navOrder: 2,
     },
     {
       id: 'chests',
