@@ -78,18 +78,6 @@ export function WeeklyActivityQuickActionsPanel({
       ) : (
         <Stack gap="md">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            {fieldVisibility.presenceDays && (
-              <Button
-                color="sage"
-                variant={presenceDone ? 'light' : 'filled'}
-                leftSection={<IconUserCheck size={18} />}
-                disabled={presenceDone || isLoading}
-                loading={presenceMutation.isPending}
-                onClick={() => presenceMutation.mutate({ weekBounds })}
-              >
-                {presenceDone ? 'Présence enregistrée' : "Présence aujourd'hui"}
-              </Button>
-            )}
             {fieldVisibility.chestDays && (
               <Button
                 color="sage"
@@ -100,6 +88,18 @@ export function WeeklyActivityQuickActionsPanel({
                 onClick={() => chestMutation.mutate({ weekBounds })}
               >
                 {chestDone ? 'Caisse enregistrée' : "Caisse aujourd'hui"}
+              </Button>
+            )}
+            {fieldVisibility.presenceDays && (
+              <Button
+                color="sage"
+                variant={presenceDone ? 'light' : 'filled'}
+                leftSection={<IconUserCheck size={18} />}
+                disabled={presenceDone || isLoading}
+                loading={presenceMutation.isPending}
+                onClick={() => presenceMutation.mutate({ weekBounds })}
+              >
+                {presenceDone ? 'Présence enregistrée' : "Présence aujourd'hui"}
               </Button>
             )}
           </SimpleGrid>

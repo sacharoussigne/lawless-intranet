@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, type KeyboardEvent } from 'react';
 import {
   MultiSelect,
   Select,
@@ -21,6 +21,11 @@ import {
   serializeSelectValue,
 } from '@/lib/cabinet/formSchema';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
+import { MarkdownContent } from '@/app/_components/MarkdownContent';
+import {
+  restoreTextControlSelection,
+  tryMarkdownShortcut,
+} from '@/lib/markdown/markdownShortcuts';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
 
 const READ_ONLY_TEXT_STYLE = {
@@ -200,6 +205,19 @@ const FieldRecursive = memo(function FieldRecursive({
     [applySelectChange, field],
   );
 
+  const handleMarkdownKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const result = tryMarkdownShortcut(e);
+      if (!result) return;
+
+      e.preventDefault();
+      const element = e.currentTarget;
+      onChange(field.id, result.value || null);
+      restoreTextControlSelection(element, result);
+    },
+    [field.id, onChange],
+  );
+
   if (fieldLocked) {
     let display = effectiveValue ?? '—';
     if (field.type === 'select') {
@@ -211,15 +229,29 @@ const FieldRecursive = memo(function FieldRecursive({
     }
 
     const label = (
-      <>
+      <Text size="sm" component="span">
         <strong>
           {field.label}
           {field.required && !readOnly && ' *'} :
         </strong>
-      </>
+      </Text>
     );
 
-    const readOnlyContent = (
+    const usesMarkdown = field.type === 'text' || field.type === 'textarea';
+    const isEmpty = effectiveValue == null || effectiveValue === '';
+
+    const readOnlyContent = usesMarkdown ? (
+      <Stack gap={4} style={{ minWidth: 0 }}>
+        {label}
+        {isEmpty ? (
+          <Text size="sm" c="dimmed">
+            —
+          </Text>
+        ) : (
+          <MarkdownContent source={effectiveValue} />
+        )}
+      </Stack>
+    ) : (
       <Text size="sm" style={READ_ONLY_TEXT_STYLE}>
         {label} {display}
       </Text>
@@ -255,8 +287,10 @@ const FieldRecursive = memo(function FieldRecursive({
         <Textarea
           {...common}
           error={error}
+          autosize
           minRows={3}
           resize="vertical"
+          onKeyDown={handleMarkdownKeyDown}
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />
       );
@@ -304,6 +338,7 @@ const FieldRecursive = memo(function FieldRecursive({
         <TextInput
           {...common}
           error={error}
+          onKeyDown={handleMarkdownKeyDown}
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />
       );
