@@ -46,14 +46,27 @@
   font-size: 1em;
 }
 
-.root :global(ul),
+.root :global(ul) {
+  margin: 0.35em 0 0.5em;
+  padding-left: 1.25em;
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
 .root :global(ol) {
   margin: 0.35em 0 0.5em;
   padding-left: 1.25em;
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.root :global(ul ul) {
+  list-style-type: circle;
 }
 
 .root :global(li) {
   margin-bottom: 0.2em;
+  display: list-item;
 }
 
 .root :global(a) {
