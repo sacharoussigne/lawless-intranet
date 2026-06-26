@@ -21,6 +21,7 @@ import {
   serializeSelectValue,
 } from '@/lib/cabinet/formSchema';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
+import { MarkdownContent } from '@/app/_components/MarkdownContent';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
 
 const READ_ONLY_TEXT_STYLE = {
@@ -211,15 +212,29 @@ const FieldRecursive = memo(function FieldRecursive({
     }
 
     const label = (
-      <>
+      <Text size="sm" component="span">
         <strong>
           {field.label}
           {field.required && !readOnly && ' *'} :
         </strong>
-      </>
+      </Text>
     );
 
-    const readOnlyContent = (
+    const usesMarkdown = field.type === 'text' || field.type === 'textarea';
+    const isEmpty = effectiveValue == null || effectiveValue === '';
+
+    const readOnlyContent = usesMarkdown ? (
+      <Stack gap={4} style={{ minWidth: 0 }}>
+        {label}
+        {isEmpty ? (
+          <Text size="sm" c="dimmed">
+            —
+          </Text>
+        ) : (
+          <MarkdownContent source={effectiveValue} />
+        )}
+      </Stack>
+    ) : (
       <Text size="sm" style={READ_ONLY_TEXT_STYLE}>
         {label} {display}
       </Text>
