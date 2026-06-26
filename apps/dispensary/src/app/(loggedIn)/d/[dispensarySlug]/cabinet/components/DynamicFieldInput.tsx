@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, type KeyboardEvent } from 'react';
 import {
   MultiSelect,
   Select,
@@ -22,6 +22,10 @@ import {
 } from '@/lib/cabinet/formSchema';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { MarkdownContent } from '@/app/_components/MarkdownContent';
+import {
+  restoreTextControlSelection,
+  tryMarkdownShortcut,
+} from '@/lib/markdown/markdownShortcuts';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
 
 const READ_ONLY_TEXT_STYLE = {
@@ -201,6 +205,19 @@ const FieldRecursive = memo(function FieldRecursive({
     [applySelectChange, field],
   );
 
+  const handleMarkdownKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const result = tryMarkdownShortcut(e);
+      if (!result) return;
+
+      e.preventDefault();
+      const element = e.currentTarget;
+      onChange(field.id, result.value || null);
+      restoreTextControlSelection(element, result);
+    },
+    [field.id, onChange],
+  );
+
   if (fieldLocked) {
     let display = effectiveValue ?? '—';
     if (field.type === 'select') {
@@ -272,6 +289,7 @@ const FieldRecursive = memo(function FieldRecursive({
           error={error}
           minRows={3}
           resize="vertical"
+          onKeyDown={handleMarkdownKeyDown}
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />
       );
@@ -319,6 +337,7 @@ const FieldRecursive = memo(function FieldRecursive({
         <TextInput
           {...common}
           error={error}
+          onKeyDown={handleMarkdownKeyDown}
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />
       );
