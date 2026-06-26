@@ -13,6 +13,11 @@ describe('MarkdownContent', () => {
     expect(renderToStaticMarkup(<MarkdownContent source="   " />)).toBe('');
   });
 
+  it('renders bold text with trailing space inside markers', () => {
+    const html = renderToStaticMarkup(<MarkdownContent source="**Quelques **" />);
+    expect(html).toContain('<strong>Quelques</strong>');
+  });
+
   it('renders bold text', () => {
     const html = renderToStaticMarkup(<MarkdownContent source="**gras**" />);
     expect(html).toContain('<strong>gras</strong>');
