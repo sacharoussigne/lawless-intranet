@@ -287,6 +287,7 @@ const FieldRecursive = memo(function FieldRecursive({
         <Textarea
           {...common}
           error={error}
+          autosize
           minRows={3}
           resize="vertical"
           onKeyDown={handleMarkdownKeyDown}
