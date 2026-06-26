@@ -7,6 +7,16 @@
   min-width: 0;
 }
 
+.inline {
+  display: inline;
+  min-width: 0;
+}
+
+.inline :global(p) {
+  display: inline;
+  margin: 0;
+}
+
 .root :global(p) {
   margin: 0 0 0.5em;
 }

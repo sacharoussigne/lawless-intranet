@@ -26,6 +26,7 @@ import {
   restoreTextControlSelection,
   tryMarkdownShortcut,
 } from '@/lib/markdown/markdownShortcuts';
+import { isBlockMarkdown } from '@/lib/markdown/isBlockMarkdown';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
 
 const READ_ONLY_TEXT_STYLE = {
@@ -239,18 +240,24 @@ const FieldRecursive = memo(function FieldRecursive({
 
     const usesMarkdown = field.type === 'text' || field.type === 'textarea';
     const isEmpty = effectiveValue == null || effectiveValue === '';
+    const markdownIsBlock = !isEmpty && isBlockMarkdown(effectiveValue);
 
     const readOnlyContent = usesMarkdown ? (
-      <Stack gap={4} style={{ minWidth: 0 }}>
-        {label}
-        {isEmpty ? (
-          <Text size="sm" c="dimmed">
-            —
-          </Text>
-        ) : (
+      markdownIsBlock ? (
+        <Stack gap={4} style={{ minWidth: 0 }}>
+          {label}
           <MarkdownContent source={effectiveValue} />
-        )}
-      </Stack>
+        </Stack>
+      ) : (
+        <Text size="sm" component="div" style={READ_ONLY_TEXT_STYLE}>
+          {label}{' '}
+          {isEmpty ? (
+            '—'
+          ) : (
+            <MarkdownContent inline source={effectiveValue} />
+          )}
+        </Text>
+      )
     ) : (
       <Text size="sm" style={READ_ONLY_TEXT_STYLE}>
         {label} {display}
