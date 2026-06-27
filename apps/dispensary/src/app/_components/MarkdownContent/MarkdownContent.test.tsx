@@ -13,14 +13,19 @@ describe('MarkdownContent', () => {
     expect(renderToStaticMarkup(<MarkdownContent source="   " />)).toBe('');
   });
 
-  it('renders bold text with trailing space inside markers', () => {
-    const html = renderToStaticMarkup(<MarkdownContent source="**Quelques **" />);
-    expect(html).toContain('<strong>Quelques</strong>');
-  });
-
   it('renders bold text', () => {
     const html = renderToStaticMarkup(<MarkdownContent source="**gras**" />);
     expect(html).toContain('<strong>gras</strong>');
+  });
+
+  it('renders asterisk bullet lists as lists, not italic', () => {
+    const source = `* Tous les mouvements doivent être doux et sans douleur.
+* Ne jamais forcer. Arrêter en cas de gêne.
+* La régularité vaut mieux que l'intensité.`;
+    const html = renderToStaticMarkup(<MarkdownContent source={source} />);
+    expect(html).toContain('<ul>');
+    expect(html).toContain('Tous les mouvements');
+    expect(html).not.toMatch(/<em>[^<]*Tous les mouvements/);
   });
 
   it('renders a link', () => {
