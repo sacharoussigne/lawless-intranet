@@ -4,7 +4,6 @@ import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
-import { normalizeMarkdownEmphasis } from '@/lib/markdown/normalizeMarkdownEmphasis';
 import classes from './MarkdownContent.module.scss';
 
 type MarkdownContentProps = {
@@ -19,14 +18,12 @@ function MarkdownContentInner({ source, className, inline = false }: MarkdownCon
     return null;
   }
 
-  const normalized = normalizeMarkdownEmphasis(trimmed);
-
   return (
     <div
       className={[inline ? classes.inline : classes.root, className].filter(Boolean).join(' ')}
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-        {normalized}
+        {trimmed}
       </ReactMarkdown>
     </div>
   );
