@@ -53,6 +53,9 @@ type FormCategoryCardProps = {
   onMoveCategory?: (direction: 'up' | 'down') => void;
   schemaNestedFlushToken?: number;
   schemaFlushToken?: number;
+  fieldLabelColors?: Record<string, string | null>;
+  onFieldLabelColorChange?: (fieldId: string, color: string) => void;
+  onFieldRemoved?: (fieldId: string) => void;
 };
 
 export const FormCategoryCard = memo(function FormCategoryCard({
@@ -75,6 +78,9 @@ export const FormCategoryCard = memo(function FormCategoryCard({
   onMoveCategory,
   schemaNestedFlushToken,
   schemaFlushToken,
+  fieldLabelColors,
+  onFieldLabelColorChange,
+  onFieldRemoved,
 }: FormCategoryCardProps) {
   const sortedFields = useMemo(
     () => [...category.fields].sort((a, b) => a.order - b.order),
@@ -212,6 +218,9 @@ export const FormCategoryCard = memo(function FormCategoryCard({
                   ? (direction) => onMoveFieldRef.current?.(field.id, direction)
                   : undefined
               }
+              fieldLabelColors={fieldLabelColors}
+              onFieldLabelColorChange={onFieldLabelColorChange}
+              onFieldRemoved={onFieldRemoved}
             />
           ))}
           {sortedFields.length === 0 && !children && (

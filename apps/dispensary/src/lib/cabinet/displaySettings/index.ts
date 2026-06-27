@@ -14,3 +14,11 @@ export {
   resolveFieldLabelColor,
   resolveLabelColor,
 } from './resolve';
+export {
+  collectFieldIdsFromSchemas,
+  getFieldLabelColorOverride,
+  pruneFieldLabelColors,
+  removeFieldLabelColorOverride,
+  removeFieldLabelColorOverrides,
+  setFieldLabelColorOverride,
+} from './fieldLabelColors';

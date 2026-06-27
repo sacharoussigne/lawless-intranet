@@ -255,6 +255,10 @@ Laissez un champ vide pour revenir à la couleur par défaut (encre atténuée).
 
 Un aperçu live montre le rendu label + contenu formaté avant enregistrement.
 
+### Surcharge par champ
+
+Dans `/d/{slug}/cabinet/forms`, développez un champ personnalisé : le réglage **Couleur du libellé** surcharge la couleur définie par type (modal Affichage) pour ce champ uniquement. Laissez vide pour hériter du type ou du défaut.
+
 ---
 
 ## Niveaux d'accès cabinet

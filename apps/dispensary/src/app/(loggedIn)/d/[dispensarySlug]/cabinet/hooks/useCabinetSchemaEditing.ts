@@ -5,6 +5,11 @@ import { flushSync } from 'react-dom';
 import { notifications } from '@mantine/notifications';
 import { saveFormSchemaEntity } from '@/app/_actions/cabinet/formSchema';
 import { handleAction } from '@/lib/action';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
+import {
+  removeFieldLabelColorOverride,
+  setFieldLabelColorOverride,
+} from '@/lib/cabinet/displaySettings';
 import type { CabinetFormSchemas, FormEntitySchema, FormEntityType } from '@/lib/cabinet/formSchema';
 import { getEntitySchema } from '@/lib/cabinet/formSchema';
 
@@ -13,7 +18,11 @@ type UseCabinetSchemaEditingOptions = {
   cabinetId: string;
   entityType: FormEntityType;
   formSchemas: CabinetFormSchemas;
-  onSchemasSaved: (schemas: CabinetFormSchemas) => void;
+  displaySettings: CabinetDisplaySettings;
+  onConfigurationSaved: (data: {
+    formSchemas: CabinetFormSchemas;
+    displaySettings: CabinetDisplaySettings;
+  }) => void;
   autoStart?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 };
@@ -23,7 +32,8 @@ export function useCabinetSchemaEditing({
   cabinetId,
   entityType,
   formSchemas,
-  onSchemasSaved,
+  displaySettings,
+  onConfigurationSaved,
   autoStart = false,
   onDirtyChange,
 }: UseCabinetSchemaEditingOptions) {
@@ -31,21 +41,32 @@ export function useCabinetSchemaEditing({
   const [draftEntitySchema, setDraftEntitySchema] = useState<FormEntitySchema>(() =>
     getEntitySchema(formSchemas, entityType),
   );
+  const [draftDisplaySettings, setDraftDisplaySettings] =
+    useState<CabinetDisplaySettings>(displaySettings);
   const [savingSchema, setSavingSchema] = useState(false);
   const [schemaNestedFlushToken, setSchemaNestedFlushToken] = useState(0);
   const [schemaFlushToken, setSchemaFlushToken] = useState(0);
   const draftEntitySchemaRef = useRef(draftEntitySchema);
   draftEntitySchemaRef.current = draftEntitySchema;
+  const draftDisplaySettingsRef = useRef(draftDisplaySettings);
+  draftDisplaySettingsRef.current = draftDisplaySettings;
 
   const savedEntitySchema = useMemo(
     () => getEntitySchema(formSchemas, entityType),
     [formSchemas, entityType],
   );
 
-  const isDirty = useMemo(
+  const isSchemaDirty = useMemo(
     () => JSON.stringify(draftEntitySchema) !== JSON.stringify(savedEntitySchema),
     [draftEntitySchema, savedEntitySchema],
   );
+
+  const isDisplaySettingsDirty = useMemo(
+    () => JSON.stringify(draftDisplaySettings) !== JSON.stringify(displaySettings),
+    [draftDisplaySettings, displaySettings],
+  );
+
+  const isDirty = isSchemaDirty || isDisplaySettingsDirty;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -55,7 +76,9 @@ export function useCabinetSchemaEditing({
     const schema = getEntitySchema(formSchemas, entityType);
     draftEntitySchemaRef.current = schema;
     setDraftEntitySchema(schema);
-  }, [formSchemas, entityType]);
+    draftDisplaySettingsRef.current = displaySettings;
+    setDraftDisplaySettings(displaySettings);
+  }, [formSchemas, entityType, displaySettings]);
 
   const setDraftEntitySchemaTracked = useCallback(
     (value: FormEntitySchema | ((prev: FormEntitySchema) => FormEntitySchema)) => {
@@ -68,13 +91,31 @@ export function useCabinetSchemaEditing({
     [],
   );
 
+  const setFieldLabelColor = useCallback((fieldId: string, color: string) => {
+    setDraftDisplaySettings((prev) => {
+      const next = setFieldLabelColorOverride(prev, fieldId, color);
+      draftDisplaySettingsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const removeFieldLabelColor = useCallback((fieldId: string) => {
+    setDraftDisplaySettings((prev) => {
+      const next = removeFieldLabelColorOverride(prev, fieldId);
+      draftDisplaySettingsRef.current = next;
+      return next;
+    });
+  }, []);
+
   const resetDraftToSaved = useCallback(() => {
     flushSync(() => setSchemaNestedFlushToken((t) => t + 1));
     flushSync(() => setSchemaFlushToken((t) => t + 1));
     const schema = getEntitySchema(formSchemas, entityType);
     draftEntitySchemaRef.current = schema;
     setDraftEntitySchema(schema);
-  }, [formSchemas, entityType]);
+    draftDisplaySettingsRef.current = displaySettings;
+    setDraftDisplaySettings(displaySettings);
+  }, [formSchemas, entityType, displaySettings]);
 
   const startSchemaEditing = useCallback(() => {
     resetDraftToSaved();
@@ -97,13 +138,20 @@ export function useCabinetSchemaEditing({
         cabinetId,
         entityType,
         schema: draftEntitySchemaRef.current,
+        displaySettings: isDisplaySettingsDirty
+          ? draftDisplaySettingsRef.current
+          : undefined,
       });
-      const data = handleAction(result) as CabinetFormSchemas | undefined;
+      const data = handleAction(result) as
+        | { formSchemas: CabinetFormSchemas; displaySettings: CabinetDisplaySettings }
+        | undefined;
       if (data) {
-        onSchemasSaved(data);
-        const schema = getEntitySchema(data, entityType);
+        onConfigurationSaved(data);
+        const schema = getEntitySchema(data.formSchemas, entityType);
         draftEntitySchemaRef.current = schema;
         setDraftEntitySchema(schema);
+        draftDisplaySettingsRef.current = data.displaySettings;
+        setDraftDisplaySettings(data.displaySettings);
         if (!autoStart) {
           setSchemaEditing(false);
         }
@@ -118,11 +166,19 @@ export function useCabinetSchemaEditing({
     } finally {
       setSavingSchema(false);
     }
-  }, [autoStart, dispensarySlug, cabinetId, entityType, onSchemasSaved]);
+  }, [
+    autoStart,
+    cabinetId,
+    dispensarySlug,
+    entityType,
+    isDisplaySettingsDirty,
+    onConfigurationSaved,
+  ]);
 
   return {
     schemaEditing: autoStart || schemaEditing,
     draftEntitySchema,
+    draftDisplaySettings,
     savingSchema,
     isDirty,
     schemaNestedFlushToken,
@@ -131,5 +187,7 @@ export function useCabinetSchemaEditing({
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema: setDraftEntitySchemaTracked,
+    setFieldLabelColor,
+    removeFieldLabelColor,
   };
 }

@@ -55,6 +55,7 @@ export default async function CabinetFormsPage({
       cabinetId={cabinetId}
       cabinetName={schemasResult.data.cabinetName}
       initialFormSchemas={schemasResult.data.formSchemas}
+      initialDisplaySettings={schemasResult.data.displaySettings}
       initialTab={parseTab(tab)}
     />
   );

@@ -6,6 +6,7 @@ import {
   ActionIcon,
   Badge,
   Button,
+  ColorInput,
   Group,
   MultiSelect,
   Select,
@@ -15,7 +16,7 @@ import {
   Textarea,
   TextInput,
 } from '@mantine/core';
-import { IconChevronDown, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronRight, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import type { FormField, FormFieldType } from '@/lib/cabinet/formSchema';
 import { FIELD_TYPES } from '@/lib/cabinet/formSchema';
 import {
@@ -46,6 +47,9 @@ export type FormFieldSchemaRowProps = {
   canMoveDown?: boolean;
   onMove?: (direction: 'up' | 'down') => void;
   schemaNestedFlushToken?: number;
+  fieldLabelColors?: Record<string, string | null>;
+  onFieldLabelColorChange?: (fieldId: string, color: string) => void;
+  onFieldRemoved?: (fieldId: string) => void;
 };
 
 function normalizePatchedField(base: FormField, updates: Partial<FormField>): FormField {
@@ -98,6 +102,7 @@ function formFieldSchemaRowPropsAreEqual(
     prev.canMoveUp === next.canMoveUp &&
     prev.canMoveDown === next.canMoveDown &&
     prev.schemaNestedFlushToken === next.schemaNestedFlushToken &&
+    prev.fieldLabelColors === next.fieldLabelColors &&
     prev.onChange === next.onChange &&
     prev.onExpandedChange === next.onExpandedChange
   );
@@ -114,7 +119,11 @@ function FormFieldSchemaRowInner({
   canMoveDown = false,
   onMove,
   schemaNestedFlushToken,
+  fieldLabelColors,
+  onFieldLabelColorChange,
+  onFieldRemoved,
 }: FormFieldSchemaRowProps) {
+  const fieldLabelColor = fieldLabelColors?.[field.id] ?? '';
   const [internalExpanded, setInternalExpanded] = useState(false);
   const expanded = expandedProp ?? internalExpanded;
   const [draftField, setDraftField] = useState(field);
@@ -176,9 +185,10 @@ function FormFieldSchemaRowInner({
 
   const deleteNestedField = useCallback(
     (targetId: string) => {
+      onFieldRemoved?.(targetId);
       applyDraftField((prev) => deleteFieldById(prev, targetId));
     },
-    [applyDraftField],
+    [applyDraftField, onFieldRemoved],
   );
 
   const headerLabel = expanded ? draftField.label : field.label;
@@ -325,6 +335,29 @@ function FormFieldSchemaRowInner({
               </div>
             ) : null}
           </Group>
+          {onFieldLabelColorChange && (
+            <ColorInput
+              label="Couleur du libellé"
+              description="Surcharge la couleur par type. Laisse vide pour la couleur par défaut ou celle du type."
+              size="xs"
+              format="hex"
+              value={fieldLabelColor}
+              onChange={(value) => onFieldLabelColorChange(field.id, value)}
+              rightSection={
+                fieldLabelColor ? (
+                  <ActionIcon
+                    variant="subtle"
+                    color="slate"
+                    aria-label="Réinitialiser"
+                    onClick={() => onFieldLabelColorChange(field.id, '')}
+                  >
+                    <IconX size={14} />
+                  </ActionIcon>
+                ) : null
+              }
+              rightSectionPointerEvents="all"
+            />
+          )}
           <Group gap="lg">
             <Switch
               label="Obligatoire"
@@ -383,6 +416,9 @@ function FormFieldSchemaRowInner({
                     optionLabel={option.label}
                     branchFields={getBranchFields(draftField, option.id)}
                     schemaNestedFlushToken={schemaNestedFlushToken}
+                    fieldLabelColors={fieldLabelColors}
+                    onFieldLabelColorChange={onFieldLabelColorChange}
+                    onFieldRemoved={onFieldRemoved}
                     onAddField={(partial) =>
                       applyDraftField((prev) => addFieldToBranch(prev, option.id, partial))
                     }
@@ -411,6 +447,9 @@ type ConditionalBranchEditorProps = {
   optionLabel: string;
   branchFields: FormField[];
   schemaNestedFlushToken?: number;
+  fieldLabelColors?: Record<string, string | null>;
+  onFieldLabelColorChange?: (fieldId: string, color: string) => void;
+  onFieldRemoved?: (fieldId: string) => void;
   onAddField: (partial: {
     label: string;
     type: FormFieldType;
@@ -429,6 +468,9 @@ function ConditionalBranchEditor({
   optionLabel,
   branchFields,
   schemaNestedFlushToken,
+  fieldLabelColors,
+  onFieldLabelColorChange,
+  onFieldRemoved,
   onAddField,
   onUpdateField,
   onDeleteField,
@@ -520,6 +562,9 @@ function ConditionalBranchEditor({
             canMoveDown={index < sortedFields.length - 1}
             onMove={(direction) => onMoveField(child.id, direction)}
             schemaNestedFlushToken={schemaNestedFlushToken}
+            fieldLabelColors={fieldLabelColors}
+            onFieldLabelColorChange={onFieldLabelColorChange}
+            onFieldRemoved={onFieldRemoved}
           />
         ))}
         {sortedFields.length === 0 && (
