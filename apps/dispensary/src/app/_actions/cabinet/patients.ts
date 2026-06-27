@@ -22,6 +22,7 @@ import {
   parseCustomValuesFromDb,
   validateCustomValues,
 } from '@/lib/cabinet/formSchema';
+import { parseCabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 
 export async function listCabinetPatients(
   dispensarySlug: string,
@@ -91,7 +92,7 @@ export async function getCabinetPatient(dispensarySlug: string, patientId: strin
         cabinet: tenantWhere(ctx.tenant.dispensaryId),
       },
       include: {
-        cabinet: { select: { id: true, name: true, formSchemas: true } },
+        cabinet: { select: { id: true, name: true, formSchemas: true, displaySettings: true } },
         _count: { select: { careEpisodes: true } },
       },
     });
@@ -116,6 +117,7 @@ export async function getCabinetPatient(dispensarySlug: string, patientId: strin
         ...patient,
         customValues: parseCustomValuesFromDb(patient.customValues),
         formSchemas: parseCabinetFormSchemas(patient.cabinet.formSchemas),
+        displaySettings: parseCabinetDisplaySettings(patient.cabinet.displaySettings),
         accessLevel: guard.accessLevel,
       },
     };

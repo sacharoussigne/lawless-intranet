@@ -21,6 +21,7 @@ Cabinet
 |-------|-------------|
 | `/d/{slug}/cabinet` | Liste des patients du cabinet sélectionné |
 | `/d/{slug}/cabinet/forms` | Configuration des formulaires (OWNER) |
+| `/d/{slug}/cabinet` (bouton Affichage) | Couleurs des libellés par type de champ (OWNER) |
 | `/d/{slug}/cabinet/templates` | Modèles de documents de consultation |
 | `/d/{slug}/cabinet/patients/{id}` | Fiche patient |
 | `/d/{slug}/cabinet/patients/{id}/episodes/{id}` | Prise en charge |
@@ -154,6 +155,15 @@ GitHub Flavored Markdown via `remark-gfm`. Exemples copiables :
 2. deuxième étape
 ```
 
+Pour une **sous-liste à puces** sous un item numéroté, indenter les puces d’au moins **3 espaces** (sinon elles seront au même niveau que la liste numérotée) :
+
+```markdown
+1. Exercice principal
+   - détail un
+   - détail deux
+2. Autre exercice
+```
+
 #### Liens
 
 ```markdown
@@ -230,6 +240,20 @@ Patient présente une **douleur modérée** à l'épaule droite.
 5. Enregistrer le schéma
 
 Les champs système apparaissent en aperçu fixe et ne peuvent pas être supprimés.
+
+---
+
+## Configuration de l'affichage
+
+**Accès requis :** niveau `OWNER` sur le cabinet (ou administrateur du dispensaire).
+
+Depuis la page principale du cabinet (`/d/{slug}/cabinet`), le bouton **Affichage** ouvre une modal permettant de définir une couleur de libellé par type de champ :
+
+- Texte court, Zone de texte, Date, Liste déroulante, Champs système
+
+Laissez un champ vide pour revenir à la couleur par défaut (encre atténuée). Les couleurs s'appliquent aux libellés en lecture seule et en édition, pas au contenu Markdown.
+
+Un aperçu live montre le rendu label + contenu formaté avant enregistrement.
 
 ---
 

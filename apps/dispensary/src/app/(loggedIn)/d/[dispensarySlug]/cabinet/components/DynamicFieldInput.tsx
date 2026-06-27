@@ -22,12 +22,15 @@ import {
 } from '@/lib/cabinet/formSchema';
 import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import { MarkdownContent } from '@/app/_components/MarkdownContent';
+import { getMantineLabelStyles } from '@/lib/cabinet/displaySettings';
 import {
   restoreTextControlSelection,
   tryMarkdownShortcut,
 } from '@/lib/markdown/markdownShortcuts';
 import { isBlockMarkdown } from '@/lib/markdown/isBlockMarkdown';
 import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
+import { CabinetFieldLabel } from './CabinetFieldLabel';
+import { useCabinetDisplaySettings } from './CabinetDisplaySettingsContext';
 
 const READ_ONLY_TEXT_STYLE = {
   overflowWrap: 'break-word',
@@ -139,9 +142,14 @@ const FieldRecursive = memo(function FieldRecursive({
   depth = 0,
   fieldErrors,
 }: DynamicFieldInputProps) {
+  const displaySettings = useCabinetDisplaySettings();
   const effectiveValue = resolveFieldInputValue(value, field.defaultValue);
   const error = fieldErrors?.[field.id];
   const fieldLocked = readOnly || field.editable === false;
+  const labelStyles = useMemo(
+    () => getMantineLabelStyles(field.type, displaySettings, field.id),
+    [displaySettings, field.id, field.type],
+  );
 
   const selectedOptionIds = useMemo(() => {
     if (field.type !== 'select') return [];
@@ -230,12 +238,13 @@ const FieldRecursive = memo(function FieldRecursive({
     }
 
     const label = (
-      <Text size="sm" component="span">
-        <strong>
-          {field.label}
-          {field.required && !readOnly && ' *'} :
-        </strong>
-      </Text>
+      <CabinetFieldLabel
+        labelKey={field.type}
+        fieldId={field.id}
+        required={field.required && !readOnly}
+      >
+        {field.label}
+      </CabinetFieldLabel>
     );
 
     const usesMarkdown = field.type === 'text' || field.type === 'textarea';
@@ -297,6 +306,7 @@ const FieldRecursive = memo(function FieldRecursive({
           autosize
           minRows={3}
           resize="vertical"
+          styles={labelStyles}
           onKeyDown={handleMarkdownKeyDown}
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />
@@ -311,6 +321,7 @@ const FieldRecursive = memo(function FieldRecursive({
           error={error}
           value={effectiveValue}
           clearable={!field.required}
+          styles={labelStyles}
           onChange={(d) => onChange(field.id, d ? d.toISOString() : null)}
         />
       );
@@ -324,6 +335,7 @@ const FieldRecursive = memo(function FieldRecursive({
           error={error}
           data={selectData}
           value={selectedOptionIds}
+          styles={labelStyles}
           onChange={handleMultiSelectChange}
           clearable={!field.required}
         />
@@ -335,6 +347,7 @@ const FieldRecursive = memo(function FieldRecursive({
           error={error}
           data={selectData}
           value={effectiveValue}
+          styles={labelStyles}
           onChange={handleSelectChange}
           clearable={!field.required}
         />
@@ -345,6 +358,7 @@ const FieldRecursive = memo(function FieldRecursive({
         <TextInput
           {...common}
           error={error}
+          styles={labelStyles}
           onKeyDown={handleMarkdownKeyDown}
           onChange={(e) => onChange(field.id, e.currentTarget.value || null)}
         />

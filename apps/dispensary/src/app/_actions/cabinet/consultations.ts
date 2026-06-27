@@ -21,6 +21,7 @@ import {
   parseCustomValuesFromDb,
   validateCustomValues,
 } from '@/lib/cabinet/formSchema';
+import { parseCabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 
 export async function listConsultations(dispensarySlug: string, careEpisodeId: string) {
   try {
@@ -92,7 +93,7 @@ export async function getConsultation(dispensarySlug: string, consultationId: st
                 birthDate: true,
                 cabinetId: true,
                 customValues: true,
-                cabinet: { select: { name: true, formSchemas: true } },
+                cabinet: { select: { name: true, formSchemas: true, displaySettings: true } },
               },
             },
           },
@@ -129,6 +130,9 @@ export async function getConsultation(dispensarySlug: string, consultationId: st
         },
         formSchemas: parseCabinetFormSchemas(
           consultation.careEpisode.patient.cabinet.formSchemas,
+        ),
+        displaySettings: parseCabinetDisplaySettings(
+          consultation.careEpisode.patient.cabinet.displaySettings,
         ),
         accessLevel: guard.accessLevel,
       },
