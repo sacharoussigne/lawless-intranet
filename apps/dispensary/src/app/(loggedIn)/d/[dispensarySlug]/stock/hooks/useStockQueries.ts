@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
-import { getItemsWithStock } from '@/app/_actions/stock/queries';
+import { getItemsWithStock, getLastStockDaysByChest } from '@/app/_actions/stock/queries';
 import { updateStock, craftItem } from '@/app/_actions/stock/mutations';
 import { transferMultipleStock } from '@/app/_actions/stock/transfer';
 import { getStockChecksSummary } from '@/app/_actions/stockChecks';
@@ -22,6 +22,11 @@ async function fetchStockItems(dispensarySlug: string, chestId: string | null) {
 async function fetchStockChecksSummary(dispensarySlug: string) {
   const result = await getStockChecksSummary(dispensarySlug);
   return handleAction(result) as StockChecksSummary;
+}
+
+async function fetchLastStockDaysByChest(dispensarySlug: string) {
+  const result = await getLastStockDaysByChest(dispensarySlug);
+  return handleAction(result) as Record<string, Date | null>;
 }
 
 export function useStockItems(
@@ -52,12 +57,29 @@ export function useStockChecksSummary(initialData: StockChecksSummary | null) {
   });
 }
 
+export function useLastStockDaysByChest(
+  initialData: Record<string, Date | null>,
+) {
+  const dispensarySlug = useRequiredDispensarySlug();
+
+  return useQuery({
+    queryKey: stockKeys.lastStockDays(dispensarySlug),
+    queryFn: () => fetchLastStockDaysByChest(dispensarySlug),
+    initialData,
+    enabled: Boolean(dispensarySlug),
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
 export function useInvalidateStockItems() {
   const queryClient = useQueryClient();
   const dispensarySlug = useRequiredDispensarySlug();
 
   return (chestIds: Array<string | null>) => {
     const unique = Array.from(new Set(chestIds));
+    void queryClient.invalidateQueries({
+      queryKey: stockKeys.lastStockDays(dispensarySlug),
+    });
     for (const chestId of unique) {
       void queryClient.invalidateQueries({
         queryKey: stockKeys.items(dispensarySlug, chestId),

@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getStartOfDay } from '@/lib/date';
 import {
+  formatLastStockDayLabel,
   getStockPreviousColumnLabel,
   getStockPreviousLabelForDate,
   getStockTotalPreviousLabel,
+  resolveLastStockDayLabel,
 } from './stockPreviousLabel';
 
 describe('stockPreviousLabel', () => {
@@ -48,5 +50,33 @@ describe('stockPreviousLabel', () => {
 
   it('builds total labels from stock labels', () => {
     expect(getStockTotalPreviousLabel([getStartOfDay(new Date('2026-06-11T08:00:00.000Z'))])).toBe('Stock total hier');
+  });
+
+  it('formats last stock day as Hier', () => {
+    expect(formatLastStockDayLabel(getStartOfDay(new Date('2026-06-11T08:00:00.000Z')))).toBe('Hier');
+  });
+
+  it('formats last stock day as Avant-hier', () => {
+    expect(formatLastStockDayLabel(getStartOfDay(new Date('2026-06-10T08:00:00.000Z')))).toBe('Avant-hier');
+  });
+
+  it('formats last stock day as DD/MM for older dates', () => {
+    expect(formatLastStockDayLabel(getStartOfDay(new Date('2026-06-08T08:00:00.000Z')))).toBe('08/06');
+  });
+
+  it('resolves newest last stock day label', () => {
+    expect(
+      resolveLastStockDayLabel(
+        [
+          getStartOfDay(new Date('2026-06-08T08:00:00.000Z')),
+          getStartOfDay(new Date('2026-06-11T08:00:00.000Z')),
+        ],
+        'newest',
+      ),
+    ).toBe('Hier');
+  });
+
+  it('returns null when no dates are provided to resolveLastStockDayLabel', () => {
+    expect(resolveLastStockDayLabel([null, undefined], 'newest')).toBeNull();
   });
 });

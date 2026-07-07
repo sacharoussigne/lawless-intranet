@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { getStartOfDay } from '@/lib/date';
 import {
   aggregateTodayAndPrevious,
   aggregateTodayYesterday,
@@ -190,4 +191,39 @@ export async function fetchLatestStockBeforeDate(
   }
 
   return Array.from(latestByKey.values());
+}
+
+export async function fetchLastStockDayByChest(
+  dispensaryId: string,
+  chestIds: string[],
+  beforeDate: Date,
+): Promise<Record<string, Date | null>> {
+  const result: Record<string, Date | null> = Object.fromEntries(
+    chestIds.map((chestId) => [chestId, null]),
+  );
+
+  if (chestIds.length === 0) {
+    return result;
+  }
+
+  const groups = await prisma.stockHistory.groupBy({
+    by: ['chestId'],
+    where: {
+      chestId: { in: chestIds },
+      timestamp: { lt: beforeDate },
+      chest: {
+        isEnabled: true,
+        ...tenantWhere(dispensaryId),
+      },
+    },
+    _max: { timestamp: true },
+  });
+
+  for (const group of groups) {
+    if (group._max.timestamp) {
+      result[group.chestId] = getStartOfDay(group._max.timestamp);
+    }
+  }
+
+  return result;
 }
