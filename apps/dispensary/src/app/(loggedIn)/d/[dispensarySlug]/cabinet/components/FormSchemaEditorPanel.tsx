@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { Button, Group, Stack, Text } from '@mantine/core';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 import type { CabinetFormSchemas, FormEntityType } from '@/lib/cabinet/formSchema';
 import { DynamicFormRenderer } from './DynamicFormRenderer';
 import { getSystemCardsPreview } from './CabinetFormSystemFieldsPreview';
@@ -12,7 +13,11 @@ type FormSchemaEditorPanelProps = {
   cabinetId: string;
   entityType: FormEntityType;
   formSchemas: CabinetFormSchemas;
-  onSchemasSaved: (schemas: CabinetFormSchemas) => void;
+  displaySettings: CabinetDisplaySettings;
+  onConfigurationSaved: (data: {
+    formSchemas: CabinetFormSchemas;
+    displaySettings: CabinetDisplaySettings;
+  }) => void;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
@@ -21,15 +26,19 @@ export function FormSchemaEditorPanel({
   cabinetId,
   entityType,
   formSchemas,
-  onSchemasSaved,
+  displaySettings,
+  onConfigurationSaved,
   onDirtyChange,
 }: FormSchemaEditorPanelProps) {
   const {
     draftEntitySchema,
+    draftDisplaySettings,
     savingSchema,
     cancelSchemaEditing,
     saveSchemaEditing,
     setDraftEntitySchema,
+    setFieldLabelColor,
+    removeFieldLabelColor,
     schemaNestedFlushToken,
     schemaFlushToken,
     isDirty,
@@ -38,7 +47,8 @@ export function FormSchemaEditorPanel({
     cabinetId,
     entityType,
     formSchemas,
-    onSchemasSaved,
+    displaySettings,
+    onConfigurationSaved,
     autoStart: true,
     onDirtyChange,
   });
@@ -62,7 +72,7 @@ export function FormSchemaEditorPanel({
 
       <Text size="sm" c="dimmed">
         Les champs ci-dessous sont fixes pour toutes les fiches. Ajoutez des champs personnalisés
-        dans les catégories suivantes.
+        dans les catégories suivantes. Vous pouvez surcharger la couleur du libellé par champ.
       </Text>
 
       <DynamicFormRenderer
@@ -74,6 +84,9 @@ export function FormSchemaEditorPanel({
         onSchemaChange={setDraftEntitySchema}
         schemaNestedFlushToken={schemaNestedFlushToken}
         schemaFlushToken={schemaFlushToken}
+        displaySettings={draftDisplaySettings}
+        onFieldLabelColorChange={setFieldLabelColor}
+        onFieldRemoved={removeFieldLabelColor}
       />
     </Stack>
   );

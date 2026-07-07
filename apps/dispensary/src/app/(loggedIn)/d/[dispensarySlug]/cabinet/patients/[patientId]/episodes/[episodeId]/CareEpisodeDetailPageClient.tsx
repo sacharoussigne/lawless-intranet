@@ -36,11 +36,15 @@ import {
 } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
+import { getMantineLabelStyles } from '@/lib/cabinet/displaySettings';
 import { formatRpDate, getTodayRealDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
 import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
 import { useCabinetEntityEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetEntityEditing';
+import { CabinetDisplaySettingsProvider } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetDisplaySettingsContext';
+import { SystemFieldValue } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFieldLabel';
 
 type EpisodeData = {
   id: string;
@@ -49,6 +53,7 @@ type EpisodeData = {
   startedAt: Date;
   customValues: CustomValues;
   formSchemas: CabinetFormSchemas;
+  displaySettings: CabinetDisplaySettings;
   accessLevel: CabinetAccessLevel | null;
   patient: {
     id: string;
@@ -173,16 +178,20 @@ export function CareEpisodeDetailPageClient({
     }
   };
 
+  const systemLabelStyles = useMemo(
+    () => getMantineLabelStyles('system', episode.displaySettings),
+    [episode.displaySettings],
+  );
+
   const systemCardsReadOnly = useMemo(
     () => ({
       care_episode_general: (
         <Stack gap="xs">
-          <Text size="sm">
-            <strong>Motif :</strong> {episode.motif}
-          </Text>
-          <Text size="sm">
-            <strong>Date de début :</strong> {formatRpDate(episode.startedAt)}
-          </Text>
+          <SystemFieldValue label="Motif" value={episode.motif} />
+          <SystemFieldValue
+            label="Date de début"
+            value={formatRpDate(episode.startedAt)}
+          />
         </Stack>
       ),
     }),
@@ -198,6 +207,7 @@ export function CareEpisodeDetailPageClient({
               <TextInput
                 label="Motif"
                 value={episode.motif}
+                styles={systemLabelStyles}
                 onChange={(e) => {
                   clearFieldError('motif');
                   setEpisode((ep) => ({ ...ep, motif: e.currentTarget.value }));
@@ -208,6 +218,7 @@ export function CareEpisodeDetailPageClient({
               <RpDatePicker
                 label="Date de début"
                 value={episode.startedAt}
+                styles={systemLabelStyles}
                 onChange={(d) => {
                   clearFieldError('startedAt');
                   if (d) setEpisode((ep) => ({ ...ep, startedAt: d }));
@@ -228,10 +239,12 @@ export function CareEpisodeDetailPageClient({
       fieldErrors.startedAt,
       setEpisode,
       systemCardsReadOnly,
+      systemLabelStyles,
     ],
   );
 
   return (
+    <CabinetDisplaySettingsProvider settings={episode.displaySettings}>
     <Container size="xl" py="xl">
       <PageHeader
         title="Prise en charge"
@@ -364,5 +377,6 @@ export function CareEpisodeDetailPageClient({
         </div>
       </Stack>
     </Container>
+    </CabinetDisplaySettingsProvider>
   );
 }

@@ -46,6 +46,26 @@ describe('MarkdownContent', () => {
     expect(html).toContain('deux');
   });
 
+  it('renders an ordered list', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownContent source={`1. premier
+2. deuxième`} />,
+    );
+    expect(html).toContain('<ol>');
+    expect(html).toContain('premier');
+    expect(html).toContain('deuxième');
+  });
+
+  it('renders nested bullets under ordered list items', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownContent source={`1. titre
+   - puce indentée
+2. autre`} />,
+    );
+    expect(html).toContain('<ol>');
+    expect(html).toContain('puce indentée');
+  });
+
   it('strips unsafe HTML', () => {
     const html = renderToStaticMarkup(
       <MarkdownContent source={'**Texte** <script>alert("xss")</script>'} />,

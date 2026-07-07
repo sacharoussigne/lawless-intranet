@@ -144,6 +144,7 @@ export async function createCabinet(
           name: validated.name,
           description: validated.description ?? null,
           formSchemas: defaultSchemas as object,
+          displaySettings: {} as object,
         },
       });
 
