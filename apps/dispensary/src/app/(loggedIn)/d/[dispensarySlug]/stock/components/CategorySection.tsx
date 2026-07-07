@@ -3,6 +3,7 @@
 import { memo } from 'react';
 import { Badge, Group, Paper, Table, Text } from '@mantine/core';
 import type { CategoryWithItems } from '@/types/stock';
+import { getStockPreviousColumnLabel } from '@/lib/stock/stockPreviousLabel';
 import { StockRow } from './StockRow';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
 
@@ -36,6 +37,10 @@ export const CategorySection = memo(function CategorySection({
     if (item.stockToday === null || item.weight == null) return sum;
     return sum + item.stockToday * item.weight;
   }, 0);
+
+  const previousStockColumnLabel = getStockPreviousColumnLabel(
+    categoryData.items.map((item) => item.stockPreviousAt),
+  );
 
   return (
     <Paper key={categoryData.category.id} shadow="sm" p="md" withBorder>
@@ -72,7 +77,7 @@ export const CategorySection = memo(function CategorySection({
                 <span style={{ visibility: 'hidden' }}>Quantité minimale</span>
               )}
             </Table.Th>
-            <Table.Th>Stock J-1</Table.Th>
+            <Table.Th>{previousStockColumnLabel}</Table.Th>
             <Table.Th>Stock aujourd'hui</Table.Th>
             {isEditing && canStockUpdate && <Table.Th>Nouveau stock</Table.Th>}
           </Table.Tr>

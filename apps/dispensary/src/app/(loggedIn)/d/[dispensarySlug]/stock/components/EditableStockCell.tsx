@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActionIcon, Button, Group, Popover, Stack, Text, TextInput, Tooltip } from '@mantine/core';
 import { IconCheck, IconEdit, IconScale } from '@tabler/icons-react';
 import type { ItemWithRelations } from '@/types/stock';
@@ -21,21 +21,33 @@ export const EditableStockCell = ({
   disabled = false,
   onCommitQuantity,
 }: EditableStockCellProps) => {
-  const initialString = useMemo(() => (initialValue !== null ? String(initialValue) : ''), [initialValue]);
-  const [inputValue, setInputValue] = useState<string>(initialString);
+  const initialString = initialValue !== null ? String(initialValue) : '';
+  const [inputValue, setInputValue] = useState(initialString);
 
   const [weightPopoverOpened, setWeightPopoverOpened] = useState(false);
   const [weightInputValue, setWeightInputValue] = useState<string>('');
   const [snapshot, setSnapshot] = useState<{ input: string; quantity: number | null } | null>(null);
+  const weightInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setInputValue(initialString);
-  }, [initialString]);
+    if (!weightPopoverOpened) return;
+
+    const frameId = requestAnimationFrame(() => {
+      weightInputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [weightPopoverOpened]);
+
+  const commitQuantityIfChanged = (quantity: number | null) => {
+    if (quantity === initialValue) return;
+    onCommitQuantity(item.id, quantity);
+  };
 
   const commitFromInput = (raw: string) => {
     const trimmed = raw.trim();
     if (trimmed === '') {
-      onCommitQuantity(item.id, null);
+      commitQuantityIfChanged(null);
       return;
     }
 
@@ -43,7 +55,7 @@ export const EditableStockCell = ({
       const result = evaluateIntegerExpression(trimmed);
       if (result !== '') {
         setInputValue(String(result));
-        onCommitQuantity(item.id, result);
+        commitQuantityIfChanged(result);
       }
       return;
     }
@@ -52,7 +64,7 @@ export const EditableStockCell = ({
     if (!Number.isFinite(parsed)) {
       return;
     }
-    onCommitQuantity(item.id, parsed);
+    commitQuantityIfChanged(parsed);
   };
 
   const computeQuantityFromWeight = (raw: string): number | null => {
@@ -101,6 +113,8 @@ export const EditableStockCell = ({
               position="top"
               withArrow
               shadow="md"
+              trapFocus
+              returnFocus={false}
               opened={weightPopoverOpened}
               onChange={setWeightPopoverOpened}
             >
@@ -110,11 +124,13 @@ export const EditableStockCell = ({
                     size="sm"
                     variant="subtle"
                     tabIndex={-1}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
                       const isOpening = !weightPopoverOpened;
                       setWeightPopoverOpened(isOpening);
                       if (isOpening) {
                         setSnapshot({ input: inputValue, quantity: initialValue });
+                        setWeightInputValue('');
                       }
                     }}
                   >
@@ -131,7 +147,7 @@ export const EditableStockCell = ({
                     Poids unitaire: {item.weight} kg
                   </Text>
                   <TextInput
-                    autoFocus
+                    ref={weightInputRef}
                     value={weightInputValue}
                     onChange={(e) => {
                       const v = String(e.currentTarget.value);
@@ -139,7 +155,6 @@ export const EditableStockCell = ({
                       const computed = computeQuantityFromWeight(v);
                       if (computed != null) {
                         setInputValue(String(computed));
-                        onCommitQuantity(item.id, computed);
                       }
                     }}
                     placeholder="Poids en kg (ex: 2.5 + 1.2)"
@@ -148,9 +163,10 @@ export const EditableStockCell = ({
                         const computed = computeQuantityFromWeight(weightInputValue);
                         if (computed != null) {
                           setInputValue(String(computed));
-                          onCommitQuantity(item.id, computed);
+                          commitQuantityIfChanged(computed);
                         }
                         setWeightPopoverOpened(false);
+                        setWeightInputValue('');
                       }
                     }}
                     size="xs"
@@ -197,9 +213,10 @@ export const EditableStockCell = ({
                         const computed = computeQuantityFromWeight(weightInputValue);
                         if (computed != null) {
                           setInputValue(String(computed));
-                          onCommitQuantity(item.id, computed);
+                          commitQuantityIfChanged(computed);
                         }
                         setWeightPopoverOpened(false);
+                        setWeightInputValue('');
                       }}
                     >
                       Valider

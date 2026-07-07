@@ -33,6 +33,10 @@ export function getYesterdayStart(): Date {
   return dayjs.tz().subtract(1, 'day').startOf('day').toDate();
 }
 
+export function getDayBeforeYesterdayStart(): Date {
+  return dayjs.tz().subtract(2, 'day').startOf('day').toDate();
+}
+
 /**
  * Gets the start of tomorrow
  */
