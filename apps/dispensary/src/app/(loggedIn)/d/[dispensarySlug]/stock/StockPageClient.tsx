@@ -12,12 +12,14 @@ import { StockHeader } from './components/StockHeader';
 import { ChestSelectorBar } from './components/ChestSelectorBar';
 import { CategorySection } from './components/CategorySection';
 import { groupItemsByCategory } from '@/lib/stock/sortItemsByCategory';
+import { resolveLastStockDayLabel } from '@/lib/stock/stockPreviousLabel';
 import { getContrastTextColor } from '@/lib/color/contrastTextColor';
 import type { StockChecksSummary } from '@/app/_actions/stockChecks';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
 import {
   useStockItems,
   useStockChecksSummary,
+  useLastStockDaysByChest,
   useUpdateStockMutation,
   useCraftMutation,
   getChangedStockEntries,
@@ -28,6 +30,7 @@ interface StockPageClientProps {
   initialChests: ChestListItem[];
   initialStockChecksSummary: StockChecksSummary;
   stockUiPreferences: StockUiPreferences;
+  initialLastStockDaysByChest: Record<string, Date | null>;
 }
 
 export default function StockPageClient({
@@ -35,6 +38,7 @@ export default function StockPageClient({
   initialChests,
   initialStockChecksSummary,
   stockUiPreferences,
+  initialLastStockDaysByChest,
 }: StockPageClientProps) {
   const { permissions } = usePermissions();
   const chests = initialChests;
@@ -47,6 +51,7 @@ export default function StockPageClient({
 
   const { data: items = initialItems, isFetching, isPending } = useStockItems(selectedChestId, initialItems);
   const { data: stockChecksSummary = initialStockChecksSummary } = useStockChecksSummary(initialStockChecksSummary);
+  const { data: lastStockDaysByChest = initialLastStockDaysByChest } = useLastStockDaysByChest(initialLastStockDaysByChest);
   const updateStockMutation = useUpdateStockMutation();
   const craftMutation = useCraftMutation();
 
@@ -155,6 +160,17 @@ export default function StockPageClient({
     };
   }, [items]);
 
+  const lastStockLabel = useMemo(() => {
+    if (itemsWithStockToday > 0) return null;
+
+    const dates = selectedChestId
+      ? [lastStockDaysByChest[selectedChestId]]
+      : chests.map((chest) => lastStockDaysByChest[chest.id]);
+
+    const label = resolveLastStockDayLabel(dates, 'newest');
+    return label ? `Dernier stock : ${label}` : null;
+  }, [itemsWithStockToday, selectedChestId, chests, lastStockDaysByChest]);
+
   const chestOptions = useMemo(
     () => [
       { value: '', label: 'Tous les coffres' },
@@ -191,6 +207,7 @@ export default function StockPageClient({
         totalWeightToday={totalWeightToday}
         itemsWithStockToday={itemsWithStockToday}
         totalItems={totalItems}
+        lastStockLabel={lastStockLabel}
         onChangeChestId={setSelectedChestId}
       />
 
