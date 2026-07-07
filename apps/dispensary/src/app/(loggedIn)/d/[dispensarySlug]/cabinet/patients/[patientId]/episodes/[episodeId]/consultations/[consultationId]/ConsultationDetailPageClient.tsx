@@ -31,6 +31,8 @@ import { handleAction } from '@/lib/action';
 import { canWriteCabinet } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
+import { getMantineLabelStyles } from '@/lib/cabinet/displaySettings';
 import { formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
@@ -44,6 +46,8 @@ import type {
   ConsultationDocumentTemplateListItem,
 } from '@/types/cabinetDocuments';
 import { ConsultationDocumentModal } from './ConsultationDocumentModal';
+import { CabinetDisplaySettingsProvider } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetDisplaySettingsContext';
+import { SystemFieldValue } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFieldLabel';
 
 type ConsultationData = {
   id: string;
@@ -51,6 +55,7 @@ type ConsultationData = {
   date: Date;
   customValues: CustomValues;
   formSchemas: CabinetFormSchemas;
+  displaySettings: CabinetDisplaySettings;
   accessLevel: CabinetAccessLevel | null;
   careEpisode: {
     id: string;
@@ -165,12 +170,15 @@ export function ConsultationDetailPageClient({
     }
   };
 
+  const systemLabelStyles = useMemo(
+    () => getMantineLabelStyles('system', consultation.displaySettings),
+    [consultation.displaySettings],
+  );
+
   const systemCardsReadOnly = useMemo(
     () => ({
       consultation_general: (
-        <Text size="sm">
-          <strong>Date :</strong> {formatRpDate(consultation.date)}
-        </Text>
+        <SystemFieldValue label="Date" value={formatRpDate(consultation.date)} />
       ),
     }),
     [consultation.date],
@@ -296,6 +304,7 @@ export function ConsultationDetailPageClient({
               <RpDatePicker
                 label="Date"
                 value={consultation.date}
+                styles={systemLabelStyles}
                 onChange={(d) => {
                   clearFieldError('date');
                   setConsultation((c) => ({ ...c, date: d ?? c.date }));
@@ -313,10 +322,12 @@ export function ConsultationDetailPageClient({
       fieldErrors.date,
       setConsultation,
       systemCardsReadOnly,
+      systemLabelStyles,
     ],
   );
 
   return (
+    <CabinetDisplaySettingsProvider settings={consultation.displaySettings}>
     <Container size="xl" py="xl">
       <PageHeader
         title={`Consultation — ${formatRpDate(consultation.date)}`}
@@ -512,5 +523,6 @@ export function ConsultationDetailPageClient({
         />
       )}
     </Container>
+    </CabinetDisplaySettingsProvider>
   );
 }

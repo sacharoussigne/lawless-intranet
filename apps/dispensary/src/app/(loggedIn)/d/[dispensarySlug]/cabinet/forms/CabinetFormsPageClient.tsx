@@ -6,6 +6,8 @@ import { Container, Group, Stack, Tabs, Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import type { CabinetFormSchemas, FormEntityType } from '@/lib/cabinet/formSchema';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
+import { createDefaultDisplaySettings } from '@/lib/cabinet/displaySettings';
 import type { CabinetSummaryDTO } from '@/types/cabinet';
 import { tenantRoutes } from '@/types/routes';
 import { CabinetSelector } from '../components/CabinetSelector';
@@ -25,6 +27,7 @@ interface CabinetFormsPageClientProps {
   cabinetId: string;
   cabinetName: string;
   initialFormSchemas: CabinetFormSchemas;
+  initialDisplaySettings: CabinetDisplaySettings;
   initialTab: FormEntityType;
 }
 
@@ -34,6 +37,7 @@ export function CabinetFormsPageClient({
   cabinetId: initialCabinetId,
   cabinetName: initialCabinetName,
   initialFormSchemas,
+  initialDisplaySettings,
   initialTab,
 }: CabinetFormsPageClientProps) {
   const router = useRouter();
@@ -41,14 +45,18 @@ export function CabinetFormsPageClient({
   const searchParams = useSearchParams();
 
   const [formSchemas, setFormSchemas] = useState(initialFormSchemas);
+  const [displaySettings, setDisplaySettings] = useState(
+    initialDisplaySettings ?? createDefaultDisplaySettings(),
+  );
   const [activeTab, setActiveTab] = useState<FormEntityType>(initialTab);
   const isDirtyRef = useRef(false);
 
   useEffect(() => {
     setFormSchemas(initialFormSchemas);
+    setDisplaySettings(initialDisplaySettings ?? createDefaultDisplaySettings());
     setActiveTab(initialTab);
     isDirtyRef.current = false;
-  }, [initialFormSchemas, initialCabinetId, initialTab]);
+  }, [initialFormSchemas, initialDisplaySettings, initialCabinetId, initialTab]);
 
   const cabinetIdFromUrl = searchParams.get('cabinetId');
   const selectedCabinetId = useMemo(() => {
@@ -123,10 +131,14 @@ export function CabinetFormsPageClient({
     [activeTab, confirmDiscardIfDirty, selectedCabinetId, updateUrl],
   );
 
-  const handleSchemasSaved = useCallback((schemas: CabinetFormSchemas) => {
-    setFormSchemas(schemas);
-    isDirtyRef.current = false;
-  }, []);
+  const handleConfigurationSaved = useCallback(
+    (data: { formSchemas: CabinetFormSchemas; displaySettings: CabinetDisplaySettings }) => {
+      setFormSchemas(data.formSchemas);
+      setDisplaySettings(data.displaySettings);
+      isDirtyRef.current = false;
+    },
+    [],
+  );
 
   return (
     <Container size="xl" py="xl">
@@ -165,7 +177,8 @@ export function CabinetFormsPageClient({
                   cabinetId={selectedCabinetId}
                   entityType={tab}
                   formSchemas={formSchemas}
-                  onSchemasSaved={handleSchemasSaved}
+                  displaySettings={displaySettings}
+                  onConfigurationSaved={handleConfigurationSaved}
                   onDirtyChange={handleDirtyChange}
                 />
               )}

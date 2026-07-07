@@ -735,6 +735,7 @@ model Cabinet {
   name         String
   description  String?
   formSchemas  Json
+  displaySettings Json @default("{}")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   members      CabinetMember[]

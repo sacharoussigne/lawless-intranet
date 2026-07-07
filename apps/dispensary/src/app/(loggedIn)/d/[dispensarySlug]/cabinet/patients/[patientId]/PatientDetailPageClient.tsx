@@ -34,12 +34,16 @@ import {
 } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
+import { getMantineLabelStyles } from '@/lib/cabinet/displaySettings';
 import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
 import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
 import { useCabinetEntityEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetEntityEditing';
 import { CareEpisodeFormModal } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CareEpisodeFormModal';
+import { CabinetDisplaySettingsProvider } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetDisplaySettingsContext';
+import { SystemFieldValue } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFieldLabel';
 
 type PatientData = {
   id: string;
@@ -50,6 +54,7 @@ type PatientData = {
   emergencyContact: string | null;
   customValues: CustomValues;
   formSchemas: CabinetFormSchemas;
+  displaySettings: CabinetDisplaySettings;
   accessLevel: CabinetAccessLevel | null;
 };
 
@@ -141,24 +146,31 @@ export function PatientDetailPageClient({
     }
   };
 
+  const systemLabelStyles = useMemo(
+    () => getMantineLabelStyles('system', patient.displaySettings),
+    [patient.displaySettings],
+  );
+
   const systemCardsReadOnly = useMemo(
     () => ({
       patient_identity: (
         <Stack gap="xs">
-          <Text size="sm">
-            <strong>Prénom :</strong> {patient.firstName}
-          </Text>
-          <Text size="sm">
-            <strong>Nom :</strong> {patient.lastName}
-          </Text>
-          <Text size="sm">
-            <strong>Date de naissance :</strong> {formatRpDate(patient.birthDate)}
-            {computeRpAge(patient.birthDate) !== null &&
-              ` (${computeRpAge(patient.birthDate)} ans)`}
-          </Text>
-          <Text size="sm">
-            <strong>Contact urgence :</strong> {patient.emergencyContact || '—'}
-          </Text>
+          <SystemFieldValue label="Prénom" value={patient.firstName} />
+          <SystemFieldValue label="Nom" value={patient.lastName} />
+          <SystemFieldValue
+            label="Date de naissance"
+            value={
+              <>
+                {formatRpDate(patient.birthDate)}
+                {computeRpAge(patient.birthDate) !== null &&
+                  ` (${computeRpAge(patient.birthDate)} ans)`}
+              </>
+            }
+          />
+          <SystemFieldValue
+            label="Contact urgence"
+            value={patient.emergencyContact || '—'}
+          />
         </Stack>
       ),
     }),
@@ -174,6 +186,7 @@ export function PatientDetailPageClient({
               <TextInput
                 label="Prénom"
                 value={patient.firstName}
+                styles={systemLabelStyles}
                 onChange={(e) => {
                   clearFieldError('firstName');
                   setPatient((p) => ({ ...p, firstName: e.currentTarget.value }));
@@ -184,6 +197,7 @@ export function PatientDetailPageClient({
               <TextInput
                 label="Nom"
                 value={patient.lastName}
+                styles={systemLabelStyles}
                 onChange={(e) => {
                   clearFieldError('lastName');
                   setPatient((p) => ({ ...p, lastName: e.currentTarget.value }));
@@ -194,6 +208,7 @@ export function PatientDetailPageClient({
               <RpDatePicker
                 label="Date de naissance"
                 value={patient.birthDate}
+                styles={systemLabelStyles}
                 onChange={(d) => {
                   clearFieldError('birthDate');
                   setPatient((p) => ({ ...p, birthDate: d }));
@@ -204,6 +219,7 @@ export function PatientDetailPageClient({
               <TextInput
                 label="Personne à contacter en cas d'urgence"
                 value={patient.emergencyContact ?? ''}
+                styles={systemLabelStyles}
                 onChange={(e) => {
                   clearFieldError('emergencyContact');
                   setPatient((p) => ({ ...p, emergencyContact: e.currentTarget.value }));
@@ -227,10 +243,12 @@ export function PatientDetailPageClient({
       patient.lastName,
       setPatient,
       systemCardsReadOnly,
+      systemLabelStyles,
     ],
   );
 
   return (
+    <CabinetDisplaySettingsProvider settings={patient.displaySettings}>
     <Container size="xl" py="xl">
       <PageHeader
         title={`${patient.lastName} ${patient.firstName}`}
@@ -371,5 +389,6 @@ export function PatientDetailPageClient({
         onSuccess={() => void reloadEpisodes()}
       />
     </Container>
+    </CabinetDisplaySettingsProvider>
   );
 }
