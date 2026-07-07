@@ -103,6 +103,7 @@ export const StockRow = memo(function StockRow({
       {isEditing && canStockUpdate && (
         <Table.Td>
           <EditableStockCell
+            key={`${item.id}:${editedQuantity ?? ''}`}
             item={item}
             hasStockToday={hasStockToday}
             initialValue={editedQuantity}
