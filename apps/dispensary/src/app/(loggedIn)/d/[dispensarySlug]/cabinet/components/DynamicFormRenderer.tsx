@@ -7,6 +7,8 @@ import type {
   CustomValues,
   FormEntitySchema,
 } from '@/lib/cabinet/formSchema';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
+import { flattenFields } from '@/lib/cabinet/formSchema/flattenFields';
 import type { CabinetFieldErrors } from '@/lib/cabinet/formErrors';
 import {
   addCategory,
@@ -36,6 +38,9 @@ type DynamicFormRendererProps = {
   fieldErrors?: CabinetFieldErrors;
   schemaNestedFlushToken?: number;
   schemaFlushToken?: number;
+  displaySettings?: CabinetDisplaySettings;
+  onFieldLabelColorChange?: (fieldId: string, color: string) => void;
+  onFieldRemoved?: (fieldId: string) => void;
 };
 
 export function DynamicFormRenderer({
@@ -50,6 +55,9 @@ export function DynamicFormRenderer({
   fieldErrors,
   schemaNestedFlushToken,
   schemaFlushToken,
+  displaySettings,
+  onFieldLabelColorChange,
+  onFieldRemoved,
 }: DynamicFormRendererProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const sortedCategories = useMemo(
@@ -96,7 +104,14 @@ export function DynamicFormRenderer({
           }
           onDeleteCategory={
             schemaEditing
-              ? () => mutateSchema(deleteCategory(schema, category.id))
+              ? () => {
+                  if (onFieldRemoved) {
+                    for (const field of flattenFields(category.fields)) {
+                      onFieldRemoved(field.id);
+                    }
+                  }
+                  mutateSchema(deleteCategory(schema, category.id));
+                }
               : undefined
           }
           onAddField={
@@ -111,7 +126,10 @@ export function DynamicFormRenderer({
           }
           onDeleteField={
             schemaEditing
-              ? (fieldId) => mutateSchema(deleteField(schema, category.id, fieldId))
+              ? (fieldId) => {
+                  onFieldRemoved?.(fieldId);
+                  mutateSchema(deleteField(schema, category.id, fieldId));
+                }
               : undefined
           }
           onMoveField={
@@ -123,6 +141,9 @@ export function DynamicFormRenderer({
           fieldErrors={schemaEditing ? undefined : fieldErrors}
           schemaNestedFlushToken={schemaEditing ? schemaNestedFlushToken : undefined}
           schemaFlushToken={schemaEditing ? schemaFlushToken : undefined}
+          fieldLabelColors={schemaEditing ? displaySettings?.fieldLabelColors : undefined}
+          onFieldLabelColorChange={schemaEditing ? onFieldLabelColorChange : undefined}
+          onFieldRemoved={schemaEditing ? onFieldRemoved : undefined}
         >
           {category.systemKey && systemCards?.[category.systemKey]}
         </FormCategoryCard>

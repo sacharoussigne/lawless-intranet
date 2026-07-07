@@ -16,6 +16,7 @@ export interface ItemWithRelations {
   companyGroup: { id: string; name: string } | null;
   stockToday: number | null;
   stockYesterday: number | null;
+  stockPreviousAt: Date | null;
 }
 
 export interface CategoryWithItems {

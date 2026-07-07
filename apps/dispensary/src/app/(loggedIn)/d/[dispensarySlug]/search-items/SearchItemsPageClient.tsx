@@ -16,6 +16,7 @@ import {
 } from '@mantine/core';
 import { getItemsWithDetailedStock } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
+import { getStockPreviousColumnLabel, getStockTotalPreviousLabel } from '@/lib/stock/stockPreviousLabel';
 import { notifications } from '@mantine/notifications';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
 import type { ItemWithRelations } from '@/types/items';
@@ -39,11 +40,13 @@ interface ItemWithDetailedStock {
   } | null;
   totalStockToday: number | null;
   totalStockYesterday: number | null;
+  totalStockPreviousAt: Date | null;
   stockByChest: {
     chestId: string;
     chestName: string;
     stockToday: number | null;
     stockYesterday: number | null;
+    stockPreviousAt: Date | null;
   }[];
 }
 
@@ -114,7 +117,16 @@ export default function SearchItemsPageClient({
 
             {itemsWithStock.length > 0 && (
               <Stack gap="lg" mt="md">
-                {itemsWithStock.map((item) => (
+                {itemsWithStock.map((item) => {
+                  const previousStockColumnLabel = getStockPreviousColumnLabel(
+                    item.stockByChest.map((chestStock) => chestStock.stockPreviousAt),
+                  );
+                  const totalPreviousLabel = getStockTotalPreviousLabel([
+                    item.totalStockPreviousAt,
+                    ...item.stockByChest.map((chestStock) => chestStock.stockPreviousAt),
+                  ]);
+
+                  return (
                   <Paper key={item.id} shadow="xs" p="md" withBorder pos="relative">
                     <LoadingOverlay visible={loading} />
                     <Stack gap="sm">
@@ -177,7 +189,7 @@ export default function SearchItemsPageClient({
                           <Group gap="md">
                             <Stack gap={2} align="flex-end">
                               <Text size="xs" c="dimmed">
-                                Stock total hier
+                                {totalPreviousLabel}
                               </Text>
                               <Text size="lg" fw={500} c={item.totalStockYesterday !== null ? 'dimmed' : 'dimmed'}>
                                 {item.totalStockYesterday !== null ? item.totalStockYesterday : '?'}
@@ -199,7 +211,7 @@ export default function SearchItemsPageClient({
                         <Table.Thead>
                           <Table.Tr>
                             <Table.Th>Coffre</Table.Th>
-                            <Table.Th>Stock hier</Table.Th>
+                            <Table.Th>{previousStockColumnLabel}</Table.Th>
                             <Table.Th>Stock aujourd'hui</Table.Th>
                           </Table.Tr>
                         </Table.Thead>
@@ -225,7 +237,8 @@ export default function SearchItemsPageClient({
                       </Table>
                     </Stack>
                   </Paper>
-                ))}
+                  );
+                })}
               </Stack>
             )}
 

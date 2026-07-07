@@ -13,14 +13,17 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEye, IconPlus, IconSettings, IconTemplate, IconTrash, IconUser } from '@tabler/icons-react';
+import { IconEye, IconPalette, IconPlus, IconSettings, IconTemplate, IconTrash, IconUser } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { deleteCabinetPatient, listCabinetPatients } from '@/app/_actions/cabinet/patients';
+import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySettings';
 import { handleAction } from '@/lib/action';
+import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
+import { createDefaultDisplaySettings } from '@/lib/cabinet/displaySettings';
 import {
   canOwnCabinet,
   canWriteCabinet,
@@ -31,6 +34,7 @@ import { tenantRoutes } from '@/types/routes';
 import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
 import { CabinetSelector } from './components/CabinetSelector';
 import { PatientFormModal } from './components/PatientFormModal';
+import { CabinetDisplaySettingsModal } from './components/CabinetDisplaySettingsModal';
 
 interface CabinetPageClientProps {
   dispensarySlug: string;
@@ -57,6 +61,11 @@ export function CabinetPageClient({
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
+  const [displaySettingsModalOpen, setDisplaySettingsModalOpen] = useState(false);
+  const [displaySettings, setDisplaySettings] = useState<CabinetDisplaySettings>(
+    createDefaultDisplaySettings(),
+  );
+  const [loadingDisplaySettings, setLoadingDisplaySettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const initialFetchSkipped = useRef(false);
 
@@ -120,6 +129,28 @@ export function CabinetPageClient({
     }
   };
 
+  const handleOpenDisplaySettings = useCallback(async () => {
+    if (!selectedCabinetId) return;
+    setDisplaySettingsModalOpen(true);
+    setLoadingDisplaySettings(true);
+    try {
+      const result = await getCabinetDisplaySettings(dispensarySlug, selectedCabinetId);
+      const data = handleAction(result);
+      if (data) {
+        setDisplaySettings(data.displaySettings);
+      }
+    } catch (error: unknown) {
+      notifications.show({
+        title: 'Erreur',
+        message: error instanceof Error ? error.message : 'Chargement impossible',
+        color: 'danger',
+      });
+      setDisplaySettingsModalOpen(false);
+    } finally {
+      setLoadingDisplaySettings(false);
+    }
+  }, [dispensarySlug, selectedCabinetId]);
+
   useEffect(() => {
     if (!selectedCabinetId) return;
 
@@ -166,6 +197,15 @@ export function CabinetPageClient({
             />
             {canConfigureForms && selectedCabinetId && (
               <>
+                <Button
+                  variant="light"
+                  color="leather"
+                  leftSection={<IconPalette size={16} />}
+                  loading={loadingDisplaySettings && displaySettingsModalOpen}
+                  onClick={() => void handleOpenDisplaySettings()}
+                >
+                  Affichage
+                </Button>
                 <Button
                   component={Link}
                   href={t.cabinet.forms(selectedCabinetId)}
@@ -292,6 +332,17 @@ export function CabinetPageClient({
           patient={null}
           formSchemas={null}
           onSuccess={loadPatients}
+        />
+      )}
+
+      {selectedCabinetId && (
+        <CabinetDisplaySettingsModal
+          opened={displaySettingsModalOpen}
+          onClose={() => setDisplaySettingsModalOpen(false)}
+          dispensarySlug={dispensarySlug}
+          cabinetId={selectedCabinetId}
+          initialSettings={displaySettings}
+          onSaved={setDisplaySettings}
         />
       )}
     </Container>

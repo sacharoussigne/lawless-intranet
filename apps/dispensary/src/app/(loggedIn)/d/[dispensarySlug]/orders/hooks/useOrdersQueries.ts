@@ -98,6 +98,7 @@ async function fetchOrderFormItems(
         ...item,
         stockToday: null,
         stockYesterday: null,
+        stockPreviousAt: null,
         price: normalizeItemPrice(item.price),
         canBeSold: item.canBeSold ?? false,
       }) as ItemWithRelations,
