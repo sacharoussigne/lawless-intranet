@@ -6,14 +6,14 @@ import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import {
   getTodayStart,
-  getYesterdayStart,
   getTomorrowStart,
   getStartOfDay,
 } from '@/lib/date';
 import {
   fetchEnabledItems,
   fetchStockHistoryRows,
-  buildStockSnapshots,
+  fetchLatestStockBeforeDate,
+  buildStockSnapshotsWithPrevious,
   mapItemWithStockSnapshot,
   ITEM_STOCK_SELECT,
 } from '@/app/_actions/stock/queryHelpers';
@@ -30,18 +30,20 @@ export async function getItemsWithStock(
     const { dispensaryId } = ctx.tenant;
 
     const today = getTodayStart();
-    const yesterday = getYesterdayStart();
     const tomorrow = getTomorrowStart();
 
     const items = await fetchEnabledItems(dispensaryId);
     const itemIds = items.map((item) => item.id);
-    const stockRows = await fetchStockHistoryRows(
-      dispensaryId,
-      itemIds,
-      { gte: yesterday, lt: tomorrow },
-      chestId,
-    );
-    const snapshots = buildStockSnapshots(stockRows, today, yesterday, chestId);
+    const [todayRows, previousRows] = await Promise.all([
+      fetchStockHistoryRows(
+        dispensaryId,
+        itemIds,
+        { gte: today, lt: tomorrow },
+        chestId,
+      ),
+      fetchLatestStockBeforeDate(prisma, dispensaryId, itemIds, today, chestId),
+    ]);
+    const snapshots = buildStockSnapshotsWithPrevious(todayRows, previousRows, today, chestId);
 
     const itemsWithStock = items.map((item) =>
       mapItemWithStockSnapshot(item, snapshots.get(item.id)),
@@ -134,7 +136,6 @@ export async function getItemsWithDetailedStock(
     const { dispensaryId } = ctx.tenant;
 
     const today = getTodayStart();
-    const yesterday = getYesterdayStart();
     const tomorrow = getTomorrowStart();
 
     const items = await prisma.item.findMany({
@@ -148,11 +149,10 @@ export async function getItemsWithDetailedStock(
     });
 
     const ids = items.map((item) => item.id);
-    const stockRows = await fetchStockHistoryRows(
-      dispensaryId,
-      ids,
-      { gte: yesterday, lt: tomorrow },
-    );
+    const [todayRows, previousRows] = await Promise.all([
+      fetchStockHistoryRows(dispensaryId, ids, { gte: today, lt: tomorrow }),
+      fetchLatestStockBeforeDate(prisma, dispensaryId, ids, today),
+    ]);
 
     const allChests = await prisma.chest.findMany({
       where: {
@@ -164,17 +164,25 @@ export async function getItemsWithDetailedStock(
     });
 
     const itemsWithDetailedStock = items.map((item) => {
-      const itemRows = stockRows.filter((r) => r.itemId === item.id);
-      const snapshots = buildStockSnapshots(itemRows, today, yesterday);
+      const itemTodayRows = todayRows.filter((r) => r.itemId === item.id);
+      const itemPreviousRows = previousRows.filter((r) => r.itemId === item.id);
+      const snapshots = buildStockSnapshotsWithPrevious(itemTodayRows, itemPreviousRows, today);
 
       const stockByChest = allChests.map((chest) => {
-        const chestRows = itemRows.filter((r) => r.chestId === chest.id);
-        const chestSnapshot = buildStockSnapshots(chestRows, today, yesterday, chest.id).get(item.id);
+        const chestTodayRows = itemTodayRows.filter((r) => r.chestId === chest.id);
+        const chestPreviousRows = itemPreviousRows.filter((r) => r.chestId === chest.id);
+        const chestSnapshot = buildStockSnapshotsWithPrevious(
+          chestTodayRows,
+          chestPreviousRows,
+          today,
+          chest.id,
+        ).get(item.id);
         return {
           chestId: chest.id,
           chestName: chest.name,
           stockToday: chestSnapshot?.stockToday ?? null,
           stockYesterday: chestSnapshot?.stockYesterday ?? null,
+          stockPreviousAt: chestSnapshot?.stockPreviousAt ?? null,
         };
       });
 
@@ -185,6 +193,7 @@ export async function getItemsWithDetailedStock(
         price: item.price ? Number(item.price) : null,
         totalStockToday: snapshot?.stockToday ?? null,
         totalStockYesterday: snapshot?.stockYesterday ?? null,
+        totalStockPreviousAt: snapshot?.stockPreviousAt ?? null,
         stockByChest,
       };
     });

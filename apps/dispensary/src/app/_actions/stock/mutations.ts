@@ -5,8 +5,9 @@ import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { getTodayStart, getTomorrowStart, getYesterdayStart, getStartOfDay } from '@/lib/date';
+import { getTodayStart, getTomorrowStart, getStartOfDay } from '@/lib/date';
 import { getDefaultChestId } from '@/app/_actions/stock/internals';
+import { fetchLatestStockBeforeDate } from '@/app/_actions/stock/queryHelpers';
 import { buildManualMovements, type ManualStockMovementInput } from '@/lib/stock/movements';
 
 function latestStockByItem<T extends { itemId: string; timestamp: Date }>(rows: T[]): Map<string, T> {
@@ -44,7 +45,6 @@ export async function updateStock(
 
     const today = getTodayStart();
     const tomorrow = getTomorrowStart();
-    const yesterday = getYesterdayStart();
     const skipHistory = options?.skipHistory ?? false;
     const userId = session.user.id;
 
@@ -72,7 +72,7 @@ export async function updateStock(
     const itemIds = data.map((d) => d.itemId);
 
     const results = await prisma.$transaction(async (tx) => {
-      const [todayRows, yesterdayRows] = await Promise.all([
+      const [todayRows, previousRows] = await Promise.all([
         tx.stockHistory.findMany({
           where: {
             itemId: { in: itemIds },
@@ -81,24 +81,17 @@ export async function updateStock(
           },
           orderBy: { timestamp: 'desc' },
         }),
-        tx.stockHistory.findMany({
-          where: {
-            itemId: { in: itemIds },
-            chestId: resolvedChestId,
-            timestamp: { gte: yesterday, lt: today },
-          },
-          orderBy: { timestamp: 'desc' },
-        }),
+        fetchLatestStockBeforeDate(tx, dispensaryId, itemIds, today, resolvedChestId),
       ]);
 
       const todayByItem = latestStockByItem(todayRows);
-      const yesterdayByItem = latestStockByItem(yesterdayRows);
+      const previousByItem = new Map(previousRows.map((row) => [row.itemId, row]));
 
       const movementInputs: ManualStockMovementInput[] = data.map(({ itemId, quantity }) => ({
         itemId,
         newQty: quantity,
         stockToday: todayByItem.get(itemId)?.quantity ?? null,
-        stockYesterday: yesterdayByItem.get(itemId)?.quantity ?? null,
+        stockYesterday: previousByItem.get(itemId)?.quantity ?? null,
       }));
 
       const stockResults = await Promise.all(

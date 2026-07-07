@@ -1,6 +1,12 @@
 import prisma from '@/lib/prisma';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { aggregateTodayYesterday, type StockHistoryRow } from '@/lib/stock/aggregateStock';
+import {
+  aggregateTodayAndPrevious,
+  aggregateTodayYesterday,
+  type StockHistoryRow,
+} from '@/lib/stock/aggregateStock';
+
+type StockHistoryClient = Pick<typeof prisma, 'stockHistory'>;
 
 export const ITEM_STOCK_SELECT = {
   id: true,
@@ -60,12 +66,13 @@ type ItemRow = {
 
 export function mapItemWithStockSnapshot(
   item: ItemRow,
-  snapshot: { stockToday: number | null; stockYesterday: number | null } | undefined,
+  snapshot: { stockToday: number | null; stockYesterday: number | null; stockPreviousAt?: Date | null } | undefined,
 ) {
   return {
     ...item,
     stockToday: snapshot?.stockToday ?? null,
     stockYesterday: snapshot?.stockYesterday ?? null,
+    stockPreviousAt: snapshot?.stockPreviousAt ?? null,
     price: item.price ? Number(item.price) : null,
   };
 }
@@ -118,4 +125,69 @@ export function buildStockSnapshots(
   chestId?: string | null,
 ) {
   return aggregateTodayYesterday(stockRows, today, yesterday, chestId);
+}
+
+export function buildStockSnapshotsWithPrevious(
+  stockRowsToday: StockHistoryRow[],
+  previousRows: StockHistoryRow[],
+  today: Date,
+  chestId?: string | null,
+) {
+  return aggregateTodayAndPrevious(stockRowsToday, previousRows, today, chestId);
+}
+
+export async function fetchLatestStockBeforeDate(
+  client: StockHistoryClient,
+  dispensaryId: string,
+  itemIds: string[],
+  beforeDate: Date,
+  chestId?: string | null,
+): Promise<StockHistoryRow[]> {
+  if (itemIds.length === 0) return [];
+
+  const baseWhere = {
+    itemId: { in: itemIds },
+    timestamp: { lt: beforeDate },
+    ...(chestId ? { chestId } : {}),
+    chest: {
+      isEnabled: true,
+      ...tenantWhere(dispensaryId),
+    },
+  };
+
+  const groups = await client.stockHistory.groupBy({
+    by: chestId ? ['itemId'] : ['itemId', 'chestId'],
+    where: baseWhere,
+    _max: { timestamp: true },
+  });
+
+  if (groups.length === 0) return [];
+
+  const latestRows = await client.stockHistory.findMany({
+    where: {
+      OR: groups.map((group) => ({
+        itemId: group.itemId,
+        ...(!chestId && 'chestId' in group ? { chestId: group.chestId } : {}),
+        timestamp: group._max.timestamp!,
+        ...(chestId ? { chestId } : {}),
+      })),
+    },
+    select: {
+      itemId: true,
+      chestId: true,
+      quantity: true,
+      timestamp: true,
+    },
+  });
+
+  const latestByKey = new Map<string, StockHistoryRow>();
+  for (const row of latestRows) {
+    const key = chestId ? row.itemId : `${row.itemId}:${row.chestId}`;
+    const existing = latestByKey.get(key);
+    if (!existing || row.timestamp.getTime() > existing.timestamp.getTime()) {
+      latestByKey.set(key, row);
+    }
+  }
+
+  return Array.from(latestByKey.values());
 }
