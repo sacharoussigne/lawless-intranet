@@ -1,4 +1,4 @@
-import { getItemsWithStock } from '@/app/_actions/stock';
+import { getItemsWithStock, getLastStockDaysByChest } from '@/app/_actions/stock';
 import { getChestsList } from '@/app/_actions/chests';
 import { getStockChecksSummary } from '@/app/_actions/stockChecks';
 import StockPageClient from './StockPageClient';
@@ -7,17 +7,19 @@ import { getDataOrThrow } from '@/lib/response';
 import { getMyStockUiPreferences } from '@/app/_actions/stockUiPreferences';
 
 async function StockContent({ dispensarySlug }: { dispensarySlug: string }) {
-  const [itemsResult, chestsResult, stockUiPreferencesResult, stockChecksSummaryResult] = await Promise.all([
+  const [itemsResult, chestsResult, stockUiPreferencesResult, stockChecksSummaryResult, lastStockDaysResult] = await Promise.all([
     getItemsWithStock(dispensarySlug),
     getChestsList(dispensarySlug, true),
     getMyStockUiPreferences(),
     getStockChecksSummary(dispensarySlug),
+    getLastStockDaysByChest(dispensarySlug),
   ]);
 
   const items = getDataOrThrow(itemsResult, 'Erreur lors du chargement du stock');
   const chests = getDataOrThrow(chestsResult, 'Erreur lors du chargement des coffres');
   const stockUiPreferences = getDataOrThrow(stockUiPreferencesResult, 'Erreur lors du chargement des préférences');
   const stockChecksSummary = getDataOrThrow(stockChecksSummaryResult, 'Erreur lors du chargement des contrôles stock');
+  const lastStockDaysByChest = getDataOrThrow(lastStockDaysResult, 'Erreur lors du chargement des dates de dernier stock');
 
   return (
     <StockPageClient
@@ -25,6 +27,7 @@ async function StockContent({ dispensarySlug }: { dispensarySlug: string }) {
       initialChests={chests}
       initialStockChecksSummary={stockChecksSummary}
       stockUiPreferences={stockUiPreferences}
+      initialLastStockDaysByChest={lastStockDaysByChest}
     />
   );
 }

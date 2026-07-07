@@ -2,6 +2,7 @@ export {
   getItemsWithStock,
   getItemsWithStockForDate,
   getItemsWithDetailedStock,
+  getLastStockDaysByChest,
 } from '@/app/_actions/stock/queries';
 export { updateStock, craftItem, overwriteStockForDate } from '@/app/_actions/stock/mutations';
 export { transferMultipleStock } from '@/app/_actions/stock/transfer';

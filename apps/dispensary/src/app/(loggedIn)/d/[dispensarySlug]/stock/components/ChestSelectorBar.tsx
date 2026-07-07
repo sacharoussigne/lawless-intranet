@@ -9,6 +9,7 @@ interface ChestSelectorBarProps {
   totalWeightToday: number;
   itemsWithStockToday: number;
   totalItems: number;
+  lastStockLabel: string | null;
   onChangeChestId: (value: string | null) => void;
 }
 
@@ -19,6 +20,7 @@ export function ChestSelectorBar({
   totalWeightToday,
   itemsWithStockToday,
   totalItems,
+  lastStockLabel,
   onChangeChestId,
 }: ChestSelectorBarProps) {
   return (
@@ -33,6 +35,12 @@ export function ChestSelectorBar({
           disabled={isEditing}
           style={{ minWidth: 200 }}
         />
+
+        {lastStockLabel && (
+          <Badge color="amber" variant="light" size="lg">
+            {lastStockLabel}
+          </Badge>
+        )}
 
         {totalWeightToday > 0 && (
           <Badge color="denim" variant="light" size="lg">

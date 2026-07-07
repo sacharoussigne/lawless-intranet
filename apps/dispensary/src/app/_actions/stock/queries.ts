@@ -13,10 +13,44 @@ import {
   fetchEnabledItems,
   fetchStockHistoryRows,
   fetchLatestStockBeforeDate,
+  fetchLastStockDayByChest,
   buildStockSnapshotsWithPrevious,
   mapItemWithStockSnapshot,
   ITEM_STOCK_SELECT,
 } from '@/app/_actions/stock/queryHelpers';
+
+export async function getLastStockDaysByChest(dispensarySlug: string) {
+  try {
+    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'stock',
+    });
+    if (!ctx.ok) return ctx.response;
+    const { dispensaryId } = ctx.tenant;
+
+    const chests = await prisma.chest.findMany({
+      where: {
+        isEnabled: true,
+        ...tenantWhere(dispensaryId),
+      },
+      select: { id: true },
+    });
+
+    const chestIds = chests.map((chest) => chest.id);
+    const today = getTodayStart();
+    const lastStockDaysByChest = await fetchLastStockDayByChest(
+      dispensaryId,
+      chestIds,
+      today,
+    );
+
+    return {
+      status: 200,
+      data: lastStockDaysByChest,
+    };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la récupération des dates de dernier stock');
+  }
+}
 
 export async function getItemsWithStock(
   dispensarySlug: string,
