@@ -6,6 +6,7 @@ import { getAvailableItemsForOrder } from './getAvailableItemsForOrder';
 const baseItem = {
   stockToday: null,
   stockYesterday: null,
+  stockPreviousAt: null,
 } as ItemWithRelations;
 
 describe('getAvailableItemsForOrder', () => {
