@@ -53,7 +53,7 @@ docker build \
 |----------|-----|------|
 | `AUTH_PUBLIC_URL` | auth + dispensary | URL publique IdP — **build + runtime** (`NEXT_PUBLIC_AUTH_URL`) |
 | `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL publique RP — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
-| `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`) |
+| `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`). Cookie name prefix is `lawless-intranet` (not `better-auth`) to avoid collisions with other apps on the same domain. |
 | `AUTH_DATABASE_URL` | auth | DB auth |
 | `DISPENSARY_DATABASE_URL` | dispensary | DB métier |
 | `AUTH_INTERNAL_SECRET` | auth + dispensary | API interne service-to-service |

@@ -90,3 +90,5 @@ pnpm dev
 ```
 
 Login flow: dispensary redirects unauthenticated users to auth, then back with shared `.localhost` session cookie.
+
+Session cookies use the custom Better Auth prefix `lawless-intranet` (e.g. `lawless-intranet.session_token`), not the default `better-auth.*`, so they do not collide with other apps on the same cookie domain.
