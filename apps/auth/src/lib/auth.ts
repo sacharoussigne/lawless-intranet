@@ -81,6 +81,7 @@ export const auth = betterAuth({
     },
   },
   advanced: {
+    cookiePrefix: 'lawless-intranet',
     crossSubDomainCookies: {
       enabled: true,
       domain: getCookieDomain(),
