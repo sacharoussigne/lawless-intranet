@@ -9,8 +9,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { getOrCreateAgendaClientId } from '@/lib/agenda/realtime/clientId';
-import type { AgendaRealtimeEvent } from '@/lib/agenda/realtime/types';
+import { getOrCreateAgendaClientId } from './clientId';
+import type { AgendaRealtimeEvent } from './types';
 
 type RealtimeHandler = (event: AgendaRealtimeEvent) => void;
 
@@ -29,10 +29,10 @@ type AgendaRealtimeContextValue = {
 const AgendaRealtimeContext = createContext<AgendaRealtimeContextValue | null>(null);
 
 export function AgendaRealtimeProvider({
-  dispensarySlug,
+  streamUrl,
   children,
 }: {
-  dispensarySlug: string;
+  streamUrl: string;
   children: ReactNode;
 }) {
   const [clientId] = useState(() => getOrCreateAgendaClientId());
@@ -49,9 +49,8 @@ export function AgendaRealtimeProvider({
   }, []);
 
   useEffect(() => {
-    if (!dispensarySlug) return;
+    if (!streamUrl) return;
 
-    const streamUrl = `/api/d/${encodeURIComponent(dispensarySlug)}/agenda/stream`;
     const eventSource = new EventSource(streamUrl);
 
     const handleChange = (message: MessageEvent<string>) => {
@@ -89,7 +88,7 @@ export function AgendaRealtimeProvider({
       eventSource.removeEventListener('change', handleChange);
       eventSource.close();
     };
-  }, [clientId, dispensarySlug]);
+  }, [clientId, streamUrl]);
 
   return (
     <AgendaRealtimeContext.Provider value={{ clientId, subscribe }}>

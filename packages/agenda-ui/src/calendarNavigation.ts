@@ -1,5 +1,5 @@
-import dayjs from '@/lib/dayjs';
-import { formatAgendaDateInput } from '@/lib/agenda/dates';
+import dayjs from './dayjs';
+import { formatAgendaDateInput } from './dates';
 
 export const AGENDA_CALENDAR_VIEWS = ['month', 'week', 'day', 'work_week'] as const;
 export type AgendaCalendarView = (typeof AGENDA_CALENDAR_VIEWS)[number];

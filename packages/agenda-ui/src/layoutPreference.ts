@@ -12,8 +12,8 @@ export const DEFAULT_AGENDA_LAYOUT: AgendaLayoutPreference = {
   showTodo: true,
 };
 
-export function getAgendaLayoutStorageKey(dispensarySlug: string) {
-  return `agenda-layout:${dispensarySlug}`;
+export function getAgendaLayoutStorageKey(scopeKey: string) {
+  return `agenda-layout:${scopeKey}`;
 }
 
 function canUseStorage() {
@@ -21,12 +21,12 @@ function canUseStorage() {
 }
 
 export function readAgendaLayoutPreference(
-  dispensarySlug: string,
+  scopeKey: string,
 ): AgendaLayoutPreference {
   if (!canUseStorage()) return DEFAULT_AGENDA_LAYOUT;
 
   try {
-    const raw = window.localStorage.getItem(getAgendaLayoutStorageKey(dispensarySlug));
+    const raw = window.localStorage.getItem(getAgendaLayoutStorageKey(scopeKey));
     if (!raw) return DEFAULT_AGENDA_LAYOUT;
 
     const parsed = JSON.parse(raw) as Partial<AgendaLayoutPreference>;
@@ -45,12 +45,12 @@ export function readAgendaLayoutPreference(
 }
 
 export function writeAgendaLayoutPreference(
-  dispensarySlug: string,
+  scopeKey: string,
   preference: AgendaLayoutPreference,
 ) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(
-    getAgendaLayoutStorageKey(dispensarySlug),
+    getAgendaLayoutStorageKey(scopeKey),
     JSON.stringify(preference),
   );
 }

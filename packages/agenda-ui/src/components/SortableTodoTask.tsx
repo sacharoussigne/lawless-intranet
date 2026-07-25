@@ -5,7 +5,7 @@ import { Checkbox, ActionIcon } from '@mantine/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconTrash } from '@tabler/icons-react';
-import type { AgendaTodoTaskDTO } from '@/types/agenda';
+import type { AgendaTodoTaskDTO } from '../types';
 import { stopDragPointer } from './agendaDnd';
 import { InlineEditableText } from './InlineEditableText';
 import classes from '../agenda.module.scss';

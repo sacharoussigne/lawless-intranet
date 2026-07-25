@@ -1,20 +1,9 @@
 'use client';
 
 import { useCallback } from 'react';
-import {
-  createAgendaTodoCategory,
-  createAgendaTodoList,
-  createAgendaTodoTask,
-  deleteAgendaTodoCategory,
-  deleteAgendaTodoList,
-  deleteAgendaTodoTask,
-  listAgendaTodoLists,
-  updateAgendaTodoCategory,
-  updateAgendaTodoList,
-  updateAgendaTodoTask,
-} from '@/app/_actions/agenda/todoLists';
-import { handleAction } from '@/lib/action';
-import type { AgendaMutationMeta } from '@/lib/agenda/realtime/mutationMeta';
+import { useAgendaUi } from '../AgendaUiProvider';
+import { runAgendaAction } from '../runAgendaAction';
+import type { AgendaMutationMeta } from '../realtime/mutationMeta';
 import {
   addCategoryToLists,
   addListToLists,
@@ -25,13 +14,12 @@ import {
   removeTaskFromLists,
   renameCategoryInLists,
   renameListInLists,
-} from '@/lib/agenda/todoListState';
-import type { AgendaTodoListDTO } from '@/types/agenda';
+} from '../todoListState';
+import type { AgendaTodoListDTO } from '../types';
 import { notifications } from '@mantine/notifications';
 import type { Dispatch, SetStateAction } from 'react';
 
 type UseAgendaTodoMutationsOptions = {
-  dispensarySlug: string;
   agendaId: string | null;
   lists: AgendaTodoListDTO[];
   setLists: Dispatch<SetStateAction<AgendaTodoListDTO[]>>;
@@ -57,7 +45,6 @@ function showMutationError(error: unknown, fallback: string) {
 }
 
 export function useAgendaTodoMutations({
-  dispensarySlug,
   agendaId,
   lists,
   setLists,
@@ -73,13 +60,15 @@ export function useAgendaTodoMutations({
   setCategoryFilterIds,
   persistCategoryFilter,
 }: UseAgendaTodoMutationsOptions) {
+  const { actions } = useAgendaUi();
+
   const openArchives = useCallback(async () => {
     if (!agendaId) return;
     try {
-      const result = await listAgendaTodoLists(dispensarySlug, agendaId, {
+      const result = await actions.listTodoLists(agendaId, {
         archives: true,
       });
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) {
         setArchiveLists(data);
         setArchivesOpen(true);
@@ -87,7 +76,7 @@ export function useAgendaTodoMutations({
     } catch (error: unknown) {
       showMutationError(error, 'Chargement impossible');
     }
-  }, [agendaId, dispensarySlug, setArchiveLists, setArchivesOpen]);
+  }, [actions, agendaId, setArchiveLists, setArchivesOpen]);
 
   const handleToggleTask = useCallback(
     async (id: string, completed: boolean) => {
@@ -99,12 +88,11 @@ export function useAgendaTodoMutations({
       setLists((prev) => patchTaskInLists(prev, id, optimisticPatch));
 
       try {
-        const result = await updateAgendaTodoTask(
-          dispensarySlug,
+        const result = await actions.updateTodoTask(
           { id, completed },
           mutationMeta,
         );
-        const data = handleAction(result);
+        const data = runAgendaAction(result);
         if (data) {
           setLists((prev) => patchTaskInLists(prev, id, data));
         }
@@ -113,7 +101,7 @@ export function useAgendaTodoMutations({
         showMutationError(error, 'Mise à jour impossible');
       }
     },
-    [dispensarySlug, lists, mutationMeta, setLists],
+    [actions, lists, mutationMeta, setLists],
   );
 
   const handleRenameTask = useCallback(
@@ -122,8 +110,8 @@ export function useAgendaTodoMutations({
       setLists((prev) => patchTaskInLists(prev, id, { title }));
 
       try {
-        const result = await updateAgendaTodoTask(dispensarySlug, { id, title }, mutationMeta);
-        const data = handleAction(result);
+        const result = await actions.updateTodoTask({ id, title }, mutationMeta);
+        const data = runAgendaAction(result);
         if (data) {
           setLists((prev) => patchTaskInLists(prev, id, data));
         }
@@ -132,7 +120,7 @@ export function useAgendaTodoMutations({
         showMutationError(error, 'Renommage impossible');
       }
     },
-    [dispensarySlug, lists, mutationMeta, setLists],
+    [actions, lists, mutationMeta, setLists],
   );
 
   const handleRenameList = useCallback(
@@ -141,14 +129,14 @@ export function useAgendaTodoMutations({
       setLists((prev) => renameListInLists(prev, id, name));
 
       try {
-        const result = await updateAgendaTodoList(dispensarySlug, { id, name }, mutationMeta);
-        handleAction(result);
+        const result = await actions.updateTodoList({ id, name }, mutationMeta);
+        runAgendaAction(result);
       } catch (error: unknown) {
         setLists(snapshot);
         showMutationError(error, 'Renommage impossible');
       }
     },
-    [dispensarySlug, lists, mutationMeta, setLists],
+    [actions, lists, mutationMeta, setLists],
   );
 
   const handleRenameCategory = useCallback(
@@ -157,14 +145,14 @@ export function useAgendaTodoMutations({
       setLists((prev) => renameCategoryInLists(prev, id, name));
 
       try {
-        const result = await updateAgendaTodoCategory(dispensarySlug, { id, name }, mutationMeta);
-        handleAction(result);
+        const result = await actions.updateTodoCategory({ id, name }, mutationMeta);
+        runAgendaAction(result);
       } catch (error: unknown) {
         setLists(snapshot);
         showMutationError(error, 'Renommage impossible');
       }
     },
-    [dispensarySlug, lists, mutationMeta, setLists],
+    [actions, lists, mutationMeta, setLists],
   );
 
   const handleDeleteTask = useCallback(
@@ -173,8 +161,8 @@ export function useAgendaTodoMutations({
       setLists((prev) => removeTaskFromLists(prev, id));
 
       try {
-        const result = await deleteAgendaTodoTask(dispensarySlug, id, mutationMeta);
-        handleAction(result);
+        const result = await actions.deleteTodoTask(id, mutationMeta);
+        runAgendaAction(result);
         if (archivesOpen) {
           await openArchives();
         }
@@ -183,19 +171,18 @@ export function useAgendaTodoMutations({
         showMutationError(error, 'Suppression impossible');
       }
     },
-    [archivesOpen, dispensarySlug, lists, mutationMeta, openArchives, setLists],
+    [actions, archivesOpen, lists, mutationMeta, openArchives, setLists],
   );
 
   const handleCreateList = useCallback(
     async (name: string) => {
       if (!agendaId) return;
       try {
-        const result = await createAgendaTodoList(
-          dispensarySlug,
+        const result = await actions.createTodoList(
           { agendaId, name },
           mutationMeta,
         );
-        const data = handleAction(result);
+        const data = runAgendaAction(result);
         if (data) {
           setLists((prev) => addListToLists(prev, data));
           setSelectedListId(data.id);
@@ -204,19 +191,18 @@ export function useAgendaTodoMutations({
         showMutationError(error, 'Création impossible');
       }
     },
-    [agendaId, dispensarySlug, mutationMeta, setLists, setSelectedListId],
+    [actions, agendaId, mutationMeta, setLists, setSelectedListId],
   );
 
   const handleCreateCategory = useCallback(
     async (name: string) => {
       if (!selectedList) return;
       try {
-        const result = await createAgendaTodoCategory(
-          dispensarySlug,
+        const result = await actions.createTodoCategory(
           { listId: selectedList.id, name },
           mutationMeta,
         );
-        const category = handleAction(result);
+        const category = runAgendaAction(result);
         if (category) {
           const categoryDto: AgendaTodoListDTO['categories'][number] = {
             id: category.id,
@@ -238,8 +224,8 @@ export function useAgendaTodoMutations({
       }
     },
     [
+      actions,
       categoryFilterIds,
-      dispensarySlug,
       isCategoryFilterActive,
       mutationMeta,
       persistCategoryFilter,
@@ -252,12 +238,11 @@ export function useAgendaTodoMutations({
   const handleAddTask = useCallback(
     async (categoryId: string, title: string) => {
       try {
-        const result = await createAgendaTodoTask(
-          dispensarySlug,
+        const result = await actions.createTodoTask(
           { categoryId, title },
           mutationMeta,
         );
-        const data = handleAction(result);
+        const data = runAgendaAction(result);
         if (data) {
           setLists((prev) => insertTaskInLists(prev, categoryId, data));
         }
@@ -265,7 +250,7 @@ export function useAgendaTodoMutations({
         showMutationError(error, 'Ajout impossible');
       }
     },
-    [dispensarySlug, mutationMeta, setLists],
+    [actions, mutationMeta, setLists],
   );
 
   const handleDeleteCategory = useCallback(
@@ -274,14 +259,14 @@ export function useAgendaTodoMutations({
       setLists((prev) => removeCategoryFromLists(prev, id));
 
       try {
-        const result = await deleteAgendaTodoCategory(dispensarySlug, id, mutationMeta);
-        handleAction(result);
+        const result = await actions.deleteTodoCategory(id, mutationMeta);
+        runAgendaAction(result);
       } catch (error: unknown) {
         setLists(snapshot);
         showMutationError(error, 'Suppression impossible');
       }
     },
-    [dispensarySlug, lists, mutationMeta, setLists],
+    [actions, lists, mutationMeta, setLists],
   );
 
   const handleDeleteList = useCallback(
@@ -297,15 +282,15 @@ export function useAgendaTodoMutations({
       });
 
       try {
-        const result = await deleteAgendaTodoList(dispensarySlug, id, mutationMeta);
-        handleAction(result);
+        const result = await actions.deleteTodoList(id, mutationMeta);
+        runAgendaAction(result);
       } catch (error: unknown) {
         setLists(snapshot);
         setSelectedListId(snapshotSelectedListId);
         showMutationError(error, 'Suppression impossible');
       }
     },
-    [dispensarySlug, lists, mutationMeta, selectedListId, setLists, setSelectedListId],
+    [actions, lists, mutationMeta, selectedListId, setLists, setSelectedListId],
   );
 
   return {

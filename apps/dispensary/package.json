@@ -20,6 +20,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@lawless-intranet/agenda-client": "workspace:*",
+    "@lawless-intranet/agenda-ui": "workspace:*",
     "@lawless-intranet/auth-client": "workspace:*",
     "@lawless-intranet/auth-permissions": "workspace:*",
     "@lawless-intranet/documents-client": "workspace:*",

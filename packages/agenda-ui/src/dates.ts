@@ -1,4 +1,4 @@
-import dayjs from '@/lib/dayjs';
+import dayjs from './dayjs';
 
 export function parseAgendaDateInput(
   dateStr: string,

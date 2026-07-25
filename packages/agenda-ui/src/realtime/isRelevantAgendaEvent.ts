@@ -1,4 +1,4 @@
-import type { AgendaRealtimeEvent } from '@/lib/agenda/realtime/types';
+import type { AgendaRealtimeEvent } from './types';
 
 export type AgendaRealtimeScope = {
   selectedAgendaId?: string | null;

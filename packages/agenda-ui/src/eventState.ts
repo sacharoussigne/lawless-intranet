@@ -1,4 +1,4 @@
-import type { AgendaEventDTO } from '@/types/agenda';
+import type { AgendaEventDTO } from './types';
 
 export type AgendaEventChange =
   | { type: 'upsert'; event: AgendaEventDTO }

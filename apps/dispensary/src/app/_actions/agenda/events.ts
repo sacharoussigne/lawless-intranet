@@ -17,7 +17,7 @@ import {
   agendaCookie,
   agendaScope,
 } from '@/lib/agenda/client';
-import type { AgendaMutationMeta } from '@/lib/agenda/realtime/mutationMeta';
+import type { AgendaMutationMeta } from '@lawless-intranet/agenda-ui';
 import { enrichEventParticipants } from '@/lib/enrichUsers';
 import type { AgendaEventRecord } from '@lawless-intranet/types';
 import {

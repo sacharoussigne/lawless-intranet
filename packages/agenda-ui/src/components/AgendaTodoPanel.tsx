@@ -30,20 +30,17 @@ import {
 } from '@dnd-kit/sortable';
 import { IconArchive, IconSearch, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import {
-  moveAgendaTodoTask,
-  reorderAgendaTodoCategories,
-} from '@/app/_actions/agenda/todoLists';
-import { handleAction } from '@/lib/action';
-import { agendaMutationMeta } from '@/lib/agenda/realtime/mutationMeta';
+import { useAgendaUi } from '../AgendaUiProvider';
+import { runAgendaAction } from '../runAgendaAction';
+import { agendaMutationMeta } from '../realtime/mutationMeta';
 import {
   readTodoCategoryFilterForList,
   writeTodoCategoryFilterForList,
-} from '@/lib/agenda/todoCategoryFilterPreference';
+} from '../todoCategoryFilterPreference';
 import { useAgendaTodoLists } from '../hooks/useAgendaTodoLists';
 import { useAgendaTodoMutations } from '../hooks/useAgendaTodoMutations';
-import { canWriteAgenda, type AgendaTodoListDTO, type AgendaTodoTaskDTO } from '@/types/agenda';
-import type { AgendaAccessLevel } from '@/types/agenda';
+import { canWriteAgenda, type AgendaTodoListDTO, type AgendaTodoTaskDTO } from '../types';
+import type { AgendaAccessLevel } from '../types';
 import { SortableTodoCategory } from './SortableTodoCategory';
 import { AgendaTodoArchivesDrawer } from './AgendaTodoArchivesDrawer';
 import { InlineNoteInput } from './InlineNoteInput';
@@ -153,7 +150,6 @@ function reorderTaskInCategory(
 import classes from '../agenda.module.scss';
 
 interface AgendaTodoPanelProps {
-  dispensarySlug: string;
   agendaId: string | null;
   accessLevel: AgendaAccessLevel | null;
   initialLists: AgendaTodoListDTO[];
@@ -175,7 +171,6 @@ function getCategoriesGridClass(wideLayout: boolean, categoryCount: number) {
 }
 
 export function AgendaTodoPanel({
-  dispensarySlug,
   agendaId,
   accessLevel,
   initialLists,
@@ -184,6 +179,7 @@ export function AgendaTodoPanel({
   clientId,
   remoteTodosToken = 0,
 }: AgendaTodoPanelProps) {
+  const { actions, scopeKey } = useAgendaUi();
   const [archivesOpen, setArchivesOpen] = useState(false);
   const [archiveLists, setArchiveLists] = useState<AgendaTodoListDTO[]>([]);
   const [categoryFilterIds, setCategoryFilterIds] = useState<Set<string>>(new Set());
@@ -204,7 +200,6 @@ export function AgendaTodoPanel({
     selectedList,
     reload,
   } = useAgendaTodoLists({
-    dispensarySlug,
     agendaId,
     initialLists,
     skipInitialFetch,
@@ -228,9 +223,9 @@ export function AgendaTodoPanel({
   const persistCategoryFilter = useCallback(
     (next: Set<string>) => {
       if (!agendaId || !selectedListId) return;
-      writeTodoCategoryFilterForList(dispensarySlug, agendaId, selectedListId, next);
+      writeTodoCategoryFilterForList(scopeKey, agendaId, selectedListId, next);
     },
-    [agendaId, dispensarySlug, selectedListId],
+    [agendaId, scopeKey, selectedListId],
   );
 
   useEffect(() => {
@@ -240,7 +235,7 @@ export function AgendaTodoPanel({
     }
 
     const stored = readTodoCategoryFilterForList(
-      dispensarySlug,
+      scopeKey,
       agendaId,
       selectedListId,
       allCategoryIds,
@@ -253,7 +248,7 @@ export function AgendaTodoPanel({
     });
     // Only re-load when list/agenda or category set changes — not on task reorder during drag.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- allCategoryIds read via allCategoryIdsKey
-  }, [agendaId, allCategoryIdsKey, dispensarySlug, selectedListId]);
+  }, [agendaId, allCategoryIdsKey, scopeKey, selectedListId]);
 
   const isCategoryFilterActive =
     categoryFilterIds.size > 0 && categoryFilterIds.size < allCategoryIds.length;
@@ -321,7 +316,6 @@ export function AgendaTodoPanel({
     handleDeleteCategory,
     handleDeleteList,
   } = useAgendaTodoMutations({
-    dispensarySlug,
     agendaId,
     lists,
     setLists,
@@ -504,9 +498,8 @@ export function AgendaTodoPanel({
       throw new Error('Catégorie introuvable');
     }
 
-    handleAction(
-      await moveAgendaTodoTask(
-        dispensarySlug,
+    runAgendaAction(
+      await actions.moveTodoTask(
         {
           taskId,
           sourceCategoryId: startCategoryId,
@@ -601,9 +594,8 @@ export function AgendaTodoPanel({
         const reordered = arrayMove(selectedList.categories, oldIndex, newIndex);
         applyCategoryUpdates(selectedList.id, reordered);
 
-        handleAction(
-          await reorderAgendaTodoCategories(
-            dispensarySlug,
+        runAgendaAction(
+          await actions.reorderTodoCategories(
             {
               items: reordered.map((category, index) => ({ id: category.id, order: index })),
             },

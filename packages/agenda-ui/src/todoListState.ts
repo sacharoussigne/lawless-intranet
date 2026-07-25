@@ -2,11 +2,11 @@ import type {
   AgendaTodoCategoryDTO,
   AgendaTodoListDTO,
   AgendaTodoTaskDTO,
-} from '@/types/agenda';
+} from './types';
 import {
   compareTodoTasksByCompletedAtDesc,
   isTodoTaskArchived,
-} from '@/lib/agenda/todoArchive';
+} from './todoArchive';
 
 function reorderTasksForMainView(tasks: AgendaTodoTaskDTO[]): AgendaTodoTaskDTO[] {
   const nowMs = Date.now();

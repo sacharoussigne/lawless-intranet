@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   Group,
+  Modal,
   MultiSelect,
   Stack,
   Text,
@@ -16,39 +17,25 @@ import { DateInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/fr';
 import { IconCalendarEvent, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
-import {
-  createAgendaEvent,
-  deleteAgendaEvent,
-  getAgendaEvent,
-  updateAgendaEvent,
-} from '@/app/_actions/agenda/events';
-import {
-  createAgendaEventTodoTask,
-  deleteAgendaEventTodoTask,
-  listAgendaEventTodoTasks,
-  updateAgendaEventTodoTask,
-} from '@/app/_actions/agenda/eventTodos';
-import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
-import { handleAction } from '@/lib/action';
-import { agendaMutationMeta } from '@/lib/agenda/realtime/mutationMeta';
-import type { AgendaEventChange } from '@/lib/agenda/eventState';
+import { useAgendaUi } from '../AgendaUiProvider';
+import { runAgendaAction } from '../runAgendaAction';
+import { agendaMutationMeta } from '../realtime/mutationMeta';
+import type { AgendaEventChange } from '../eventState';
 import {
   assertAgendaEventRangeValid,
   formatAgendaDateInput,
   formatAgendaTimeInput,
   parseAgendaDateInput,
   parseAgendaEndDateInput,
-} from '@/lib/agenda/dates';
-import type { AgendaEventDTO } from '@/types/agenda';
-import dayjs from '@/lib/dayjs';
+} from '../dates';
+import type { AgendaEventDTO } from '../types';
+import dayjs from '../dayjs';
 import { InlineEditableText } from './InlineEditableText';
 import classes from '../agenda.module.scss';
 
 interface EventModalProps {
   opened: boolean;
   onClose: () => void;
-  dispensarySlug: string;
   agendaId: string;
   event: AgendaEventDTO | null;
   slotStart?: Date | null;
@@ -62,7 +49,6 @@ interface EventModalProps {
 export function EventModal({
   opened,
   onClose,
-  dispensarySlug,
   agendaId,
   event,
   slotStart,
@@ -72,6 +58,7 @@ export function EventModal({
   remoteEventTodosToken = 0,
   onSuccess,
 }: EventModalProps) {
+  const { actions } = useAgendaUi();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [allDay, setAllDay] = useState(false);
@@ -113,9 +100,9 @@ export function EventModal({
 
     let cancelled = false;
 
-    void getAgendaEvent(dispensarySlug, event.id).then((result) => {
+    void actions.getEvent(event.id).then((result) => {
       if (cancelled) return;
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (!data) return;
 
       setTitle(data.title);
@@ -139,16 +126,16 @@ export function EventModal({
     return () => {
       cancelled = true;
     };
-  }, [opened, event, slotStart, slotEnd, dispensarySlug]);
+  }, [actions, opened, event, slotStart, slotEnd]);
 
   useEffect(() => {
     if (!opened || !event?.id || remoteEventTodosToken === 0) return;
 
     let cancelled = false;
 
-    void listAgendaEventTodoTasks(dispensarySlug, event.id).then((result) => {
+    void actions.listEventTodoTasks(event.id).then((result) => {
       if (cancelled) return;
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) {
         setTodoTasks(data);
       }
@@ -157,13 +144,13 @@ export function EventModal({
     return () => {
       cancelled = true;
     };
-  }, [dispensarySlug, event?.id, opened, remoteEventTodosToken]);
+  }, [actions, event?.id, opened, remoteEventTodosToken]);
 
   const searchUsers = async (query: string) => {
     if (query.trim().length < 2) return;
     try {
-      const result = await searchDispensaryUsersForAgenda(dispensarySlug, query);
-      const data = handleAction(result);
+      const result = await actions.searchUsers(query);
+      const data = runAgendaAction(result);
       if (data) {
         setUserOptions((prev) => {
           const map = new Map(prev.map((o) => [o.value, o]));
@@ -221,14 +208,13 @@ export function EventModal({
       };
 
       const result = event
-        ? await updateAgendaEvent(
-            dispensarySlug,
+        ? await actions.updateEvent(
             { id: event.id, ...payload },
             mutationMeta,
           )
-        : await createAgendaEvent(dispensarySlug, payload, mutationMeta);
+        : await actions.createEvent(payload, mutationMeta);
 
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       notifications.show({
         title: 'Succès',
         message: event ? 'Événement mis à jour' : 'Événement créé',
@@ -253,8 +239,8 @@ export function EventModal({
     if (!event) return;
     setSubmitting(true);
     try {
-      const result = await deleteAgendaEvent(dispensarySlug, event.id, mutationMeta);
-      handleAction(result);
+      const result = await actions.deleteEvent(event.id, mutationMeta);
+      runAgendaAction(result);
       onSuccess({ type: 'delete', id: event.id });
       onClose();
     } catch (error: unknown) {
@@ -271,15 +257,14 @@ export function EventModal({
   const handleAddEventTodo = async () => {
     if (!event || !newTodoTitle.trim()) return;
     try {
-      const result = await createAgendaEventTodoTask(
-        dispensarySlug,
+      const result = await actions.createEventTodoTask(
         {
           eventId: event.id,
           title: newTodoTitle.trim(),
         },
         mutationMeta,
       );
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) {
         setTodoTasks((prev) => [...prev, data]);
         setNewTodoTitle('');
@@ -295,12 +280,11 @@ export function EventModal({
 
   const renameEventTodo = async (taskId: string, title: string) => {
     try {
-      const result = await updateAgendaEventTodoTask(
-        dispensarySlug,
+      const result = await actions.updateEventTodoTask(
         { id: taskId, title },
         mutationMeta,
       );
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) {
         setTodoTasks((prev) =>
           prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)),
@@ -317,15 +301,14 @@ export function EventModal({
 
   const toggleEventTodo = async (taskId: string, completed: boolean) => {
     try {
-      const result = await updateAgendaEventTodoTask(
-        dispensarySlug,
+      const result = await actions.updateEventTodoTask(
         {
           id: taskId,
           completed,
         },
         mutationMeta,
       );
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) {
         setTodoTasks((prev) =>
           prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)),
@@ -342,8 +325,8 @@ export function EventModal({
 
   const removeEventTodo = async (taskId: string) => {
     try {
-      const result = await deleteAgendaEventTodoTask(dispensarySlug, taskId, mutationMeta);
-      handleAction(result);
+      const result = await actions.deleteEventTodoTask(taskId, mutationMeta);
+      runAgendaAction(result);
       setTodoTasks((prev) => prev.filter((t) => t.id !== taskId));
     } catch (error: unknown) {
       notifications.show({
@@ -356,46 +339,52 @@ export function EventModal({
 
   const readOnly = !canWrite;
 
+  const modalTitle = (
+    <Group gap="sm">
+      <IconCalendarEvent size={22} stroke={1.6} color="var(--disp-sage)" />
+      <span className="modal-title">{event ? 'Événement' : 'Nouvel événement'}</span>
+    </Group>
+  );
+
+  const footer = canWrite ? (
+    <Group justify="space-between" gap="sm">
+      <div>
+        {event && (
+          <Button
+            variant="subtle"
+            color="danger"
+            leftSection={<IconTrash size={16} />}
+            onClick={handleDelete}
+            loading={submitting}
+          >
+            Supprimer
+          </Button>
+        )}
+      </div>
+      <Group gap="sm">
+        <Button variant="subtle" color="slate" onClick={onClose}>
+          Annuler
+        </Button>
+        <Button color="sage" loading={submitting} onClick={handleSave}>
+          Enregistrer
+        </Button>
+      </Group>
+    </Group>
+  ) : (
+    <Group justify="flex-end" gap="sm">
+      <Button variant="subtle" color="slate" onClick={onClose}>
+        Fermer
+      </Button>
+    </Group>
+  );
+
   return (
-    <AppModal
+    <Modal
       opened={opened}
       onClose={onClose}
-      title={event ? 'Événement' : 'Nouvel événement'}
-      icon={IconCalendarEvent}
+      title={modalTitle}
       size="lg"
-      footer={
-        canWrite ? (
-          <AppModalFooter align="space-between">
-            <div>
-              {event && (
-                <Button
-                  variant="subtle"
-                  color="danger"
-                  leftSection={<IconTrash size={16} />}
-                  onClick={handleDelete}
-                  loading={submitting}
-                >
-                  Supprimer
-                </Button>
-              )}
-            </div>
-            <Group gap="sm">
-              <Button variant="subtle" color="slate" onClick={onClose}>
-                Annuler
-              </Button>
-              <Button color="sage" loading={submitting} onClick={handleSave}>
-                Enregistrer
-              </Button>
-            </Group>
-          </AppModalFooter>
-        ) : (
-          <AppModalFooter>
-            <Button variant="subtle" color="slate" onClick={onClose}>
-              Fermer
-            </Button>
-          </AppModalFooter>
-        )
-      }
+      classNames={{ title: 'modal-title' }}
     >
       <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
       <Stack gap="md">
@@ -520,8 +509,9 @@ export function EventModal({
             )}
           </Stack>
         )}
+        {footer}
       </Stack>
       </DatesProvider>
-    </AppModal>
+    </Modal>
   );
 }

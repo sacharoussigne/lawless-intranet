@@ -7,24 +7,26 @@ import {
   writeAgendaLayoutPreference,
   type AgendaLayoutPreference,
   type AgendaWidthMode,
-} from '@/lib/agenda/layoutPreference';
+} from '../layoutPreference';
+import { useAgendaUi } from '../AgendaUiProvider';
 
-export function useAgendaLayoutPreference(dispensarySlug: string) {
+export function useAgendaLayoutPreference() {
+  const { scopeKey } = useAgendaUi();
   const [layout, setLayout] = useState<AgendaLayoutPreference>(DEFAULT_AGENDA_LAYOUT);
 
   useEffect(() => {
-    setLayout(readAgendaLayoutPreference(dispensarySlug));
-  }, [dispensarySlug]);
+    setLayout(readAgendaLayoutPreference(scopeKey));
+  }, [scopeKey]);
 
   const persist = useCallback(
     (updater: (prev: AgendaLayoutPreference) => AgendaLayoutPreference) => {
       setLayout((prev) => {
         const next = updater(prev);
-        writeAgendaLayoutPreference(dispensarySlug, next);
+        writeAgendaLayoutPreference(scopeKey, next);
         return next;
       });
     },
-    [dispensarySlug],
+    [scopeKey],
   );
 
   const setWidthMode = useCallback(

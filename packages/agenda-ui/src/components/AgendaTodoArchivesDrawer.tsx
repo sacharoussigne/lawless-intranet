@@ -9,7 +9,7 @@ import {
   Title,
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
-import type { AgendaTodoListDTO } from '@/types/agenda';
+import type { AgendaTodoListDTO } from '../types';
 
 interface AgendaTodoArchivesDrawerProps {
   opened: boolean;

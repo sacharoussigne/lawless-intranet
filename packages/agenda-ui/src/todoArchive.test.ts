@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isTodoTaskArchived,
   TODO_TASK_ARCHIVE_AFTER_MS,
-} from '@/lib/agenda/todoArchive';
+} from './todoArchive';
 
 describe('isTodoTaskArchived', () => {
   const now = Date.parse('2026-06-09T15:00:00.000Z');

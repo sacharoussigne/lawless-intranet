@@ -7,7 +7,7 @@ import {
   IconCalendar,
   IconListCheck,
 } from '@tabler/icons-react';
-import type { AgendaLayoutPreference, AgendaWidthMode } from '@/lib/agenda/layoutPreference';
+import type { AgendaLayoutPreference, AgendaWidthMode } from '../layoutPreference';
 import classes from '../agenda.module.scss';
 
 interface AgendaLayoutControlsProps {

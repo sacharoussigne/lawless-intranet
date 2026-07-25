@@ -1,7 +1,7 @@
 'use client';
 
 import { Select } from '@mantine/core';
-import type { AgendaSummaryDTO } from '@/types/agenda';
+import type { AgendaSummaryDTO } from '../types';
 
 interface AgendaSelectorProps {
   agendas: AgendaSummaryDTO[];

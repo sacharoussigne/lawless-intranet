@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRelevantAgendaRealtimeEvent } from '@/lib/agenda/realtime/isRelevantAgendaEvent';
+import { isRelevantAgendaRealtimeEvent } from './isRelevantAgendaEvent';
 
 describe('isRelevantAgendaRealtimeEvent', () => {
   it('matches selected agenda on the agenda page', () => {

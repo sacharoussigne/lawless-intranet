@@ -4,15 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, type View } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import dayjs from '@/lib/dayjs';
-import type { AgendaEventDTO } from '@/types/agenda';
-import { listAgendaEvents } from '@/app/_actions/agenda/events';
-import { handleAction } from '@/lib/action';
+import dayjs from '../dayjs';
+import type { AgendaEventDTO } from '../types';
+import { useAgendaUi } from '../AgendaUiProvider';
+import { runAgendaAction } from '../runAgendaAction';
 import {
   isAgendaCalendarView,
   parseAgendaCalendarDateParam,
-} from '@/lib/agenda/calendarNavigation';
-import { formatAgendaDateInput } from '@/lib/agenda/dates';
+} from '../calendarNavigation';
+import { formatAgendaDateInput } from '../dates';
 import { agendaCalendarLocalizer, agendaCalendarTimeBounds } from '../calendarLocalizer';
 import classes from '../agenda.module.scss';
 
@@ -26,7 +26,6 @@ type CalendarEvent = {
 };
 
 interface AgendaCalendarProps {
-  dispensarySlug: string;
   agendaId: string | null;
   events: AgendaEventDTO[];
   onEventsChange: (events: AgendaEventDTO[]) => void;
@@ -38,7 +37,6 @@ interface AgendaCalendarProps {
 }
 
 export function AgendaCalendar({
-  dispensarySlug,
   agendaId,
   events,
   onEventsChange,
@@ -48,6 +46,7 @@ export function AgendaCalendar({
   onSelectEvent,
   onSelectSlot,
 }: AgendaCalendarProps) {
+  const { actions } = useAgendaUi();
   const skipInitialRangeRef = useRef(skipInitialRangeFetch);
   const router = useRouter();
   const pathname = usePathname();
@@ -149,15 +148,15 @@ export function AgendaCalendar({
 
   const loadRange = useCallback(
     async (rangeStart: Date, rangeEnd: Date) => {
-      const result = await listAgendaEvents(dispensarySlug, {
+      const result = await actions.listEvents({
         agendaId: agendaId ?? undefined,
         rangeStart: rangeStart.toISOString(),
         rangeEnd: rangeEnd.toISOString(),
       });
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) onEventsChange(data);
     },
-    [dispensarySlug, agendaId, onEventsChange],
+    [actions, agendaId, onEventsChange],
   );
 
   const handleRangeChange = useCallback(

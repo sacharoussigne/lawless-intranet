@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useAgendaRealtimeContext } from '@/lib/agenda/realtime/AgendaRealtimeProvider';
-import type { AgendaRealtimeEvent } from '@/lib/agenda/realtime/types';
+import { useAgendaRealtimeContext } from './AgendaRealtimeProvider';
+import type { AgendaRealtimeEvent } from './types';
 
 type UseAgendaRealtimeOptions = {
-  dispensarySlug?: string;
   enabled?: boolean;
   onEventsChange?: (event: AgendaRealtimeEvent) => void;
   onTodosChange?: (event: AgendaRealtimeEvent) => void;

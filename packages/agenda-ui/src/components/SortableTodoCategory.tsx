@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconTrash } from '@tabler/icons-react';
-import type { AgendaTodoCategoryDTO } from '@/types/agenda';
+import type { AgendaTodoCategoryDTO } from '../types';
 import { SortableTodoTask } from './SortableTodoTask';
 import { InlineNoteInput } from './InlineNoteInput';
 import { InlineEditableText } from './InlineEditableText';

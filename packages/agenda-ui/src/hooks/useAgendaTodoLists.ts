@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { listAgendaTodoLists } from '@/app/_actions/agenda/todoLists';
-import { handleAction } from '@/lib/action';
-import { runAsyncEffect } from '@/lib/react/runAsyncEffect';
-import type { AgendaTodoListDTO } from '@/types/agenda';
+import { useAgendaUi } from '../AgendaUiProvider';
+import { runAgendaAction } from '../runAgendaAction';
+import { runAsyncEffect } from '../runAsyncEffect';
+import type { AgendaTodoListDTO } from '../types';
 import { notifications } from '@mantine/notifications';
 
 type UseAgendaTodoListsOptions = {
-  dispensarySlug: string;
   agendaId: string | null;
   initialLists: AgendaTodoListDTO[];
   skipInitialFetch?: boolean;
@@ -25,13 +24,13 @@ function showListsLoadError(error: unknown) {
 }
 
 export function useAgendaTodoLists({
-  dispensarySlug,
   agendaId,
   initialLists,
   skipInitialFetch = false,
   remoteTodosToken = 0,
   isDragging = false,
 }: UseAgendaTodoListsOptions) {
+  const { actions } = useAgendaUi();
   const skipInitialFetchRef = useRef(skipInitialFetch);
   const pendingRemoteReloadRef = useRef(false);
   const [lists, setLists] = useState<AgendaTodoListDTO[]>(initialLists);
@@ -61,9 +60,9 @@ export function useAgendaTodoLists({
 
   const fetchTodoLists = useCallback(async () => {
     if (!agendaId) return null;
-    const result = await listAgendaTodoLists(dispensarySlug, agendaId);
-    return handleAction(result) ?? null;
-  }, [agendaId, dispensarySlug]);
+    const result = await actions.listTodoLists(agendaId);
+    return runAgendaAction(result) ?? null;
+  }, [actions, agendaId]);
 
   const reload = useCallback(async () => {
     if (!agendaId) return;

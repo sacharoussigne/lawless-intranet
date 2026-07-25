@@ -1,34 +1,32 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { listAgendaEvents } from '@/app/_actions/agenda/events';
-import { handleAction } from '@/lib/action';
-import { Button, Container, Group, Stack, Text } from '@mantine/core';
+import { useAgendaUi } from './AgendaUiProvider';
+import { runAgendaAction } from './runAgendaAction';
+import { Button, Container, Group, Stack, Text, Title } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import Link from 'next/link';
-import dayjs from '@/lib/dayjs';
-import { buildDefaultTimedSlotForDay } from '@/lib/agenda/dates';
+import dayjs from './dayjs';
+import { buildDefaultTimedSlotForDay } from './dates';
 import {
   AGENDA_CALENDAR_FOCUS_PARAM,
   isAgendaCalendarFocusParam,
-} from '@/lib/agenda/calendarNavigation';
-import { useAgendaRealtime } from '@/lib/agenda/realtime/useAgendaRealtime';
-import { isRelevantAgendaRealtimeEvent } from '@/lib/agenda/realtime/isRelevantAgendaEvent';
+} from './calendarNavigation';
+import { useAgendaRealtime } from './realtime/useAgendaRealtime';
+import { isRelevantAgendaRealtimeEvent } from './realtime/isRelevantAgendaEvent';
 import {
   removeCalendarEvent,
   upsertCalendarEvent,
   type AgendaEventChange,
-} from '@/lib/agenda/eventState';
-import { notifyUpcomingEventsLocalRefresh } from '@/lib/agenda/upcomingEventsLocalRefresh';
-import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+} from './eventState';
+import { notifyUpcomingEventsLocalRefresh } from './upcomingEventsLocalRefresh';
 import {
   canWriteAgenda,
   type AgendaEventDTO,
   type AgendaSummaryDTO,
   type AgendaTodoListDTO,
-} from '@/types/agenda';
-import { tenantRoutes } from '@/types/routes';
+} from './types';
 import { AgendaSelector } from './components/AgendaSelector';
 import type { View } from 'react-big-calendar';
 import { AgendaCalendar } from './components/AgendaCalendar';
@@ -45,8 +43,7 @@ import {
 } from './constants';
 import classes from './agenda.module.scss';
 
-interface AgendaPageClientProps {
-  dispensarySlug: string;
+interface AgendaWorkspaceProps {
   agendas: AgendaSummaryDTO[];
   initialAgendaId: string | null;
   initialEvents: AgendaEventDTO[];
@@ -54,14 +51,43 @@ interface AgendaPageClientProps {
   isAdmin: boolean;
 }
 
-export function AgendaPageClient({
-  dispensarySlug,
+function AgendaPageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <Group justify="space-between" align="flex-start" mb="lg" wrap="wrap" gap="md">
+      <Stack gap={4}>
+        <Title
+          order={2}
+          style={{ fontFamily: 'var(--disp-font-display, inherit)', fontWeight: 400 }}
+        >
+          {title}
+        </Title>
+        {description ? (
+          <Text c="dimmed" size="sm">
+            {description}
+          </Text>
+        ) : null}
+      </Stack>
+      {actions}
+    </Group>
+  );
+}
+
+export function AgendaWorkspace({
   agendas: initialAgendas,
   initialAgendaId,
   initialEvents,
   initialTodoLists,
   isAdmin,
-}: AgendaPageClientProps) {
+}: AgendaWorkspaceProps) {
+  const { actions, adminHref } = useAgendaUi();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -100,9 +126,8 @@ export function AgendaPageClient({
   );
 
   const canWrite = canWriteAgenda(selectedAgenda?.accessLevel ?? null);
-  const t = tenantRoutes(dispensarySlug);
   const { layout, setWidthMode, toggleCalendar, toggleTodo } =
-    useAgendaLayoutPreference(dispensarySlug);
+    useAgendaLayoutPreference();
   const [calendarFocusOverride, setCalendarFocusOverride] = useState(false);
   const calendarFocusParam = searchParams.get(AGENDA_CALENDAR_FOCUS_PARAM);
 
@@ -158,15 +183,15 @@ export function AgendaPageClient({
     async (agendaId: string | null = selectedAgendaId) => {
       const rangeStart = dayjs().startOf('month').subtract(1, 'week').toDate();
       const rangeEnd = dayjs().endOf('month').add(1, 'week').toDate();
-      const result = await listAgendaEvents(dispensarySlug, {
+      const result = await actions.listEvents({
         agendaId: agendaId ?? undefined,
         rangeStart: rangeStart.toISOString(),
         rangeEnd: rangeEnd.toISOString(),
       });
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) setEvents(data);
     },
-    [dispensarySlug, selectedAgendaId],
+    [actions, selectedAgendaId],
   );
 
   useEffect(() => {
@@ -182,7 +207,6 @@ export function AgendaPageClient({
   }, [fetchEvents]);
 
   const { clientId } = useAgendaRealtime({
-    dispensarySlug,
     onEventsChange: (event) => {
       if (
         !isRelevantAgendaRealtimeEvent(event, {
@@ -225,20 +249,20 @@ export function AgendaPageClient({
     void (async () => {
       const rangeStart = dayjs().startOf('month').subtract(1, 'week').toDate();
       const rangeEnd = dayjs().endOf('month').add(1, 'week').toDate();
-      const result = await listAgendaEvents(dispensarySlug, {
+      const result = await actions.listEvents({
         agendaId: urlAgendaId,
         rangeStart: rangeStart.toISOString(),
         rangeEnd: rangeEnd.toISOString(),
       });
       if (cancelled) return;
-      const data = handleAction(result);
+      const data = runAgendaAction(result);
       if (data) setEvents(data);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [dispensarySlug, urlAgendaId, initialAgendaId]);
+  }, [actions, urlAgendaId, initialAgendaId]);
 
   const handleAgendaChange = useCallback(
     (agendaId: string) => {
@@ -299,11 +323,11 @@ export function AgendaPageClient({
   if (agendas.length === 0 && !participantOnly) {
     return (
       <Container size="xl" py="xl">
-        <PageHeader title="Agenda" description="Planification et listes de tâches." />
+        <AgendaPageHeader title="Agenda" description="Planification et listes de tâches." />
         <Stack align="center" py="xl" gap="md">
           <Text c="dimmed">Vous n&apos;avez accès à aucun agenda.</Text>
-          {isAdmin && (
-            <Button component={Link} href={t.admin.agendas} color="sage">
+          {isAdmin && adminHref && (
+            <Button component={Link} href={adminHref} color="sage">
               Gérer les agendas
             </Button>
           )}
@@ -333,7 +357,7 @@ export function AgendaPageClient({
       className={isExpanded ? classes.agendaContainerExpanded : undefined}
       py="xl"
     >
-      <PageHeader
+      <AgendaPageHeader
         title="Agenda"
         description={
           participantOnly
@@ -379,7 +403,6 @@ export function AgendaPageClient({
         {renderCalendar && (
           <AgendaCalendar
             key={renderTodo ? 'calendar-with-todo' : 'calendar-solo'}
-            dispensarySlug={dispensarySlug}
             agendaId={selectedAgendaId}
             events={events}
             onEventsChange={setEvents}
@@ -393,7 +416,6 @@ export function AgendaPageClient({
 
         {renderTodo && (
           <AgendaTodoPanel
-            dispensarySlug={dispensarySlug}
             agendaId={selectedAgendaId}
             accessLevel={selectedAgenda?.accessLevel ?? null}
             initialLists={
@@ -411,7 +433,6 @@ export function AgendaPageClient({
         <EventModal
           opened={eventModalOpen}
           onClose={() => setEventModalOpen(false)}
-          dispensarySlug={dispensarySlug}
           agendaId={eventModalAgendaId}
           event={selectedEvent}
           slotStart={slotStart}

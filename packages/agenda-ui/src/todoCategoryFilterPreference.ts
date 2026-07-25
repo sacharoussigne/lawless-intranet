@@ -4,19 +4,19 @@ function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-export function getTodoCategoryFilterStorageKey(dispensarySlug: string, agendaId: string) {
-  return `agenda-todo-category-filter:${dispensarySlug}:${agendaId}`;
+export function getTodoCategoryFilterStorageKey(scopeKey: string, agendaId: string) {
+  return `agenda-todo-category-filter:${scopeKey}:${agendaId}`;
 }
 
 function readTodoCategoryFilterStore(
-  dispensarySlug: string,
+  scopeKey: string,
   agendaId: string,
 ): TodoCategoryFilterStore {
   if (!canUseStorage()) return {};
 
   try {
     const raw = window.localStorage.getItem(
-      getTodoCategoryFilterStorageKey(dispensarySlug, agendaId),
+      getTodoCategoryFilterStorageKey(scopeKey, agendaId),
     );
     if (!raw) return {};
 
@@ -28,13 +28,13 @@ function readTodoCategoryFilterStore(
 }
 
 function writeTodoCategoryFilterStore(
-  dispensarySlug: string,
+  scopeKey: string,
   agendaId: string,
   store: TodoCategoryFilterStore,
 ) {
   if (!canUseStorage()) return;
 
-  const key = getTodoCategoryFilterStorageKey(dispensarySlug, agendaId);
+  const key = getTodoCategoryFilterStorageKey(scopeKey, agendaId);
   if (Object.keys(store).length === 0) {
     window.localStorage.removeItem(key);
     return;
@@ -62,22 +62,22 @@ export function resolveCategoryFilterIds(
 }
 
 export function readTodoCategoryFilterForList(
-  dispensarySlug: string,
+  scopeKey: string,
   agendaId: string,
   listId: string,
   validCategoryIds: string[],
 ): Set<string> {
-  const store = readTodoCategoryFilterStore(dispensarySlug, agendaId);
+  const store = readTodoCategoryFilterStore(scopeKey, agendaId);
   return resolveCategoryFilterIds(store[listId], validCategoryIds);
 }
 
 export function writeTodoCategoryFilterForList(
-  dispensarySlug: string,
+  scopeKey: string,
   agendaId: string,
   listId: string,
   categoryFilterIds: Set<string>,
 ) {
-  const store = readTodoCategoryFilterStore(dispensarySlug, agendaId);
+  const store = readTodoCategoryFilterStore(scopeKey, agendaId);
 
   if (categoryFilterIds.size === 0) {
     delete store[listId];
@@ -85,5 +85,5 @@ export function writeTodoCategoryFilterForList(
     store[listId] = [...categoryFilterIds];
   }
 
-  writeTodoCategoryFilterStore(dispensarySlug, agendaId, store);
+  writeTodoCategoryFilterStore(scopeKey, agendaId, store);
 }

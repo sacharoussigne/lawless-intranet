@@ -11,7 +11,7 @@ import {
   agendaActionError,
   agendaCookie,
 } from '@/lib/agenda/client';
-import type { AgendaMutationMeta } from '@/lib/agenda/realtime/mutationMeta';
+import type { AgendaMutationMeta } from '@lawless-intranet/agenda-ui';
 import type { AgendaEventTodoTaskDTO } from '@/types/agenda';
 import type { AgendaEventTodoTaskRecord } from '@lawless-intranet/types';
 import {

@@ -132,7 +132,7 @@ const { data: items } = useStockItems(chestId, initialItems);
 
 Le pattern `useState` + `useEffect` + `loadX()` (ex. agenda) est **legacy**. Lors d'une refonte de feature, migrer vers React Query. Ne pas migrer massivement hors scope.
 
-`runAsyncEffect` reste valide pour les subscriptions temps réel ou effets ponctuels sans cache (ex. [`AgendaRealtimeProvider`](../src/lib/agenda/realtime/AgendaRealtimeProvider.tsx)).
+`runAsyncEffect` reste valide pour les subscriptions temps réel ou effets ponctuels sans cache (ex. `AgendaRealtimeProvider` dans `@lawless-intranet/agenda-ui`).
 
 ## Implémentation de référence
 
