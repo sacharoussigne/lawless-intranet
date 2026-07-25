@@ -1,25 +1,23 @@
 # Déploiement Docker (monorepo)
 
-Une image par app (`auth`, `dispensary`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
+Une image par app (`auth`, `dispensary`, `documents`, `agenda`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
 
 ## Principe
 
 ```
 docker build (context: .)
     │
-    ├─ turbo prune auth|dispensary --docker   → apps + packages nécessaires
+    ├─ turbo prune auth|dispensary|documents|agenda --docker   → apps + packages nécessaires
     ├─ pnpm install
     ├─ pnpm turbo build --filter=<app>        → next build --webpack + standalone
     └─ entrypoint: prisma migrate deploy + node apps/<app>/server.js
 ```
 
-Équivalent de l’ancien flux (`npm install` → `prisma migrate deploy` → `build` → `start`), mais découpé en deux conteneurs.
-
 ## Prérequis
 
 - Docker + Docker Compose
 - Réseau `proxy` externe (nginx-proxy / letsencrypt-companion), comme avant
-- Deux bases PostgreSQL (auth + dispensary)
+- Quatre bases PostgreSQL (auth + dispensary + documents + agenda)
 - Discord redirect URI : `https://<AUTH_VIRTUAL_HOST>/api/auth/callback/discord`
 
 ## Démarrage rapide
@@ -45,6 +43,18 @@ docker build \
   --build-arg APP_NAME=dispensary \
   --build-arg APP_PORT=3000 \
   -t lawless-dispensary .
+
+# Documents (port 3002)
+docker build \
+  --build-arg APP_NAME=documents \
+  --build-arg APP_PORT=3002 \
+  -t lawless-documents .
+
+# Agenda (port 3003)
+docker build \
+  --build-arg APP_NAME=agenda \
+  --build-arg APP_PORT=3003 \
+  -t lawless-agenda .
 ```
 
 ## Variables importantes en prod
@@ -53,12 +63,34 @@ docker build \
 |----------|-----|------|
 | `AUTH_PUBLIC_URL` | auth + dispensary | URL publique IdP — **build + runtime** (`NEXT_PUBLIC_AUTH_URL`) |
 | `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL publique RP — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
+| `DOCUMENTS_PUBLIC_URL` | documents + dispensary | URL service documents (`DOCUMENTS_URL` côté dispensary) |
+| `AGENDA_PUBLIC_URL` | agenda + dispensary | URL service agenda (`AGENDA_URL` côté dispensary) |
 | `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`). Cookie name prefix is `lawless-intranet` (not `better-auth`) to avoid collisions with other apps on the same domain. |
 | `AUTH_DATABASE_URL` | auth | DB auth |
 | `DISPENSARY_DATABASE_URL` | dispensary | DB métier |
+| `DOCUMENTS_DATABASE_URL` | documents | DB documents/templates |
+| `AGENDA_DATABASE_URL` | agenda | DB agendas/events/todos |
 | `AUTH_INTERNAL_SECRET` | auth + dispensary | API interne service-to-service |
+| `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
+| `DOCUMENTS_INTERNAL_SECRET` | documents + dispensary | Secret host→documents (toutes les routes API sauf health) |
 
-## Migration depuis l’ancien déploiement mono-app
+## Migration agenda depuis l’ancien stockage dispensary
+
+**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `remove_agenda_tables` :
+
+```bash
+# 1. Créer la BDD agenda et appliquer les migrations (tables vides)
+#    → déployer le conteneur agenda OU prisma migrate deploy sur AGENDA_DATABASE_URL
+
+# 2. Copier les données (préserve les UUIDs)
+DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
+AGENDA_DATABASE_URL="$AGENDA_DATABASE_URL" \
+pnpm migrate:agenda-to-service
+
+# 3. Déployer dispensary (migrate deploy droppe les tables agenda locales)
+```
+
+## Migration depuis l’ancien déploiement mono-app (users → auth)
 
 **Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `remove_local_auth_tables` :
 

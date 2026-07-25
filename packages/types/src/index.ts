@@ -81,3 +81,20 @@ export type PaginatedResponse<T> = {
   page: number;
   pageSize: number;
 };
+
+export type {
+  AgendaAccessLevel,
+  AgendaAccessRecord,
+  AgendaBootstrapRecord,
+  AgendaEventParticipantRecord,
+  AgendaEventRecord,
+  AgendaEventTodoTaskRecord,
+  AgendaMemberRecord,
+  AgendaMutationMeta,
+  AgendaRecord,
+  AgendaScopeParams,
+  AgendaSummaryRecord,
+  AgendaTodoCategoryRecord,
+  AgendaTodoListRecord,
+  AgendaTodoTaskRecord,
+} from './agenda';

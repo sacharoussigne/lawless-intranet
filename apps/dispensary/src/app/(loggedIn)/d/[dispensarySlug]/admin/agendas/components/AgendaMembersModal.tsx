@@ -25,7 +25,7 @@ import {
   agendaAccessLevelLabel,
   type AgendaMemberDTO,
 } from '@/types/agenda';
-import type { AgendaAccessLevel } from '@prisma/client';
+import type { AgendaAccessLevel } from '@/types/agenda';
 
 interface AgendaMembersModalProps {
   opened: boolean;
