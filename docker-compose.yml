@@ -45,6 +45,7 @@ services:
       SELF_SIGNED_HOST: "${AUTH_VIRTUAL_HOST:?err}"
     networks:
       - proxy
+      - db
 
   dispensary:
     restart: unless-stopped
@@ -79,6 +80,7 @@ services:
       SELF_SIGNED_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
     networks:
       - proxy
+      - db
 
   documents:
     restart: unless-stopped
@@ -105,6 +107,7 @@ services:
       SELF_SIGNED_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
     networks:
       - proxy
+      - db
 
   agenda:
     restart: unless-stopped
@@ -131,7 +134,10 @@ services:
       SELF_SIGNED_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
     networks:
       - proxy
+      - db
 
 networks:
   proxy:
+    external: true
+  db:
     external: true
