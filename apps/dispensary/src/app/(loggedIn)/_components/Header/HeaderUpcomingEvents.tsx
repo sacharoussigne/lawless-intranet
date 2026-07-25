@@ -3,11 +3,11 @@
 import { listAgendaEvents } from '@/app/_actions/agenda/events';
 import {
   buildAgendaDayViewHref,
-} from '@/lib/agenda/calendarNavigation';
-import { useAgendaRealtime } from '@/lib/agenda/realtime/useAgendaRealtime';
-import { isRelevantAgendaRealtimeEvent } from '@/lib/agenda/realtime/isRelevantAgendaEvent';
-import { subscribeUpcomingEventsLocalRefresh } from '@/lib/agenda/upcomingEventsLocalRefresh';
-import { formatAgendaTimeInput } from '@/lib/agenda/dates';
+  formatAgendaTimeInput,
+  isRelevantAgendaRealtimeEvent,
+  subscribeUpcomingEventsLocalRefresh,
+  useAgendaRealtime,
+} from '@lawless-intranet/agenda-ui';
 import type { Dayjs } from 'dayjs';
 import dayjs from '@/lib/dayjs';
 import type { AgendaEventDTO } from '@/types/agenda';
@@ -164,7 +164,6 @@ export function HeaderUpcomingEvents({
   }, [accessibleAgendaIds]);
 
   useAgendaRealtime({
-    dispensarySlug,
     onEventsChange: (event) => {
       if (
         !isRelevantAgendaRealtimeEvent(event, {

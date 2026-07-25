@@ -1,6 +1,6 @@
 'use client';
 
-import { AgendaRealtimeProvider } from '@/lib/agenda/realtime/AgendaRealtimeProvider';
+import { AgendaRealtimeProvider } from '@lawless-intranet/agenda-ui';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import type { ReactNode } from 'react';
 
@@ -12,7 +12,9 @@ export function DispensaryRealtimeShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AgendaRealtimeProvider dispensarySlug={dispensarySlug}>
+    <AgendaRealtimeProvider
+      streamUrl={`/api/d/${encodeURIComponent(dispensarySlug)}/agenda/stream`}
+    >
       {children}
     </AgendaRealtimeProvider>
   );

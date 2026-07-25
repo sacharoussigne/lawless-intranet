@@ -7,11 +7,13 @@ Add to your hosts file (required for SSO cookie sharing on `.localhost`):
 ```
 127.0.0.1 auth.localhost
 127.0.0.1 dispensary.localhost
+127.0.0.1 documents.localhost
+127.0.0.1 agenda.localhost
 ```
 
 On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 
-`pnpm dev` binds to all interfaces on ports 3000/3001; use the hostnames above in the browser (not `127.0.0.1`) so Better Auth `crossSubDomainCookies` work.
+`pnpm dev` binds to all interfaces on ports 3000/3001/3002/3003; use the hostnames above in the browser (not `127.0.0.1`) so Better Auth `crossSubDomainCookies` work.
 
 ## Apps
 
@@ -19,15 +21,25 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 |-----|-----|------|
 | auth (IdP) | http://auth.localhost:3001 | 3001 |
 | dispensary (RP) | http://dispensary.localhost:3000 | 3000 |
+| documents (API) | http://documents.localhost:3002 | 3002 |
+| agenda (API) | http://agenda.localhost:3003 | 3003 |
 
 ## Environment
 
 1. Copy `apps/auth/.env.example` to `apps/auth/.env`
 2. Copy `apps/dispensary/.env.example` to `apps/dispensary/.env`
-3. Set the same `AUTH_INTERNAL_SECRET` in both apps
-4. Configure separate PostgreSQL databases:
+3. Copy `apps/documents/.env.example` to `apps/documents/.env`
+4. Copy `apps/agenda/.env.example` to `apps/agenda/.env`
+5. Set the same `AUTH_INTERNAL_SECRET` in auth + dispensary
+6. Set the same `AGENDA_INTERNAL_SECRET` in agenda + dispensary (required for admin agenda ops)
+7. Configure separate PostgreSQL databases:
    - `DATABASE_URL` in auth → auth DB
    - `DATABASE_URL` in dispensary → dispensary DB (no user/session tables)
+   - `DATABASE_URL` in documents → documents DB
+   - `DATABASE_URL` in agenda → agenda DB
+8. Point dispensary at the services:
+   - `DOCUMENTS_URL=http://localhost:3002`
+   - `AGENDA_URL=http://localhost:3003`
 
 Optional root `.env` for one-shot migration scripts:
 
@@ -35,7 +47,8 @@ Optional root `.env` for one-shot migration scripts:
 |----------|------|
 | `OLD_DISPENSARY_DATABASE_URL` | Legacy mono-app DB backup (still has `user` / `account` tables) |
 | `AUTH_DATABASE_URL` | Target auth DB |
-| `DISPENSARY_DATABASE_URL` | Current dispensary DB (orphan check after migration) |
+| `DISPENSARY_DATABASE_URL` | Current dispensary DB (orphan check after migration / agenda source) |
+| `AGENDA_DATABASE_URL` | Target agenda DB |
 
 ## Migration from legacy single-DB setup
 
@@ -51,6 +64,19 @@ cd apps/auth && pnpm db:migrate
 pnpm migrate:users-to-auth
 
 # 3. Remove local auth tables from dispensary
+cd apps/dispensary && pnpm db:migrate
+```
+
+### Agenda split (after agenda service exists)
+
+```bash
+# 1. Create agenda schema
+cd apps/agenda && pnpm db:migrate
+
+# 2. Copy agenda data (preserves UUIDs, maps dispensaryId → scopeType/scopeId)
+DISPENSARY_DATABASE_URL=... AGENDA_DATABASE_URL=... pnpm migrate:agenda-to-service
+
+# 3. Deploy dispensary (drops local agenda tables)
 cd apps/dispensary && pnpm db:migrate
 ```
 

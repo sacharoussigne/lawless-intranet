@@ -1,9 +1,6 @@
 'use server';
 
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { canManageAgendaMembers } from '@/lib/agenda/access';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
 import {
   upsertAgendaMemberSchema,
@@ -11,9 +8,18 @@ import {
 } from '@/app/_actions/agenda/schemas';
 import {
   getAgendaSessionContext,
+  isScopeAdmin,
   searchEligibleDispensaryUsersForAgenda,
   validateDispensaryUserIds,
 } from '@/app/_actions/agenda/internals';
+import {
+  agendaActionError,
+  agendaCookie,
+} from '@/lib/agenda/client';
+import {
+  removeAgendaMember as removeAgendaMemberApi,
+  upsertAgendaMember as upsertAgendaMemberApi,
+} from '@lawless-intranet/agenda-client/server';
 import { enrichAgendaMembers } from '@/lib/enrichUsers';
 
 export async function upsertAgendaMember(
@@ -25,26 +31,7 @@ export async function upsertAgendaMember(
     if (!ctx.ok) return ctx.response;
 
     const validated = upsertAgendaMemberSchema.parse(data);
-
-    const canManage = await canManageAgendaMembers(
-      ctx.tenant.dispensaryId,
-      validated.agendaId,
-      ctx.session.user.id,
-      ctx.session.user.role,
-      ctx.tenant.effectiveRole,
-    );
-
-    if (!canManage) {
-      return { status: 403, error: 'Droits insuffisants pour gérer les membres' };
-    }
-
-    const agenda = await prisma.agenda.findFirst({
-      where: { id: validated.agendaId, ...tenantWhere(ctx.tenant.dispensaryId) },
-      select: { id: true },
-    });
-    if (!agenda) {
-      return { status: 404, error: 'Agenda introuvable' };
-    }
+    const scopeAdmin = isScopeAdmin(ctx.session, ctx.tenant.effectiveRole);
 
     const validUser = await validateDispensaryUserIds(
       ctx.tenant.dispensaryId,
@@ -54,26 +41,25 @@ export async function upsertAgendaMember(
       return { status: 400, error: 'Utilisateur non membre du dispensaire' };
     }
 
-    const member = await prisma.agendaMember.upsert({
-      where: {
-        agendaId_userId: {
-          agendaId: validated.agendaId,
-          userId: validated.userId,
-        },
-      },
-      create: {
-        agendaId: validated.agendaId,
+    const member = await upsertAgendaMemberApi(
+      validated.agendaId,
+      {
         userId: validated.userId,
         accessLevel: validated.accessLevel,
+        scopeAdmin,
       },
-      update: { accessLevel: validated.accessLevel },
-    });
+      await agendaCookie(),
+    );
 
     const [enriched] = await enrichAgendaMembers([member]);
 
     return { status: 200, data: enriched };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la mise à jour du membre');
+    try {
+      return agendaActionError(error, 'Erreur lors de la mise à jour du membre');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la mise à jour du membre');
+    }
   }
 }
 
@@ -86,58 +72,22 @@ export async function removeAgendaMember(
     if (!ctx.ok) return ctx.response;
 
     const validated = removeAgendaMemberSchema.parse(data);
+    const scopeAdmin = isScopeAdmin(ctx.session, ctx.tenant.effectiveRole);
 
-    const canManage = await canManageAgendaMembers(
-      ctx.tenant.dispensaryId,
+    await removeAgendaMemberApi(
       validated.agendaId,
-      ctx.session.user.id,
-      ctx.session.user.role,
-      ctx.tenant.effectiveRole,
+      validated.userId,
+      { scopeAdmin },
+      await agendaCookie(),
     );
-
-    if (!canManage) {
-      return { status: 403, error: 'Droits insuffisants pour gérer les membres' };
-    }
-
-    const ownerCount = await prisma.agendaMember.count({
-      where: {
-        agendaId: validated.agendaId,
-        accessLevel: 'OWNER',
-      },
-    });
-
-    const target = await prisma.agendaMember.findUnique({
-      where: {
-        agendaId_userId: {
-          agendaId: validated.agendaId,
-          userId: validated.userId,
-        },
-      },
-    });
-
-    if (!target) {
-      return { status: 404, error: 'Membre introuvable' };
-    }
-
-    if (target.accessLevel === 'OWNER' && ownerCount <= 1) {
-      return {
-        status: 400,
-        error: 'Impossible de retirer le dernier propriétaire',
-      };
-    }
-
-    await prisma.agendaMember.delete({
-      where: {
-        agendaId_userId: {
-          agendaId: validated.agendaId,
-          userId: validated.userId,
-        },
-      },
-    });
 
     return { status: 200 };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du membre');
+    try {
+      return agendaActionError(error, 'Erreur lors de la suppression du membre');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression du membre');
+    }
   }
 }
 

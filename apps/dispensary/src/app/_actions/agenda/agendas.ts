@@ -1,14 +1,16 @@
 'use server';
 
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import {
+  canManageAgendaAsScopeAdmin,
   isDispensaryAdminRole,
-  listAccessibleAgendaIds,
-  userHasAnyAgendaAccess,
 } from '@/lib/agenda/access';
+import {
+  agendaActionError,
+  agendaCookie,
+  agendaScope,
+} from '@/lib/agenda/client';
 import type { AgendaSummaryDTO } from '@/types/agenda';
 import {
   createAgendaSchema,
@@ -17,20 +19,20 @@ import {
 } from '@/app/_actions/agenda/schemas';
 import {
   getAgendaSessionContext,
-  guardAgendaOwner,
-  guardAgendaRead,
+  isScopeAdmin,
   validateDispensaryUserIds,
 } from '@/app/_actions/agenda/internals';
-import { canManageAgendaMembers } from '@/lib/agenda/access';
-
+import {
+  createAgenda as createAgendaApi,
+  deleteAgenda as deleteAgendaApi,
+  getAgenda,
+  getAgendaAccess,
+  getAgendaBootstrap,
+  listAccessibleAgendas as listAccessibleAgendasApi,
+  listAllAgendas,
+  updateAgenda as updateAgendaApi,
+} from '@lawless-intranet/agenda-client/server';
 import { enrichAgendaMembers } from '@/lib/enrichUsers';
-
-const agendaIncludeMembers = {
-  members: {
-    orderBy: { createdAt: 'asc' as const },
-  },
-  _count: { select: { members: true } },
-};
 
 export async function listAgendasForAdmin(dispensarySlug: string) {
   try {
@@ -39,22 +41,26 @@ export async function listAgendasForAdmin(dispensarySlug: string) {
       return { status: auth.status, error: auth.error };
     }
 
-    const agendas = await prisma.agenda.findMany({
-      where: tenantWhere(auth.ctx.dispensaryId),
-      include: agendaIncludeMembers,
-      orderBy: { name: 'asc' },
-    });
+    const agendas = await listAllAgendas(
+      agendaScope(auth.ctx.dispensaryId),
+      await agendaCookie(),
+    );
 
     const enriched = await Promise.all(
       agendas.map(async (agenda) => ({
         ...agenda,
-        members: await enrichAgendaMembers(agenda.members),
+        members: await enrichAgendaMembers(agenda.members ?? []),
+        _count: agenda._count ?? { members: agenda.members?.length ?? 0 },
       })),
     );
 
     return { status: 200, data: enriched };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement des agendas');
+    try {
+      return agendaActionError(error, 'Erreur lors du chargement des agendas');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement des agendas');
+    }
   }
 }
 
@@ -63,43 +69,18 @@ export async function listAccessibleAgendas(dispensarySlug: string) {
     const ctx = await getAgendaSessionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
 
-    const { dispensaryId, effectiveRole } = ctx.tenant;
-    const { session } = ctx;
-
-    const agendaIds = await listAccessibleAgendaIds(
-      dispensaryId,
-      session.user.id,
-      session.user.role,
-      effectiveRole,
-    );
-
-    if (agendaIds.length === 0) {
-      return { status: 200, data: [] as AgendaSummaryDTO[] };
-    }
-
-    const agendas = await prisma.agenda.findMany({
-      where: { id: { in: agendaIds }, ...tenantWhere(dispensaryId) },
-      include: {
-        members: {
-          where: { userId: session.user.id },
-          select: { accessLevel: true },
-        },
-        _count: { select: { members: true } },
-      },
-      orderBy: { name: 'asc' },
-    });
-
-    const data: AgendaSummaryDTO[] = agendas.map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      accessLevel: a.members[0]?.accessLevel ?? null,
-      memberCount: a._count.members,
-    }));
+    const data = (await listAccessibleAgendasApi(
+      agendaScope(ctx.tenant.dispensaryId),
+      await agendaCookie(),
+    )) as AgendaSummaryDTO[];
 
     return { status: 200, data };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement des agendas');
+    try {
+      return agendaActionError(error, 'Erreur lors du chargement des agendas');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement des agendas');
+    }
   }
 }
 
@@ -111,53 +92,27 @@ export async function getAgendaPageBootstrap(dispensarySlug: string) {
     const { dispensaryId, effectiveRole } = ctx.tenant;
     const { session } = ctx;
 
-    const hasAccess = await userHasAnyAgendaAccess(
-      dispensaryId,
-      session.user.id,
-      session.user.role,
-      effectiveRole,
+    const bootstrap = await getAgendaBootstrap(
+      agendaScope(dispensaryId),
+      await agendaCookie(),
     );
 
     const isAdmin = isDispensaryAdminRole(session.user.role, effectiveRole);
 
-    if (!hasAccess) {
-      return { status: 200, data: { hasAccess: false, isAdmin, agendas: [] as AgendaSummaryDTO[] } };
-    }
-
-    const agendaIds = await listAccessibleAgendaIds(
-      dispensaryId,
-      session.user.id,
-      session.user.role,
-      effectiveRole,
-    );
-
-    if (agendaIds.length === 0) {
-      return { status: 200, data: { hasAccess: true, isAdmin, agendas: [] as AgendaSummaryDTO[] } };
-    }
-
-    const agendas = await prisma.agenda.findMany({
-      where: { id: { in: agendaIds }, ...tenantWhere(dispensaryId) },
-      include: {
-        members: {
-          where: { userId: session.user.id },
-          select: { accessLevel: true },
-        },
-        _count: { select: { members: true } },
+    return {
+      status: 200,
+      data: {
+        hasAccess: bootstrap.hasAccess,
+        isAdmin,
+        agendas: bootstrap.agendas as AgendaSummaryDTO[],
       },
-      orderBy: { name: 'asc' },
-    });
-
-    const data: AgendaSummaryDTO[] = agendas.map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      accessLevel: a.members[0]?.accessLevel ?? null,
-      memberCount: a._count.members,
-    }));
-
-    return { status: 200, data: { hasAccess: true, isAdmin, agendas: data } };
+    };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement de la page agenda');
+    try {
+      return agendaActionError(error, 'Erreur lors du chargement de la page agenda');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement de la page agenda');
+    }
   }
 }
 
@@ -166,11 +121,9 @@ export async function checkAgendaModuleAccess(dispensarySlug: string) {
     const ctx = await getAgendaSessionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
 
-    const hasAccess = await userHasAnyAgendaAccess(
-      ctx.tenant.dispensaryId,
-      ctx.session.user.id,
-      ctx.session.user.role,
-      ctx.tenant.effectiveRole,
+    const access = await getAgendaAccess(
+      agendaScope(ctx.tenant.dispensaryId),
+      await agendaCookie(),
     );
 
     const isAdmin = isDispensaryAdminRole(
@@ -178,9 +131,16 @@ export async function checkAgendaModuleAccess(dispensarySlug: string) {
       ctx.tenant.effectiveRole,
     );
 
-    return { status: 200, data: { hasAccess, isAdmin } };
+    return {
+      status: 200,
+      data: { hasAccess: access.hasAccess, isAdmin },
+    };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la vérification d\'accès');
+    try {
+      return agendaActionError(error, 'Erreur lors de la vérification d\'accès');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la vérification d\'accès');
+    }
   }
 }
 
@@ -208,29 +168,23 @@ export async function createAgenda(
       };
     }
 
-    const agenda = await prisma.$transaction(async (tx) => {
-      const created = await tx.agenda.create({
-        data: {
-          dispensaryId: auth.ctx.dispensaryId,
-          name: validated.name,
-          description: validated.description ?? null,
-        },
-      });
-
-      await tx.agendaMember.create({
-        data: {
-          agendaId: created.id,
-          userId: validated.ownerUserId,
-          accessLevel: 'OWNER',
-        },
-      });
-
-      return created;
-    });
+    const agenda = await createAgendaApi(
+      {
+        ...agendaScope(auth.ctx.dispensaryId),
+        name: validated.name,
+        description: validated.description ?? null,
+        ownerUserId: validated.ownerUserId,
+      },
+      await agendaCookie(),
+    );
 
     return { status: 201, data: agenda };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création de l\'agenda');
+    try {
+      return agendaActionError(error, 'Erreur lors de la création de l\'agenda');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la création de l\'agenda');
+    }
   }
 }
 
@@ -243,34 +197,25 @@ export async function updateAgenda(
     if (!ctx.ok) return ctx.response;
 
     const validated = updateAgendaSchema.parse(data);
-    const isAdmin = isDispensaryAdminRole(
-      ctx.session.user.role,
-      ctx.tenant.effectiveRole,
-    );
+    const scopeAdmin = isScopeAdmin(ctx.session, ctx.tenant.effectiveRole);
 
-    if (!isAdmin) {
-      const guard = await guardAgendaOwner(
-        ctx.tenant.dispensaryId,
-        validated.id,
-        ctx.session,
-        ctx.tenant.effectiveRole,
-      );
-      if (!guard.ok) {
-        return { status: guard.status, error: guard.error };
-      }
-    }
-
-    const agenda = await prisma.agenda.update({
-      where: { id: validated.id, ...tenantWhere(ctx.tenant.dispensaryId) },
-      data: {
+    const agenda = await updateAgendaApi(
+      validated.id,
+      {
         name: validated.name,
         description: validated.description ?? null,
+        scopeAdmin,
       },
-    });
+      await agendaCookie(),
+    );
 
     return { status: 200, data: agenda };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la mise à jour de l\'agenda');
+    try {
+      return agendaActionError(error, 'Erreur lors de la mise à jour de l\'agenda');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la mise à jour de l\'agenda');
+    }
   }
 }
 
@@ -283,13 +228,19 @@ export async function deleteAgenda(dispensarySlug: string, id: string) {
 
     const validated = deleteAgendaSchema.parse({ id });
 
-    await prisma.agenda.deleteMany({
-      where: { id: validated.id, ...tenantWhere(auth.ctx.dispensaryId) },
-    });
+    await deleteAgendaApi(
+      validated.id,
+      { scopeAdmin: true },
+      await agendaCookie(),
+    );
 
     return { status: 200 };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression de l\'agenda');
+    try {
+      return agendaActionError(error, 'Erreur lors de la suppression de l\'agenda');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression de l\'agenda');
+    }
   }
 }
 
@@ -298,43 +249,29 @@ export async function getAgendaWithMembers(dispensarySlug: string, agendaId: str
     const ctx = await getAgendaSessionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
 
-    const canManage = await canManageAgendaMembers(
-      ctx.tenant.dispensaryId,
-      agendaId,
-      ctx.session.user.id,
+    const scopeAdmin = canManageAgendaAsScopeAdmin(
       ctx.session.user.role,
       ctx.tenant.effectiveRole,
     );
 
-    if (!canManage) {
-      const readGuard = await guardAgendaRead(
-        ctx.tenant.dispensaryId,
-        agendaId,
-        ctx.session,
-        ctx.tenant.effectiveRole,
-      );
-      if (!readGuard.ok) {
-        return { status: readGuard.status, error: readGuard.error };
-      }
-    }
-
-    const agenda = await prisma.agenda.findFirst({
-      where: { id: agendaId, ...tenantWhere(ctx.tenant.dispensaryId) },
-      include: agendaIncludeMembers,
-    });
-
-    if (!agenda) {
-      return { status: 404, error: 'Agenda introuvable' };
-    }
+    const agenda = await getAgenda(
+      agendaId,
+      agendaScope(ctx.tenant.dispensaryId),
+      { ...(await agendaCookie()), scopeAdmin },
+    );
 
     return {
       status: 200,
       data: {
         ...agenda,
-        members: await enrichAgendaMembers(agenda.members),
+        members: await enrichAgendaMembers(agenda.members ?? []),
       },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement de l\'agenda');
+    try {
+      return agendaActionError(error, 'Erreur lors du chargement de l\'agenda');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement de l\'agenda');
+    }
   }
 }

@@ -2,7 +2,7 @@ import dayjs from '@/lib/dayjs';
 import { getAgendaPageBootstrap } from '@/app/_actions/agenda/agendas';
 import { listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaTodoLists } from '@/app/_actions/agenda/todoLists';
-import { AgendaPageClient } from './AgendaPageClient';
+import { DispensaryAgendaWorkspace } from './DispensaryAgendaWorkspace';
 import { redirect } from 'next/navigation';
 import { tenantRoutes } from '@/types/routes';
 
@@ -45,7 +45,7 @@ export default async function AgendaPage({
   ]);
 
   return (
-    <AgendaPageClient
+    <DispensaryAgendaWorkspace
       dispensarySlug={dispensarySlug}
       agendas={agendas}
       initialAgendaId={firstAgendaId ?? null}

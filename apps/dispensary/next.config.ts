@@ -19,6 +19,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       '@lawless-intranet/mail-template-engine',
       '@lawless-intranet/mail-template-ui',
+      '@lawless-intranet/agenda-ui',
       '@mantine/core',
       '@mantine/hooks',
       '@mantine/dates',
