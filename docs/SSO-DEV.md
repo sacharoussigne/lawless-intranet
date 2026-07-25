@@ -32,12 +32,13 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 4. Copy `apps/agenda/.env.example` to `apps/agenda/.env`
 5. Set the same `AUTH_INTERNAL_SECRET` in auth + dispensary
 6. Set the same `AGENDA_INTERNAL_SECRET` in agenda + dispensary (required for admin agenda ops)
-7. Configure separate PostgreSQL databases:
+7. Set the same `DOCUMENTS_INTERNAL_SECRET` in documents + dispensary (required for all documents API calls)
+8. Configure separate PostgreSQL databases:
    - `DATABASE_URL` in auth → auth DB
    - `DATABASE_URL` in dispensary → dispensary DB (no user/session tables)
    - `DATABASE_URL` in documents → documents DB
    - `DATABASE_URL` in agenda → agenda DB
-8. Point dispensary at the services:
+9. Point dispensary at the services:
    - `DOCUMENTS_URL=http://localhost:3002`
    - `AGENDA_URL=http://localhost:3003`
 

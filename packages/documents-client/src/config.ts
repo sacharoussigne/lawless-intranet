@@ -2,6 +2,8 @@ function getDocumentsUrl(): string {
   return process.env.DOCUMENTS_URL ?? 'http://localhost:3002';
 }
 
+export const DOCUMENTS_INTERNAL_SECRET_HEADER = 'x-documents-internal-secret';
+
 function getCookieHeader(
   cookieHeader?: string | null,
 ): Record<string, string> {
@@ -24,6 +26,18 @@ export class DocumentsClientError extends Error {
   }
 }
 
+function getInternalHeaders(): Record<string, string> {
+  const secret = process.env.DOCUMENTS_INTERNAL_SECRET;
+  if (!secret) {
+    throw new DocumentsClientError(
+      'DOCUMENTS_INTERNAL_SECRET is not configured',
+      500,
+    );
+  }
+
+  return { [DOCUMENTS_INTERNAL_SECRET_HEADER]: secret };
+}
+
 export type DocumentsFetchOptions = RequestInit & {
   cookieHeader?: string | null;
 };
@@ -38,6 +52,10 @@ async function documentsFetch(
   const cookie = getCookieHeader(cookieHeader);
   if (cookie.cookie) {
     headers.set('cookie', cookie.cookie);
+  }
+
+  for (const [key, value] of Object.entries(getInternalHeaders())) {
+    headers.set(key, value);
   }
 
   if (fetchInit.body && !headers.has('Content-Type')) {

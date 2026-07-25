@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@lawless-intranet/auth-client/server';
 import type { AuthSession } from '@lawless-intranet/types';
 import { withCors } from '@/lib/cors';
+import { isDocumentsInternalAuthorized } from '@/lib/internalAuth';
 
 export type AuthenticatedContext = {
   session: AuthSession;
@@ -11,6 +12,13 @@ export type AuthenticatedContext = {
 export async function requireSession(
   request: Request,
 ): Promise<AuthenticatedContext | NextResponse> {
+  if (!isDocumentsInternalAuthorized(request)) {
+    return withCors(
+      request,
+      NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
+    );
+  }
+
   const cookieHeader = request.headers.get('cookie');
   const session = await getSession(cookieHeader);
 
