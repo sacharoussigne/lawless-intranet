@@ -1,4 +1,6 @@
-import type { AgendaAccessLevel } from '@prisma/client';
+import type { AgendaAccessLevel } from '@lawless-intranet/types';
+
+export type { AgendaAccessLevel };
 
 export type AgendaMemberUser = {
   id: string;

@@ -30,6 +30,8 @@ services:
       AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:?err}"
       AUTH_VIRTUAL_HOST: "${AUTH_VIRTUAL_HOST:?err}"
       DISPENSARY_VIRTUAL_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
+      DOCUMENTS_VIRTUAL_HOST: "${DOCUMENTS_VIRTUAL_HOST:-}"
+      AGENDA_VIRTUAL_HOST: "${AGENDA_VIRTUAL_HOST:-}"
       EXTRA_TRUSTED_ORIGINS: "${EXTRA_TRUSTED_ORIGINS:-}"
       DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:?err}"
       DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:?err}"
@@ -64,6 +66,7 @@ services:
       NEXT_PUBLIC_APP_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
       DOCUMENTS_URL: "${DOCUMENTS_PUBLIC_URL:-http://documents:3002}"
+      AGENDA_URL: "${AGENDA_PUBLIC_URL:-http://agenda:3003}"
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
@@ -97,6 +100,31 @@ services:
       LETSENCRYPT_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
+    networks:
+      - proxy
+
+  agenda:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-agenda"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: agenda
+        APP_PORT: "3003"
+        NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+        DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+    environment:
+      NODE_ENV: production
+      PORT: "3003"
+      DATABASE_URL: "${AGENDA_DATABASE_URL:?err}"
+      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      VIRTUAL_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3003"
+      LETSENCRYPT_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
     networks:
       - proxy
 

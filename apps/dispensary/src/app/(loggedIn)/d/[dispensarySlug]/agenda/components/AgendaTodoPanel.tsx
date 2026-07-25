@@ -43,7 +43,7 @@ import {
 import { useAgendaTodoLists } from '../hooks/useAgendaTodoLists';
 import { useAgendaTodoMutations } from '../hooks/useAgendaTodoMutations';
 import { canWriteAgenda, type AgendaTodoListDTO, type AgendaTodoTaskDTO } from '@/types/agenda';
-import type { AgendaAccessLevel } from '@prisma/client';
+import type { AgendaAccessLevel } from '@/types/agenda';
 import { SortableTodoCategory } from './SortableTodoCategory';
 import { AgendaTodoArchivesDrawer } from './AgendaTodoArchivesDrawer';
 import { InlineNoteInput } from './InlineNoteInput';

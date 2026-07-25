@@ -1,22 +1,37 @@
 'use server';
 
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import {
   createEventTodoTaskSchema,
   updateEventTodoTaskSchema,
   deleteEventTodoTaskSchema,
 } from '@/app/_actions/agenda/schemas';
+import { getAgendaSessionContext } from '@/app/_actions/agenda/internals';
 import {
-  getAgendaSessionContext,
-  guardAgendaRead,
-  guardAgendaWrite,
-  resolveAgendaIdFromEventId,
-  resolveAgendaIdFromEventTodoTaskId,
-} from '@/app/_actions/agenda/internals';
-import { emitAgendaEventTodosChange } from '@/lib/agenda/realtime/broadcast';
+  agendaActionError,
+  agendaCookie,
+} from '@/lib/agenda/client';
 import type { AgendaMutationMeta } from '@/lib/agenda/realtime/mutationMeta';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import type { AgendaEventTodoTaskDTO } from '@/types/agenda';
+import type { AgendaEventTodoTaskRecord } from '@lawless-intranet/types';
+import {
+  createAgendaEventTodoTask as createAgendaEventTodoTaskApi,
+  deleteAgendaEventTodoTask as deleteAgendaEventTodoTaskApi,
+  listAgendaEventTodoTasks as listAgendaEventTodoTasksApi,
+  updateAgendaEventTodoTask as updateAgendaEventTodoTaskApi,
+} from '@lawless-intranet/agenda-client/server';
+
+function mapEventTodoTask(task: AgendaEventTodoTaskRecord): AgendaEventTodoTaskDTO {
+  return {
+    id: task.id,
+    eventId: task.eventId,
+    title: task.title,
+    description: task.description,
+    completed: task.completed,
+    completedAt: task.completedAt ? new Date(task.completedAt) : null,
+    order: task.order,
+  };
+}
 
 export async function listAgendaEventTodoTasks(
   dispensarySlug: string,
@@ -26,42 +41,15 @@ export async function listAgendaEventTodoTasks(
     const ctx = await getAgendaSessionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
 
-    const event = await prisma.agendaEvent.findFirst({
-      where: {
-        id: eventId,
-        agenda: tenantWhere(ctx.tenant.dispensaryId),
-      },
-      select: {
-        agendaId: true,
-        participants: { where: { userId: ctx.session.user.id }, select: { id: true } },
-      },
-    });
+    const tasks = await listAgendaEventTodoTasksApi(eventId, await agendaCookie());
 
-    if (!event) {
-      return { status: 404, error: 'Événement introuvable' };
-    }
-
-    const isParticipant = event.participants.length > 0;
-    if (!isParticipant) {
-      const guard = await guardAgendaRead(
-        ctx.tenant.dispensaryId,
-        event.agendaId,
-        ctx.session,
-        ctx.tenant.effectiveRole,
-      );
-      if (!guard.ok) {
-        return { status: guard.status, error: guard.error };
-      }
-    }
-
-    const tasks = await prisma.agendaEventTodoTask.findMany({
-      where: { eventId },
-      orderBy: { order: 'asc' },
-    });
-
-    return { status: 200, data: tasks };
+    return { status: 200, data: tasks.map(mapEventTodoTask) };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement des tâches');
+    try {
+      return agendaActionError(error, 'Erreur lors du chargement des tâches');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement des tâches');
+    }
   }
 }
 
@@ -75,48 +63,23 @@ export async function createAgendaEventTodoTask(
     if (!ctx.ok) return ctx.response;
 
     const validated = createEventTodoTaskSchema.parse(data);
-    const agendaId = await resolveAgendaIdFromEventId(
-      ctx.tenant.dispensaryId,
+
+    const task = await createAgendaEventTodoTaskApi(
       validated.eventId,
-    );
-    if (!agendaId) {
-      return { status: 404, error: 'Événement introuvable' };
-    }
-
-    const guard = await guardAgendaWrite(
-      ctx.tenant.dispensaryId,
-      agendaId,
-      ctx.session,
-      ctx.tenant.effectiveRole,
-    );
-    if (!guard.ok) {
-      return { status: guard.status, error: guard.error };
-    }
-
-    const maxOrder = await prisma.agendaEventTodoTask.aggregate({
-      where: { eventId: validated.eventId },
-      _max: { order: true },
-    });
-
-    const task = await prisma.agendaEventTodoTask.create({
-      data: {
-        eventId: validated.eventId,
+      {
         title: validated.title,
         description: validated.description ?? null,
-        order: (maxOrder._max.order ?? -1) + 1,
       },
-    });
-
-    await emitAgendaEventTodosChange(
-      ctx.tenant.dispensaryId,
-      agendaId,
-      validated.eventId,
-      meta,
+      { ...(await agendaCookie()), meta },
     );
 
-    return { status: 201, data: task };
+    return { status: 201, data: mapEventTodoTask(task) };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création de la tâche');
+    try {
+      return agendaActionError(error, 'Erreur lors de la création de la tâche');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la création de la tâche');
+    }
   }
 }
 
@@ -135,55 +98,24 @@ export async function updateAgendaEventTodoTask(
     if (!ctx.ok) return ctx.response;
 
     const validated = updateEventTodoTaskSchema.parse(data);
-    const agendaId = await resolveAgendaIdFromEventTodoTaskId(
-      ctx.tenant.dispensaryId,
+
+    const task = await updateAgendaEventTodoTaskApi(
       validated.id,
-    );
-    if (!agendaId) {
-      return { status: 404, error: 'Tâche introuvable' };
-    }
-
-    const guard = await guardAgendaWrite(
-      ctx.tenant.dispensaryId,
-      agendaId,
-      ctx.session,
-      ctx.tenant.effectiveRole,
-    );
-    if (!guard.ok) {
-      return { status: guard.status, error: guard.error };
-    }
-
-    const updateData: {
-      title?: string;
-      description?: string | null;
-      completed?: boolean;
-      completedAt?: Date | null;
-    } = {};
-
-    if (validated.title !== undefined) updateData.title = validated.title;
-    if (validated.description !== undefined) {
-      updateData.description = validated.description;
-    }
-    if (validated.completed !== undefined) {
-      updateData.completed = validated.completed;
-      updateData.completedAt = validated.completed ? new Date() : null;
-    }
-
-    const task = await prisma.agendaEventTodoTask.update({
-      where: { id: validated.id },
-      data: updateData,
-    });
-
-    await emitAgendaEventTodosChange(
-      ctx.tenant.dispensaryId,
-      agendaId,
-      task.eventId,
-      meta,
+      {
+        title: validated.title,
+        description: validated.description,
+        completed: validated.completed,
+      },
+      { ...(await agendaCookie()), meta },
     );
 
-    return { status: 200, data: task };
+    return { status: 200, data: mapEventTodoTask(task) };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la mise à jour de la tâche');
+    try {
+      return agendaActionError(error, 'Erreur lors de la mise à jour de la tâche');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la mise à jour de la tâche');
+    }
   }
 }
 
@@ -197,43 +129,18 @@ export async function deleteAgendaEventTodoTask(
     if (!ctx.ok) return ctx.response;
 
     const validated = deleteEventTodoTaskSchema.parse({ id });
-    const agendaId = await resolveAgendaIdFromEventTodoTaskId(
-      ctx.tenant.dispensaryId,
-      validated.id,
-    );
-    if (!agendaId) {
-      return { status: 404, error: 'Tâche introuvable' };
-    }
 
-    const existingTask = await prisma.agendaEventTodoTask.findUnique({
-      where: { id: validated.id },
-      select: { eventId: true },
-    });
-    if (!existingTask) {
-      return { status: 404, error: 'Tâche introuvable' };
-    }
-
-    const guard = await guardAgendaWrite(
-      ctx.tenant.dispensaryId,
-      agendaId,
-      ctx.session,
-      ctx.tenant.effectiveRole,
-    );
-    if (!guard.ok) {
-      return { status: guard.status, error: guard.error };
-    }
-
-    await prisma.agendaEventTodoTask.delete({ where: { id: validated.id } });
-
-    await emitAgendaEventTodosChange(
-      ctx.tenant.dispensaryId,
-      agendaId,
-      existingTask.eventId,
+    await deleteAgendaEventTodoTaskApi(validated.id, {
+      ...(await agendaCookie()),
       meta,
-    );
+    });
 
     return { status: 200 };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression de la tâche');
+    try {
+      return agendaActionError(error, 'Erreur lors de la suppression de la tâche');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression de la tâche');
+    }
   }
 }

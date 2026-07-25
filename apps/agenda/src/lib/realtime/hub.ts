@@ -1,4 +1,4 @@
-import type { AgendaRealtimeEvent } from '@/lib/agenda/realtime/types';
+import type { AgendaRealtimeEvent } from '@/lib/realtime/types';
 
 type AgendaRealtimeSubscriber = {
   send: (chunk: string) => void;
@@ -21,31 +21,31 @@ export function formatSseMessage(event: string, data: string): string {
 }
 
 export function subscribeAgendaRealtime(
-  dispensaryId: string,
+  channelKey: string,
   send: (chunk: string) => void,
 ): () => void {
   const channels = getChannels();
   const subscriber: AgendaRealtimeSubscriber = { send };
-  let subscribers = channels.get(dispensaryId);
+  let subscribers = channels.get(channelKey);
   if (!subscribers) {
     subscribers = new Set();
-    channels.set(dispensaryId, subscribers);
+    channels.set(channelKey, subscribers);
   }
   subscribers.add(subscriber);
 
   return () => {
     subscribers.delete(subscriber);
     if (subscribers.size === 0) {
-      channels.delete(dispensaryId);
+      channels.delete(channelKey);
     }
   };
 }
 
 export function broadcastAgendaRealtime(
-  dispensaryId: string,
+  channelKey: string,
   event: AgendaRealtimeEvent,
 ): void {
-  const subscribers = getChannels().get(dispensaryId);
+  const subscribers = getChannels().get(channelKey);
   if (!subscribers || subscribers.size === 0) {
     return;
   }
@@ -60,6 +60,6 @@ export function broadcastAgendaRealtime(
   }
 }
 
-export function getAgendaRealtimeSubscriberCount(dispensaryId: string): number {
-  return getChannels().get(dispensaryId)?.size ?? 0;
+export function getAgendaRealtimeSubscriberCount(channelKey: string): number {
+  return getChannels().get(channelKey)?.size ?? 0;
 }

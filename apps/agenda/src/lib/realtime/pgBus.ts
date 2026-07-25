@@ -1,12 +1,14 @@
 import { Client } from 'pg';
-import { broadcastAgendaRealtime } from '@/lib/agenda/realtime/hub';
-import type { AgendaRealtimeEvent } from '@/lib/agenda/realtime/types';
+import { broadcastAgendaRealtime } from '@/lib/realtime/hub';
+import type { AgendaRealtimeEvent } from '@/lib/realtime/types';
+import { scopeKey } from '@/lib/scope';
 import prisma from '@/lib/prisma';
 
 const CHANNEL = 'agenda_realtime';
 
 type AgendaRealtimePgPayload = {
-  dispensaryId: string;
+  scopeType: string;
+  scopeId: string;
   event: AgendaRealtimeEvent;
 };
 
@@ -35,7 +37,10 @@ export async function ensureAgendaRealtimePgListener(): Promise<void> {
 
       try {
         const payload = JSON.parse(message.payload) as AgendaRealtimePgPayload;
-        broadcastAgendaRealtime(payload.dispensaryId, payload.event);
+        broadcastAgendaRealtime(
+          scopeKey(payload.scopeType, payload.scopeId),
+          payload.event,
+        );
       } catch {
         // Ignore malformed payloads.
       }
@@ -51,10 +56,11 @@ export async function ensureAgendaRealtimePgListener(): Promise<void> {
 }
 
 export async function publishAgendaRealtime(
-  dispensaryId: string,
+  scopeType: string,
+  scopeId: string,
   event: AgendaRealtimeEvent,
 ): Promise<void> {
-  const payload: AgendaRealtimePgPayload = { dispensaryId, event };
+  const payload: AgendaRealtimePgPayload = { scopeType, scopeId, event };
 
   await prisma.$executeRaw`SELECT pg_notify('agenda_realtime', ${JSON.stringify(payload)})`;
 }

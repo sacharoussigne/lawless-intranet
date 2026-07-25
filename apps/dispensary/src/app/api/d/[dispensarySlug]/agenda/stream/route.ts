@@ -1,11 +1,8 @@
-import { subscribeAgendaRealtime } from '@/lib/agenda/realtime/hub';
-import { ensureAgendaRealtimePgListener } from '@/lib/agenda/realtime/pgBus';
+import { getAgendaStreamUrl } from '@lawless-intranet/agenda-client/server';
 import { requireAgendaStreamAccess } from '@/lib/agenda/realtime/streamAuth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const HEARTBEAT_MS = 30_000;
 
 export async function GET(
   request: Request,
@@ -17,43 +14,24 @@ export async function GET(
     return new Response(access.error, { status: access.status });
   }
 
-  await ensureAgendaRealtimePgListener();
-
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    start(controller) {
-      const send = (chunk: string) => {
-        controller.enqueue(encoder.encode(chunk));
-      };
-
-      send(': connected\n\n');
-
-      const unsubscribe = subscribeAgendaRealtime(access.dispensaryId, send);
-
-      const heartbeat = setInterval(() => {
-        try {
-          send(': ping\n\n');
-        } catch {
-          clearInterval(heartbeat);
-        }
-      }, HEARTBEAT_MS);
-
-      const close = () => {
-        clearInterval(heartbeat);
-        unsubscribe();
-        try {
-          controller.close();
-        } catch {
-          // Stream may already be closed.
-        }
-      };
-
-      request.signal.addEventListener('abort', close, { once: true });
+  const upstream = await fetch(
+    getAgendaStreamUrl({
+      scopeType: 'dispensary',
+      scopeId: access.dispensaryId,
+    }),
+    {
+      headers: { cookie: request.headers.get('cookie') ?? '' },
+      cache: 'no-store',
     },
-  });
+  );
 
-  return new Response(stream, {
+  if (!upstream.ok || !upstream.body) {
+    return new Response('Flux agenda indisponible', {
+      status: upstream.status || 502,
+    });
+  }
+
+  return new Response(upstream.body, {
     headers: {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
