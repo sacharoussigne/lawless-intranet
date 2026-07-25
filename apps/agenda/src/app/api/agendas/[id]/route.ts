@@ -12,6 +12,7 @@ import {
   requireAgendaOwner,
   requireAgendaRead,
 } from '@/lib/access';
+import { resolveScopeAdmin } from '@/lib/internalAuth';
 import { serializeDates } from '@/lib/serialize';
 import { scopeWhere } from '@/lib/scope';
 import {
@@ -61,7 +62,10 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { scopeType, scopeId } = parsed.data;
-  const scopeAdmin = searchParams.get('scopeAdmin') === 'true';
+  const scopeAdmin = resolveScopeAdmin(
+    request,
+    searchParams.get('scopeAdmin') === 'true',
+  );
 
   const canManage = await canManageAgendaMembers(id, auth.userId, scopeAdmin);
 
@@ -123,7 +127,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return errorResponse(request, 'Agenda introuvable', 404);
   }
 
-  const scopeAdmin = parsed.data.scopeAdmin === true;
+  const scopeAdmin = resolveScopeAdmin(request, parsed.data.scopeAdmin);
 
   if (!scopeAdmin) {
     const guard = await requireAgendaOwner(
@@ -174,7 +178,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     return errorResponse(request, 'Agenda introuvable', 404);
   }
 
-  const scopeAdmin = parsed.data.scopeAdmin === true;
+  const scopeAdmin = resolveScopeAdmin(request, parsed.data.scopeAdmin);
 
   if (!scopeAdmin) {
     const membership = await prisma.agendaMember.findUnique({

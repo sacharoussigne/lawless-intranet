@@ -71,6 +71,7 @@ docker build \
 | `DOCUMENTS_DATABASE_URL` | documents | DB documents/templates |
 | `AGENDA_DATABASE_URL` | agenda | DB agendas/events/todos |
 | `AUTH_INTERNAL_SECRET` | auth + dispensary | API interne service-to-service |
+| `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
 
 ## Migration agenda depuis l’ancien stockage dispensary
 

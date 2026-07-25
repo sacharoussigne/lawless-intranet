@@ -2,6 +2,8 @@ function getAgendaUrl(): string {
   return process.env.AGENDA_URL ?? 'http://localhost:3003';
 }
 
+export const AGENDA_INTERNAL_SECRET_HEADER = 'x-agenda-internal-secret';
+
 function getCookieHeader(
   cookieHeader?: string | null,
 ): Record<string, string> {
@@ -24,20 +26,42 @@ export class AgendaClientError extends Error {
   }
 }
 
+function getScopeAdminHeaders(scopeAdmin?: boolean): Record<string, string> {
+  if (!scopeAdmin) {
+    return {};
+  }
+
+  const secret = process.env.AGENDA_INTERNAL_SECRET;
+  if (!secret) {
+    throw new AgendaClientError(
+      'AGENDA_INTERNAL_SECRET is not configured',
+      500,
+    );
+  }
+
+  return { [AGENDA_INTERNAL_SECRET_HEADER]: secret };
+}
+
 export type AgendaFetchOptions = RequestInit & {
   cookieHeader?: string | null;
+  /** When true, sends the host-only internal secret (required for scopeAdmin ops). */
+  scopeAdmin?: boolean;
 };
 
 async function agendaFetch(
   path: string,
   init: AgendaFetchOptions = {},
 ): Promise<Response> {
-  const { cookieHeader, ...fetchInit } = init;
+  const { cookieHeader, scopeAdmin, ...fetchInit } = init;
   const headers = new Headers(fetchInit.headers);
 
   const cookie = getCookieHeader(cookieHeader);
   if (cookie.cookie) {
     headers.set('cookie', cookie.cookie);
+  }
+
+  for (const [key, value] of Object.entries(getScopeAdminHeaders(scopeAdmin))) {
+    headers.set(key, value);
   }
 
   if (fetchInit.body && !headers.has('Content-Type')) {

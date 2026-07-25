@@ -13,6 +13,10 @@ import {
 import { serializeDates } from '@/lib/serialize';
 import { scopeWhere } from '@/lib/scope';
 import {
+  isAgendaInternalAuthorized,
+  resolveScopeAdmin,
+} from '@/lib/internalAuth';
+import {
   createAgendaSchema,
   listAgendasQuerySchema,
   zodErrorMessage,
@@ -56,7 +60,8 @@ export async function GET(request: Request) {
     return errorResponse(request, zodErrorMessage(parsed.error), 400);
   }
 
-  const { scopeType, scopeId, mode, scopeAdmin } = parsed.data;
+  const { scopeType, scopeId, mode, scopeAdmin: claimedScopeAdmin } = parsed.data;
+  const scopeAdmin = resolveScopeAdmin(request, claimedScopeAdmin);
 
   if (mode === 'all') {
     if (!scopeAdmin) {
@@ -153,6 +158,10 @@ export async function POST(request: Request) {
   const auth = await requireSession(request);
   if (auth instanceof NextResponse) {
     return auth;
+  }
+
+  if (!isAgendaInternalAuthorized(request)) {
+    return errorResponse(request, 'Droits administrateur requis', 403);
   }
 
   const body = await parseJsonBody(request);

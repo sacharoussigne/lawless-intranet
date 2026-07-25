@@ -7,6 +7,7 @@ import {
 } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { canManageAgendaMembers } from '@/lib/access';
+import { resolveScopeAdmin } from '@/lib/internalAuth';
 import {
   removeAgendaMemberSchema,
   zodErrorMessage,
@@ -47,7 +48,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     return errorResponse(request, zodErrorMessage(parsed.error), 400);
   }
 
-  const scopeAdmin = parsed.data.scopeAdmin === true;
+  const scopeAdmin = resolveScopeAdmin(request, parsed.data.scopeAdmin);
   const canManage = await canManageAgendaMembers(
     agendaId,
     auth.userId,

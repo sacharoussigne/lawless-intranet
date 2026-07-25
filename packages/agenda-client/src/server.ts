@@ -67,7 +67,7 @@ export async function listAllAgendas(
       mode: 'all',
       scopeAdmin: 'true',
     })}`,
-    { cookieHeader: options.cookieHeader },
+    { cookieHeader: options.cookieHeader, scopeAdmin: true },
   );
   return parseJsonResponse(response);
 }
@@ -94,6 +94,7 @@ export async function createAgenda(
   const response = await agendaFetch('/api/agendas', {
     method: 'POST',
     cookieHeader: options.cookieHeader,
+    scopeAdmin: true,
     body: JSON.stringify({ ...input, meta: options.meta }),
   });
   return parseJsonResponse(response);
@@ -109,7 +110,10 @@ export async function getAgenda(
       ...params,
       scopeAdmin: withScopeAdmin(options.scopeAdmin),
     })}`,
-    { cookieHeader: options.cookieHeader },
+    {
+      cookieHeader: options.cookieHeader,
+      scopeAdmin: options.scopeAdmin === true,
+    },
   );
   return parseJsonResponse(response);
 }
@@ -126,6 +130,7 @@ export async function updateAgenda(
   const response = await agendaFetch(`/api/agendas/${agendaId}`, {
     method: 'PATCH',
     cookieHeader: options.cookieHeader,
+    scopeAdmin: input.scopeAdmin === true,
     body: JSON.stringify({ ...input, meta: options.meta }),
   });
   return parseJsonResponse(response);
@@ -139,6 +144,7 @@ export async function deleteAgenda(
   const response = await agendaFetch(`/api/agendas/${agendaId}`, {
     method: 'DELETE',
     cookieHeader: options.cookieHeader,
+    scopeAdmin: input.scopeAdmin === true,
     body: JSON.stringify({ ...input, meta: options.meta }),
   });
   await parseJsonResponse(response);
@@ -156,6 +162,7 @@ export async function upsertAgendaMember(
   const response = await agendaFetch(`/api/agendas/${agendaId}/members`, {
     method: 'POST',
     cookieHeader: options.cookieHeader,
+    scopeAdmin: input.scopeAdmin === true,
     body: JSON.stringify({ ...input, meta: options.meta }),
   });
   return parseJsonResponse(response);
@@ -174,6 +181,7 @@ export async function removeAgendaMember(
     {
       method: 'DELETE',
       cookieHeader: options.cookieHeader,
+      scopeAdmin: input.scopeAdmin === true,
       body: JSON.stringify({ ...input, meta: options.meta }),
     },
   );
