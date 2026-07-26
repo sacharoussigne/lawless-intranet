@@ -25,7 +25,11 @@ import { buildTemplateRenderContext, useMailTemplateContext } from './MailTempla
 export function useTemplatePreviewActions(
   templateContent: string,
   variables?: Record<string, string>,
-  options?: { inputsMode?: 'form' | 'disabled' },
+  options?: {
+    inputsMode?: 'form' | 'disabled';
+    /** Enabled by default. Pass `false` to keep literal Bonjour/Bonsoir text. */
+    applyGreetingAdaptation?: boolean;
+  },
 ) {
   const { username, userDescription, userGender } = useMailTemplateContext();
   const formRef = useRef<TemplateFormGeneratorHandle>(null);
@@ -33,6 +37,7 @@ export function useTemplatePreviewActions(
   const [editedContent, setEditedContent] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const inputsMode = options?.inputsMode ?? 'form';
+  const applyGreetingAdaptation = options?.applyGreetingAdaptation !== false;
 
   const hasInputs = useMemo(
     () => inputsMode === 'form' && extractInputs(templateContent).length > 0,
@@ -44,9 +49,21 @@ export function useTemplatePreviewActions(
     return renderTemplate(
       templateContent,
       buildTemplateRenderContext(username, userDescription, userGender, { inputs: {}, variables }),
-      { applyGreetingAdaptation: false, skipInputs: inputsMode === 'disabled' },
+      {
+        applyGreetingAdaptation,
+        skipInputs: inputsMode === 'disabled',
+      },
     );
-  }, [templateContent, hasInputs, variables, username, userDescription, userGender, inputsMode]);
+  }, [
+    templateContent,
+    hasInputs,
+    variables,
+    username,
+    userDescription,
+    userGender,
+    inputsMode,
+    applyGreetingAdaptation,
+  ]);
 
   const autoContent = hasInputs ? formContent : staticContent;
   const resultContent = editedContent ?? autoContent;
