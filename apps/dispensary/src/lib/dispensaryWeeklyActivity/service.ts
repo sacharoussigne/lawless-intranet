@@ -28,6 +28,11 @@ import {
   parseWeekdayFlagsJson,
 } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 import { resolveUsersByDiscordIds } from '@lawless-intranet/auth-client/internal';
+import {
+  activityToWeeklyActivityRealtimePayload,
+  emitWeeklyActivityChange,
+} from '@/lib/dispensaryWeeklyActivity/realtime/broadcast';
+import type { WeeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 
 export function getNormalizedWeeklyActivityPeriod(anchor: Date): {
   periodStart: Date;
@@ -134,6 +139,7 @@ type ActorContext = {
   actorUserId: string | null;
   actorDiscordUserId: string | null;
   dispensaryId?: string;
+  meta?: WeeklyActivityMutationMeta;
 };
 
 const COUNTER_FIELDS = [
@@ -210,7 +216,7 @@ export async function createDispensaryWeeklyActivityWithHistory(
   const chestDays = input.chestDays ?? emptyWeekdayFlags();
   const presenceDays = input.presenceDays ?? emptyWeekdayFlags();
 
-  return prisma.$transaction(async (tx) => {
+  const synced = await prisma.$transaction(async (tx) => {
     const created = await tx.dispensaryWeeklyActivity.create({
       data: {
         dispensaryId,
@@ -228,22 +234,30 @@ export async function createDispensaryWeeklyActivityWithHistory(
       },
     });
 
-    const synced = await syncActivityUserIdFromDiscordIfMissing(tx, created);
+    const row = await syncActivityUserIdFromDiscordIfMissing(tx, created);
 
     await tx.dispensaryWeeklyActivityHistory.create({
       data: {
-        activityId: synced.id,
+        activityId: row.id,
         action: 'CREATE',
         source: actor.source,
         actorUserId: actor.actorUserId,
         actorDiscordUserId: actor.actorDiscordUserId,
         previousValues: Prisma.JsonNull,
-        nextValues: activityToSnapshot(synced) as Prisma.InputJsonValue,
+        nextValues: activityToSnapshot(row) as Prisma.InputJsonValue,
       },
     });
 
-    return synced;
+    return row;
   });
+
+  await emitWeeklyActivityChange(
+    dispensaryId,
+    activityToWeeklyActivityRealtimePayload(synced),
+    actor.meta,
+  );
+
+  return synced;
 }
 
 export async function updateDispensaryWeeklyActivityWithHistory(
@@ -251,7 +265,7 @@ export async function updateDispensaryWeeklyActivityWithHistory(
   input: DispensaryWeeklyActivityUpdateInput,
   actor: ActorContext,
 ): Promise<DispensaryWeeklyActivity> {
-  return prisma.$transaction(async (tx) => {
+  const finalRow = await prisma.$transaction(async (tx) => {
     const existing = await tx.dispensaryWeeklyActivity.findUnique({ where: { id } });
     if (!existing) {
       throw new Error('Activité introuvable');
@@ -280,17 +294,18 @@ export async function updateDispensaryWeeklyActivityWithHistory(
       data,
     });
 
-    let finalRow = updated;
+    let row = updated;
     const relinked = await syncActivityUserIdFromDiscordIfMissing(tx, updated);
     if (relinked.userId !== updated.userId) {
-      finalRow = relinked;
+      row = relinked;
     }
 
     const prevSnap = activityToSnapshot(existing);
-    const nextSnap = activityToSnapshot(finalRow);
+    const nextSnap = activityToSnapshot(row);
+    const changed = !snapshotsEqual(prevSnap, nextSnap);
 
     if (actor.source === 'INTRANET') {
-      if (!snapshotsEqual(prevSnap, nextSnap)) {
+      if (changed) {
         await tx.dispensaryWeeklyActivityHistory.create({
           data: {
             activityId: id,
@@ -308,7 +323,7 @@ export async function updateDispensaryWeeklyActivityWithHistory(
         const actionKind = counterDeltaToHistoryAction(
           field,
           existing[field],
-          finalRow[field],
+          row[field],
         );
         if (!actionKind) continue;
         await tx.dispensaryWeeklyActivityHistory.create({
@@ -323,7 +338,7 @@ export async function updateDispensaryWeeklyActivityWithHistory(
           },
         });
       }
-      if (botMetaChanged(existing, finalRow)) {
+      if (botMetaChanged(existing, row)) {
         await tx.dispensaryWeeklyActivityHistory.create({
           data: {
             activityId: id,
@@ -338,17 +353,27 @@ export async function updateDispensaryWeeklyActivityWithHistory(
       }
     }
 
-    return finalRow;
+    return { row, changed };
   });
+
+  if (finalRow.changed) {
+    await emitWeeklyActivityChange(
+      finalRow.row.dispensaryId,
+      activityToWeeklyActivityRealtimePayload(finalRow.row),
+      actor.meta,
+    );
+  }
+
+  return finalRow.row;
 }
 
 export async function deleteDispensaryWeeklyActivityWithHistory(
   id: string,
   actor: ActorContext,
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const existing = await tx.dispensaryWeeklyActivity.findUnique({ where: { id } });
-    if (!existing) {
+  const existing = await prisma.$transaction(async (tx) => {
+    const row = await tx.dispensaryWeeklyActivity.findUnique({ where: { id } });
+    if (!row) {
       throw new Error('Activité introuvable');
     }
 
@@ -359,13 +384,20 @@ export async function deleteDispensaryWeeklyActivityWithHistory(
         source: actor.source,
         actorUserId: actor.actorUserId,
         actorDiscordUserId: actor.actorDiscordUserId,
-        previousValues: activityToSnapshot(existing) as Prisma.InputJsonValue,
+        previousValues: activityToSnapshot(row) as Prisma.InputJsonValue,
         nextValues: Prisma.JsonNull,
       },
     });
 
     await tx.dispensaryWeeklyActivity.delete({ where: { id } });
+    return row;
   });
+
+  await emitWeeklyActivityChange(
+    existing.dispensaryId,
+    activityToWeeklyActivityRealtimePayload(existing),
+    actor.meta,
+  );
 }
 
 export async function findOrCreateDispensaryActivityForParisDay(
@@ -451,6 +483,7 @@ export type BotWeeklyActivityRequestOptions = {
   displayName?: string;
   /** When false, allows editing days outside the current Paris week (legacy presence yesterday). */
   requireCurrentParisWeek?: boolean;
+  meta?: WeeklyActivityMutationMeta;
 };
 
 function alreadyDoneMessage(field: 'chest' | 'presence', value: boolean): string {
@@ -506,7 +539,7 @@ export async function botSetWeekdayFlag(
   const historyAction =
     field === 'chest' ? ('UPDATE_CHEST_DAYS' as const) : ('UPDATE_PRESENCE_DAYS' as const);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const row = await tx.dispensaryWeeklyActivity.findUnique({ where: { id: existing.id } });
     if (!row) {
       throw new Error('Activité introuvable');
@@ -549,6 +582,16 @@ export async function botSetWeekdayFlag(
 
     return { outcome: 'ok' as const, activity: synced };
   });
+
+  if (result.outcome === 'ok') {
+    await emitWeeklyActivityChange(
+      dispensaryId,
+      activityToWeeklyActivityRealtimePayload(result.activity),
+      options?.meta,
+    );
+  }
+
+  return result;
 }
 
 export async function botMarkChestForParisToday(

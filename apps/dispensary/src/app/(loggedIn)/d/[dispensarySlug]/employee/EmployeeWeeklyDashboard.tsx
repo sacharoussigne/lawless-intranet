@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Anchor, Group, SimpleGrid, Stack } from '@mantine/core';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
 import { WeeklyActivityCompactPanel } from '@/app/_components/weeklyActivity/WeeklyActivityCompactPanel';
 import { WeeklyActivityCompactTeamList } from '@/app/_components/weeklyActivity/WeeklyActivityCompactTeamList';
@@ -11,6 +12,7 @@ import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { EditWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/EditWeeklyActivityModal';
 import { HistoryWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/HistoryWeeklyActivityModal';
 import {
+  invalidateWeeklyActivityFromRealtimeEvent,
   useWeeklyActivities,
   type WeeklyActivityListItem,
 } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
@@ -22,6 +24,8 @@ import {
   isSameWeeklyActivityWeek,
   type WeeklyActivityWeekBounds,
 } from '@/lib/dispensaryWeeklyActivity/queryKeys';
+import { useWeeklyActivityRealtime } from '@/lib/dispensaryWeeklyActivity/realtime/client/useWeeklyActivityRealtime';
+import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 import { tenantRoutes } from '@/types/routes';
 
 function canEditWeeklyRow(
@@ -60,6 +64,7 @@ export function EmployeeWeeklyDashboard({
   initialRows,
 }: EmployeeWeeklyDashboardProps) {
   const { appSettings } = usePermissions();
+  const queryClient = useQueryClient();
   const fieldVisibility = useMemo(
     () => weeklyActivityFieldVisibilityFromSettings(appSettings),
     [appSettings],
@@ -84,6 +89,21 @@ export function EmployeeWeeklyDashboard({
     }),
     [currentWeekBounds],
   );
+
+  const handleRealtimeChange = useCallback(
+    (event: WeeklyActivityRealtimeEvent) => {
+      invalidateWeeklyActivityFromRealtimeEvent(queryClient, dispensarySlug, event, {
+        visibleWeekBounds: queryWeekBounds,
+        openHistoryActivityId: historyActivityId,
+      });
+    },
+    [dispensarySlug, historyActivityId, queryClient, queryWeekBounds],
+  );
+
+  useWeeklyActivityRealtime({
+    enabled: true,
+    onChange: handleRealtimeChange,
+  });
 
   const { data: fetchedRows = [], isFetching } = useWeeklyActivities(queryWeekBounds, {
     bounds: initialWeekBounds,

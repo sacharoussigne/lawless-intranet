@@ -1,7 +1,7 @@
 'use client';
 
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Modal,
   Stack,
@@ -18,19 +18,18 @@ import { notifications } from '@mantine/notifications';
 import { handleAction } from '@/lib/action';
 import type { DocumentAccessItem } from '@/types/mails';
 import {
+  UserPseudoSearch,
+  type UserPseudoSearchResult,
+} from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
+import {
   grantDocumentAccessAction,
   grantTemplateAccessAction,
   listDocumentAccessesAction,
   listTemplateAccessesAction,
-  listUsersForDocumentAccess,
   revokeDocumentAccessAction,
   revokeTemplateAccessAction,
+  searchUsersForDocumentAccess,
 } from '@/app/_actions/documentAccesses';
-
-type AccessUser = {
-  id: string;
-  name: string;
-};
 
 type ManageResourceAccessModalProps = {
   opened: boolean;
@@ -53,13 +52,16 @@ export function ManageResourceAccessModal({
 }: ManageResourceAccessModalProps) {
   const dispensarySlug = useRequiredDispensarySlug();
   const [accesses, setAccesses] = useState<DocumentAccessItem[]>([]);
-  const [allUsers, setAllUsers] = useState<AccessUser[]>([]);
-  const [users, setUsers] = useState<AccessUser[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserPseudoSearchResult | null>(null);
   const [accessType, setAccessType] = useState<'READ' | 'WRITE'>('READ');
   const [loading, setLoading] = useState(false);
 
-  const reloadAccesses = async () => {
+  const excludeUserIds = [
+    ...(ownerId ? [ownerId] : []),
+    ...accesses.map((access) => access.userId),
+  ];
+
+  const reloadAccesses = useCallback(async () => {
     if (!resourceId) return;
 
     const result =
@@ -71,40 +73,33 @@ export function ManageResourceAccessModal({
     if (data) {
       setAccesses(data);
     }
-  };
-
-  const loadUsers = async (currentAccesses: DocumentAccessItem[]) => {
-    const result = await listUsersForDocumentAccess();
-    const data = handleAction(result);
-    if (!data) return;
-
-    const dispensaryUsers = (data.users || []) as AccessUser[];
-    setAllUsers(dispensaryUsers);
-    setUsers(
-      dispensaryUsers.filter(
-        (user) =>
-          user.id !== ownerId &&
-          !currentAccesses.some((access) => access.userId === user.id),
-      ),
-    );
-  };
+  }, [dispensarySlug, resourceId, resourceType]);
 
   useEffect(() => {
-    if (opened && resourceId) {
-      void (async () => {
-        await reloadAccesses();
-      })();
-    }
-  }, [opened, resourceId, resourceType, dispensarySlug]);
+    if (!opened || !resourceId) return;
+    void reloadAccesses();
+  }, [opened, resourceId, reloadAccesses]);
 
-  useEffect(() => {
-    if (opened) {
-      void loadUsers(accesses);
-    }
-  }, [opened, accesses, ownerId]);
+  const handleClose = () => {
+    setSelectedUser(null);
+    setAccessType('READ');
+    setAccesses([]);
+    onClose();
+  };
+
+  const searchUsers = useCallback(
+    async (query: string) => {
+      const result = await searchUsersForDocumentAccess(dispensarySlug, query);
+      if (result.status === 200 && 'data' in result && result.data) {
+        return result.data;
+      }
+      return [];
+    },
+    [dispensarySlug],
+  );
 
   const handleAddAccess = async () => {
-    if (!resourceId || !selectedUserId) return;
+    if (!resourceId || !selectedUser) return;
 
     try {
       setLoading(true);
@@ -112,12 +107,12 @@ export function ManageResourceAccessModal({
         resourceType === 'template'
           ? await grantTemplateAccessAction(dispensarySlug, {
               templateId: resourceId,
-              userId: selectedUserId,
+              userId: selectedUser.id,
               accessType,
             })
           : await grantDocumentAccessAction(dispensarySlug, {
               documentId: resourceId,
-              userId: selectedUserId,
+              userId: selectedUser.id,
               accessType,
             });
 
@@ -125,9 +120,9 @@ export function ManageResourceAccessModal({
       notifications.show({
         title: 'Succès',
         message: 'Accès ajouté avec succès',
-        color: 'green',
+        color: 'moss',
       });
-      setSelectedUserId(null);
+      setSelectedUser(null);
       setAccessType('READ');
       await reloadAccesses();
       onSuccess?.();
@@ -135,7 +130,7 @@ export function ManageResourceAccessModal({
       notifications.show({
         title: 'Erreur',
         message: error instanceof Error ? error.message : 'Erreur lors de l\'ajout de l\'accès',
-        color: 'red',
+        color: 'danger',
       });
     } finally {
       setLoading(false);
@@ -162,7 +157,7 @@ export function ManageResourceAccessModal({
       notifications.show({
         title: 'Succès',
         message: 'Accès supprimé avec succès',
-        color: 'green',
+        color: 'moss',
       });
       await reloadAccesses();
       onSuccess?.();
@@ -171,7 +166,7 @@ export function ManageResourceAccessModal({
         title: 'Erreur',
         message:
           error instanceof Error ? error.message : 'Erreur lors de la suppression de l\'accès',
-        color: 'red',
+        color: 'danger',
       });
     } finally {
       setLoading(false);
@@ -181,7 +176,7 @@ export function ManageResourceAccessModal({
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title={`Partager : ${resourceName}`}
       size="lg"
     >
@@ -190,16 +185,21 @@ export function ManageResourceAccessModal({
           Accordez un accès en lecture ou en écriture à un autre joueur.
         </Text>
 
+        <UserPseudoSearch
+          inputName="document-access-user-search"
+          label="Joueur"
+          placeholder="Pseudo…"
+          excludeUserIds={excludeUserIds}
+          onSearch={searchUsers}
+          onSelect={setSelectedUser}
+        />
+        {selectedUser && (
+          <Text size="sm" c="dimmed">
+            Joueur sélectionné : {selectedUser.name}
+          </Text>
+        )}
+
         <Group align="flex-end" grow>
-          <Select
-            label="Joueur"
-            placeholder="Sélectionner un joueur"
-            data={users.map((user) => ({ value: user.id, label: user.name }))}
-            value={selectedUserId}
-            onChange={setSelectedUserId}
-            searchable
-            nothingFoundMessage="Aucun joueur disponible"
-          />
           <Select
             label="Type d'accès"
             data={[
@@ -209,7 +209,7 @@ export function ManageResourceAccessModal({
             value={accessType}
             onChange={(value) => setAccessType((value as 'READ' | 'WRITE') ?? 'READ')}
           />
-          <Button onClick={handleAddAccess} disabled={!selectedUserId} loading={loading}>
+          <Button onClick={handleAddAccess} disabled={!selectedUser} loading={loading}>
             Ajouter
           </Button>
         </Group>
@@ -232,29 +232,26 @@ export function ManageResourceAccessModal({
                 </Table.Td>
               </Table.Tr>
             ) : (
-              accesses.map((access) => {
-                const user = allUsers.find((item) => item.id === access.userId);
-                return (
-                  <Table.Tr key={access.id}>
-                    <Table.Td>{user?.name ?? access.userId}</Table.Td>
-                    <Table.Td>
-                      <Badge variant="outline" color={access.accessType === 'WRITE' ? 'sage' : 'slate'}>
-                        {access.accessType === 'WRITE' ? 'Écriture' : 'Lecture'}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <ActionIcon
-                        variant="light"
-                        color="danger"
-                        onClick={() => handleRemoveAccess(access.userId)}
-                        loading={loading}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Table.Td>
-                  </Table.Tr>
-                );
-              })
+              accesses.map((access) => (
+                <Table.Tr key={access.id}>
+                  <Table.Td>{access.user?.name ?? access.userId}</Table.Td>
+                  <Table.Td>
+                    <Badge variant="outline" color={access.accessType === 'WRITE' ? 'sage' : 'slate'}>
+                      {access.accessType === 'WRITE' ? 'Écriture' : 'Lecture'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <ActionIcon
+                      variant="light"
+                      color="danger"
+                      onClick={() => handleRemoveAccess(access.userId)}
+                      loading={loading}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Table.Td>
+                </Table.Tr>
+              ))
             )}
           </Table.Tbody>
         </Table>

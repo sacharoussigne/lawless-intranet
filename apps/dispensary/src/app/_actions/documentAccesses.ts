@@ -13,7 +13,11 @@ import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getServerCookieHeader } from '@/lib/documents/mailDocuments';
-import { listUsersForBankAccess } from '@/app/_actions/users';
+import {
+  attachUserProfiles,
+  fetchUserProfiles,
+  searchAuthUsers,
+} from '@/lib/authUsers';
 
 const grantAccessSchema = z.object({
   resourceId: z.string().uuid('ID invalide'),
@@ -36,6 +40,11 @@ function documentsActionError(error: unknown, fallback: string) {
   return actionErrorParser(error, fallback);
 }
 
+async function enrichAccessesWithUsers<T extends { userId: string }>(accesses: T[]) {
+  const usersById = await fetchUserProfiles(accesses.map((access) => access.userId));
+  return attachUserProfiles(accesses, usersById);
+}
+
 export async function listTemplateAccessesAction(
   dispensarySlug: string,
   data: { templateId: string },
@@ -51,7 +60,7 @@ export async function listTemplateAccessesAction(
 
     return {
       status: 200,
-      data: accesses,
+      data: await enrichAccessesWithUsers(accesses),
     };
   } catch (error) {
     return documentsActionError(error, 'Erreur lors de la récupération des accès');
@@ -139,7 +148,7 @@ export async function listDocumentAccessesAction(
 
     return {
       status: 200,
-      data: accesses,
+      data: await enrichAccessesWithUsers(accesses),
     };
   } catch (error) {
     return documentsActionError(error, 'Erreur lors de la récupération des accès');
@@ -212,6 +221,25 @@ export async function revokeDocumentAccessAction(
   }
 }
 
-export async function listUsersForDocumentAccess() {
-  return listUsersForBankAccess();
+export async function searchUsersForDocumentAccess(dispensarySlug: string, query: string) {
+  try {
+    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'mails',
+    });
+    if (!ctx.ok) return ctx.response;
+
+    const q = query.trim();
+    if (q.length < 2) {
+      return { status: 200, data: [] };
+    }
+
+    const users = await searchAuthUsers(q);
+
+    return {
+      status: 200,
+      data: users.map((user) => ({ id: user.id, name: user.name })),
+    };
+  } catch (error) {
+    return documentsActionError(error, 'Erreur lors de la recherche des utilisateurs');
+  }
 }

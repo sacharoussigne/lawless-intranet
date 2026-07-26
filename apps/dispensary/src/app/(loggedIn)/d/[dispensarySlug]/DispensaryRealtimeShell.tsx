@@ -2,20 +2,38 @@
 
 import { AgendaRealtimeProvider } from '@lawless-intranet/agenda-ui';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { WeeklyActivityRealtimeProvider } from '@/lib/dispensaryWeeklyActivity/realtime/client/WeeklyActivityRealtimeProvider';
 import type { ReactNode } from 'react';
 
 export function DispensaryRealtimeShell({ children }: { children: ReactNode }) {
-  const { dispensarySlug, agendaModuleAccess } = usePermissions();
+  const { dispensarySlug, agendaModuleAccess, permissions, appSettings } = usePermissions();
 
-  if (!agendaModuleAccess || !dispensarySlug) {
-    return children;
+  let content = children;
+
+  if (agendaModuleAccess && dispensarySlug) {
+    content = (
+      <AgendaRealtimeProvider
+        streamUrl={`/api/d/${encodeURIComponent(dispensarySlug)}/agenda/stream`}
+      >
+        {content}
+      </AgendaRealtimeProvider>
+    );
   }
 
-  return (
-    <AgendaRealtimeProvider
-      streamUrl={`/api/d/${encodeURIComponent(dispensarySlug)}/agenda/stream`}
-    >
-      {children}
-    </AgendaRealtimeProvider>
-  );
+  const weeklyActivityRealtimeEnabled =
+    Boolean(dispensarySlug) &&
+    appSettings.featureWeeklyDispensaryActivityEnabled &&
+    Boolean(permissions?.weeklyDispensaryActivity.view);
+
+  if (weeklyActivityRealtimeEnabled && dispensarySlug) {
+    content = (
+      <WeeklyActivityRealtimeProvider
+        streamUrl={`/api/d/${encodeURIComponent(dispensarySlug)}/weekly-activity/stream`}
+      >
+        {content}
+      </WeeklyActivityRealtimeProvider>
+    );
+  }
+
+  return content;
 }

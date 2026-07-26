@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { createDispensaryAgendaActions } from '@/lib/agenda/agendaUiActions';
 import { tenantRoutes } from '@/types/routes';
 import {
@@ -9,7 +10,7 @@ import {
   type AgendaSummaryDTO,
   type AgendaTodoListDTO,
 } from '@lawless-intranet/agenda-ui';
-import { useMemo } from 'react';
+import { AgendaMembersModal } from './components/AgendaMembersModal';
 
 type DispensaryAgendaWorkspaceProps = {
   dispensarySlug: string;
@@ -33,6 +34,12 @@ export function DispensaryAgendaWorkspace({
     [dispensarySlug],
   );
 
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [membersAgenda, setMembersAgenda] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
   return (
     <AgendaUiProvider
       scopeKey={dispensarySlug}
@@ -45,6 +52,17 @@ export function DispensaryAgendaWorkspace({
         initialEvents={initialEvents}
         initialTodoLists={initialTodoLists}
         isAdmin={isAdmin}
+        onManageMembers={(agenda) => {
+          setMembersAgenda(agenda);
+          setMembersOpen(true);
+        }}
+      />
+      <AgendaMembersModal
+        opened={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        dispensarySlug={dispensarySlug}
+        agendaId={membersAgenda?.id ?? null}
+        agendaName={membersAgenda?.name ?? ''}
       />
     </AgendaUiProvider>
   );

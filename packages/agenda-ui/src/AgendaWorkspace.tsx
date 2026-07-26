@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAgendaUi } from './AgendaUiProvider';
 import { runAgendaAction } from './runAgendaAction';
-import { Button, Container, Group, Stack, Text, Title } from '@mantine/core';
-import { IconPlus } from '@tabler/icons-react';
+import { ActionIcon, Button, Container, Group, Stack, Text, Title } from '@mantine/core';
+import { IconPlus, IconUsers } from '@tabler/icons-react';
 import Link from 'next/link';
 import dayjs from './dayjs';
 import { buildDefaultTimedSlotForDay } from './dates';
@@ -22,6 +22,7 @@ import {
 } from './eventState';
 import { notifyUpcomingEventsLocalRefresh } from './upcomingEventsLocalRefresh';
 import {
+  canOwnAgenda,
   canWriteAgenda,
   type AgendaEventDTO,
   type AgendaSummaryDTO,
@@ -49,6 +50,7 @@ interface AgendaWorkspaceProps {
   initialEvents: AgendaEventDTO[];
   initialTodoLists: AgendaTodoListDTO[];
   isAdmin: boolean;
+  onManageMembers?: (agenda: { id: string; name: string }) => void;
 }
 
 function AgendaPageHeader({
@@ -86,6 +88,7 @@ export function AgendaWorkspace({
   initialEvents,
   initialTodoLists,
   isAdmin,
+  onManageMembers,
 }: AgendaWorkspaceProps) {
   const { actions, adminHref } = useAgendaUi();
   const router = useRouter();
@@ -126,6 +129,10 @@ export function AgendaWorkspace({
   );
 
   const canWrite = canWriteAgenda(selectedAgenda?.accessLevel ?? null);
+  const canManageMembers =
+    Boolean(onManageMembers) &&
+    Boolean(selectedAgenda) &&
+    (canOwnAgenda(selectedAgenda?.accessLevel) || isAdmin);
   const { layout, setWidthMode, toggleCalendar, toggleTodo } =
     useAgendaLayoutPreference();
   const [calendarFocusOverride, setCalendarFocusOverride] = useState(false);
@@ -381,6 +388,23 @@ export function AgendaWorkspace({
                   value={selectedAgendaId}
                   onChange={handleAgendaChange}
                 />
+                {canManageMembers && selectedAgenda && (
+                  <ActionIcon
+                    variant="light"
+                    color="leather"
+                    size="lg"
+                    title="Membres"
+                    aria-label="Membres"
+                    onClick={() =>
+                      onManageMembers?.({
+                        id: selectedAgenda.id,
+                        name: selectedAgenda.name,
+                      })
+                    }
+                  >
+                    <IconUsers size={18} />
+                  </ActionIcon>
+                )}
                 {canWrite && selectedAgendaId && (
                   <Button
                     color="sage"

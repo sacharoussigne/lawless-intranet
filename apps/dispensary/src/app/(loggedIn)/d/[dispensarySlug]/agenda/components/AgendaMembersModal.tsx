@@ -14,37 +14,37 @@ import { notifications } from '@mantine/notifications';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
 import {
-  removeCabinetMember,
-  searchDispensaryUsersForCabinet,
-  upsertCabinetMember,
-} from '@/app/_actions/cabinet/members';
-import { getCabinetWithMembers } from '@/app/_actions/cabinet/cabinets';
+  removeAgendaMember,
+  searchDispensaryUsersForAgenda,
+  upsertAgendaMember,
+} from '@/app/_actions/agenda/members';
+import { getAgendaWithMembers } from '@/app/_actions/agenda/agendas';
 import { handleAction } from '@/lib/action';
 import {
-  CABINET_ACCESS_LEVELS,
-  cabinetAccessLevelLabel,
-  type CabinetMemberDTO,
-} from '@/types/cabinet';
-import type { CabinetAccessLevel } from '@prisma/client';
+  AGENDA_ACCESS_LEVELS,
+  agendaAccessLevelLabel,
+  type AgendaMemberDTO,
+} from '@/types/agenda';
+import type { AgendaAccessLevel } from '@/types/agenda';
 
-interface CabinetMembersModalProps {
+interface AgendaMembersModalProps {
   opened: boolean;
   onClose: () => void;
   dispensarySlug: string;
-  cabinetId: string | null;
-  cabinetName: string;
+  agendaId: string | null;
+  agendaName: string;
 }
 
-export function CabinetMembersModal({
+export function AgendaMembersModal({
   opened,
   onClose,
   dispensarySlug,
-  cabinetId,
-  cabinetName,
-}: CabinetMembersModalProps) {
-  const [members, setMembers] = useState<CabinetMemberDTO[]>([]);
+  agendaId,
+  agendaName,
+}: AgendaMembersModalProps) {
+  const [members, setMembers] = useState<AgendaMemberDTO[]>([]);
   const [loading, setLoading] = useState(false);
-  const [accessLevel, setAccessLevel] = useState<CabinetAccessLevel>('READ');
+  const [accessLevel, setAccessLevel] = useState<AgendaAccessLevel>('READ');
 
   const memberUserIds = useMemo(
     () => members.map((member) => member.userId),
@@ -52,13 +52,13 @@ export function CabinetMembersModal({
   );
 
   const loadMembers = useCallback(async () => {
-    if (!cabinetId) return;
+    if (!agendaId) return;
     setLoading(true);
     try {
-      const result = await getCabinetWithMembers(dispensarySlug, cabinetId);
+      const result = await getAgendaWithMembers(dispensarySlug, agendaId);
       const data = handleAction(result);
       if (data) {
-        setMembers(data.members as CabinetMemberDTO[]);
+        setMembers(data.members as AgendaMemberDTO[]);
       }
     } catch (error: unknown) {
       notifications.show({
@@ -69,15 +69,11 @@ export function CabinetMembersModal({
     } finally {
       setLoading(false);
     }
-  }, [cabinetId, dispensarySlug]);
+  }, [agendaId, dispensarySlug]);
 
-  const searchCabinetUsers = useCallback(
+  const searchAgendaUsers = useCallback(
     async (query: string) => {
-      const result = await searchDispensaryUsersForCabinet(
-        dispensarySlug,
-        query,
-        { adminContext: true },
-      );
+      const result = await searchDispensaryUsersForAgenda(dispensarySlug, query);
       const data = handleAction(result);
       return data ?? [];
     },
@@ -85,16 +81,16 @@ export function CabinetMembersModal({
   );
 
   useEffect(() => {
-    if (opened && cabinetId) {
+    if (opened && agendaId) {
       void loadMembers();
     }
-  }, [opened, cabinetId, loadMembers]);
+  }, [opened, agendaId, loadMembers]);
 
   const handleAddMember = async (userId: string) => {
-    if (!cabinetId) return;
+    if (!agendaId) return;
     try {
-      const result = await upsertCabinetMember(dispensarySlug, {
-        cabinetId,
+      const result = await upsertAgendaMember(dispensarySlug, {
+        agendaId,
         userId,
         accessLevel,
       });
@@ -109,11 +105,11 @@ export function CabinetMembersModal({
     }
   };
 
-  const handleUpdateLevel = async (userId: string, level: CabinetAccessLevel) => {
-    if (!cabinetId) return;
+  const handleUpdateLevel = async (userId: string, level: AgendaAccessLevel) => {
+    if (!agendaId) return;
     try {
-      const result = await upsertCabinetMember(dispensarySlug, {
-        cabinetId,
+      const result = await upsertAgendaMember(dispensarySlug, {
+        agendaId,
         userId,
         accessLevel: level,
       });
@@ -129,9 +125,9 @@ export function CabinetMembersModal({
   };
 
   const handleRemove = async (userId: string) => {
-    if (!cabinetId) return;
+    if (!agendaId) return;
     try {
-      const result = await removeCabinetMember(dispensarySlug, { cabinetId, userId });
+      const result = await removeAgendaMember(dispensarySlug, { agendaId, userId });
       handleAction(result);
       await loadMembers();
     } catch (error: unknown) {
@@ -147,7 +143,7 @@ export function CabinetMembersModal({
     <AppModal
       opened={opened}
       onClose={onClose}
-      title={`Membres — ${cabinetName}`}
+      title={`Membres — ${agendaName}`}
       icon={IconUsers}
       size="lg"
       footer={
@@ -162,20 +158,20 @@ export function CabinetMembersModal({
         <Group align="flex-end" grow>
           <UserPseudoSearch
             enabled={opened}
-            inputName="cabinet-member-user-search"
+            inputName="agenda-member-user-search"
             excludeUserIds={memberUserIds}
-            onSearch={searchCabinetUsers}
+            onSearch={searchAgendaUsers}
             onSelect={(user) => void handleAddMember(user.id)}
             actionLabel="Ajouter"
           />
           <Select
             label="Permission"
-            data={CABINET_ACCESS_LEVELS.map((l) => ({
+            data={AGENDA_ACCESS_LEVELS.map((l) => ({
               value: l,
-              label: cabinetAccessLevelLabel(l),
+              label: agendaAccessLevelLabel(l),
             }))}
             value={accessLevel}
-            onChange={(v) => setAccessLevel((v as CabinetAccessLevel) ?? 'READ')}
+            onChange={(v) => setAccessLevel((v as AgendaAccessLevel) ?? 'READ')}
           />
         </Group>
 
@@ -193,19 +189,19 @@ export function CabinetMembersModal({
               <Select
                 size="xs"
                 w={140}
-                data={CABINET_ACCESS_LEVELS.map((l) => ({
+                data={AGENDA_ACCESS_LEVELS.map((l) => ({
                   value: l,
-                  label: cabinetAccessLevelLabel(l),
+                  label: agendaAccessLevelLabel(l),
                 }))}
                 value={member.accessLevel}
                 onChange={(v) =>
-                  handleUpdateLevel(member.userId, (v as CabinetAccessLevel) ?? member.accessLevel)
+                  handleUpdateLevel(member.userId, (v as AgendaAccessLevel) ?? member.accessLevel)
                 }
               />
               <ActionIcon
                 variant="light"
                 color="danger"
-                onClick={() => void handleRemove(member.userId)}
+                onClick={() => handleRemove(member.userId)}
               >
                 <IconTrash size={16} />
               </ActionIcon>

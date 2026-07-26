@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  ActionIcon,
   Avatar,
   Button,
   Container,
@@ -8,18 +9,19 @@ import {
   Menu,
   SegmentedControl,
   Select,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core';
 import classes from './Header.module.scss';
 import { authClient } from '@lawless-intranet/auth-client/browser';
 import { useRouter, usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { type AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
 import Link from 'next/link';
 import Image from 'next/image';
-import { IconArrowBackUp, IconLogout, IconSettings } from '@tabler/icons-react';
+import { IconArrowBackUp, IconLogout, IconSearch, IconSettings } from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
@@ -29,6 +31,7 @@ import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
 import { DEFAULT_DISPENSARY_SLUG } from '@/lib/dispensary/constants';
 import { rewritePathWithDispensarySlug } from '@/lib/dispensary/slug';
+import { getEmployeeNavItems } from '@/lib/navigation/employeeNav';
 
 export default function Header({
   session,
@@ -116,6 +119,24 @@ export default function Header({
 
   const canSwitchSpaces = permissions?.application.management === true;
 
+  const employeeSearchItem = useMemo(() => {
+    if (!t || isAdminOrManagementSpace) return null;
+    return getEmployeeNavItems({
+      t,
+      appSettings,
+      permissions,
+      userRole,
+      cabinetModuleAccess,
+    }).search;
+  }, [
+    t,
+    isAdminOrManagementSpace,
+    appSettings,
+    permissions,
+    userRole,
+    cabinetModuleAccess,
+  ]);
+
   const isRouteActive = (route: string) => {
     if (!pathname) return false;
     if (pathname === route) return true;
@@ -166,18 +187,31 @@ export default function Header({
             <>
               <div className={classes.headerNavSlot}>
                 <HeaderNavLinks
-                t={t}
-                appSettings={appSettings}
-                permissions={permissions}
-                userRole={userRole}
-                isManagementSpace={isAdminOrManagementSpace}
-                canManage={permissions?.application.management === true}
-                isRouteActive={isRouteActive}
-                cabinetModuleAccess={cabinetModuleAccess}
+                  t={t}
+                  appSettings={appSettings}
+                  permissions={permissions}
+                  userRole={userRole}
+                  isManagementSpace={isAdminOrManagementSpace}
+                  canManage={permissions?.application.management === true}
+                  isRouteActive={isRouteActive}
+                  cabinetModuleAccess={cabinetModuleAccess}
                 />
               </div>
 
               <Group gap="sm" wrap="nowrap" className={classes.headerSide}>
+                {employeeSearchItem && (
+                  <Tooltip label={employeeSearchItem.label} position="bottom">
+                    <ActionIcon
+                      component={Link}
+                      href={employeeSearchItem.href}
+                      variant="light"
+                      size="lg"
+                      aria-label={employeeSearchItem.label}
+                    >
+                      <IconSearch size={18} stroke={1.6} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
                 {canSwitchSpaces && (
                   <SegmentedControl
                     size="md"
@@ -193,6 +227,7 @@ export default function Header({
                     ]}
                   />
                 )}
+
                 {appSettings.featureAgendaEnabled && agendaModuleAccess && dispensarySlug && (
                   <HeaderUpcomingEvents
                     dispensarySlug={dispensarySlug}

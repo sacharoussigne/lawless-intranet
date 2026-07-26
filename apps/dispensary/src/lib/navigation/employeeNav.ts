@@ -191,14 +191,18 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
 export function getEmployeeNavItems(ctx: EmployeeNavContext): {
   primary: EmployeeNavItem[];
   more: EmployeeNavItem[];
+  search: EmployeeNavItem | null;
 } {
   const visible = buildAllItems(ctx)
     .filter((item) => isItemVisible(item, ctx))
     .sort((a, b) => a.navOrder - b.navOrder);
 
-  const primary = visible.slice(0, PRIMARY_SLOT_COUNT);
-  const primaryIds = new Set(primary.map((i) => i.id));
-  const more = visible.filter((i) => !primaryIds.has(i.id));
+  const search = visible.find((item) => item.id === 'search') ?? null;
+  const withoutSearch = visible.filter((item) => item.id !== 'search');
 
-  return { primary, more };
+  const primary = withoutSearch.slice(0, PRIMARY_SLOT_COUNT);
+  const primaryIds = new Set(primary.map((i) => i.id));
+  const more = withoutSearch.filter((i) => !primaryIds.has(i.id));
+
+  return { primary, more, search };
 }
