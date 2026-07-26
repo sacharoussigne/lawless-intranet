@@ -23,6 +23,9 @@ import {
   type WeeklyActivityWeekBounds,
 } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import type { SerializedDispensaryWeeklyActivityRow } from '@/lib/dispensaryWeeklyActivity/apiRow';
+import { useOptionalWeeklyActivityRealtimeClientId } from '@/lib/dispensaryWeeklyActivity/realtime/client/WeeklyActivityRealtimeProvider';
+import { weeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/client/mutationMeta';
+import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 
 export type WeeklyActivityListItem = SerializedDispensaryWeeklyActivityRow;
 
@@ -78,6 +81,48 @@ async function fetchWeeklyActivityTargets(
   const result = await listDispensaryWeeklyActivityTargets(dispensarySlug);
   const data = handleAction(result) as { users?: WeeklyActivityTargetUser[] } | undefined;
   return data?.users ?? [];
+}
+
+function useWeeklyActivityMutationMeta() {
+  const clientId = useOptionalWeeklyActivityRealtimeClientId();
+  return weeklyActivityMutationMeta(clientId);
+}
+
+export function invalidateWeeklyActivityFromRealtimeEvent(
+  queryClient: ReturnType<typeof useQueryClient>,
+  dispensarySlug: string,
+  event: WeeklyActivityRealtimeEvent,
+  options?: {
+    visibleWeekBounds?: WeeklyActivityWeekBounds | null;
+    openHistoryActivityId?: string | null;
+  },
+) {
+  const eventBounds = normalizeWeeklyActivityWeekBounds({
+    periodStart: new Date(event.periodStart),
+    periodEnd: new Date(event.periodEnd),
+  });
+
+  if (
+    options?.visibleWeekBounds &&
+    isSameWeeklyActivityWeek(options.visibleWeekBounds, eventBounds)
+  ) {
+    void queryClient.invalidateQueries({
+      queryKey: weeklyActivityKeys.list(
+        dispensarySlug,
+        weeklyActivityWeekKey(options.visibleWeekBounds),
+      ),
+    });
+  } else if (!options?.visibleWeekBounds) {
+    void queryClient.invalidateQueries({
+      queryKey: weeklyActivityKeys.all(dispensarySlug),
+    });
+  }
+
+  if (options?.openHistoryActivityId && options.openHistoryActivityId === event.activityId) {
+    void queryClient.invalidateQueries({
+      queryKey: weeklyActivityKeys.history(dispensarySlug, event.activityId),
+    });
+  }
 }
 
 export function useWeeklyActivities(
@@ -156,13 +201,14 @@ export function useInvalidateWeeklyActivities() {
 export function useCreateWeeklyActivityMutation() {
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidate = useInvalidateWeeklyActivities();
+  const meta = useWeeklyActivityMutationMeta();
 
   return useMutation({
     mutationFn: async (vars: {
       payload: Parameters<typeof createDispensaryWeeklyActivity>[1];
       weekBounds: WeeklyActivityWeekBounds;
     }) => {
-      const result = await createDispensaryWeeklyActivity(dispensarySlug, vars.payload);
+      const result = await createDispensaryWeeklyActivity(dispensarySlug, vars.payload, meta);
       handleAction(result);
       return vars;
     },
@@ -184,13 +230,14 @@ export function useCreateWeeklyActivityMutation() {
 export function useUpdateWeeklyActivityMutation() {
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidate = useInvalidateWeeklyActivities();
+  const meta = useWeeklyActivityMutationMeta();
 
   return useMutation({
     mutationFn: async (vars: {
       payload: Parameters<typeof updateDispensaryWeeklyActivity>[1];
       weekBounds: WeeklyActivityWeekBounds;
     }) => {
-      const result = await updateDispensaryWeeklyActivity(dispensarySlug, vars.payload);
+      const result = await updateDispensaryWeeklyActivity(dispensarySlug, vars.payload, meta);
       handleAction(result);
       return vars;
     },
@@ -211,10 +258,11 @@ export function useUpdateWeeklyActivityMutation() {
 export function useDeleteWeeklyActivityMutation() {
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidate = useInvalidateWeeklyActivities();
+  const meta = useWeeklyActivityMutationMeta();
 
   return useMutation({
     mutationFn: async (vars: { id: string; weekBounds: WeeklyActivityWeekBounds }) => {
-      const result = await deleteDispensaryWeeklyActivity(dispensarySlug, { id: vars.id });
+      const result = await deleteDispensaryWeeklyActivity(dispensarySlug, { id: vars.id }, meta);
       handleAction(result);
       return vars;
     },
@@ -235,10 +283,11 @@ export function useDeleteWeeklyActivityMutation() {
 export function useMarkOwnWeeklyChestTodayMutation() {
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidate = useInvalidateWeeklyActivities();
+  const meta = useWeeklyActivityMutationMeta();
 
   return useMutation({
     mutationFn: async (vars: { weekBounds: WeeklyActivityWeekBounds }) => {
-      const result = await markOwnWeeklyChestToday(dispensarySlug);
+      const result = await markOwnWeeklyChestToday(dispensarySlug, meta);
       const data = handleAction<{
         row: WeeklyActivityListItem;
         alreadyDone?: boolean;
@@ -271,10 +320,11 @@ export function useMarkOwnWeeklyChestTodayMutation() {
 export function useMarkOwnWeeklyPresenceTodayMutation() {
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidate = useInvalidateWeeklyActivities();
+  const meta = useWeeklyActivityMutationMeta();
 
   return useMutation({
     mutationFn: async (vars: { weekBounds: WeeklyActivityWeekBounds }) => {
-      const result = await markOwnWeeklyPresenceToday(dispensarySlug);
+      const result = await markOwnWeeklyPresenceToday(dispensarySlug, meta);
       const data = handleAction<{
         row: WeeklyActivityListItem;
         alreadyDone?: boolean;
@@ -313,13 +363,18 @@ type WeeklyCounterField =
 export function useIncrementOwnWeeklyCounterMutation() {
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidate = useInvalidateWeeklyActivities();
+  const meta = useWeeklyActivityMutationMeta();
 
   return useMutation({
     mutationFn: async (vars: {
       field: WeeklyCounterField;
       weekBounds: WeeklyActivityWeekBounds;
     }) => {
-      const result = await incrementOwnWeeklyCounter(dispensarySlug, { field: vars.field });
+      const result = await incrementOwnWeeklyCounter(
+        dispensarySlug,
+        { field: vars.field },
+        meta,
+      );
       handleAction(result);
       return vars;
     },

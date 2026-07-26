@@ -52,6 +52,21 @@ import {
   BotDayEditError,
 } from '@/lib/dispensaryWeeklyActivity/botDayEdit';
 import { parseWeekdayFlagsJson } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
+import type { WeeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/types';
+
+const weeklyActivityMutationMetaSchema = z
+  .object({
+    originClientId: z.string().min(1).max(128).optional(),
+  })
+  .optional();
+
+function parseMutationMeta(meta: unknown): WeeklyActivityMutationMeta | undefined {
+  const parsed = weeklyActivityMutationMetaSchema.safeParse(meta);
+  if (!parsed.success || !parsed.data?.originClientId) {
+    return undefined;
+  }
+  return { originClientId: parsed.data.originClientId };
+}
 
 async function requireWeeklyActivityView(dispensarySlug: string) {
   const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -328,6 +343,7 @@ export async function listDispensaryWeeklyActivityTargets(dispensarySlug: string
 export async function createDispensaryWeeklyActivity(
   dispensarySlug: string,
   input: z.infer<typeof createIntranetSchema>,
+  meta?: WeeklyActivityMutationMeta,
 ) {
   try {
     const gate = await requireWeeklyActivityEdit(dispensarySlug);
@@ -338,6 +354,7 @@ export async function createDispensaryWeeklyActivity(
     if (!parsed.success) {
       return { status: 400 as const, error: parsed.error.issues[0]?.message ?? 'Données invalides' };
     }
+    const mutationMeta = parseMutationMeta(meta);
 
     const { session, tenant } = gate;
     const { dispensaryId } = tenant;
@@ -422,6 +439,7 @@ export async function createDispensaryWeeklyActivity(
       actorUserId: session.user.id,
       actorDiscordUserId: actorDiscordUserId ?? null,
       dispensaryId,
+      meta: mutationMeta,
     });
 
     return { status: 200 as const, data: { id: created.id } };
@@ -439,6 +457,7 @@ export async function createDispensaryWeeklyActivity(
 export async function updateDispensaryWeeklyActivity(
   dispensarySlug: string,
   input: z.infer<typeof idSchema> & z.infer<typeof dispensaryWeeklyActivityUpdateSchema>,
+  meta?: WeeklyActivityMutationMeta,
 ) {
   try {
     const gate = await requireWeeklyActivityEdit(dispensarySlug);
@@ -457,6 +476,7 @@ export async function updateDispensaryWeeklyActivity(
     if (!parsedBody.success) {
       return { status: 400 as const, error: parsedBody.error.issues[0]?.message ?? 'Données invalides' };
     }
+    const mutationMeta = parseMutationMeta(meta);
 
     const { dispensaryId } = gate.tenant;
 
@@ -507,6 +527,7 @@ export async function updateDispensaryWeeklyActivity(
       source: 'INTRANET',
       actorUserId: gate.session.user.id,
       actorDiscordUserId: actorDiscordUserId ?? null,
+      meta: mutationMeta,
     });
 
     return { status: 200 as const, data: { ok: true } };
@@ -521,6 +542,7 @@ export async function updateDispensaryWeeklyActivity(
 export async function deleteDispensaryWeeklyActivity(
   dispensarySlug: string,
   input: z.infer<typeof idSchema>,
+  meta?: WeeklyActivityMutationMeta,
 ) {
   try {
     const gate = await requireWeeklyActivityEdit(dispensarySlug);
@@ -532,6 +554,7 @@ export async function deleteDispensaryWeeklyActivity(
     if (!parsed.success) {
       return { status: 400 as const, error: 'ID invalide' };
     }
+    const mutationMeta = parseMutationMeta(meta);
 
     const { dispensaryId } = gate.tenant;
 
@@ -558,6 +581,7 @@ export async function deleteDispensaryWeeklyActivity(
       source: 'INTRANET',
       actorUserId: gate.session.user.id,
       actorDiscordUserId: actorDiscordUserId ?? null,
+      meta: mutationMeta,
     });
 
     return { status: 200 as const, data: { ok: true } };
@@ -597,7 +621,10 @@ async function serializeQuickActionRow(dispensaryId: string, activityId: string)
   return row;
 }
 
-export async function markOwnWeeklyChestToday(dispensarySlug: string) {
+export async function markOwnWeeklyChestToday(
+  dispensarySlug: string,
+  meta?: WeeklyActivityMutationMeta,
+) {
   try {
     const gate = await requireWeeklyActivityEdit(dispensarySlug);
     if (!gate.ok) {
@@ -617,9 +644,11 @@ export async function markOwnWeeklyChestToday(dispensarySlug: string) {
       return { status: 403 as const, error: visibilityError };
     }
 
+    const mutationMeta = parseMutationMeta(meta);
     const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
     const result = await botMarkChestForParisToday(dispensaryId, discordGate.discordUserId, {
       displayName,
+      meta: mutationMeta,
     });
 
     const row = await serializeQuickActionRow(dispensaryId, result.activity.id);
@@ -635,7 +664,10 @@ export async function markOwnWeeklyChestToday(dispensarySlug: string) {
   }
 }
 
-export async function markOwnWeeklyPresenceToday(dispensarySlug: string) {
+export async function markOwnWeeklyPresenceToday(
+  dispensarySlug: string,
+  meta?: WeeklyActivityMutationMeta,
+) {
   try {
     const gate = await requireWeeklyActivityEdit(dispensarySlug);
     if (!gate.ok) {
@@ -655,12 +687,13 @@ export async function markOwnWeeklyPresenceToday(dispensarySlug: string) {
       return { status: 403 as const, error: visibilityError };
     }
 
+    const mutationMeta = parseMutationMeta(meta);
     const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
     const result = await botMarkPresenceForParisRelativeDay(
       dispensaryId,
       discordGate.discordUserId,
       'today',
-      { displayName },
+      { displayName, meta: mutationMeta },
     );
 
     const row = await serializeQuickActionRow(dispensaryId, result.activity.id);
@@ -679,6 +712,7 @@ export async function markOwnWeeklyPresenceToday(dispensarySlug: string) {
 export async function incrementOwnWeeklyCounter(
   dispensarySlug: string,
   input: { field: z.infer<typeof weeklyCounterFieldSchema> },
+  meta?: WeeklyActivityMutationMeta,
 ) {
   try {
     const gate = await requireWeeklyActivityEdit(dispensarySlug);
@@ -707,6 +741,7 @@ export async function incrementOwnWeeklyCounter(
       return { status: 403 as const, error: visibilityError };
     }
 
+    const mutationMeta = parseMutationMeta(meta);
     const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
     const existing = await findOrCreateDispensaryActivityForParisDay(
       prisma,
@@ -726,6 +761,7 @@ export async function incrementOwnWeeklyCounter(
         source: 'INTRANET',
         actorUserId: gate.session.user.id,
         actorDiscordUserId,
+        meta: mutationMeta,
       },
     );
 
