@@ -89,4 +89,9 @@ export type DocumentAccessItem = {
   accessType: 'READ' | 'WRITE';
   createdAt: string;
   updatedAt: string;
+  user?: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
 };
