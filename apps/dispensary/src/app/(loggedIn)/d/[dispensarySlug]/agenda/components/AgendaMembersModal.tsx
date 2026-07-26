@@ -73,11 +73,7 @@ export function AgendaMembersModal({
 
   const searchAgendaUsers = useCallback(
     async (query: string) => {
-      const result = await searchDispensaryUsersForAgenda(
-        dispensarySlug,
-        query,
-        { adminContext: true },
-      );
+      const result = await searchDispensaryUsersForAgenda(dispensarySlug, query);
       const data = handleAction(result);
       return data ?? [];
     },

@@ -15,8 +15,8 @@ import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { listAgendasForAdmin } from '@/app/_actions/agenda/agendas';
 import { handleAction } from '@/lib/action';
+import { AgendaMembersModal } from '../../agenda/components/AgendaMembersModal';
 import { AgendaFormModal } from './components/AgendaFormModal';
-import { AgendaMembersModal } from './components/AgendaMembersModal';
 import { DeleteAgendaModal } from './components/DeleteAgendaModal';
 
 type AdminAgenda = {
