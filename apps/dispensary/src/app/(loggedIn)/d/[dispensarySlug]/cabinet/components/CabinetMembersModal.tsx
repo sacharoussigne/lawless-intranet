@@ -73,11 +73,7 @@ export function CabinetMembersModal({
 
   const searchCabinetUsers = useCallback(
     async (query: string) => {
-      const result = await searchDispensaryUsersForCabinet(
-        dispensarySlug,
-        query,
-        { adminContext: true },
-      );
+      const result = await searchDispensaryUsersForCabinet(dispensarySlug, query);
       const data = handleAction(result);
       return data ?? [];
     },

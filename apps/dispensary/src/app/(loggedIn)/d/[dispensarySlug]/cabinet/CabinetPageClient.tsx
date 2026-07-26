@@ -13,7 +13,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEye, IconPalette, IconPlus, IconSettings, IconTemplate, IconTrash, IconUser } from '@tabler/icons-react';
+import { IconEye, IconPalette, IconPlus, IconSettings, IconTemplate, IconTrash, IconUser, IconUsers } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
@@ -33,6 +33,7 @@ import {
 import { tenantRoutes } from '@/types/routes';
 import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
 import { CabinetSelector } from './components/CabinetSelector';
+import { CabinetMembersModal } from './components/CabinetMembersModal';
 import { PatientFormModal } from './components/PatientFormModal';
 import { CabinetDisplaySettingsModal } from './components/CabinetDisplaySettingsModal';
 
@@ -62,6 +63,7 @@ export function CabinetPageClient({
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [displaySettingsModalOpen, setDisplaySettingsModalOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [displaySettings, setDisplaySettings] = useState<CabinetDisplaySettings>(
     createDefaultDisplaySettings(),
   );
@@ -83,6 +85,9 @@ export function CabinetPageClient({
   const canConfigureForms =
     selectedCabinetId !== null &&
     (canOwnCabinet(selectedCabinet?.accessLevel) || isAdmin);
+  const canManageMembers =
+    selectedCabinet !== null &&
+    (canOwnCabinet(selectedCabinet.accessLevel) || isAdmin);
 
   const setCabinetInUrl = useCallback(
     (cabinetId: string) => {
@@ -195,6 +200,18 @@ export function CabinetPageClient({
               value={selectedCabinetId}
               onChange={setCabinetInUrl}
             />
+            {canManageMembers && selectedCabinet && (
+              <ActionIcon
+                variant="light"
+                color="leather"
+                size="lg"
+                title="Membres"
+                aria-label="Membres"
+                onClick={() => setMembersOpen(true)}
+              >
+                <IconUsers size={18} />
+              </ActionIcon>
+            )}
             {canConfigureForms && selectedCabinetId && (
               <>
                 <Button
@@ -345,6 +362,14 @@ export function CabinetPageClient({
           onSaved={setDisplaySettings}
         />
       )}
+
+      <CabinetMembersModal
+        opened={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        dispensarySlug={dispensarySlug}
+        cabinetId={selectedCabinet?.id ?? null}
+        cabinetName={selectedCabinet?.name ?? ''}
+      />
     </Container>
   );
 }
