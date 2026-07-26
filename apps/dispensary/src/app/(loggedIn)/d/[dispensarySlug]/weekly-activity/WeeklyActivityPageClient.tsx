@@ -6,14 +6,17 @@ import { IconPlus } from '@tabler/icons-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { DataTableSortStatus } from 'mantine-datatable';
+import { useQueryClient } from '@tanstack/react-query';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
-import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { usePermissions, useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import { addParisWeeks, clampParisWeekDateToMax, getBankWeekBounds, getCurrentParisWeekStart } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import { weeklyActivityFieldVisibilityFromSettings } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
+import { useWeeklyActivityRealtime } from '@/lib/dispensaryWeeklyActivity/realtime/client/useWeeklyActivityRealtime';
+import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 import { CreateWeeklyActivityModal } from './CreateWeeklyActivityModal';
 import { EditWeeklyActivityModal } from './EditWeeklyActivityModal';
 import { HistoryWeeklyActivityModal } from './HistoryWeeklyActivityModal';
@@ -24,6 +27,7 @@ import {
   doctorKey,
 } from './weeklyActivityUtils';
 import {
+  invalidateWeeklyActivityFromRealtimeEvent,
   useDeleteWeeklyActivityMutation,
   useWeeklyActivities,
   type WeeklyActivityListItem,
@@ -47,6 +51,8 @@ export default function WeeklyActivityPageClient({
   defaultDisplayName: string;
 }) {
   const { appSettings } = usePermissions();
+  const dispensarySlug = useRequiredDispensarySlug();
+  const queryClient = useQueryClient();
   const fieldVisibility = useMemo(
     () => weeklyActivityFieldVisibilityFromSettings(appSettings),
     [appSettings],
@@ -83,6 +89,21 @@ export default function WeeklyActivityPageClient({
     }),
     [currentWeekBounds],
   );
+
+  const handleRealtimeChange = useCallback(
+    (event: WeeklyActivityRealtimeEvent) => {
+      invalidateWeeklyActivityFromRealtimeEvent(queryClient, dispensarySlug, event, {
+        visibleWeekBounds: queryWeekBounds,
+        openHistoryActivityId: historyActivityId,
+      });
+    },
+    [dispensarySlug, historyActivityId, queryClient, queryWeekBounds],
+  );
+
+  useWeeklyActivityRealtime({
+    enabled: true,
+    onChange: handleRealtimeChange,
+  });
 
   const { data: rows = [], isFetching } = useWeeklyActivities(queryWeekBounds, {
     bounds: initialWeekBounds,
