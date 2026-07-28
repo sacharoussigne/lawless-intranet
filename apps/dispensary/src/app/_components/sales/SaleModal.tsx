@@ -178,6 +178,21 @@ export function SaleModal({
     return getEffectiveStockQuantity(item?.stockToday, item?.stockYesterday);
   };
 
+  const canSubmit = useMemo(() => {
+    if (lines.length === 0) return false;
+
+    return lines.every((line) => {
+      if (typeof line.quantity !== 'number' || line.quantity <= 0) return false;
+      if (line.source === SaleItemSource.CHEST) {
+        const chestId = line.chestId || defaultChestId;
+        if (!chestId) return false;
+        const available = getAvailableInChest(line.itemId, chestId);
+        if (available === null || line.quantity > available) return false;
+      }
+      return true;
+    });
+  }, [lines, defaultChestId, itemsByChest]);
+
   const estimatedTotal = lines.reduce((sum, line) => {
     const item = sellableItems.find((entry) => entry.id === line.itemId);
     const qty = typeof line.quantity === 'number' ? line.quantity : 0;
@@ -258,7 +273,12 @@ export function SaleModal({
             <Button variant="subtle" color="slate" onClick={onClose}>
               Annuler
             </Button>
-            <Button color="sage" onClick={handleSubmit} loading={createMutation.isPending}>
+            <Button
+              color="sage"
+              onClick={handleSubmit}
+              loading={createMutation.isPending}
+              disabled={!canSubmit}
+            >
               Enregistrer la vente
             </Button>
           </Group>

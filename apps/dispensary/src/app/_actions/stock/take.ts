@@ -8,25 +8,31 @@ import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getTodayStart, getTomorrowStart } from '@/lib/date';
 import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
 
-export type TakeStockItemInput = {
+export type ChestStockMoveMode = 'take' | 'deposit';
+
+export type ChestStockMoveItemInput = {
   itemId: string;
   quantity: number;
   chestId: string;
 };
 
-export async function takeItemsFromChests(
+export async function moveItemsWithChests(
   dispensarySlug: string,
   data: {
-    items: TakeStockItemInput[];
+    mode: ChestStockMoveMode;
+    items: ChestStockMoveItemInput[];
   },
 ) {
+  const isTake = data.mode === 'take';
+  const actionLabel = isTake ? 'prendre' : 'déposer';
+
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
         action: 'update',
-        message: 'Permission refusée : vous n\'avez pas la permission de prendre du stock',
+        message: `Permission refusée : vous n'avez pas la permission de ${actionLabel} du stock`,
       },
     });
     if (!ctx.ok) return ctx.response;
@@ -35,7 +41,7 @@ export async function takeItemsFromChests(
 
     const validItems = data.items.filter((item) => item.quantity > 0 && item.chestId);
     if (validItems.length === 0) {
-      return { status: 400, error: 'Aucun objet à prendre' };
+      return { status: 400, error: `Aucun objet à ${actionLabel}` };
     }
 
     const itemIds = Array.from(new Set(validItems.map((item) => item.itemId)));
@@ -82,27 +88,49 @@ export async function takeItemsFromChests(
       for (const item of validItems) {
         const key = `${item.itemId}:${item.chestId}`;
         const stock = ensured.get(key);
-        if (!stock) {
-          throw new Error(`Aucun stock trouvé pour l'objet dans le coffre sélectionné`);
-        }
-        if (stock.quantity < item.quantity) {
-          throw new Error(
-            `Stock insuffisant (disponible: ${stock.quantity}, demandé: ${item.quantity})`,
-          );
-        }
 
-        await tx.stockHistory.update({
-          where: { id: stock.id },
-          data: { quantity: stock.quantity - item.quantity },
-        });
-        stock.quantity -= item.quantity;
+        if (isTake) {
+          if (!stock) {
+            throw new Error(`Aucun stock trouvé pour l'objet dans le coffre sélectionné`);
+          }
+          if (stock.quantity < item.quantity) {
+            throw new Error(
+              `Stock insuffisant (disponible: ${stock.quantity}, demandé: ${item.quantity})`,
+            );
+          }
+          await tx.stockHistory.update({
+            where: { id: stock.id },
+            data: { quantity: stock.quantity - item.quantity },
+          });
+          stock.quantity -= item.quantity;
+        } else if (stock) {
+          await tx.stockHistory.update({
+            where: { id: stock.id },
+            data: { quantity: stock.quantity + item.quantity },
+          });
+          stock.quantity += item.quantity;
+        } else {
+          const created = await tx.stockHistory.create({
+            data: {
+              itemId: item.itemId,
+              chestId: item.chestId,
+              quantity: item.quantity,
+            },
+          });
+          ensured.set(key, {
+            id: created.id,
+            itemId: item.itemId,
+            chestId: item.chestId,
+            quantity: item.quantity,
+          });
+        }
       }
 
       await tx.stockItemMovement.createMany({
         data: validItems.map((item) => ({
           itemId: item.itemId,
-          quantity: -item.quantity,
-          kind: StockMovementKind.TAKE_OUT,
+          quantity: isTake ? -item.quantity : item.quantity,
+          kind: isTake ? StockMovementKind.TAKE_OUT : StockMovementKind.DEPOSIT_IN,
           chestId: item.chestId,
           userId,
         })),
@@ -111,9 +139,20 @@ export async function takeItemsFromChests(
 
     return {
       status: 200,
-      data: { success: true, count: validItems.length },
+      data: { success: true, count: validItems.length, mode: data.mode },
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la prise d\'objets');
+    return actionErrorParser(
+      error,
+      isTake ? 'Erreur lors de la prise d\'objets' : 'Erreur lors du dépôt d\'objets',
+    );
   }
+}
+
+/** @deprecated Prefer moveItemsWithChests({ mode: 'take', ... }) */
+export async function takeItemsFromChests(
+  dispensarySlug: string,
+  data: { items: ChestStockMoveItemInput[] },
+) {
+  return moveItemsWithChests(dispensarySlug, { mode: 'take', items: data.items });
 }

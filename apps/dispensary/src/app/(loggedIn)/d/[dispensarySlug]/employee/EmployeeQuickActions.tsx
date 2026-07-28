@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { Button, Group } from '@mantine/core';
-import { IconCash, IconHandGrab } from '@tabler/icons-react';
+import { IconCash, IconArrowsExchange2 } from '@tabler/icons-react';
 import { SaleModal } from '@/app/_components/sales/SaleModal';
-import TakeModal from '@/app/(loggedIn)/d/[dispensarySlug]/stock/modals/TakeModal';
+import TakeDepositModal from '@/app/(loggedIn)/d/[dispensarySlug]/stock/modals/TakeModal';
 import type { ChestListItem } from '@/types/chests';
 
 type EmployeeQuickActionsProps = {
@@ -33,12 +33,12 @@ export function EmployeeQuickActions({
         )}
         {canTakeStock && (
           <Button
-            leftSection={<IconHandGrab size={16} />}
+            leftSection={<IconArrowsExchange2 size={16} />}
             variant="light"
             color="clay"
             onClick={() => setTakeOpened(true)}
           >
-            Prendre
+            Prendre / Déposer
           </Button>
         )}
       </Group>
@@ -48,7 +48,7 @@ export function EmployeeQuickActions({
       )}
 
       {canTakeStock && (
-        <TakeModal
+        <TakeDepositModal
           opened={takeOpened}
           onClose={() => setTakeOpened(false)}
           chests={chests}

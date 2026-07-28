@@ -72,6 +72,7 @@ const STOCK_MOVEMENT_KIND_LABELS: Record<StockMovementKind, string> = {
   [StockMovementKind.TRANSFER_IN]: 'Transfert (entrée)',
   [StockMovementKind.OVERWRITE]: 'Écrasement admin',
   [StockMovementKind.TAKE_OUT]: 'Prise (sortie)',
+  [StockMovementKind.DEPOSIT_IN]: 'Dépôt (entrée)',
   [StockMovementKind.SALE_OUT]: 'Vente (sortie)',
   [StockMovementKind.SALE_CANCEL_RESTORE]: 'Annulation vente (restauration)',
 };

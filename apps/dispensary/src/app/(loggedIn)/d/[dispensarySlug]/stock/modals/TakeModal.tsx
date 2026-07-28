@@ -8,6 +8,7 @@ import {
   Button,
   Group,
   NumberInput,
+  SegmentedControl,
   Select,
   Stack,
   Table,
@@ -18,6 +19,7 @@ import { notifications } from '@mantine/notifications';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import { getItemsWithStock } from '@/app/_actions/stock';
+import type { ChestStockMoveMode } from '@/app/_actions/stock/take';
 import { handleAction } from '@/lib/action';
 import { getEffectiveStockQuantity } from '@/lib/stock/ensureTodayStock';
 import { stockKeys } from '@/lib/stock/queryKeys';
@@ -25,16 +27,16 @@ import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { sortItems } from '@/lib/stock/sortItemsByCategory';
 import type { ChestListItem } from '@/types/chests';
 import type { ItemWithRelations } from '@/types/stock';
-import { useStockItems, useTakeMutation } from '../hooks/useStockQueries';
+import { useStockItems, useChestStockMoveMutation } from '../hooks/useStockQueries';
 
-type TakeLine = {
+type MoveLine = {
   key: string;
   itemId: string;
   quantity: number | '';
   chestId: string | null;
 };
 
-type TakeModalProps = {
+type TakeDepositModalProps = {
   opened: boolean;
   onClose: () => void;
   chests: ChestListItem[];
@@ -46,19 +48,22 @@ async function fetchStockItemsForChest(dispensarySlug: string, chestId: string) 
   return handleAction(result) as ItemWithRelations[];
 }
 
-export default function TakeModal({
+export default function TakeDepositModal({
   opened,
   onClose,
   chests,
   initialChestId = null,
-}: TakeModalProps) {
+}: TakeDepositModalProps) {
   const dispensarySlug = useRequiredDispensarySlug();
+  const [mode, setMode] = useState<ChestStockMoveMode>('take');
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
-  const [lines, setLines] = useState<TakeLine[]>([]);
+  const [lines, setLines] = useState<MoveLine[]>([]);
   const [itemToAdd, setItemToAdd] = useState<string | null>(null);
 
   const { data: defaultChestItems = [], isFetching } = useStockItems(defaultChestId, []);
-  const takeMutation = useTakeMutation();
+  const moveMutation = useChestStockMoveMutation();
+
+  const isTake = mode === 'take';
 
   const trackedChestIds = useMemo(() => {
     const ids = new Set<string>();
@@ -94,11 +99,17 @@ export default function TakeModal({
 
   useEffect(() => {
     if (opened) {
+      setMode('take');
       setDefaultChestId(initialChestId);
       setLines([]);
       setItemToAdd(null);
     }
   }, [opened, initialChestId]);
+
+  useEffect(() => {
+    setLines([]);
+    setItemToAdd(null);
+  }, [mode]);
 
   const chestOptions = useMemo(
     () => chests.map((chest) => ({ value: chest.id, label: chest.name })),
@@ -106,13 +117,16 @@ export default function TakeModal({
   );
 
   const availableItems = useMemo(() => {
-    return sortItems(
-      defaultChestItems.filter((item) => {
-        const qty = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
-        return qty !== null && qty > 0;
-      }),
-    );
-  }, [defaultChestItems]);
+    if (isTake) {
+      return sortItems(
+        defaultChestItems.filter((item) => {
+          const qty = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
+          return qty !== null && qty > 0;
+        }),
+      );
+    }
+    return sortItems(defaultChestItems);
+  }, [defaultChestItems, isTake]);
 
   const itemOptions = useMemo(() => {
     const selected = new Set(lines.map((line) => line.itemId));
@@ -134,6 +148,18 @@ export default function TakeModal({
     return getEffectiveStockQuantity(item?.stockToday, item?.stockYesterday) ?? 0;
   };
 
+  const canSubmit = useMemo(() => {
+    if (!defaultChestId || lines.length === 0) return false;
+
+    return lines.every((line) => {
+      const chestId = line.chestId || defaultChestId;
+      if (!chestId) return false;
+      if (typeof line.quantity !== 'number' || line.quantity <= 0) return false;
+      if (isTake && line.quantity > getAvailableInChest(line.itemId, chestId)) return false;
+      return true;
+    });
+  }, [defaultChestId, lines, isTake, itemsByChest]);
+
   const handleAddLine = () => {
     if (!itemToAdd) return;
     setLines((prev) => [
@@ -152,7 +178,9 @@ export default function TakeModal({
     if (!defaultChestId) {
       notifications.show({
         title: 'Erreur',
-        message: 'Sélectionnez un coffre source de base',
+        message: isTake
+          ? 'Sélectionnez un coffre source de base'
+          : 'Sélectionnez un coffre de destination de base',
         color: 'danger',
       });
       return;
@@ -169,27 +197,32 @@ export default function TakeModal({
     if (payload.length === 0) {
       notifications.show({
         title: 'Erreur',
-        message: 'Ajoutez au moins un objet à prendre',
+        message: isTake
+          ? 'Ajoutez au moins un objet à prendre'
+          : 'Ajoutez au moins un objet à déposer',
         color: 'danger',
       });
       return;
     }
 
-    const invalid = payload.some((line) => {
-      const available = getAvailableInChest(line.itemId, line.chestId);
-      return line.quantity > available;
-    });
-    if (invalid) {
-      notifications.show({
-        title: 'Erreur',
-        message: 'Quantité invalide pour un ou plusieurs objets',
-        color: 'danger',
+    if (isTake) {
+      const invalid = payload.some((line) => {
+        const available = getAvailableInChest(line.itemId, line.chestId);
+        return line.quantity > available;
       });
-      return;
+      if (invalid) {
+        notifications.show({
+          title: 'Erreur',
+          message: 'Quantité invalide pour un ou plusieurs objets',
+          color: 'danger',
+        });
+        return;
+      }
     }
 
     try {
-      await takeMutation.mutateAsync({
+      await moveMutation.mutateAsync({
+        mode,
         defaultChestId,
         items: payload,
       });
@@ -203,7 +236,7 @@ export default function TakeModal({
     <AppModal
       opened={opened}
       onClose={onClose}
-      title="Prendre des objets"
+      title="Prendre / Déposer"
       size="xl"
       footer={
         <Group justify="flex-end">
@@ -213,17 +246,27 @@ export default function TakeModal({
           <Button
             color="sage"
             onClick={handleSubmit}
-            loading={takeMutation.isPending}
-            disabled={!defaultChestId || lines.length === 0}
+            loading={moveMutation.isPending}
+            disabled={!canSubmit}
           >
-            Confirmer la prise
+            {isTake ? 'Confirmer la prise' : 'Confirmer le dépôt'}
           </Button>
         </Group>
       }
     >
       <Stack gap="md">
+        <SegmentedControl
+          fullWidth
+          value={mode}
+          onChange={(value) => setMode(value as ChestStockMoveMode)}
+          data={[
+            { label: 'Prendre', value: 'take' },
+            { label: 'Déposer', value: 'deposit' },
+          ]}
+        />
+
         <Select
-          label="Coffre source de base"
+          label={isTake ? 'Coffre source de base' : 'Coffre de destination de base'}
           placeholder="Sélectionner un coffre"
           data={chestOptions}
           value={defaultChestId}
@@ -274,7 +317,9 @@ export default function TakeModal({
                 const quantity = line.quantity;
                 const invalid =
                   quantity !== '' &&
-                  (typeof quantity !== 'number' || quantity <= 0 || quantity > available);
+                  (typeof quantity !== 'number' ||
+                    quantity <= 0 ||
+                    (isTake && quantity > available));
 
                 return (
                   <Table.Tr key={line.key}>
@@ -304,7 +349,7 @@ export default function TakeModal({
                       <NumberInput
                         value={quantity}
                         min={1}
-                        max={Math.max(available, 1)}
+                        max={isTake ? Math.max(available, 1) : undefined}
                         error={invalid}
                         onChange={(value) =>
                           setLines((prev) =>

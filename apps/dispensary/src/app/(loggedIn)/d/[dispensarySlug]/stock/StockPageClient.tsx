@@ -5,7 +5,7 @@ import { Container, Text, Stack, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import CraftModal from './modals/CraftModal';
 import TransferModal from './modals/TransferModal';
-import TakeModal from './modals/TakeModal';
+import TakeDepositModal from './modals/TakeModal';
 import type { ItemWithRelations } from '@/types/stock';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import type { ChestListItem } from '@/types/chests';
@@ -300,7 +300,7 @@ export default function StockPageClient({
         initialSourceChestId={selectedChestId}
       />
 
-      <TakeModal
+      <TakeDepositModal
         opened={takeModalOpened}
         onClose={() => setTakeModalOpened(false)}
         chests={chests}
