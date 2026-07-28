@@ -10,6 +10,7 @@ import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getTodayStart, getTomorrowStart } from '@/lib/date';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
+import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { fetchUserProfiles } from '@/lib/authUsers';
 
 const saleItemSchema = z.object({
@@ -21,6 +22,10 @@ const saleItemSchema = z.object({
 
 const createSaleSchema = z.object({
   defaultChestId: z.string().uuid().nullable().optional(),
+  customerName: z.string().max(255).optional().nullable(),
+  description: z.string().max(1000).optional().nullable(),
+  individualCustomerId: z.string().uuid().optional().nullable(),
+  priceAdjustment: z.number().finite().default(0),
   items: z.array(saleItemSchema).min(1),
 });
 
@@ -31,6 +36,10 @@ export type SaleListItem = {
   status: SaleStatus;
   createdAt: Date;
   cancelledAt: Date | null;
+  customerName: string | null;
+  description: string | null;
+  priceAdjustment: number;
+  subtotalAmount: number;
   totalAmount: number;
   totalQuantity: number;
   items: {
@@ -69,6 +78,9 @@ function mapSaleRow(
     status: SaleStatus;
     createdAt: Date;
     cancelledAt: Date | null;
+    customerName: string | null;
+    description: string | null;
+    priceAdjustment: unknown;
     items: {
       id: string;
       itemId: string;
@@ -93,10 +105,12 @@ function mapSaleRow(
     chestName: item.chest?.name ?? null,
   }));
 
-  const totalAmount = items.reduce(
+  const subtotalAmount = items.reduce(
     (sum, item) => sum + (item.unitPrice ?? 0) * item.quantity,
     0,
   );
+  const priceAdjustment = Number(sale.priceAdjustment ?? 0);
+  const totalAmount = getSaleEffectiveTotal(subtotalAmount, priceAdjustment);
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return {
@@ -106,6 +120,10 @@ function mapSaleRow(
     status: sale.status,
     createdAt: sale.createdAt,
     cancelledAt: sale.cancelledAt,
+    customerName: sale.customerName,
+    description: sale.description,
+    priceAdjustment,
+    subtotalAmount,
     totalAmount,
     totalQuantity,
     items,
@@ -129,6 +147,34 @@ export async function createSale(
     const userId = ctx.session.user.id;
 
     const data = createSaleSchema.parse(rawData);
+    const customerName = data.customerName?.trim() || null;
+    const description = data.description?.trim() || null;
+    const priceAdjustment = data.priceAdjustment ?? 0;
+    let individualCustomerId = data.individualCustomerId ?? null;
+
+    if (individualCustomerId) {
+      const linked = await prisma.individualCustomer.findFirst({
+        where: { id: individualCustomerId, ...tenantWhere(dispensaryId) },
+        select: { id: true, name: true },
+      });
+      if (!linked) {
+        return { status: 400, error: 'Client introuvable' };
+      }
+      if (customerName && linked.name.trim().toLowerCase() !== customerName.toLowerCase()) {
+        individualCustomerId = null;
+      }
+    }
+
+    if (!individualCustomerId && customerName) {
+      const match = await prisma.individualCustomer.findFirst({
+        where: {
+          ...tenantWhere(dispensaryId),
+          name: { equals: customerName, mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      individualCustomerId = match?.id ?? null;
+    }
 
     const normalizedItems = data.items.map((item) => {
       const source = item.source;
@@ -161,6 +207,15 @@ export async function createSale(
     }
 
     const itemById = new Map(items.map((item) => [item.id, item]));
+
+    const subtotal = normalizedItems.reduce((sum, line) => {
+      const catalogPrice = itemById.get(line.itemId)?.price;
+      const unitPrice = catalogPrice != null ? Number(catalogPrice) : 0;
+      return sum + unitPrice * line.quantity;
+    }, 0);
+    if (priceAdjustment < -subtotal) {
+      return { status: 400, error: 'Le total ne peut pas être négatif' };
+    }
     const chestIds = Array.from(
       new Set(
         normalizedItems
@@ -235,6 +290,10 @@ export async function createSale(
           dispensaryId,
           userId,
           status: SaleStatus.COMPLETED,
+          customerName,
+          description,
+          individualCustomerId,
+          priceAdjustment,
           items: {
             create: normalizedItems.map((line) => ({
               itemId: line.itemId,

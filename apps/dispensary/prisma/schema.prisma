@@ -251,19 +251,25 @@ enum SaleItemSource {
 }
 
 model Sale {
-  id                 String     @id @default(uuid())
-  dispensaryId       String
-  dispensary         Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  userId             String
-  status             SaleStatus @default(COMPLETED)
-  createdAt          DateTime   @default(now())
-  cancelledAt        DateTime?
-  cancelledByUserId  String?
-  items              SaleItem[]
+  id                   String              @id @default(uuid())
+  dispensaryId         String
+  dispensary           Dispensary          @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  userId               String
+  status               SaleStatus          @default(COMPLETED)
+  customerName         String?
+  description          String?
+  individualCustomerId String?
+  individualCustomer   IndividualCustomer? @relation(fields: [individualCustomerId], references: [id], onDelete: SetNull)
+  priceAdjustment      Decimal             @default(0) @db.Decimal(10, 2)
+  createdAt            DateTime            @default(now())
+  cancelledAt          DateTime?
+  cancelledByUserId    String?
+  items                SaleItem[]
 
   @@index([dispensaryId, createdAt])
   @@index([dispensaryId, userId, createdAt])
   @@index([userId])
+  @@index([individualCustomerId])
   @@map("sale")
 }
 
@@ -363,6 +369,7 @@ model IndividualCustomer {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   orders        Order[]
+  sales         Sale[]
 
   @@index([dispensaryId])
   @@map("individual_customer")

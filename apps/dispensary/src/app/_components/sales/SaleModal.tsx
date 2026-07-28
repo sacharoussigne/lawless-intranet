@@ -2,23 +2,29 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   ActionIcon,
+  Autocomplete,
   Badge,
   Button,
   Group,
   NumberInput,
   Select,
   SegmentedControl,
+  SimpleGrid,
   Stack,
   Table,
   Text,
+  TextInput,
 } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import { createSale, getSellableItems } from '@/app/_actions/sales';
+import { searchIndividualCustomers } from '@/app/_actions/individualCustomers';
+import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { getChestsList } from '@/app/_actions/chests';
 import { getItemsWithStock } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
@@ -63,6 +69,11 @@ export function SaleModal({
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [itemToAdd, setItemToAdd] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState('');
+  const [individualCustomerId, setIndividualCustomerId] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
+  const [priceAdjustment, setPriceAdjustment] = useState<number | ''>(0);
+  const [debouncedCustomerQuery] = useDebouncedValue(customerName.trim(), 300);
 
   const sellableQuery = useQuery({
     queryKey: ['sellable-items', dispensarySlug],
@@ -76,6 +87,16 @@ export function SaleModal({
     queryFn: async () => handleAction(await getChestsList(dispensarySlug, true)) as ChestListItem[],
     enabled: opened && Boolean(dispensarySlug) && !chestsProp,
     staleTime: DEFAULT_STALE_TIME_MS,
+  });
+
+  const customerSearchQuery = useQuery({
+    queryKey: ['individual-customers-search', dispensarySlug, debouncedCustomerQuery],
+    queryFn: async () =>
+      handleAction(
+        await searchIndividualCustomers(dispensarySlug, debouncedCustomerQuery),
+      ) as Array<{ id: string; name: string }>,
+    enabled: opened && Boolean(dispensarySlug) && debouncedCustomerQuery.length >= 2,
+    staleTime: 30_000,
   });
 
   const chests = chestsProp ?? chestsQuery.data ?? [];
@@ -113,6 +134,10 @@ export function SaleModal({
       setDefaultChestId(initialChestId);
       setLines([]);
       setItemToAdd(null);
+      setCustomerName('');
+      setIndividualCustomerId(null);
+      setDescription('');
+      setPriceAdjustment(0);
     }
   }, [opened, initialChestId]);
 
@@ -132,6 +157,10 @@ export function SaleModal({
 
       const result = await createSale(dispensarySlug, {
         defaultChestId,
+        customerName: customerName.trim() || null,
+        description: description.trim() || null,
+        individualCustomerId,
+        priceAdjustment: typeof priceAdjustment === 'number' ? priceAdjustment : 0,
         items: payload,
       });
       return handleAction(result);
@@ -161,6 +190,11 @@ export function SaleModal({
 
   const sellableItems = sellableQuery.data ?? [];
   const chestOptions = chests.map((chest) => ({ value: chest.id, label: chest.name }));
+  const customerOptions = useMemo(
+    () => (customerSearchQuery.data ?? []).map((c) => ({ value: c.name, id: c.id })),
+    [customerSearchQuery.data],
+  );
+
   const itemOptions = useMemo(() => {
     const selected = new Set(lines.map((line) => line.itemId));
     return sellableItems
@@ -178,8 +212,29 @@ export function SaleModal({
     return getEffectiveStockQuantity(item?.stockToday, item?.stockYesterday);
   };
 
+  const subtotal = useMemo(
+    () =>
+      lines.reduce((sum, line) => {
+        const item = sellableItems.find((entry) => entry.id === line.itemId);
+        const qty = typeof line.quantity === 'number' ? line.quantity : 0;
+        return sum + (item?.price ?? 0) * qty;
+      }, 0),
+    [lines, sellableItems],
+  );
+
+  const minAdjustment = -subtotal;
+  const adjustmentValue = typeof priceAdjustment === 'number' ? priceAdjustment : 0;
+  const estimatedTotal = getSaleEffectiveTotal(subtotal, adjustmentValue);
+
+  useEffect(() => {
+    if (typeof priceAdjustment === 'number' && priceAdjustment < minAdjustment) {
+      setPriceAdjustment(minAdjustment);
+    }
+  }, [minAdjustment, priceAdjustment]);
+
   const canSubmit = useMemo(() => {
     if (lines.length === 0) return false;
+    if (adjustmentValue < minAdjustment) return false;
 
     return lines.every((line) => {
       if (typeof line.quantity !== 'number' || line.quantity <= 0) return false;
@@ -191,13 +246,7 @@ export function SaleModal({
       }
       return true;
     });
-  }, [lines, defaultChestId, itemsByChest]);
-
-  const estimatedTotal = lines.reduce((sum, line) => {
-    const item = sellableItems.find((entry) => entry.id === line.itemId);
-    const qty = typeof line.quantity === 'number' ? line.quantity : 0;
-    return sum + (item?.price ?? 0) * qty;
-  }, 0);
+  }, [lines, defaultChestId, itemsByChest, adjustmentValue, minAdjustment]);
 
   const handleAddLine = () => {
     if (!itemToAdd) return;
@@ -215,46 +264,7 @@ export function SaleModal({
   };
 
   const handleSubmit = () => {
-    if (lines.length === 0) {
-      notifications.show({
-        title: 'Erreur',
-        message: 'Ajoutez au moins un objet',
-        color: 'danger',
-      });
-      return;
-    }
-
-    for (const line of lines) {
-      if (typeof line.quantity !== 'number' || line.quantity <= 0) {
-        notifications.show({
-          title: 'Erreur',
-          message: 'Quantité invalide',
-          color: 'danger',
-        });
-        return;
-      }
-      if (line.source === SaleItemSource.CHEST) {
-        const chestId = line.chestId || defaultChestId;
-        if (!chestId) {
-          notifications.show({
-            title: 'Erreur',
-            message: 'Sélectionnez un coffre pour les objets en coffre',
-            color: 'danger',
-          });
-          return;
-        }
-        const available = getAvailableInChest(line.itemId, chestId);
-        if (available === null || line.quantity > available) {
-          notifications.show({
-            title: 'Erreur',
-            message: 'Stock insuffisant pour un objet provenant d\'un coffre',
-            color: 'danger',
-          });
-          return;
-        }
-      }
-    }
-
+    if (!canSubmit) return;
     createMutation.mutate();
   };
 
@@ -266,9 +276,18 @@ export function SaleModal({
       size="xl"
       footer={
         <Group justify="space-between">
-          <Text size="sm" fw={600}>
-            Total estimé : {estimatedTotal.toFixed(2)} $
-          </Text>
+          <Stack gap={2}>
+            <Text size="sm" fw={600}>
+              Total estimé : {estimatedTotal.toFixed(2)} $
+            </Text>
+            {adjustmentValue !== 0 && (
+              <Text size="xs" c="dimmed">
+                Sous-total {subtotal.toFixed(2)} $
+                {adjustmentValue > 0 ? ' +' : ' '}
+                {adjustmentValue.toFixed(2)} $
+              </Text>
+            )}
+          </Stack>
           <Group>
             <Button variant="subtle" color="slate" onClick={onClose}>
               Annuler
@@ -286,9 +305,29 @@ export function SaleModal({
       }
     >
       <Stack gap="md">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <Autocomplete
+            placeholder="Client (facultatif)"
+            value={customerName}
+            onChange={(value) => {
+              setCustomerName(value);
+              const match = customerOptions.find(
+                (option) => option.value.toLowerCase() === value.trim().toLowerCase(),
+              );
+              setIndividualCustomerId(match?.id ?? null);
+            }}
+            data={customerOptions.map((option) => option.value)}
+            comboboxProps={{ withinPortal: true }}
+          />
+          <TextInput
+            placeholder="Note (facultatif)"
+            value={description}
+            onChange={(event) => setDescription(event.currentTarget.value)}
+          />
+        </SimpleGrid>
+
         <Select
           label="Coffre source de base"
-          description="Utilisé pour les lignes en provenance d’un coffre"
           placeholder="Optionnel"
           data={chestOptions}
           value={defaultChestId}
@@ -326,10 +365,10 @@ export function SaleModal({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Objet</Table.Th>
-                <Table.Th style={{ width: 160 }}>Provenance</Table.Th>
-                <Table.Th style={{ width: 180 }}>Coffre</Table.Th>
-                <Table.Th style={{ width: 100 }}>Stock</Table.Th>
-                <Table.Th style={{ width: 120 }}>Qté</Table.Th>
+                <Table.Th style={{ width: 150 }}>Provenance</Table.Th>
+                <Table.Th style={{ width: 150 }}>Coffre</Table.Th>
+                <Table.Th style={{ width: 80 }}>Stock</Table.Th>
+                <Table.Th style={{ width: 90 }}>Qté</Table.Th>
                 <Table.Th style={{ width: 48 }} />
               </Table.Tr>
             </Table.Thead>
@@ -347,9 +386,11 @@ export function SaleModal({
                     <Table.Td>
                       <Stack gap={2}>
                         <Text fw={500}>{item?.name ?? line.itemId}</Text>
-                        <Text size="xs" c="dimmed">
-                          {item?.price != null ? `${item.price.toFixed(2)} $` : 'Sans prix'}
-                        </Text>
+                        {item?.price != null && (
+                          <Text size="xs" c="dimmed">
+                            {item.price.toFixed(2)} $
+                          </Text>
+                        )}
                       </Stack>
                     </Table.Td>
                     <Table.Td>
@@ -448,6 +489,26 @@ export function SaleModal({
               })}
             </Table.Tbody>
           </Table>
+        )}
+
+        {lines.length > 0 && (
+          <NumberInput
+            label="Ajustement +/− ($)"
+            description="Remise ou majoration appliquée au total de la vente (total min. 0 $)"
+            value={priceAdjustment}
+            min={minAdjustment}
+            decimalScale={2}
+            step={1}
+            clampBehavior="strict"
+            onChange={(value) => {
+              if (typeof value !== 'number') {
+                setPriceAdjustment('');
+                return;
+              }
+              setPriceAdjustment(Math.max(minAdjustment, value));
+            }}
+            placeholder="0"
+          />
         )}
       </Stack>
     </AppModal>

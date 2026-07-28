@@ -207,7 +207,16 @@ export function EmployeeWeeklySalesDashboard({
                 return (
                   <Table.Tr key={sale.id}>
                     <Table.Td>
-                      {dayjs(sale.createdAt).tz('Europe/Paris').format('DD/MM HH:mm')}
+                      <Stack gap={2}>
+                        <Text size="sm">
+                          {dayjs(sale.createdAt).tz('Europe/Paris').format('DD/MM HH:mm')}
+                        </Text>
+                        {sale.customerName && (
+                          <Text size="xs" c="dimmed">
+                            {sale.customerName}
+                          </Text>
+                        )}
+                      </Stack>
                     </Table.Td>
                     {canViewAll && <Table.Td>{sale.userName}</Table.Td>}
                     <Table.Td>
@@ -222,7 +231,17 @@ export function EmployeeWeeklySalesDashboard({
                         ))}
                       </Stack>
                     </Table.Td>
-                    <Table.Td>{sale.totalAmount.toFixed(2)} $</Table.Td>
+                    <Table.Td>
+                      <Stack gap={2}>
+                        <Text size="sm">{sale.totalAmount.toFixed(2)} $</Text>
+                        {sale.priceAdjustment !== 0 && (
+                          <Text size="xs" c="dimmed">
+                            dont {sale.priceAdjustment > 0 ? '+' : ''}
+                            {sale.priceAdjustment.toFixed(2)} $
+                          </Text>
+                        )}
+                      </Stack>
+                    </Table.Td>
                     <Table.Td>
                       <Badge
                         variant="outline"
