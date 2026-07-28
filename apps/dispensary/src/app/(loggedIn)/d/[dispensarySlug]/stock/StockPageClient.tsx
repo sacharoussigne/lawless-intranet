@@ -5,6 +5,7 @@ import { Container, Text, Stack, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import CraftModal from './modals/CraftModal';
 import TransferModal from './modals/TransferModal';
+import TakeModal from './modals/TakeModal';
 import type { ItemWithRelations } from '@/types/stock';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import type { ChestListItem } from '@/types/chests';
@@ -13,6 +14,7 @@ import { ChestSelectorBar } from './components/ChestSelectorBar';
 import { CategorySection } from './components/CategorySection';
 import { groupItemsByCategory } from '@/lib/stock/sortItemsByCategory';
 import { resolveLastStockDayLabel } from '@/lib/stock/stockPreviousLabel';
+import { getEffectiveStockQuantity } from '@/lib/stock/ensureTodayStock';
 import { getContrastTextColor } from '@/lib/color/contrastTextColor';
 import type { StockChecksSummary } from '@/app/_actions/stockChecks';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
@@ -46,6 +48,7 @@ export default function StockPageClient({
   const [isEditing, setIsEditing] = useState(false);
   const [craftModalOpened, setCraftModalOpened] = useState(false);
   const [transferModalOpened, setTransferModalOpened] = useState(false);
+  const [takeModalOpened, setTakeModalOpened] = useState(false);
   const [editedQuantitiesByItemId, setEditedQuantitiesByItemId] = useState<Record<string, number | null>>({});
   const [skipHistory, setSkipHistory] = useState(false);
 
@@ -147,10 +150,11 @@ export default function StockPageClient({
     const withStock = items.filter((item) => item.stockToday !== null).length;
 
     const totalWeight = items.reduce((sum, item) => {
-      if (item.stockToday === null || item.weight == null) {
+      const qty = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
+      if (qty === null || item.weight == null) {
         return sum;
       }
-      return sum + item.stockToday * item.weight;
+      return sum + qty * item.weight;
     }, 0);
 
     return {
@@ -194,6 +198,7 @@ export default function StockPageClient({
         canStockUpdate={Boolean(permissions?.stock.update)}
         onOpenCraft={() => setCraftModalOpened(true)}
         onOpenTransfer={() => setTransferModalOpened(true)}
+        onOpenTake={() => setTakeModalOpened(true)}
         onStartEdit={handleStartEdit}
         onCancelEdit={handleCancelEdit}
         onSave={handleSaveStock}
@@ -293,6 +298,13 @@ export default function StockPageClient({
         onClose={() => setTransferModalOpened(false)}
         chests={chests}
         initialSourceChestId={selectedChestId}
+      />
+
+      <TakeModal
+        opened={takeModalOpened}
+        onClose={() => setTakeModalOpened(false)}
+        chests={chests}
+        initialChestId={selectedChestId}
       />
     </Container>
   );

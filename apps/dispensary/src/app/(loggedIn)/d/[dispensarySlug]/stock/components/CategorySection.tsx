@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Badge, Group, Paper, Table, Text } from '@mantine/core';
 import type { CategoryWithItems } from '@/types/stock';
 import { getStockPreviousColumnLabel } from '@/lib/stock/stockPreviousLabel';
+import { getEffectiveStockQuantity } from '@/lib/stock/ensureTodayStock';
 import { StockRow } from './StockRow';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
 
@@ -34,8 +35,9 @@ export const CategorySection = memo(function CategorySection({
   const shouldShowMinimalQuantity = !(selectedChestId !== null && !isCategoryCheckEnabled(categoryData.category.id));
 
   const categoryTotalWeight = categoryData.items.reduce((sum, item) => {
-    if (item.stockToday === null || item.weight == null) return sum;
-    return sum + item.stockToday * item.weight;
+    const qty = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
+    if (qty === null || item.weight == null) return sum;
+    return sum + qty * item.weight;
   }, 0);
 
   const previousStockColumnLabel = getStockPreviousColumnLabel(

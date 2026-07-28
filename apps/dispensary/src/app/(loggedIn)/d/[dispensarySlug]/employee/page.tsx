@@ -1,4 +1,6 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
+import { listWeeklySales } from '@/app/_actions/sales';
+import { getChestsList } from '@/app/_actions/chests';
 import { tenantRoutes } from '@/types/routes';
 import { Container, SimpleGrid, Text } from '@mantine/core';
 import {
@@ -32,7 +34,11 @@ import {
 import prisma from '@/lib/prisma';
 import { getDataOrThrow } from '@/lib/response';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklySalesSummary } from '@/app/_actions/sales';
+import type { ChestListItem } from '@/types/chests';
 import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
+import { EmployeeWeeklySalesDashboard } from './EmployeeWeeklySalesDashboard';
+import { EmployeeQuickActions } from './EmployeeQuickActions';
 
 export default async function EmployeePage({
   params,
@@ -65,6 +71,13 @@ export default async function EmployeePage({
   const canEditAll = checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_all');
   const canEdit =
     canEditAll || checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
+
+  const canCreateSale = permissions?.sales.create ?? false;
+  const canViewSales = permissions?.sales.view ?? false;
+  const canCancelSale = permissions?.sales.cancel ?? false;
+  const canViewAllSales = permissions?.sales.viewAll ?? false;
+  const canTakeStock =
+    (appSettings.featureStockEnabled && permissions?.stock.update) ?? false;
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
     {
@@ -168,11 +181,29 @@ export default async function EmployeePage({
       : session.user.name;
   }
 
+  let initialSalesSummary: WeeklySalesSummary | null = null;
+  if (canViewSales) {
+    const salesResult = await listWeeklySales(dispensarySlug);
+    initialSalesSummary = getDataOrThrow(salesResult, 'Erreur lors du chargement des ventes');
+  }
+
+  let chests: ChestListItem[] = [];
+  if (canCreateSale || canTakeStock) {
+    const chestsResult = await getChestsList(dispensarySlug, true);
+    chests = getDataOrThrow(chestsResult, 'Erreur lors du chargement des coffres');
+  }
+
   return (
     <Container size="xl" py="xl">
       <PageHeader
         title="Espace employé"
         description={`Retrouvez ici les outils du quotidien pour le ${siteTitle}.`}
+      />
+
+      <EmployeeQuickActions
+        canCreateSale={canCreateSale}
+        canTakeStock={canTakeStock}
+        chests={chests}
       />
 
       {weeklyFeatureEnabled && canViewWeekly && (
@@ -185,6 +216,16 @@ export default async function EmployeePage({
           defaultDisplayName={defaultDisplayName}
           initialWeekBounds={initialWeekBounds}
           initialRows={initialRows}
+        />
+      )}
+
+      {canViewSales && initialSalesSummary && (
+        <EmployeeWeeklySalesDashboard
+          dispensarySlug={dispensarySlug}
+          canCancel={canCancelSale}
+          canViewAll={canViewAllSales}
+          sessionUserId={userId}
+          initialSummary={initialSalesSummary}
         />
       )}
 

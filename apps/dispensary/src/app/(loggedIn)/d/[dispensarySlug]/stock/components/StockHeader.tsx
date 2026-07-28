@@ -1,7 +1,7 @@
 'use client';
 
 import { Group, Button, Checkbox, Tooltip } from '@mantine/core';
-import { IconEdit, IconCheck, IconX, IconTools, IconArrowsExchange } from '@tabler/icons-react';
+import { IconEdit, IconCheck, IconX, IconTools, IconArrowsExchange, IconHandGrab } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 
 interface StockHeaderProps {
@@ -14,6 +14,7 @@ interface StockHeaderProps {
   canStockUpdate: boolean;
   onOpenCraft: () => void;
   onOpenTransfer: () => void;
+  onOpenTake: () => void;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSave: () => void;
@@ -30,6 +31,7 @@ export function StockHeader({
   canStockUpdate,
   onOpenCraft,
   onOpenTransfer,
+  onOpenTake,
   onStartEdit,
   onCancelEdit,
   onSave,
@@ -48,6 +50,16 @@ export function StockHeader({
                 variant="light"
               >
                 Craft
+              </Button>
+            )}
+            {!isEditing && canStockUpdate && (
+              <Button
+                leftSection={<IconHandGrab size={16} />}
+                onClick={onOpenTake}
+                variant="light"
+                color="clay"
+              >
+                Prendre
               </Button>
             )}
             {!isEditing && canStockUpdate && (

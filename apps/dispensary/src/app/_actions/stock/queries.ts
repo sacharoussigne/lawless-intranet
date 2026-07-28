@@ -77,6 +77,7 @@ export async function getItemsWithStock(
       ),
       fetchLatestStockBeforeDate(prisma, dispensaryId, itemIds, today, chestId),
     ]);
+
     const snapshots = buildStockSnapshotsWithPrevious(todayRows, previousRows, today, chestId);
 
     const itemsWithStock = items.map((item) =>

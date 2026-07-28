@@ -31,6 +31,12 @@ export interface Permissions {
   stockStatistics: {
     view: boolean;
   };
+  sales: {
+    create: boolean;
+    cancel: boolean;
+    view: boolean;
+    viewAll: boolean;
+  };
 }
 
 export type AccessibleDispensary = {

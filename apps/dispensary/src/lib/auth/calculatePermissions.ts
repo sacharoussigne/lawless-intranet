@@ -42,6 +42,12 @@ export function calculatePermissions(role: string | null | undefined): Permissio
     stockStatistics: {
       view: checkRolePermission(role, 'stock_statistics', 'view'),
     },
+    sales: {
+      create: checkRolePermission(role, 'sales', 'create'),
+      cancel: checkRolePermission(role, 'sales', 'cancel'),
+      view: checkRolePermission(role, 'sales', 'view'),
+      viewAll: checkRolePermission(role, 'sales', 'view_all'),
+    },
   };
 }
 

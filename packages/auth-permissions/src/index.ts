@@ -10,6 +10,7 @@ const defaultApplicationPermissions = {
   mails: ["access"],
   payroll_reports: ["view", "create"],
   weekly_dispensary_activity: ["view", "edit_own", "edit_all"],
+  sales: ["create", "cancel", "view", "view_all"],
 };
 
 export const statement = {
@@ -31,6 +32,7 @@ const user = ac.newRole({
   payroll_reports: [],
   weekly_dispensary_activity: [],
   stock_statistics: [],
+  sales: [],
 });
 
 const admin = ac.newRole({
@@ -48,6 +50,7 @@ const employee = ac.newRole({
   payroll_reports: [],
   weekly_dispensary_activity: ["view", "edit_own"],
   stock_statistics: [],
+  sales: ["create", "cancel", "view"],
 });
 
 const inventory_manager = ac.newRole({
@@ -61,6 +64,7 @@ const inventory_manager = ac.newRole({
   payroll_reports: [],
   weekly_dispensary_activity: [],
   stock_statistics: ["view"],
+  sales: ["create", "cancel", "view", "view_all"],
 });
 
 const inventory_viewer = ac.newRole({
@@ -74,6 +78,7 @@ const inventory_viewer = ac.newRole({
   payroll_reports: [],
   weekly_dispensary_activity: [],
   stock_statistics: [],
+  sales: ["view"],
 });
 
 const direction = ac.newRole({
@@ -87,6 +92,7 @@ const direction = ac.newRole({
   payroll_reports: ["view", "create"],
   weekly_dispensary_activity: ["view", "edit_all"],
   stock_statistics: ["view"],
+  sales: ["create", "cancel", "view", "view_all"],
 });
 
 const rolesMap = {

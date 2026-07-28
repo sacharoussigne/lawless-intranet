@@ -5,6 +5,7 @@ import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import { getItemsWithStock, getLastStockDaysByChest } from '@/app/_actions/stock/queries';
 import { updateStock, craftItem } from '@/app/_actions/stock/mutations';
 import { transferMultipleStock } from '@/app/_actions/stock/transfer';
+import { takeItemsFromChests } from '@/app/_actions/stock/take';
 import { getStockChecksSummary } from '@/app/_actions/stockChecks';
 import { handleAction } from '@/lib/action';
 import { stockKeys } from '@/lib/stock/queryKeys';
@@ -190,6 +191,40 @@ export function useTransferMutation() {
       notifications.show({
         title: 'Erreur',
         message: error.message || 'Erreur lors du transfert',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useTakeMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const invalidateStock = useInvalidateStockItems();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      defaultChestId: string | null;
+      items: { itemId: string; quantity: number; chestId: string }[];
+    }) => {
+      const result = await takeItemsFromChests(dispensarySlug, {
+        items: vars.items,
+      });
+      handleAction(result);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      const chestIds = vars.items.map((item) => item.chestId);
+      invalidateStock([null, vars.defaultChestId, ...chestIds]);
+      notifications.show({
+        title: 'Succès',
+        message: 'Prise enregistrée',
+        color: 'moss',
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la prise',
         color: 'danger',
       });
     },
