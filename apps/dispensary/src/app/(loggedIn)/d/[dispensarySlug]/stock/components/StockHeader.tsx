@@ -1,49 +1,34 @@
 'use client';
 
-import { Group, Button, Checkbox, Tooltip } from '@mantine/core';
-import { IconEdit, IconCheck, IconX, IconTools, IconArrowsExchange, IconArrowsExchange2 } from '@tabler/icons-react';
+import { Group, Button } from '@mantine/core';
+import { IconTools, IconArrowsExchange, IconArrowsExchange2 } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 
 interface StockHeaderProps {
-  itemsWithStockToday: number;
-  selectedChestId: string | null;
   isEditing: boolean;
-  saving: boolean;
-  skipHistory: boolean;
   canCraftReadOrWrite: boolean;
   canStockUpdate: boolean;
   onOpenCraft: () => void;
   onOpenTransfer: () => void;
   onOpenTake: () => void;
-  onStartEdit: () => void;
-  onCancelEdit: () => void;
-  onSave: () => void;
-  onSkipHistoryChange: (value: boolean) => void;
 }
 
 export function StockHeader({
-  itemsWithStockToday,
-  selectedChestId,
   isEditing,
-  saving,
-  skipHistory,
   canCraftReadOrWrite,
   canStockUpdate,
   onOpenCraft,
   onOpenTransfer,
   onOpenTake,
-  onStartEdit,
-  onCancelEdit,
-  onSave,
-  onSkipHistoryChange,
 }: StockHeaderProps) {
   return (
     <PageHeader
       title="Stock"
       description="Inventaire par coffre, craft et transferts entre emplacements."
       actions={
-        <Group>
-            {!isEditing && canCraftReadOrWrite && (
+        !isEditing ? (
+          <Group>
+            {canCraftReadOrWrite && (
               <Button
                 leftSection={<IconTools size={16} />}
                 onClick={onOpenCraft}
@@ -52,7 +37,7 @@ export function StockHeader({
                 Craft
               </Button>
             )}
-            {!isEditing && canStockUpdate && (
+            {canStockUpdate && (
               <Button
                 leftSection={<IconArrowsExchange2 size={16} />}
                 onClick={onOpenTake}
@@ -62,7 +47,7 @@ export function StockHeader({
                 Prendre / Déposer
               </Button>
             )}
-            {!isEditing && canStockUpdate && (
+            {canStockUpdate && (
               <Button
                 leftSection={<IconArrowsExchange size={16} />}
                 onClick={onOpenTransfer}
@@ -72,49 +57,8 @@ export function StockHeader({
                 Transférer
               </Button>
             )}
-            {selectedChestId !== null && (
-              <>
-                {!isEditing ? (
-                  canStockUpdate && (
-                    <Button leftSection={<IconEdit size={16} />} onClick={onStartEdit} variant="light">
-                      {itemsWithStockToday > 0 ? 'Mettre à jour le stock' : 'Faire le stock'}
-                    </Button>
-                  )
-                ) : (
-                  <>
-                    <Tooltip
-                      label="Aucun mouvement ne sera enregistré (ex. transfert manuel entre coffres sans utiliser Transférer)."
-                      multiline
-                      w={280}
-                    >
-                      <Checkbox
-                        label="Écraser (sans historique)"
-                        checked={skipHistory}
-                        onChange={(e) => onSkipHistoryChange(e.currentTarget.checked)}
-                      />
-                    </Tooltip>
-                    <Button
-                      leftSection={<IconX size={16} />}
-                      onClick={onCancelEdit}
-                      variant="subtle"
-                      color="slate"
-                    >
-                      Annuler
-                    </Button>
-                    <Button
-                      leftSection={<IconCheck size={16} />}
-                      onClick={onSave}
-                      loading={saving}
-                      variant="filled"
-                      color="sage"
-                    >
-                      Sauvegarder
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
-        </Group>
+          </Group>
+        ) : undefined
       }
     />
   );

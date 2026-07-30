@@ -253,12 +253,11 @@ export default function StockPageClient({
     return stockChecksSummary.enabledChestIds.some((chestId) => isCategoryEnabledForChest(chestId));
   }, [selectedChestId, stockChecksSummary]);
 
-  const { itemsWithStockToday, totalItems, totalWeightToday } = useMemo(() => {
+  const { itemsWithStockToday, totalWeightToday } = useMemo(() => {
     const withStock = visibleItems.filter((item) => item.stockToday !== null).length;
 
     return {
       itemsWithStockToday: withStock,
-      totalItems: visibleItems.length,
       totalWeightToday: sumItemsWeightKg(visibleItems, getEffectiveStockQuantity),
     };
   }, [visibleItems]);
@@ -288,34 +287,32 @@ export default function StockPageClient({
   return (
     <Container size="xl" py="xl">
       <StockHeader
-        itemsWithStockToday={itemsWithStockToday}
-        selectedChestId={selectedChestId}
         isEditing={isEditing}
-        saving={updateStockMutation.isPending}
-        skipHistory={skipHistory}
         canCraftReadOrWrite={Boolean(permissions?.stock.craftRead || permissions?.stock.craftWrite)}
         canStockUpdate={canStockUpdate}
         onOpenCraft={() => setCraftModalOpened(true)}
         onOpenTransfer={() => setTransferModalOpened(true)}
         onOpenTake={() => setTakeModalOpened(true)}
-        onStartEdit={handleStartEdit}
-        onCancelEdit={handleCancelEdit}
-        onSave={handleSaveStock}
-        onSkipHistoryChange={setSkipHistory}
       />
 
       <ChestSelectorBar
         chestOptions={chestOptions}
         selectedChestId={selectedChestId}
         isEditing={isEditing}
+        saving={updateStockMutation.isPending}
+        skipHistory={skipHistory}
         totalWeightToday={totalWeightToday}
         itemsWithStockToday={itemsWithStockToday}
-        totalItems={totalItems}
         lastStockLabel={lastStockLabel}
+        canStockUpdate={canStockUpdate}
         canManageVisibility={canManageVisibility}
         isManagingVisibility={isManagingVisibility}
         onChangeChestId={handleChangeChestId}
         onToggleManagingVisibility={() => setIsManagingVisibility((prev) => !prev)}
+        onStartEdit={handleStartEdit}
+        onCancelEdit={handleCancelEdit}
+        onSave={handleSaveStock}
+        onSkipHistoryChange={setSkipHistory}
       />
 
       {loading ? (
