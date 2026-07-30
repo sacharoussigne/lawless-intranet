@@ -136,6 +136,7 @@ export async function createSale(
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'sales',
       permission: {
         resource: 'sales',
         action: 'create',
@@ -327,6 +328,7 @@ export async function createSale(
 export async function cancelSale(dispensarySlug: string, saleId: string) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'sales',
       permission: {
         resource: 'sales',
         action: 'cancel',
@@ -430,6 +432,7 @@ export async function listWeeklySales(
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'sales',
       permission: {
         resource: 'sales',
         action: 'view',
@@ -508,6 +511,7 @@ export async function listWeeklySales(
 export async function getSellableItems(dispensarySlug: string) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'sales',
       permission: {
         resource: 'sales',
         action: 'create',

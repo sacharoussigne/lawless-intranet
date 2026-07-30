@@ -31,6 +31,7 @@ function mapFromDb(row: {
   featureWeeklyDispensaryActivityEnabled: boolean;
   featureAgendaEnabled: boolean;
   featureCabinetEnabled: boolean;
+  featureSalesEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   weeklyActivityPatientsVisible: boolean;
@@ -51,6 +52,8 @@ function mapFromDb(row: {
       row.featureAgendaEnabled ?? APP_SETTINGS_DEFAULTS.featureAgendaEnabled,
     featureCabinetEnabled:
       row.featureCabinetEnabled ?? APP_SETTINGS_DEFAULTS.featureCabinetEnabled,
+    featureSalesEnabled:
+      row.featureSalesEnabled ?? APP_SETTINGS_DEFAULTS.featureSalesEnabled,
     weeklyActivityChestDaysVisible:
       row.weeklyActivityChestDaysVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityChestDaysVisible,
     weeklyActivityPresenceDaysVisible:

@@ -72,10 +72,11 @@ export default async function EmployeePage({
   const canEdit =
     canEditAll || checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
 
-  const canCreateSale = permissions?.sales.create ?? false;
-  const canViewSales = permissions?.sales.view ?? false;
-  const canCancelSale = permissions?.sales.cancel ?? false;
-  const canViewAllSales = permissions?.sales.viewAll ?? false;
+  const salesFeatureEnabled = isAppFeatureEnabled(appSettings, 'sales');
+  const canCreateSale = salesFeatureEnabled && (permissions?.sales.create ?? false);
+  const canViewSales = salesFeatureEnabled && (permissions?.sales.view ?? false);
+  const canCancelSale = salesFeatureEnabled && (permissions?.sales.cancel ?? false);
+  const canViewAllSales = salesFeatureEnabled && (permissions?.sales.viewAll ?? false);
   const canTakeStock =
     (appSettings.featureStockEnabled && permissions?.stock.update) ?? false;
 

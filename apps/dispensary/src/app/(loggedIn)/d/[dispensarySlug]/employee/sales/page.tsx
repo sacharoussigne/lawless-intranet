@@ -5,6 +5,7 @@ import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { getAuthSession } from '@/lib/authSession';
 import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
+import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import { getDataOrThrow } from '@/lib/response';
 import type { AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
@@ -20,6 +21,11 @@ export default async function SalesPage({
   const session = await getAuthSession();
   if (!session?.user) {
     redirect(routes.auth.login);
+  }
+
+  const appSettings = await getAppSettings(dispensary.id);
+  if (!isAppFeatureEnabled(appSettings, 'sales')) {
+    redirect(tenantRoutes(dispensarySlug).employee.index);
   }
 
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession, dispensary.id);

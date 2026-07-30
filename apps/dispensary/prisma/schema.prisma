@@ -106,6 +106,7 @@ model AppSettings {
   featureWeeklyDispensaryActivityEnabled Boolean @default(true)
   featureAgendaEnabled                 Boolean @default(true)
   featureCabinetEnabled                Boolean @default(true)
+  featureSalesEnabled                  Boolean @default(true)
   weeklyActivityChestDaysVisible       Boolean @default(true)
   weeklyActivityPresenceDaysVisible    Boolean @default(true)
   weeklyActivityPatientsVisible        Boolean @default(true)

@@ -84,7 +84,9 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
         appSettings.featurePayrollEnabled && (permissions?.payrollReports.view ?? false)
       );
     case 'sales':
-      return permissions?.sales.viewAll ?? false;
+      return (
+        isAppFeatureEnabled(appSettings, 'sales') && (permissions?.sales.viewAll ?? false)
+      );
     case 'stockStatistics':
     case 'stockMovements':
       return (
