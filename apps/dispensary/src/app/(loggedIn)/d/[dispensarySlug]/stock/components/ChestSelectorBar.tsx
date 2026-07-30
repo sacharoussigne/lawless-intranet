@@ -1,6 +1,7 @@
 'use client';
 
-import { Badge, Group, Select } from '@mantine/core';
+import { Badge, Button, Group, Select } from '@mantine/core';
+import { IconEye, IconEyeOff } from '@tabler/icons-react';
 
 interface ChestSelectorBarProps {
   chestOptions: { value: string; label: string }[];
@@ -10,7 +11,10 @@ interface ChestSelectorBarProps {
   itemsWithStockToday: number;
   totalItems: number;
   lastStockLabel: string | null;
+  canManageVisibility: boolean;
+  isManagingVisibility: boolean;
   onChangeChestId: (value: string | null) => void;
+  onToggleManagingVisibility: () => void;
 }
 
 export function ChestSelectorBar({
@@ -21,7 +25,10 @@ export function ChestSelectorBar({
   itemsWithStockToday,
   totalItems,
   lastStockLabel,
+  canManageVisibility,
+  isManagingVisibility,
   onChangeChestId,
+  onToggleManagingVisibility,
 }: ChestSelectorBarProps) {
   return (
     <Group justify="space-between" align="center" mb="sm" wrap="nowrap">
@@ -32,7 +39,7 @@ export function ChestSelectorBar({
           value={selectedChestId || ''}
           onChange={(value) => onChangeChestId(value === '' ? null : value)}
           clearable={false}
-          disabled={isEditing}
+          disabled={isEditing || isManagingVisibility}
           style={{ minWidth: 200 }}
         />
 
@@ -49,16 +56,28 @@ export function ChestSelectorBar({
         )}
       </Group>
 
-      {itemsWithStockToday > 0 && (
-        <Badge
-          color={itemsWithStockToday === totalItems ? 'sage' : 'amber'}
-          variant="light"
-          size="lg"
-        >
-          {itemsWithStockToday}/{totalItems} objets stockés aujourd&apos;hui
-        </Badge>
-      )}
+      <Group gap="md" wrap="nowrap">
+        {itemsWithStockToday > 0 && (
+          <Badge
+            color={itemsWithStockToday === totalItems ? 'sage' : 'amber'}
+            variant="light"
+            size="lg"
+          >
+            {itemsWithStockToday}/{totalItems} objets stockés aujourd&apos;hui
+          </Badge>
+        )}
+
+        {canManageVisibility && (
+          <Button
+            variant={isManagingVisibility ? 'filled' : 'light'}
+            color="slate"
+            leftSection={isManagingVisibility ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+            onClick={onToggleManagingVisibility}
+          >
+            {isManagingVisibility ? 'Terminer' : 'Masquer'}
+          </Button>
+        )}
+      </Group>
     </Group>
   );
 }
-

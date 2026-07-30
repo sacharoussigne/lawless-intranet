@@ -19,9 +19,20 @@ import { getContrastTextColor } from '@/lib/color/contrastTextColor';
 import type { StockChecksSummary } from '@/app/_actions/stockChecks';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
 import {
+  EMPTY_CHEST_STOCK_VISIBILITY,
+  buildManualStockSavePayload,
+  isCategoryHidden,
+  isStockEntryHidden,
+  partitionItemsByVisibility,
+  sumItemsWeightKg,
+} from '@/lib/stock/stockVisibility';
+import {
   useStockItems,
   useStockChecksSummary,
   useLastStockDaysByChest,
+  useChestStockVisibility,
+  useSetChestCategoryHiddenMutation,
+  useSetChestItemHiddenMutation,
   useUpdateStockMutation,
   useCraftMutation,
   getChangedStockEntries,
@@ -51,26 +62,74 @@ export default function StockPageClient({
   const [takeModalOpened, setTakeModalOpened] = useState(false);
   const [editedQuantitiesByItemId, setEditedQuantitiesByItemId] = useState<Record<string, number | null>>({});
   const [skipHistory, setSkipHistory] = useState(false);
+  const [isManagingVisibility, setIsManagingVisibility] = useState(false);
+
+  const canStockUpdate = Boolean(permissions?.stock.update);
+  const canManageVisibility = Boolean(selectedChestId && !isEditing && canStockUpdate);
+  const canToggleVisibility = Boolean(canManageVisibility && isManagingVisibility);
 
   const { data: items = initialItems, isFetching, isPending } = useStockItems(selectedChestId, initialItems);
   const { data: stockChecksSummary = initialStockChecksSummary } = useStockChecksSummary(initialStockChecksSummary);
   const { data: lastStockDaysByChest = initialLastStockDaysByChest } = useLastStockDaysByChest(initialLastStockDaysByChest);
+  const { data: visibility = EMPTY_CHEST_STOCK_VISIBILITY } = useChestStockVisibility(selectedChestId);
   const updateStockMutation = useUpdateStockMutation();
   const craftMutation = useCraftMutation();
+  const setCategoryHiddenMutation = useSetChestCategoryHiddenMutation();
+  const setItemHiddenMutation = useSetChestItemHiddenMutation();
 
   const loading = isPending || isFetching;
 
+  const activeVisibility = selectedChestId ? visibility : EMPTY_CHEST_STOCK_VISIBILITY;
+
+  const { visibleItems, hiddenItems } = useMemo(
+    () => (selectedChestId ? partitionItemsByVisibility(items, activeVisibility) : { visibleItems: items, hiddenItems: [] }),
+    [items, selectedChestId, activeVisibility],
+  );
+
+  const showHiddenInPlace = Boolean(selectedChestId && (isEditing || isManagingVisibility));
+
+  const displayCategories = useMemo(() => {
+    if (!selectedChestId) {
+      return groupItemsByCategory(items);
+    }
+    if (showHiddenInPlace) {
+      return groupItemsByCategory(items);
+    }
+    return groupItemsByCategory(visibleItems);
+  }, [selectedChestId, showHiddenInPlace, items, visibleItems]);
+
+  const seedEditedQuantity = useCallback((item: ItemWithRelations) => {
+    setEditedQuantitiesByItemId((prev) => {
+      if (item.id in prev) return prev;
+      return {
+        ...prev,
+        [item.id]: item.stockToday !== null ? item.stockToday : null,
+      };
+    });
+  }, []);
+
   const handleStartEdit = () => {
+    setIsManagingVisibility(false);
     const initialValues: Record<string, number | null> = {};
-    items.forEach((item) => {
+    visibleItems.forEach((item) => {
       initialValues[item.id] = item.stockToday !== null ? item.stockToday : null;
     });
     setEditedQuantitiesByItemId(initialValues);
     setIsEditing(true);
   };
 
+  const handleChangeChestId = useCallback((chestId: string | null) => {
+    setIsManagingVisibility(false);
+    setSelectedChestId(chestId);
+  }, []);
+
   const handleSaveStock = async () => {
-    const stockData = getChangedStockEntries(items, editedQuantitiesByItemId);
+    const stockData = buildManualStockSavePayload(
+      visibleItems,
+      hiddenItems,
+      editedQuantitiesByItemId,
+      getChangedStockEntries,
+    );
 
     if (stockData.length === 0) {
       notifications.show({
@@ -119,7 +178,55 @@ export default function StockPageClient({
     [],
   );
 
-  const sortedCategories = useMemo(() => groupItemsByCategory(items), [items]);
+  const handleHideCategory = useCallback(
+    (categoryId: string) => {
+      if (!selectedChestId) return;
+      setCategoryHiddenMutation.mutate({ chestId: selectedChestId, categoryId, hidden: true });
+    },
+    [selectedChestId, setCategoryHiddenMutation],
+  );
+
+  const handleShowCategory = useCallback(
+    (categoryId: string) => {
+      if (!selectedChestId) return;
+      if (isEditing) {
+        items
+          .filter((item) => item.categoryId === categoryId)
+          .forEach((item) => seedEditedQuantity(item));
+      }
+      setCategoryHiddenMutation.mutate({ chestId: selectedChestId, categoryId, hidden: false });
+    },
+    [selectedChestId, isEditing, items, seedEditedQuantity, setCategoryHiddenMutation],
+  );
+
+  const handleHideItem = useCallback(
+    (itemId: string) => {
+      if (!selectedChestId) return;
+      setItemHiddenMutation.mutate({ chestId: selectedChestId, itemId, hidden: true });
+    },
+    [selectedChestId, setItemHiddenMutation],
+  );
+
+  const handleShowItem = useCallback(
+    (itemId: string) => {
+      if (!selectedChestId) return;
+      if (isEditing) {
+        const item = items.find((entry) => entry.id === itemId);
+        if (item) seedEditedQuantity(item);
+      }
+      setItemHiddenMutation.mutate({ chestId: selectedChestId, itemId, hidden: false });
+    },
+    [selectedChestId, isEditing, items, seedEditedQuantity, setItemHiddenMutation],
+  );
+
+  const isItemHiddenForDisplay = useCallback(
+    (itemId: string) => {
+      const item = items.find((entry) => entry.id === itemId);
+      if (!item) return false;
+      return isStockEntryHidden(item, activeVisibility);
+    },
+    [items, activeVisibility],
+  );
 
   const isCategoryCheckEnabled = useCallback((categoryId: string): boolean => {
     if (!stockChecksSummary) return true;
@@ -147,22 +254,14 @@ export default function StockPageClient({
   }, [selectedChestId, stockChecksSummary]);
 
   const { itemsWithStockToday, totalItems, totalWeightToday } = useMemo(() => {
-    const withStock = items.filter((item) => item.stockToday !== null).length;
-
-    const totalWeight = items.reduce((sum, item) => {
-      const qty = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
-      if (qty === null || item.weight == null) {
-        return sum;
-      }
-      return sum + qty * item.weight;
-    }, 0);
+    const withStock = visibleItems.filter((item) => item.stockToday !== null).length;
 
     return {
       itemsWithStockToday: withStock,
-      totalItems: items.length,
-      totalWeightToday: totalWeight,
+      totalItems: visibleItems.length,
+      totalWeightToday: sumItemsWeightKg(visibleItems, getEffectiveStockQuantity),
     };
-  }, [items]);
+  }, [visibleItems]);
 
   const lastStockLabel = useMemo(() => {
     if (itemsWithStockToday > 0) return null;
@@ -195,7 +294,7 @@ export default function StockPageClient({
         saving={updateStockMutation.isPending}
         skipHistory={skipHistory}
         canCraftReadOrWrite={Boolean(permissions?.stock.craftRead || permissions?.stock.craftWrite)}
-        canStockUpdate={Boolean(permissions?.stock.update)}
+        canStockUpdate={canStockUpdate}
         onOpenCraft={() => setCraftModalOpened(true)}
         onOpenTransfer={() => setTransferModalOpened(true)}
         onOpenTake={() => setTakeModalOpened(true)}
@@ -213,7 +312,10 @@ export default function StockPageClient({
         itemsWithStockToday={itemsWithStockToday}
         totalItems={totalItems}
         lastStockLabel={lastStockLabel}
-        onChangeChestId={setSelectedChestId}
+        canManageVisibility={canManageVisibility}
+        isManagingVisibility={isManagingVisibility}
+        onChangeChestId={handleChangeChestId}
+        onToggleManagingVisibility={() => setIsManagingVisibility((prev) => !prev)}
       />
 
       {loading ? (
@@ -225,24 +327,36 @@ export default function StockPageClient({
             </Text>
           </Stack>
         </Center>
-      ) : sortedCategories.length === 0 ? (
+      ) : displayCategories.length === 0 ? (
         <Text c="dimmed">Aucun objet trouvé</Text>
       ) : (
         <Stack gap="xl">
-          {sortedCategories.map((categoryData) => (
-            <CategorySection
-              key={categoryData.category.id}
-              categoryData={categoryData}
-              editedQuantitiesByItemId={editedQuantitiesByItemId}
-              isEditing={isEditing}
-              canStockUpdate={Boolean(permissions?.stock.update)}
-              selectedChestId={selectedChestId}
-              isCategoryCheckEnabled={isCategoryCheckEnabled}
-              getTextColor={getTextColor}
-              stockUiPreferences={stockUiPreferences}
-              onCommitQuantity={handleCommitQuantity}
-            />
-          ))}
+          {displayCategories.map((categoryData) => {
+            const categoryHidden = isCategoryHidden(categoryData.category.id, activeVisibility);
+            return (
+              <CategorySection
+                key={categoryData.category.id}
+                categoryData={categoryData}
+                editedQuantitiesByItemId={editedQuantitiesByItemId}
+                isEditing={isEditing}
+                isCategoryHidden={categoryHidden}
+                showHiddenItemsInPlace={showHiddenInPlace}
+                isItemHidden={isItemHiddenForDisplay}
+                canStockUpdate={canStockUpdate}
+                canHide={canToggleVisibility}
+                canUnhide={canToggleVisibility || (isEditing && canStockUpdate && Boolean(selectedChestId))}
+                selectedChestId={selectedChestId}
+                isCategoryCheckEnabled={isCategoryCheckEnabled}
+                getTextColor={getTextColor}
+                stockUiPreferences={stockUiPreferences}
+                onCommitQuantity={handleCommitQuantity}
+                onHideCategory={handleHideCategory}
+                onShowCategory={handleShowCategory}
+                onHideItem={handleHideItem}
+                onShowItem={handleShowItem}
+              />
+            );
+          })}
         </Stack>
       )}
 

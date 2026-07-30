@@ -130,6 +130,7 @@ model CategoryItem {
   updatedAt     DateTime   @updatedAt
   items         Item[]
   chestStockCheckCategories ChestStockCheckCategory[]
+  chestHiddenCategories ChestHiddenCategory[]
 
   @@index([dispensaryId])
   @@map("category_item")
@@ -160,6 +161,7 @@ model Item {
   usedInRecipes  CraftRecipeItem[] @relation("UsedItem")
   orderItems     OrderItem[]
   saleItems      SaleItem[]
+  chestHiddenItems ChestHiddenItem[]
 
   @@index([categoryId])
   @@index([companyGroupId])
@@ -182,9 +184,37 @@ model Chest {
   stockItemMovements StockItemMovement[] @relation("MovementChest")
   stockItemMovementDestinations StockItemMovement[] @relation("MovementDestinationChest")
   saleItems SaleItem[]
+  hiddenCategories ChestHiddenCategory[]
+  hiddenItems ChestHiddenItem[]
 
   @@index([dispensaryId])
   @@map("chest")
+}
+
+model ChestHiddenCategory {
+  id         String       @id @default(uuid())
+  chestId    String
+  categoryId String
+  chest      Chest        @relation(fields: [chestId], references: [id], onDelete: Cascade)
+  category   CategoryItem @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([chestId, categoryId])
+  @@index([chestId])
+  @@index([categoryId])
+  @@map("chest_hidden_category")
+}
+
+model ChestHiddenItem {
+  id      String @id @default(uuid())
+  chestId String
+  itemId  String
+  chest   Chest  @relation(fields: [chestId], references: [id], onDelete: Cascade)
+  item    Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([chestId, itemId])
+  @@index([chestId])
+  @@index([itemId])
+  @@map("chest_hidden_item")
 }
 
 model ChestStockCheckConfig {
