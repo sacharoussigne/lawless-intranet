@@ -1,10 +1,8 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { Anchor, Group, SimpleGrid, Stack } from '@mantine/core';
-import Link from 'next/link';
+import { SimpleGrid, Stack } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
 import { WeeklyActivityCompactPanel } from '@/app/_components/weeklyActivity/WeeklyActivityCompactPanel';
 import { WeeklyActivityCompactTeamList } from '@/app/_components/weeklyActivity/WeeklyActivityCompactTeamList';
 import { WeeklyActivityQuickActionsPanel } from '@/app/_components/weeklyActivity/WeeklyActivityQuickActionsPanel';
@@ -16,8 +14,7 @@ import {
   useWeeklyActivities,
   type WeeklyActivityListItem,
 } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
-import { addParisWeeks, clampParisWeekDateToMax, getBankWeekBounds, getCurrentParisWeekStart } from '@/lib/bankWeek';
-import dayjs from '@/lib/dayjs';
+import { getBankWeekBounds } from '@/lib/bankWeek';
 import { findOwnWeeklyActivityRow } from '@/lib/dispensaryWeeklyActivity/findOwnRow';
 import { weeklyActivityFieldVisibilityFromSettings } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import {
@@ -26,7 +23,6 @@ import {
 } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import { useWeeklyActivityRealtime } from '@/lib/dispensaryWeeklyActivity/realtime/client/useWeeklyActivityRealtime';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
-import { tenantRoutes } from '@/types/routes';
 
 function canEditWeeklyRow(
   row: WeeklyActivityListItem,
@@ -51,6 +47,7 @@ type EmployeeWeeklyDashboardProps = {
   defaultDisplayName: string;
   initialWeekBounds: WeeklyActivityWeekBounds;
   initialRows: WeeklyActivityListItem[];
+  periodWeekDateValue: Date;
 };
 
 export function EmployeeWeeklyDashboard({
@@ -62,6 +59,7 @@ export function EmployeeWeeklyDashboard({
   defaultDisplayName,
   initialWeekBounds,
   initialRows,
+  periodWeekDateValue,
 }: EmployeeWeeklyDashboardProps) {
   const { appSettings } = usePermissions();
   const queryClient = useQueryClient();
@@ -73,9 +71,6 @@ export function EmployeeWeeklyDashboard({
   const [editRow, setEditRow] = useState<WeeklyActivityListItem | null>(null);
   const [historyActivityId, setHistoryActivityId] = useState<string | null>(null);
   const [historyTitle, setHistoryTitle] = useState('');
-  const [periodWeekDateValue, setPeriodWeekDateValue] = useState<Date>(() =>
-    getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,
-  );
 
   const currentWeekBounds = useMemo(
     () => getBankWeekBounds(periodWeekDateValue),
@@ -105,7 +100,7 @@ export function EmployeeWeeklyDashboard({
     onChange: handleRealtimeChange,
   });
 
-  const { data: fetchedRows = [], isFetching } = useWeeklyActivities(queryWeekBounds, {
+  const { data: fetchedRows = [] } = useWeeklyActivities(queryWeekBounds, {
     bounds: initialWeekBounds,
     rows: initialRows,
   });
@@ -137,37 +132,9 @@ export function EmployeeWeeklyDashboard({
     [canEdit, canEditAll, sessionUserId, viewerDiscordId],
   );
 
-  const currentParisWeekStart = useMemo(() => getCurrentParisWeekStart(), []);
-
-  const weeklyActivityHref = tenantRoutes(dispensarySlug).weeklyActivity.index;
-
   return (
     <>
-      <Stack gap="lg" mt="xl">
-        <Group justify="space-between" align="flex-end" wrap="wrap">
-          <WeekNavigation
-            weekStart={currentWeekBounds.start}
-            weekEnd={currentWeekBounds.end}
-            weekDateValue={periodWeekDateValue}
-            maxWeekStart={currentParisWeekStart}
-            onWeekChange={(date) => {
-              if (date) {
-                setPeriodWeekDateValue(clampParisWeekDateToMax(date, currentParisWeekStart));
-              }
-            }}
-            onPreviousWeek={() => setPeriodWeekDateValue((d) => addParisWeeks(d, -1))}
-            onNextWeek={() =>
-              setPeriodWeekDateValue((d) =>
-                clampParisWeekDateToMax(addParisWeeks(d, 1), currentParisWeekStart),
-              )
-            }
-            loading={isFetching}
-          />
-          <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed">
-            Détail complet
-          </Anchor>
-        </Group>
-
+      <Stack gap="lg">
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
           <WeeklyActivityQuickActionsPanel
             row={ownRow}

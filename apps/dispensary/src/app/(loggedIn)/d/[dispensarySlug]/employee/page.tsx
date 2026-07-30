@@ -36,8 +36,7 @@ import { getDataOrThrow } from '@/lib/response';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import type { ChestListItem } from '@/types/chests';
-import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
-import { EmployeeWeeklySalesDashboard } from './EmployeeWeeklySalesDashboard';
+import { EmployeeWeeklyOverview } from './EmployeeWeeklyOverview';
 import { EmployeeQuickActions } from './EmployeeQuickActions';
 
 export default async function EmployeePage({
@@ -206,26 +205,34 @@ export default async function EmployeePage({
         chests={chests}
       />
 
-      {weeklyFeatureEnabled && canViewWeekly && (
-        <EmployeeWeeklyDashboard
+      {((weeklyFeatureEnabled && canViewWeekly) || (canViewSales && initialSalesSummary)) && (
+        <EmployeeWeeklyOverview
           dispensarySlug={dispensarySlug}
-          canEdit={canEdit}
-          canEditAll={canEditAll}
-          sessionUserId={userId}
-          viewerDiscordId={viewerDiscordId}
-          defaultDisplayName={defaultDisplayName}
-          initialWeekBounds={initialWeekBounds}
-          initialRows={initialRows}
-        />
-      )}
-
-      {canViewSales && initialSalesSummary && (
-        <EmployeeWeeklySalesDashboard
-          dispensarySlug={dispensarySlug}
-          canCancel={canCancelSale}
-          canViewAll={canViewAllSales}
-          sessionUserId={userId}
-          initialSummary={initialSalesSummary}
+          showActivity={weeklyFeatureEnabled && canViewWeekly}
+          showSales={Boolean(canViewSales && initialSalesSummary)}
+          activity={
+            weeklyFeatureEnabled && canViewWeekly
+              ? {
+                  canEdit,
+                  canEditAll,
+                  sessionUserId: userId,
+                  viewerDiscordId,
+                  defaultDisplayName,
+                  initialWeekBounds,
+                  initialRows,
+                }
+              : undefined
+          }
+          sales={
+            canViewSales && initialSalesSummary
+              ? {
+                  canCancel: canCancelSale,
+                  canViewAll: canViewAllSales,
+                  sessionUserId: userId,
+                  initialSummary: initialSalesSummary,
+                }
+              : undefined
+          }
         />
       )}
 
