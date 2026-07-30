@@ -16,6 +16,7 @@ export function tenantRoutes(slug: string) {
       payrollDetail: (id: string) => `${base}/employee/payroll/${id}`,
       stockStatistics: `${base}/employee/stock-statistics`,
       stockMovements: `${base}/employee/stock-movements`,
+      sales: `${base}/employee/sales`,
       mails: `${base}/employee/mails`,
       newMail: `${base}/employee/mails/new`,
       editMail: (id: string) => `${base}/employee/mails/${id}/edit`,

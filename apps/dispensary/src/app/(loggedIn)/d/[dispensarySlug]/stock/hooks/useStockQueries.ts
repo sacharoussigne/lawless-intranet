@@ -5,11 +5,22 @@ import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import { getItemsWithStock, getLastStockDaysByChest } from '@/app/_actions/stock/queries';
 import { updateStock, craftItem } from '@/app/_actions/stock/mutations';
 import { transferMultipleStock } from '@/app/_actions/stock/transfer';
+import { moveItemsWithChests } from '@/app/_actions/stock/take';
+import type { ChestStockMoveMode } from '@/app/_actions/stock/take';
 import { getStockChecksSummary } from '@/app/_actions/stockChecks';
+import {
+  getChestStockVisibility,
+  setChestCategoryHidden,
+  setChestItemHidden,
+} from '@/app/_actions/stockVisibility';
 import { handleAction } from '@/lib/action';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { normalizeQuantity } from '@/lib/stock/expression';
+import {
+  EMPTY_CHEST_STOCK_VISIBILITY,
+  type ChestStockVisibility,
+} from '@/lib/stock/stockVisibility';
 import type { ItemWithRelations } from '@/types/stock';
 import type { StockChecksSummary } from '@/app/_actions/stockChecks';
 import { notifications } from '@mantine/notifications';
@@ -27,6 +38,11 @@ async function fetchStockChecksSummary(dispensarySlug: string) {
 async function fetchLastStockDaysByChest(dispensarySlug: string) {
   const result = await getLastStockDaysByChest(dispensarySlug);
   return handleAction(result) as Record<string, Date | null>;
+}
+
+async function fetchChestStockVisibility(dispensarySlug: string, chestId: string) {
+  const result = await getChestStockVisibility(dispensarySlug, chestId);
+  return handleAction(result) as ChestStockVisibility;
 }
 
 export function useStockItems(
@@ -68,6 +84,68 @@ export function useLastStockDaysByChest(
     initialData,
     enabled: Boolean(dispensarySlug),
     staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
+export function useChestStockVisibility(chestId: string | null) {
+  const dispensarySlug = useRequiredDispensarySlug();
+
+  return useQuery({
+    queryKey: stockKeys.visibility(dispensarySlug, chestId ?? ''),
+    queryFn: () => fetchChestStockVisibility(dispensarySlug, chestId!),
+    enabled: Boolean(dispensarySlug && chestId),
+    staleTime: DEFAULT_STALE_TIME_MS,
+    placeholderData: EMPTY_CHEST_STOCK_VISIBILITY,
+  });
+}
+
+export function useSetChestCategoryHiddenMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (vars: { chestId: string; categoryId: string; hidden: boolean }) => {
+      const result = await setChestCategoryHidden(dispensarySlug, vars);
+      handleAction(result);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      void queryClient.invalidateQueries({
+        queryKey: stockKeys.visibility(dispensarySlug, vars.chestId),
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du masquage de la catégorie',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useSetChestItemHiddenMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (vars: { chestId: string; itemId: string; hidden: boolean }) => {
+      const result = await setChestItemHidden(dispensarySlug, vars);
+      handleAction(result);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      void queryClient.invalidateQueries({
+        queryKey: stockKeys.visibility(dispensarySlug, vars.chestId),
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du masquage de l\'objet',
+        color: 'danger',
+      });
+    },
   });
 }
 
@@ -190,6 +268,42 @@ export function useTransferMutation() {
       notifications.show({
         title: 'Erreur',
         message: error.message || 'Erreur lors du transfert',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useChestStockMoveMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const invalidateStock = useInvalidateStockItems();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      mode: ChestStockMoveMode;
+      defaultChestId: string | null;
+      items: { itemId: string; quantity: number; chestId: string }[];
+    }) => {
+      const result = await moveItemsWithChests(dispensarySlug, {
+        mode: vars.mode,
+        items: vars.items,
+      });
+      handleAction(result);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      const chestIds = vars.items.map((item) => item.chestId);
+      invalidateStock([null, vars.defaultChestId, ...chestIds]);
+      notifications.show({
+        title: 'Succès',
+        message: vars.mode === 'take' ? 'Prise enregistrée' : 'Dépôt enregistré',
+        color: 'moss',
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du mouvement',
         color: 'danger',
       });
     },

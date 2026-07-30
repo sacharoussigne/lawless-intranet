@@ -14,6 +14,42 @@ const deleteIndividualCustomerByNameSchema = z.object({
   name: z.string().min(1).max(255),
 });
 
+export async function searchIndividualCustomers(
+  dispensarySlug: string,
+  query: string,
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      permission: {
+        resource: 'sales',
+        action: 'create',
+        message: 'Permission refusée',
+      },
+    });
+    if (!ctx.ok) return ctx.response;
+    const { dispensaryId } = ctx.tenant;
+
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      return { status: 200, data: [] as Array<{ id: string; name: string }> };
+    }
+
+    const customers = await prisma.individualCustomer.findMany({
+      where: {
+        ...tenantWhere(dispensaryId),
+        name: { contains: trimmed, mode: 'insensitive' },
+      },
+      orderBy: { name: 'asc' },
+      take: 8,
+      select: { id: true, name: true },
+    });
+
+    return { status: 200, data: customers };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la recherche de clients');
+  }
+}
+
 export async function getIndividualCustomers(dispensarySlug: string) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {

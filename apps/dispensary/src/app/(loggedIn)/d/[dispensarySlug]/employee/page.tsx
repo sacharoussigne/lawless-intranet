@@ -1,4 +1,6 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
+import { listWeeklySales } from '@/app/_actions/sales';
+import { getChestsList } from '@/app/_actions/chests';
 import { tenantRoutes } from '@/types/routes';
 import { Container, SimpleGrid, Text } from '@mantine/core';
 import {
@@ -10,6 +12,7 @@ import {
   IconHistory,
   IconMail,
   IconNotebook,
+  IconReceipt,
   IconReportMoney,
   IconStethoscope,
 } from '@tabler/icons-react';
@@ -32,7 +35,10 @@ import {
 import prisma from '@/lib/prisma';
 import { getDataOrThrow } from '@/lib/response';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
-import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
+import type { WeeklySalesSummary } from '@/app/_actions/sales';
+import type { ChestListItem } from '@/types/chests';
+import { EmployeeWeeklyOverview } from './EmployeeWeeklyOverview';
+import { EmployeeQuickActions } from './EmployeeQuickActions';
 
 export default async function EmployeePage({
   params,
@@ -65,6 +71,14 @@ export default async function EmployeePage({
   const canEditAll = checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_all');
   const canEdit =
     canEditAll || checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
+
+  const salesFeatureEnabled = isAppFeatureEnabled(appSettings, 'sales');
+  const canCreateSale = salesFeatureEnabled && (permissions?.sales.create ?? false);
+  const canViewSales = salesFeatureEnabled && (permissions?.sales.view ?? false);
+  const canCancelSale = salesFeatureEnabled && (permissions?.sales.cancel ?? false);
+  const canViewAllSales = salesFeatureEnabled && (permissions?.sales.viewAll ?? false);
+  const canTakeStock =
+    (appSettings.featureStockEnabled && permissions?.stock.update) ?? false;
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
     {
@@ -126,6 +140,13 @@ export default async function EmployeePage({
       hasAccess: weeklyFeatureEnabled && canViewWeekly,
     },
     {
+      title: 'Ventes',
+      description: 'Suivi hebdomadaire des ventes de tous les employés.',
+      icon: IconReceipt,
+      href: t.employee.sales,
+      hasAccess: canViewAllSales,
+    },
+    {
       title: 'Stats stock',
       description: 'Visualisez les statistiques de stock.',
       icon: IconAbacus,
@@ -168,6 +189,18 @@ export default async function EmployeePage({
       : session.user.name;
   }
 
+  let initialSalesSummary: WeeklySalesSummary | null = null;
+  if (canViewSales) {
+    const salesResult = await listWeeklySales(dispensarySlug);
+    initialSalesSummary = getDataOrThrow(salesResult, 'Erreur lors du chargement des ventes');
+  }
+
+  let chests: ChestListItem[] = [];
+  if (canCreateSale || canTakeStock) {
+    const chestsResult = await getChestsList(dispensarySlug, true);
+    chests = getDataOrThrow(chestsResult, 'Erreur lors du chargement des coffres');
+  }
+
   return (
     <Container size="xl" py="xl">
       <PageHeader
@@ -175,16 +208,40 @@ export default async function EmployeePage({
         description={`Retrouvez ici les outils du quotidien pour le ${siteTitle}.`}
       />
 
-      {weeklyFeatureEnabled && canViewWeekly && (
-        <EmployeeWeeklyDashboard
+      <EmployeeQuickActions
+        canCreateSale={canCreateSale}
+        canTakeStock={canTakeStock}
+        chests={chests}
+      />
+
+      {((weeklyFeatureEnabled && canViewWeekly) || (canViewSales && initialSalesSummary)) && (
+        <EmployeeWeeklyOverview
           dispensarySlug={dispensarySlug}
-          canEdit={canEdit}
-          canEditAll={canEditAll}
-          sessionUserId={userId}
-          viewerDiscordId={viewerDiscordId}
-          defaultDisplayName={defaultDisplayName}
-          initialWeekBounds={initialWeekBounds}
-          initialRows={initialRows}
+          showActivity={weeklyFeatureEnabled && canViewWeekly}
+          showSales={Boolean(canViewSales && initialSalesSummary)}
+          activity={
+            weeklyFeatureEnabled && canViewWeekly
+              ? {
+                  canEdit,
+                  canEditAll,
+                  sessionUserId: userId,
+                  viewerDiscordId,
+                  defaultDisplayName,
+                  initialWeekBounds,
+                  initialRows,
+                }
+              : undefined
+          }
+          sales={
+            canViewSales && initialSalesSummary
+              ? {
+                  canCancel: canCancelSale,
+                  canViewAll: canViewAllSales,
+                  sessionUserId: userId,
+                  initialSummary: initialSalesSummary,
+                }
+              : undefined
+          }
         />
       )}
 
@@ -193,7 +250,7 @@ export default async function EmployeePage({
         style={{ marginTop: 'var(--mantine-spacing-xl)' }}
       />
 
-      <Text className="disp-display-title" mb="lg">
+      <Text className="disp-display-title" mb="lg" mt="lg">
         Accès aux modules
       </Text>
 

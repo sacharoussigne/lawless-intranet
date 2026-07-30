@@ -56,6 +56,9 @@ export default function AppSettingsPageClient({
   const [featureCabinetEnabled, setFeatureCabinetEnabled] = useState(
     initial.featureCabinetEnabled ?? true,
   );
+  const [featureSalesEnabled, setFeatureSalesEnabled] = useState(
+    initial.featureSalesEnabled ?? true,
+  );
   const [weeklyActivityChestDaysVisible, setWeeklyActivityChestDaysVisible] = useState(
     initial.weeklyActivityChestDaysVisible ?? true,
   );
@@ -90,6 +93,7 @@ export default function AppSettingsPageClient({
       featureWeeklyDispensaryActivityEnabled,
       featureAgendaEnabled,
       featureCabinetEnabled,
+      featureSalesEnabled,
       weeklyActivityChestDaysVisible,
       weeklyActivityPresenceDaysVisible,
       weeklyActivityPatientsVisible,
@@ -232,6 +236,13 @@ export default function AppSettingsPageClient({
                 label="Cabinet médical"
                 checked={featureCabinetEnabled}
                 onChange={(e) => setFeatureCabinetEnabled(e.currentTarget.checked)}
+              />
+            </Paper>
+            <Paper withBorder p="md" radius="md" bg="var(--mantine-color-body)">
+              <Switch
+                label="Ventes"
+                checked={featureSalesEnabled}
+                onChange={(e) => setFeatureSalesEnabled(e.currentTarget.checked)}
               />
             </Paper>
           </SimpleGrid>
