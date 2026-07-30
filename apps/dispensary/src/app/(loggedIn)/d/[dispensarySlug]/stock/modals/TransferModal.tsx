@@ -17,6 +17,7 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { ChestListItem } from '@/types/chests';
+import { getEffectiveStockQuantity } from '@/lib/stock/ensureTodayStock';
 import { sortItems } from '@/lib/stock/sortItemsByCategory';
 import { useStockItems, useTransferMutation } from '../hooks/useStockQueries';
 import { notifications } from '@mantine/notifications';
@@ -60,7 +61,10 @@ export default function TransferModal({
     if (sourceChestId) {
       const initialQuantities: Record<string, number | ''> = {};
       itemsWithStock
-        .filter((item) => item.stockToday !== null && item.stockToday > 0)
+        .filter((item) => {
+          const qty = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
+          return qty !== null && qty > 0;
+        })
         .forEach((item) => {
           initialQuantities[item.id] = '';
         });
@@ -73,9 +77,10 @@ export default function TransferModal({
   const availableDestinationChests = chests.filter((chest) => chest.id !== sourceChestId);
 
   const transferableItems = useMemo(() => {
-    const filtered = itemsWithStock.filter(
-      (item) => item.stockToday !== null && item.stockToday > 0,
-    );
+    const filtered = itemsWithStock.filter((item) => {
+      const qty = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
+      return qty !== null && qty > 0;
+    });
     return sortItems(filtered);
   }, [itemsWithStock]);
 
@@ -101,8 +106,9 @@ export default function TransferModal({
     if (quantity === '' || quantity === undefined) return false;
     if (typeof quantity !== 'number') return true;
     if (quantity <= 0) return true;
-    if (item.stockToday === null) return true;
-    return quantity > item.stockToday;
+    const available = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
+    if (available === null) return true;
+    return quantity > available;
   });
 
   const handleTransfer = async () => {
@@ -224,7 +230,8 @@ export default function TransferModal({
                     </Table.Thead>
                     <Table.Tbody>
                       {transferableItems.map((item) => {
-                        const availableStock = item.stockToday ?? 0;
+                        const availableStock =
+                          getEffectiveStockQuantity(item.stockToday, item.stockYesterday) ?? 0;
                         const quantity = quantitiesByItem[item.id] ?? '';
                         const isQuantityInvalid =
                           quantity !== '' &&

@@ -351,15 +351,15 @@ export default function CraftModal({
         ingredient,
         requiredQuantity,
         stockInfo,
-        hasEnough: stockInfo.isToday && stockInfo.stock !== null && stockInfo.stock >= requiredQuantity,
+        hasEnough: stockInfo.stock !== null && stockInfo.stock >= requiredQuantity,
       };
     });
 
-    const missingStockItems = ingredientChecks.filter((check) => !check.stockInfo.isToday || check.stockInfo.stock === null);
+    const missingStockItems = ingredientChecks.filter((check) => check.stockInfo.stock === null);
     if (missingStockItems.length > 0) {
       return {
         canCraft: false,
-        reason: `Stock d'aujourd'hui manquant pour : ${missingStockItems.map((c) => c.ingredient.usedItem.name).join(', ')}`,
+        reason: `Stock manquant pour : ${missingStockItems.map((c) => c.ingredient.usedItem.name).join(', ')}`,
       };
     }
 
@@ -411,7 +411,7 @@ export default function CraftModal({
     const recipe = recipes.find((r) => r.id === preferred) ?? recipes[0];
     if (!recipe) return;
 
-    const available = stockInfo.isToday && stockInfo.stock != null ? stockInfo.stock : 0;
+    const available = stockInfo.stock != null ? stockInfo.stock : 0;
     const missing = Math.max(0, requiredQuantity - available);
     const yieldPerCraft = Math.max(1, recipe.quantity);
     const timesNeeded = Math.max(1, Math.ceil(missing / yieldPerCraft));
@@ -558,8 +558,8 @@ export default function CraftModal({
                     const requiredQuantity = ingredient.quantity * craftQuantity;
                     const ingredientChestId = ingredientChests[ingredient.id] || sourceChestId;
                     const stockInfo = getItemStockInChest(ingredient.usedItemId, ingredientChestId);
-                    const hasEnough = stockInfo.isToday && stockInfo.stock !== null && stockInfo.stock >= requiredQuantity;
-                    const isActionableMissing = stockInfo.stock === null || !stockInfo.isToday || !hasEnough;
+                    const hasEnough = stockInfo.stock !== null && stockInfo.stock >= requiredQuantity;
+                    const isActionableMissing = stockInfo.stock === null || !hasEnough;
 
                     return {
                       id: ingredient.id,

@@ -149,6 +149,13 @@ export async function middleware(req: NextRequest) {
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
         assertAppFeatureEnabledMiddleware(request, s, 'stock'),
       );
+    } else if (
+      pathname === t.employee.sales ||
+      pathname.startsWith(`${t.employee.sales}/`)
+    ) {
+      middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
+        assertAppFeatureEnabledMiddleware(request, s, 'sales'),
+      );
     } else if (pathname.startsWith(t.employee.mails)) {
       middlewares.push(hasMailsAccessMiddleware);
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>

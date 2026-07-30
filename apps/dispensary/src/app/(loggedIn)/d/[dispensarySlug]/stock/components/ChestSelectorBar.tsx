@@ -1,27 +1,46 @@
 'use client';
 
-import { Badge, Group, Select } from '@mantine/core';
+import { Badge, Button, Checkbox, Group, Select, Tooltip } from '@mantine/core';
+import { IconCheck, IconEdit, IconEye, IconEyeOff, IconX } from '@tabler/icons-react';
 
 interface ChestSelectorBarProps {
   chestOptions: { value: string; label: string }[];
   selectedChestId: string | null;
   isEditing: boolean;
+  saving: boolean;
+  skipHistory: boolean;
   totalWeightToday: number;
   itemsWithStockToday: number;
-  totalItems: number;
   lastStockLabel: string | null;
+  canStockUpdate: boolean;
+  canManageVisibility: boolean;
+  isManagingVisibility: boolean;
   onChangeChestId: (value: string | null) => void;
+  onToggleManagingVisibility: () => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: () => void;
+  onSkipHistoryChange: (value: boolean) => void;
 }
 
 export function ChestSelectorBar({
   chestOptions,
   selectedChestId,
   isEditing,
+  saving,
+  skipHistory,
   totalWeightToday,
   itemsWithStockToday,
-  totalItems,
   lastStockLabel,
+  canStockUpdate,
+  canManageVisibility,
+  isManagingVisibility,
   onChangeChestId,
+  onToggleManagingVisibility,
+  onStartEdit,
+  onCancelEdit,
+  onSave,
+  onSkipHistoryChange,
 }: ChestSelectorBarProps) {
   return (
     <Group justify="space-between" align="center" mb="sm" wrap="nowrap">
@@ -32,7 +51,7 @@ export function ChestSelectorBar({
           value={selectedChestId || ''}
           onChange={(value) => onChangeChestId(value === '' ? null : value)}
           clearable={false}
-          disabled={isEditing}
+          disabled={isEditing || isManagingVisibility}
           style={{ minWidth: 200 }}
         />
 
@@ -49,16 +68,63 @@ export function ChestSelectorBar({
         )}
       </Group>
 
-      {itemsWithStockToday > 0 && (
-        <Badge
-          color={itemsWithStockToday === totalItems ? 'sage' : 'amber'}
-          variant="light"
-          size="lg"
-        >
-          {itemsWithStockToday}/{totalItems} objets stockés aujourd&apos;hui
-        </Badge>
-      )}
+      <Group gap="md" wrap="nowrap">
+        {selectedChestId !== null && canStockUpdate && (
+          isEditing ? (
+            <>
+              <Tooltip
+                label="Aucun mouvement ne sera enregistré (ex. transfert manuel entre coffres sans utiliser Transférer)."
+                multiline
+                w={280}
+              >
+                <Checkbox
+                  label="Écraser (sans historique)"
+                  checked={skipHistory}
+                  onChange={(e) => onSkipHistoryChange(e.currentTarget.checked)}
+                />
+              </Tooltip>
+              <Button
+                leftSection={<IconX size={16} />}
+                onClick={onCancelEdit}
+                variant="subtle"
+                color="slate"
+              >
+                Annuler
+              </Button>
+              <Button
+                leftSection={<IconCheck size={16} />}
+                onClick={onSave}
+                loading={saving}
+                variant="filled"
+                color="sage"
+              >
+                Sauvegarder
+              </Button>
+            </>
+          ) : (
+            <>
+              {canManageVisibility && (
+                <Button
+                  variant={isManagingVisibility ? 'filled' : 'light'}
+                  color="slate"
+                  leftSection={isManagingVisibility ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                  onClick={onToggleManagingVisibility}
+                >
+                  {isManagingVisibility ? 'Terminer' : 'Masquer'}
+                </Button>
+              )}
+              <Button
+                leftSection={<IconEdit size={16} />}
+                onClick={onStartEdit}
+                variant="light"
+                disabled={isManagingVisibility}
+              >
+                {itemsWithStockToday > 0 ? 'Mettre à jour le stock' : 'Faire le stock'}
+              </Button>
+            </>
+          )
+        )}
+      </Group>
     </Group>
   );
 }
-

@@ -6,6 +6,8 @@ export const stockKeys = {
     [...stockKeys.all(slug), 'checks-summary'] as const,
   lastStockDays: (slug: string) =>
     [...stockKeys.all(slug), 'last-stock-days'] as const,
+  visibility: (slug: string, chestId: string) =>
+    [...stockKeys.all(slug), 'visibility', chestId] as const,
   statsConsumption: (slug: string, fromKey: string, toKey: string) =>
     [...stockKeys.all(slug), 'stats', 'consumption', fromKey, toKey] as const,
   movementsPage: (slug: string, filters: Record<string, unknown>) =>

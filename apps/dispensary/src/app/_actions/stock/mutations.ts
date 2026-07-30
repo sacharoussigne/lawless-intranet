@@ -9,6 +9,7 @@ import { getTodayStart, getTomorrowStart, getStartOfDay } from '@/lib/date';
 import { getDefaultChestId } from '@/app/_actions/stock/internals';
 import { fetchLatestStockBeforeDate } from '@/app/_actions/stock/queryHelpers';
 import { buildManualMovements, type ManualStockMovementInput } from '@/lib/stock/movements';
+import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
 
 function latestStockByItem<T extends { itemId: string; timestamp: Date }>(rows: T[]): Map<string, T> {
   const map = new Map<string, T>();
@@ -217,52 +218,38 @@ export async function craftItem(
     });
     stockLookups.push({ itemId: data.craftedItemId, chestId: destinationChestId });
 
-    const stockRows = await prisma.stockHistory.findMany({
-      where: {
-        OR: stockLookups.map(({ itemId, chestId }) => ({
-          itemId,
-          chestId,
-          timestamp: { gte: today, lt: tomorrow },
-        })),
-      },
-      orderBy: { timestamp: 'desc' },
-    });
-
     const stockKey = (itemId: string, chestId: string) => `${itemId}:${chestId}`;
-    const latestStock = new Map<string, (typeof stockRows)[0]>();
-    for (const row of stockRows) {
-      const key = stockKey(row.itemId, row.chestId);
-      if (!latestStock.has(key)) {
-        latestStock.set(key, row);
-      }
-    }
-
-    const ingredientChecks = ingredientRequirements.map(({ ingredient, requiredQuantity, sourceChestId }) => {
-      if (!sourceChestId) {
-        throw new Error('Unexpected missing sourceChestId');
-      }
-      const availableStock = latestStock.get(stockKey(ingredient.usedItemId, sourceChestId))?.quantity ?? 0;
-      return {
-        itemId: ingredient.usedItemId,
-        ingredientId: ingredient.id,
-        available: availableStock,
-        required: requiredQuantity,
-        hasEnough: availableStock >= requiredQuantity,
-      };
-    });
-
-    if (!ingredientChecks.every((check) => check.hasEnough)) {
-      return {
-        status: 400,
-        error: 'Stock insuffisant pour certains ingrédients',
-        data: ingredientChecks,
-      };
-    }
-
     const userId = session.user.id;
 
-    await prisma.$transaction(async (tx) => {
-      const craftedStock = latestStock.get(stockKey(data.craftedItemId, destinationChestId));
+    const craftResult = await prisma.$transaction(async (tx) => {
+      await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
+      const ensured = await ensureTodayStockForPairs(tx, dispensaryId, stockLookups, {
+        today,
+        tomorrow,
+      });
+
+      const ingredientChecks = ingredientRequirements.map(({ ingredient, requiredQuantity, sourceChestId }) => {
+        if (!sourceChestId) {
+          throw new Error('Unexpected missing sourceChestId');
+        }
+        const availableStock = ensured.get(stockKey(ingredient.usedItemId, sourceChestId))?.quantity ?? 0;
+        return {
+          itemId: ingredient.usedItemId,
+          ingredientId: ingredient.id,
+          available: availableStock,
+          required: requiredQuantity,
+          hasEnough: availableStock >= requiredQuantity,
+        };
+      });
+
+      if (!ingredientChecks.every((check) => check.hasEnough)) {
+        return {
+          ok: false as const,
+          ingredientChecks,
+        };
+      }
+
+      const craftedStock = ensured.get(stockKey(data.craftedItemId, destinationChestId));
       if (craftedStock) {
         await tx.stockHistory.update({
           where: { id: craftedStock.id },
@@ -282,7 +269,7 @@ export async function craftItem(
         if (!sourceChestId) {
           throw new Error('Unexpected missing sourceChestId');
         }
-        const existingIngredientStock = latestStock.get(stockKey(ingredient.usedItemId, sourceChestId));
+        const existingIngredientStock = ensured.get(stockKey(ingredient.usedItemId, sourceChestId));
         if (existingIngredientStock) {
           await tx.stockHistory.update({
             where: { id: existingIngredientStock.id },
@@ -317,7 +304,17 @@ export async function craftItem(
           })),
         ],
       });
+
+      return { ok: true as const };
     });
+
+    if (!craftResult.ok) {
+      return {
+        status: 400,
+        error: 'Stock insuffisant pour certains ingrédients',
+        data: craftResult.ingredientChecks,
+      };
+    }
 
     return {
       status: 200,
