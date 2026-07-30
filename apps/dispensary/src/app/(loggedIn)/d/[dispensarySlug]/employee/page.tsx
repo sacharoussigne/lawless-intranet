@@ -12,6 +12,7 @@ import {
   IconHistory,
   IconMail,
   IconNotebook,
+  IconReceipt,
   IconReportMoney,
   IconStethoscope,
 } from '@tabler/icons-react';
@@ -138,6 +139,13 @@ export default async function EmployeePage({
       hasAccess: weeklyFeatureEnabled && canViewWeekly,
     },
     {
+      title: 'Ventes',
+      description: 'Suivi hebdomadaire des ventes de tous les employés.',
+      icon: IconReceipt,
+      href: t.employee.sales,
+      hasAccess: canViewAllSales,
+    },
+    {
       title: 'Stats stock',
       description: 'Visualisez les statistiques de stock.',
       icon: IconAbacus,
@@ -241,7 +249,7 @@ export default async function EmployeePage({
         style={{ marginTop: 'var(--mantine-spacing-xl)' }}
       />
 
-      <Text className="disp-display-title" mb="lg">
+      <Text className="disp-display-title" mb="lg" mt="lg">
         Accès aux modules
       </Text>
 

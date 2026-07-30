@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Anchor, Group, Stack } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+import { Anchor, Group, Stack, Switch } from '@mantine/core';
 import Link from 'next/link';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
 import {
@@ -17,6 +17,18 @@ import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/qu
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
 import { EmployeeWeeklySalesDashboard } from './EmployeeWeeklySalesDashboard';
+
+const SALES_VISIBLE_STORAGE_KEY = 'employee-home-sales-visible';
+
+function readSalesVisiblePreference(): boolean {
+  try {
+    const raw = window.localStorage.getItem(SALES_VISIBLE_STORAGE_KEY);
+    if (raw == null) return true;
+    return JSON.parse(raw) === true;
+  } catch {
+    return true;
+  }
+}
 
 type EmployeeWeeklyOverviewProps = {
   dispensarySlug: string;
@@ -50,6 +62,20 @@ export function EmployeeWeeklyOverview({
   const [periodWeekDateValue, setPeriodWeekDateValue] = useState<Date>(() =>
     getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,
   );
+  const [salesVisible, setSalesVisible] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setSalesVisible(readSalesVisiblePreference());
+  }, []);
+
+  useEffect(() => {
+    if (salesVisible == null) return;
+    try {
+      window.localStorage.setItem(SALES_VISIBLE_STORAGE_KEY, JSON.stringify(salesVisible));
+    } catch {
+      // Ignore quota / private mode write failures.
+    }
+  }, [salesVisible]);
 
   const currentWeekBounds = useMemo(
     () => getBankWeekBounds(periodWeekDateValue),
@@ -57,6 +83,8 @@ export function EmployeeWeeklyOverview({
   );
 
   const weeklyActivityHref = tenantRoutes(dispensarySlug).weeklyActivity.index;
+  const preferenceReady = salesVisible != null;
+  const salesSectionVisible = showSales && preferenceReady && salesVisible;
 
   return (
     <Stack gap="xl" mt="xl" mb="xl">
@@ -78,11 +106,21 @@ export function EmployeeWeeklyOverview({
             )
           }
         />
-        {showActivity && (
-          <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed">
-            Détail complet
-          </Anchor>
-        )}
+        <Group gap="md" align="center">
+          {showSales && preferenceReady && (
+            <Switch
+              label="Afficher les ventes"
+              checked={salesVisible}
+              onChange={(event) => setSalesVisible(event.currentTarget.checked)}
+              size="sm"
+            />
+          )}
+          {showActivity && (
+            <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed">
+              Détail complet
+            </Anchor>
+          )}
+        </Group>
       </Group>
 
       {showActivity && activity && (
@@ -99,7 +137,7 @@ export function EmployeeWeeklyOverview({
         />
       )}
 
-      {showSales && sales && (
+      {salesSectionVisible && sales && (
         <EmployeeWeeklySalesDashboard
           dispensarySlug={dispensarySlug}
           canCancel={sales.canCancel}
