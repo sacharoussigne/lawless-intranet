@@ -47,16 +47,17 @@ async function fetchChestStockVisibility(dispensarySlug: string, chestId: string
 
 export function useStockItems(
   chestId: string | null,
-  initialData: ItemWithRelations[],
+  initialData?: ItemWithRelations[],
+  options?: { enabled?: boolean },
 ) {
   const dispensarySlug = useRequiredDispensarySlug();
 
   return useQuery({
     queryKey: stockKeys.items(dispensarySlug, chestId),
     queryFn: () => fetchStockItems(dispensarySlug, chestId),
-    initialData: chestId === null ? initialData : undefined,
+    initialData: initialData && initialData.length > 0 ? initialData : undefined,
     placeholderData: (previous) => previous,
-    enabled: Boolean(dispensarySlug),
+    enabled: Boolean(dispensarySlug) && (options?.enabled ?? true),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 }

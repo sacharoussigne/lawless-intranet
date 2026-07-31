@@ -18,7 +18,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
@@ -68,11 +68,10 @@ export function SaleModal({
   const queryClient = useQueryClient();
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
   const [lines, setLines] = useState<SaleLine[]>([]);
-  const [itemToAdd, setItemToAdd] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [individualCustomerId, setIndividualCustomerId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [priceAdjustment, setPriceAdjustment] = useState<number | ''>(0);
+  const [priceAdjustment, setPriceAdjustment] = useState<number | string>(0);
   const [debouncedCustomerQuery] = useDebouncedValue(customerName.trim(), 300);
 
   const sellableQuery = useQuery({
@@ -133,7 +132,6 @@ export function SaleModal({
     if (opened) {
       setDefaultChestId(chests.length > 0 ? initialChestId : null);
       setLines([]);
-      setItemToAdd(null);
       setCustomerName('');
       setIndividualCustomerId(null);
       setDescription('');
@@ -248,19 +246,17 @@ export function SaleModal({
     });
   }, [lines, defaultChestId, itemsByChest, adjustmentValue, minAdjustment]);
 
-  const handleAddLine = () => {
-    if (!itemToAdd) return;
+  const handleAddLine = (itemId: string) => {
     setLines((prev) => [
       ...prev,
       {
-        key: `${itemToAdd}-${Date.now()}`,
-        itemId: itemToAdd,
+        key: `${itemId}-${Date.now()}`,
+        itemId,
         quantity: 1,
         source: defaultChestId ? SaleItemSource.CHEST : SaleItemSource.POCKET,
         chestId: defaultChestId,
       },
     ]);
-    setItemToAdd(null);
   };
 
   const handleSubmit = () => {
@@ -342,25 +338,17 @@ export function SaleModal({
           </Text>
         )}
 
-        <Group align="flex-end" grow>
-          <Select
-            label="Ajouter un objet vendable"
-            placeholder="Choisir un objet"
-            data={itemOptions}
-            value={itemToAdd}
-            onChange={setItemToAdd}
-            searchable
-            disabled={sellableQuery.isFetching}
-          />
-          <Button
-            leftSection={<IconPlus size={16} />}
-            onClick={handleAddLine}
-            disabled={!itemToAdd}
-            variant="light"
-          >
-            Ajouter
-          </Button>
-        </Group>
+        <Select
+          label="Ajouter un objet vendable"
+          placeholder="Choisir un objet"
+          data={itemOptions}
+          value={null}
+          onChange={(value) => {
+            if (value) handleAddLine(value);
+          }}
+          searchable
+          disabled={sellableQuery.isFetching}
+        />
 
         {lines.length === 0 ? (
           <Text c="dimmed" size="sm">
@@ -510,15 +498,9 @@ export function SaleModal({
             value={priceAdjustment}
             min={minAdjustment}
             decimalScale={2}
-            step={1}
-            clampBehavior="strict"
-            onChange={(value) => {
-              if (typeof value !== 'number') {
-                setPriceAdjustment('');
-                return;
-              }
-              setPriceAdjustment(Math.max(minAdjustment, value));
-            }}
+            step={0.5}
+            clampBehavior="blur"
+            onChange={setPriceAdjustment}
             placeholder="0"
           />
         )}

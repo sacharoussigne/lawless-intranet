@@ -81,7 +81,8 @@ export default function CraftModal({
 
   const { data: sourceChestItems = [], isFetching: loadingSourceItems } = useStockItems(
     sourceChestId,
-    [],
+    undefined,
+    { enabled: opened && Boolean(sourceChestId) },
   );
 
   const trackedChestIds = useMemo(() => {
