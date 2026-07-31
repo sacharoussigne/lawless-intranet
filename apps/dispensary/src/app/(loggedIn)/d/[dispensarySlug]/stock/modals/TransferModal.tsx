@@ -39,7 +39,11 @@ export default function TransferModal({
   const [destinationChestId, setDestinationChestId] = useState<string | null>(null);
   const [quantitiesByItem, setQuantitiesByItem] = useState<Record<string, number | ''>>({});
 
-  const { data: itemsWithStock = [], isFetching: loadingItems } = useStockItems(sourceChestId, []);
+  const { data: itemsWithStock = [], isFetching: loadingItems } = useStockItems(
+    sourceChestId,
+    undefined,
+    { enabled: opened && Boolean(sourceChestId) },
+  );
   const transferMutation = useTransferMutation();
 
   useEffect(() => {

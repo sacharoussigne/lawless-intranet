@@ -59,7 +59,9 @@ export default function TakeDepositModal({
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
   const [lines, setLines] = useState<MoveLine[]>([]);
 
-  const { data: defaultChestItems = [], isFetching } = useStockItems(defaultChestId, []);
+  const { data: defaultChestItems = [], isFetching } = useStockItems(defaultChestId, undefined, {
+    enabled: opened && Boolean(defaultChestId),
+  });
   const moveMutation = useChestStockMoveMutation();
 
   const isTake = mode === 'take';
