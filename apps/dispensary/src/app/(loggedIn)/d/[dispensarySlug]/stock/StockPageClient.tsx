@@ -55,7 +55,9 @@ export default function StockPageClient({
 }: StockPageClientProps) {
   const { permissions } = usePermissions();
   const chests = initialChests;
-  const [selectedChestId, setSelectedChestId] = useState<string | null>(null);
+  const [selectedChestId, setSelectedChestId] = useState<string | null>(() =>
+    initialChests.length === 1 ? initialChests[0].id : null,
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [craftModalOpened, setCraftModalOpened] = useState(false);
   const [transferModalOpened, setTransferModalOpened] = useState(false);
@@ -273,16 +275,14 @@ export default function StockPageClient({
     return label ? `Dernier stock : ${label}` : null;
   }, [itemsWithStockToday, selectedChestId, chests, lastStockDaysByChest]);
 
-  const chestOptions = useMemo(
-    () => [
-      { value: '', label: 'Tous les coffres' },
-      ...chests.map((chest) => ({
-        value: chest.id,
-        label: chest.name,
-      })),
-    ],
-    [chests],
-  );
+  const chestOptions = useMemo(() => {
+    const options = chests.map((chest) => ({
+      value: chest.id,
+      label: chest.name,
+    }));
+    if (chests.length <= 1) return options;
+    return [{ value: '', label: 'Tous les coffres' }, ...options];
+  }, [chests]);
 
   if (chests.length === 0) {
     return (

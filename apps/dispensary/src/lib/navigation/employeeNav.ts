@@ -48,6 +48,7 @@ export type EmployeeNavContext = {
   permissions: Permissions | null;
   userRole: string | null;
   cabinetModuleAccess?: boolean;
+  hasAccessibleChests?: boolean;
 };
 
 const PRIMARY_SLOT_COUNT = 4;
@@ -58,7 +59,9 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
   switch (item.id) {
     case 'stock':
       return (
-        appSettings.featureStockEnabled && (permissions?.stock.view ?? false)
+        appSettings.featureStockEnabled &&
+        (permissions?.stock.view ?? false) &&
+        (ctx.hasAccessibleChests ?? false)
       );
     case 'orders':
       return (
@@ -85,7 +88,9 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
       );
     case 'sales':
       return (
-        isAppFeatureEnabled(appSettings, 'sales') && (permissions?.sales.viewAll ?? false)
+        isAppFeatureEnabled(appSettings, 'sales') &&
+        (permissions?.sales.viewAll ?? false) &&
+        (ctx.hasAccessibleChests ?? false)
       );
     case 'stockStatistics':
     case 'stockMovements':

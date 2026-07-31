@@ -46,7 +46,7 @@ export default function Header({
   const pathname = usePathname();
   const [userMenuOpened, setUserMenuOpened] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
-  const { permissions, userRole, appSettings, accessibleDispensaries, agendaModuleAccess, cabinetModuleAccess, dispensarySlug: ctxSlug } = usePermissions();
+  const { permissions, userRole, appSettings, accessibleDispensaries, agendaModuleAccess, cabinetModuleAccess, hasAccessibleChests, dispensarySlug: ctxSlug } = usePermissions();
   const dispensarySlug = dispensarySlugProp ?? ctxSlug;
   const t = dispensarySlug ? tenantRoutes(dispensarySlug) : null;
   const isPlatformAdminUser = isPlatformAdmin(session?.user?.role);
@@ -127,6 +127,7 @@ export default function Header({
       permissions,
       userRole,
       cabinetModuleAccess,
+      hasAccessibleChests,
     }).search;
   }, [
     t,
@@ -135,6 +136,7 @@ export default function Header({
     permissions,
     userRole,
     cabinetModuleAccess,
+    hasAccessibleChests,
   ]);
 
   const isRouteActive = (route: string) => {
@@ -195,6 +197,7 @@ export default function Header({
                   canManage={permissions?.application.management === true}
                   isRouteActive={isRouteActive}
                   cabinetModuleAccess={cabinetModuleAccess}
+                  hasAccessibleChests={hasAccessibleChests}
                 />
               </div>
 

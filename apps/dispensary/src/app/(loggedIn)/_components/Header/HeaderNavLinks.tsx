@@ -75,6 +75,7 @@ export function HeaderNavLinks({
   canManage,
   isRouteActive,
   cabinetModuleAccess = false,
+  hasAccessibleChests = false,
 }: {
   t: ReturnType<typeof tenantRoutes>;
   appSettings: AppSettingsDTO;
@@ -84,6 +85,7 @@ export function HeaderNavLinks({
   canManage: boolean;
   isRouteActive: (route: string) => boolean;
   cabinetModuleAccess?: boolean;
+  hasAccessibleChests?: boolean;
 }) {
   const [drawerOpened, { toggle: toggleDrawer, close: closeDrawer }] = useDisclosure(false);
   const isMobile = useMediaQuery('(max-width: 62em)');
@@ -183,6 +185,7 @@ export function HeaderNavLinks({
     permissions,
     userRole,
     cabinetModuleAccess,
+    hasAccessibleChests,
   });
 
   const renderItem = (item: HeaderNavLinkItem) => (

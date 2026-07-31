@@ -57,4 +57,5 @@ export interface PermissionsContextType {
   accessibleAgendaIds: string[];
   cabinetModuleAccess: boolean;
   accessibleCabinetIds: string[];
+  hasAccessibleChests: boolean;
 }

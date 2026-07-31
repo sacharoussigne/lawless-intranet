@@ -68,3 +68,27 @@ export function chestAccessWhereFilter(access: ChestAccessResult): { id?: { in: 
   if (access.all) return {};
   return { id: { in: access.chestIds } };
 }
+
+export async function userHasAccessibleChests(
+  dispensaryId: string,
+  effectiveRole: string | null | undefined,
+): Promise<boolean> {
+  const access = await resolveChestAccess(dispensaryId, effectiveRole);
+  if (access.all) {
+    const count = await prisma.chest.count({
+      where: { dispensaryId, isEnabled: true },
+    });
+    return count > 0;
+  }
+  if (access.chestIds.length === 0) {
+    return false;
+  }
+  const count = await prisma.chest.count({
+    where: {
+      dispensaryId,
+      isEnabled: true,
+      id: { in: access.chestIds },
+    },
+  });
+  return count > 0;
+}
