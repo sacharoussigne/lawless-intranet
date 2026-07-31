@@ -24,6 +24,7 @@ import type { AuthSession } from '@/types/session';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
 import { userHasAnyCabinetAccess } from '@/lib/cabinet/access';
+import { userHasAccessibleChests } from '@/lib/chests/access';
 import { ModuleCard, type ModuleCardProps } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { getBankWeekBounds } from '@/lib/bankWeek';
@@ -65,6 +66,7 @@ export default async function EmployeePage({
   const cabinetModuleAccess = userId
     ? await userHasAnyCabinetAccess(dispensary.id, userId)
     : false;
+  const hasAccessibleChests = await userHasAccessibleChests(dispensary.id, effectiveRole);
 
   const weeklyFeatureEnabled = appSettings.featureWeeklyDispensaryActivityEnabled;
   const canViewWeekly = permissions?.weeklyDispensaryActivity.view ?? false;
@@ -77,8 +79,7 @@ export default async function EmployeePage({
   const canViewSales = salesFeatureEnabled && (permissions?.sales.view ?? false);
   const canCancelSale = salesFeatureEnabled && (permissions?.sales.cancel ?? false);
   const canViewAllSales = salesFeatureEnabled && (permissions?.sales.viewAll ?? false);
-  const canTakeStock =
-    (appSettings.featureStockEnabled && permissions?.stock.update) ?? false;
+  const canTakeStock = Boolean(appSettings.featureStockEnabled && hasAccessibleChests);
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
     {
@@ -87,7 +88,10 @@ export default async function EmployeePage({
         'Consultez et gérez le stock des objets disponibles dans les différents coffres.',
       icon: IconArchive,
       href: t.stock.index,
-      hasAccess: appSettings.featureStockEnabled && (permissions?.stock.view ?? false),
+      hasAccess:
+        appSettings.featureStockEnabled &&
+        (permissions?.stock.view ?? false) &&
+        hasAccessibleChests,
     },
     {
       title: 'Commandes',

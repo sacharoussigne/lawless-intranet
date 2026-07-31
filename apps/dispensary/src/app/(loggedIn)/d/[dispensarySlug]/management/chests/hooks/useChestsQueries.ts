@@ -11,6 +11,11 @@ import {
   reorderChests,
 } from '@/app/_actions/chests';
 import {
+  getRoleChestAccesses,
+  upsertRoleChestAccess,
+  type RoleChestAccessRow,
+} from '@/app/_actions/chestAccess';
+import {
   getChestStockCheckForm,
   upsertChestStockCheckConfig,
 } from '@/app/_actions/stockChecks';
@@ -28,6 +33,11 @@ async function fetchManagementChests(dispensarySlug: string) {
   return handleAction(result) as ChestWithStockHistory[];
 }
 
+async function fetchRoleChestAccesses(dispensarySlug: string) {
+  const result = await getRoleChestAccesses(dispensarySlug);
+  return handleAction(result) as RoleChestAccessRow[];
+}
+
 async function fetchChestStockCheckForm(dispensarySlug: string, chestId: string) {
   const result = await getChestStockCheckForm(dispensarySlug, chestId);
   return handleAction(result) as ChestStockCheckFormResponse;
@@ -39,6 +49,19 @@ export function useManagementChests(initialData: ChestWithStockHistory[]) {
   return useQuery({
     queryKey: chestsKeys.management(dispensarySlug),
     queryFn: () => fetchManagementChests(dispensarySlug),
+    initialData,
+    placeholderData: (previous) => previous,
+    enabled: Boolean(dispensarySlug),
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
+export function useRoleChestAccesses(initialData: RoleChestAccessRow[]) {
+  const dispensarySlug = useRequiredDispensarySlug();
+
+  return useQuery({
+    queryKey: chestsKeys.roleAccess(dispensarySlug),
+    queryFn: () => fetchRoleChestAccesses(dispensarySlug),
     initialData,
     placeholderData: (previous) => previous,
     enabled: Boolean(dispensarySlug),
@@ -77,6 +100,10 @@ function useManagementChestsCache() {
     queryClient.invalidateQueries({ queryKey: chestsKeys.management(dispensarySlug) });
   };
 
+  const invalidateRoleAccess = () => {
+    queryClient.invalidateQueries({ queryKey: chestsKeys.roleAccess(dispensarySlug) });
+  };
+
   const invalidateStockChecksSummary = () => {
     queryClient.invalidateQueries({ queryKey: stockKeys.checksSummary(dispensarySlug) });
   };
@@ -90,9 +117,42 @@ function useManagementChestsCache() {
   return {
     updateCache,
     invalidateManagement,
+    invalidateRoleAccess,
     invalidateStockChecksSummary,
     invalidateStockCheckForm,
   };
+}
+
+export function useUpsertRoleChestAccessMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const { invalidateRoleAccess } = useManagementChestsCache();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      role: string;
+      allChests: boolean;
+      chestIds?: string[];
+    }) => {
+      const result = await upsertRoleChestAccess(dispensarySlug, vars);
+      return handleAction(result) as RoleChestAccessRow;
+    },
+    onSuccess: () => {
+      invalidateRoleAccess();
+      notifications.show({
+        title: 'Succès',
+        message: 'Accès aux coffres mis à jour',
+        color: 'moss',
+      });
+    },
+    onError: (error: Error) => {
+      if (error instanceof ParsedZodError) return;
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la sauvegarde',
+        color: 'danger',
+      });
+    },
+  });
 }
 
 export function useCreateChestMutation() {

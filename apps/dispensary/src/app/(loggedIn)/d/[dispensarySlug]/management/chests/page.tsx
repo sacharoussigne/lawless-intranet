@@ -1,22 +1,47 @@
 import { getChests } from '@/app/_actions/chests';
+import { getRoleChestAccesses } from '@/app/_actions/chestAccess';
 import ChestsPageClient from './ChestsPageClient';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getDataOrThrow } from '@/lib/response';
 
-async function ChestsContent({ dispensarySlug }: { dispensarySlug: string }) {
-  const result = await getChests(dispensarySlug);
-  
-  // Lance une erreur si la réponse est une erreur (sera capturée par error.tsx)
-  const chests = getDataOrThrow(result, 'Erreur lors du chargement des coffres');
+async function ChestsContent({
+  dispensarySlug,
+  initialTab,
+}: {
+  dispensarySlug: string;
+  initialTab: 'chests' | 'access';
+}) {
+  const [chestsResult, accessesResult] = await Promise.all([
+    getChests(dispensarySlug),
+    getRoleChestAccesses(dispensarySlug),
+  ]);
 
-  return <ChestsPageClient initialChests={chests} />;
+  const chests = getDataOrThrow(chestsResult, 'Erreur lors du chargement des coffres');
+  const accesses = getDataOrThrow(accessesResult, 'Erreur lors du chargement des accès aux coffres');
+
+  return (
+    <ChestsPageClient
+      initialTab={initialTab}
+      initialChests={chests}
+      initialAccesses={accesses}
+    />
+  );
 }
 
-export default async function ChestsPage({ params }: { params: Promise<{ dispensarySlug: string }> }) {
+export default async function ChestsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ dispensarySlug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { dispensarySlug } = await params;
+  const { tab } = await searchParams;
+  const initialTab = tab === 'access' ? 'access' : 'chests';
+
   return (
     <SuspenseLoader>
-      <ChestsContent dispensarySlug={dispensarySlug} />
+      <ChestsContent dispensarySlug={dispensarySlug} initialTab={initialTab} />
     </SuspenseLoader>
   );
 }

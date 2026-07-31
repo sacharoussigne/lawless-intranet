@@ -12,6 +12,7 @@ import { getBankWeekBounds } from '@/lib/bankWeek';
 import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
 import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { fetchUserProfiles } from '@/lib/authUsers';
+import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 
 const saleItemSchema = z.object({
   itemId: z.string().uuid(),
@@ -144,7 +145,7 @@ export async function createSale(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
 
     const data = createSaleSchema.parse(rawData);
@@ -226,6 +227,11 @@ export async function createSale(
     );
 
     if (chestIds.length > 0) {
+      const access = await resolveChestAccess(dispensaryId, effectiveRole);
+      if (chestIds.some((chestId) => !hasChestAccess(access, chestId))) {
+        return { status: 403, error: 'Accès refusé à un ou plusieurs coffres' };
+      }
+
       const chests = await prisma.chest.findMany({
         where: {
           id: { in: chestIds },

@@ -2,7 +2,7 @@ import { createAccessControl } from "better-auth/plugins";
 import { defaultStatements, adminAc, userAc } from "better-auth/plugins/admin/access";
 
 const defaultApplicationPermissions = {
-  stock: ["view", "create", "update", "delete", "craft-read", "craft-write"],
+  stock: ["view", "create", "update", "delete", "craft-read", "craft-write", "hide"],
   orders: ["view", "create", "update", "delete"],
   search: ["access"],
   bank: ["access"],
@@ -43,6 +43,7 @@ const admin = ac.newRole({
 
 const employee = ac.newRole({
   ...userAc.statements,
+  stock: ["view"],
   orders: ["view"],
   bank: ["access"],
   application: ["access"],
@@ -83,7 +84,7 @@ const inventory_viewer = ac.newRole({
 
 const direction = ac.newRole({
   ...userAc.statements,
-  stock: [],
+  stock: ["view", "hide", "update"],
   orders: [],
   search: [],
   bank: [],

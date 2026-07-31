@@ -15,6 +15,7 @@ interface ChestSelectorBarProps {
   canStockUpdate: boolean;
   canManageVisibility: boolean;
   isManagingVisibility: boolean;
+  chestSelectLocked?: boolean;
   onChangeChestId: (value: string | null) => void;
   onToggleManagingVisibility: () => void;
   onStartEdit: () => void;
@@ -35,6 +36,7 @@ export function ChestSelectorBar({
   canStockUpdate,
   canManageVisibility,
   isManagingVisibility,
+  chestSelectLocked = false,
   onChangeChestId,
   onToggleManagingVisibility,
   onStartEdit,
@@ -51,7 +53,7 @@ export function ChestSelectorBar({
           value={selectedChestId || ''}
           onChange={(value) => onChangeChestId(value === '' ? null : value)}
           clearable={false}
-          disabled={isEditing || isManagingVisibility}
+          disabled={chestSelectLocked || isEditing || isManagingVisibility}
           style={{ minWidth: 200 }}
         />
 
@@ -69,50 +71,52 @@ export function ChestSelectorBar({
       </Group>
 
       <Group gap="md" wrap="nowrap">
-        {selectedChestId !== null && canStockUpdate && (
-          isEditing ? (
-            <>
-              <Tooltip
-                label="Aucun mouvement ne sera enregistré (ex. transfert manuel entre coffres sans utiliser Transférer)."
-                multiline
-                w={280}
-              >
-                <Checkbox
-                  label="Écraser (sans historique)"
-                  checked={skipHistory}
-                  onChange={(e) => onSkipHistoryChange(e.currentTarget.checked)}
-                />
-              </Tooltip>
+        {selectedChestId !== null && isEditing && canStockUpdate && (
+          <>
+            <Tooltip
+              label="Aucun mouvement ne sera enregistré (ex. transfert manuel entre coffres sans utiliser Transférer)."
+              multiline
+              w={280}
+            >
+              <Checkbox
+                label="Écraser (sans historique)"
+                checked={skipHistory}
+                onChange={(e) => onSkipHistoryChange(e.currentTarget.checked)}
+              />
+            </Tooltip>
+            <Button
+              leftSection={<IconX size={16} />}
+              onClick={onCancelEdit}
+              variant="subtle"
+              color="slate"
+            >
+              Annuler
+            </Button>
+            <Button
+              leftSection={<IconCheck size={16} />}
+              onClick={onSave}
+              loading={saving}
+              variant="filled"
+              color="sage"
+            >
+              Sauvegarder
+            </Button>
+          </>
+        )}
+
+        {selectedChestId !== null && !isEditing && (
+          <>
+            {canManageVisibility && (
               <Button
-                leftSection={<IconX size={16} />}
-                onClick={onCancelEdit}
-                variant="subtle"
+                variant={isManagingVisibility ? 'filled' : 'light'}
                 color="slate"
+                leftSection={isManagingVisibility ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                onClick={onToggleManagingVisibility}
               >
-                Annuler
+                {isManagingVisibility ? 'Terminer' : 'Masquer'}
               </Button>
-              <Button
-                leftSection={<IconCheck size={16} />}
-                onClick={onSave}
-                loading={saving}
-                variant="filled"
-                color="sage"
-              >
-                Sauvegarder
-              </Button>
-            </>
-          ) : (
-            <>
-              {canManageVisibility && (
-                <Button
-                  variant={isManagingVisibility ? 'filled' : 'light'}
-                  color="slate"
-                  leftSection={isManagingVisibility ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-                  onClick={onToggleManagingVisibility}
-                >
-                  {isManagingVisibility ? 'Terminer' : 'Masquer'}
-                </Button>
-              )}
+            )}
+            {canStockUpdate && (
               <Button
                 leftSection={<IconEdit size={16} />}
                 onClick={onStartEdit}
@@ -121,8 +125,8 @@ export function ChestSelectorBar({
               >
                 {itemsWithStockToday > 0 ? 'Mettre à jour le stock' : 'Faire le stock'}
               </Button>
-            </>
-          )
+            )}
+          </>
         )}
       </Group>
     </Group>

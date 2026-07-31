@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { resolveChestAccess, chestAccessWhereFilter } from '@/lib/chests/access';
 
 const createChestSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
@@ -31,6 +32,9 @@ const reorderChestsSchema = z.object({
   })),
 });
 
+export type GetChestsListOptions = {
+  bypassAccessFilter?: boolean;
+};
 export async function createChest(
   dispensarySlug: string,
   data: {
@@ -108,16 +112,29 @@ export async function getChests(dispensarySlug: string, onlyEnabled: boolean = f
   }
 }
 
-export async function getChestsList(dispensarySlug: string, onlyEnabled: boolean = false) {
+export async function getChestsList(
+  dispensarySlug: string,
+  onlyEnabled: boolean = false,
+  options: GetChestsListOptions = {},
+) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
+
+    const access = options.bypassAccessFilter
+      ? ({ all: true } as const)
+      : await resolveChestAccess(dispensaryId, effectiveRole);
+
+    if (!access.all && access.chestIds.length === 0) {
+      return { status: 200, data: [] };
+    }
 
     const chests = await prisma.chest.findMany({
       where: {
         ...tenantWhere(dispensaryId),
         ...(onlyEnabled && { isEnabled: true }),
+        ...chestAccessWhereFilter(access),
       },
       orderBy: [
         { order: 'asc' },

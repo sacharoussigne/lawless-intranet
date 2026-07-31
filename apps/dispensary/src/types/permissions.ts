@@ -8,6 +8,7 @@ export interface Permissions {
     delete: boolean;
     craftRead: boolean;
     craftWrite: boolean;
+    hide: boolean;
   };
   orders: {
     view: boolean;
@@ -57,4 +58,5 @@ export interface PermissionsContextType {
   accessibleAgendaIds: string[];
   cabinetModuleAccess: boolean;
   accessibleCabinetIds: string[];
+  hasAccessibleChests: boolean;
 }

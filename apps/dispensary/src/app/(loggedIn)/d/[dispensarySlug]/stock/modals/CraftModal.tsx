@@ -443,6 +443,11 @@ export default function CraftModal({
           <Text fw={600} size="xs" c="dimmed" tt="uppercase">
             Coffres
           </Text>
+          {chests.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              Aucun coffre accessible avec votre rôle.
+            </Text>
+          ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Select
               label="Coffre source de base"
@@ -464,6 +469,7 @@ export default function CraftModal({
               clearable={false}
             />
           </SimpleGrid>
+          )}
         </Stack>
 
         <Stack gap="sm">

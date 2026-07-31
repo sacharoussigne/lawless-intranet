@@ -170,6 +170,11 @@ export default function TransferModal({
       scrollAreaComponent={ScrollArea.Autosize}
     >
       <Stack gap="md">
+        {chests.length === 0 ? (
+          <Alert icon={<IconAlertCircle size={16} />} title="Aucun coffre" color="amber" variant="light">
+            Aucun coffre accessible avec votre rôle.
+          </Alert>
+        ) : null}
         <Alert
           icon={<IconAlertCircle size={16} />}
           title="Information"

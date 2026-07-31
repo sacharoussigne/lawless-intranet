@@ -10,6 +10,7 @@ import { getDefaultChestId } from '@/app/_actions/stock/internals';
 import { fetchLatestStockBeforeDate } from '@/app/_actions/stock/queryHelpers';
 import { buildManualMovements, type ManualStockMovementInput } from '@/lib/stock/movements';
 import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
+import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 
 function latestStockByItem<T extends { itemId: string; timestamp: Date }>(rows: T[]): Map<string, T> {
   const map = new Map<string, T>();
@@ -37,7 +38,7 @@ export async function updateStock(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
     const { session } = ctx;
 
     if (data.length === 0) {
@@ -66,6 +67,11 @@ export async function updateStock(
         status: 404,
         error: 'Coffre cible introuvable',
       };
+    }
+
+    const access = await resolveChestAccess(dispensaryId, effectiveRole);
+    if (!hasChestAccess(access, targetChestId)) {
+      return { status: 403, error: 'Accès refusé à ce coffre' };
     }
 
     const resolvedChestId = targetChestId;
@@ -160,7 +166,7 @@ export async function craftItem(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
     const { session } = ctx;
 
     const destinationChestId = data.destinationChestId || await getDefaultChestId(dispensaryId);
@@ -206,6 +212,15 @@ export async function craftItem(
           error: 'Aucun coffre source sélectionné',
         }],
       };
+    }
+
+    const access = await resolveChestAccess(dispensaryId, effectiveRole);
+    const craftChestIds = [
+      destinationChestId,
+      ...ingredientRequirements.map((r) => r.sourceChestId!).filter(Boolean),
+    ];
+    if (craftChestIds.some((id) => !hasChestAccess(access, id))) {
+      return { status: 403, error: 'Accès refusé à un ou plusieurs coffres' };
     }
 
     const stockLookups = ingredientRequirements.map((r) => {

@@ -7,7 +7,8 @@ import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 interface StockHeaderProps {
   isEditing: boolean;
   canCraftReadOrWrite: boolean;
-  canStockUpdate: boolean;
+  canTakeDeposit: boolean;
+  canTransfer: boolean;
   onOpenCraft: () => void;
   onOpenTransfer: () => void;
   onOpenTake: () => void;
@@ -16,7 +17,8 @@ interface StockHeaderProps {
 export function StockHeader({
   isEditing,
   canCraftReadOrWrite,
-  canStockUpdate,
+  canTakeDeposit,
+  canTransfer,
   onOpenCraft,
   onOpenTransfer,
   onOpenTake,
@@ -37,7 +39,7 @@ export function StockHeader({
                 Craft
               </Button>
             )}
-            {canStockUpdate && (
+            {canTakeDeposit && (
               <Button
                 leftSection={<IconArrowsExchange2 size={16} />}
                 onClick={onOpenTake}
@@ -47,7 +49,7 @@ export function StockHeader({
                 Prendre / Déposer
               </Button>
             )}
-            {canStockUpdate && (
+            {canTransfer && (
               <Button
                 leftSection={<IconArrowsExchange size={16} />}
                 onClick={onOpenTransfer}
