@@ -30,11 +30,6 @@ export async function moveItemsWithChests(
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'stock',
-      permission: {
-        resource: 'stock',
-        action: 'update',
-        message: `Permission refusée : vous n'avez pas la permission de ${actionLabel} du stock`,
-      },
     });
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;

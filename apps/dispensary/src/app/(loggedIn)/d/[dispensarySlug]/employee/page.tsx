@@ -75,16 +75,11 @@ export default async function EmployeePage({
     canEditAll || checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
 
   const salesFeatureEnabled = isAppFeatureEnabled(appSettings, 'sales');
-  const canCreateSale =
-    salesFeatureEnabled && (permissions?.sales.create ?? false) && hasAccessibleChests;
-  const canViewSales =
-    salesFeatureEnabled && (permissions?.sales.view ?? false) && hasAccessibleChests;
-  const canCancelSale =
-    salesFeatureEnabled && (permissions?.sales.cancel ?? false) && hasAccessibleChests;
-  const canViewAllSales =
-    salesFeatureEnabled && (permissions?.sales.viewAll ?? false) && hasAccessibleChests;
-  const canTakeStock =
-    ((appSettings.featureStockEnabled && permissions?.stock.update && hasAccessibleChests) ?? false);
+  const canCreateSale = salesFeatureEnabled && (permissions?.sales.create ?? false);
+  const canViewSales = salesFeatureEnabled && (permissions?.sales.view ?? false);
+  const canCancelSale = salesFeatureEnabled && (permissions?.sales.cancel ?? false);
+  const canViewAllSales = salesFeatureEnabled && (permissions?.sales.viewAll ?? false);
+  const canTakeStock = Boolean(appSettings.featureStockEnabled && hasAccessibleChests);
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
     {

@@ -68,6 +68,7 @@ export default function StockPageClient({
 
   const canStockUpdate = Boolean(permissions?.stock.update);
   const canStockHide = Boolean(permissions?.stock.hide);
+  const canTakeDeposit = chests.length > 0;
   const canManageVisibility = Boolean(selectedChestId && !isEditing && canStockHide);
   const canToggleVisibility = Boolean(canManageVisibility && isManagingVisibility);
 
@@ -291,7 +292,8 @@ export default function StockPageClient({
         <StockHeader
           isEditing={false}
           canCraftReadOrWrite={false}
-          canStockUpdate={false}
+          canTakeDeposit={false}
+          canTransfer={false}
           onOpenCraft={() => undefined}
           onOpenTransfer={() => undefined}
           onOpenTake={() => undefined}
@@ -309,7 +311,8 @@ export default function StockPageClient({
       <StockHeader
         isEditing={isEditing}
         canCraftReadOrWrite={Boolean(permissions?.stock.craftRead || permissions?.stock.craftWrite)}
-        canStockUpdate={canStockUpdate}
+        canTakeDeposit={canTakeDeposit}
+        canTransfer={canStockUpdate}
         onOpenCraft={() => setCraftModalOpened(true)}
         onOpenTransfer={() => setTransferModalOpened(true)}
         onOpenTake={() => setTakeModalOpened(true)}

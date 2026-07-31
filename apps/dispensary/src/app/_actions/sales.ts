@@ -12,7 +12,7 @@ import { getBankWeekBounds } from '@/lib/bankWeek';
 import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
 import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { fetchUserProfiles } from '@/lib/authUsers';
-import { resolveChestAccess, hasChestAccess, userHasAccessibleChests } from '@/lib/chests/access';
+import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 
 const saleItemSchema = z.object({
   itemId: z.string().uuid(),
@@ -147,14 +147,6 @@ export async function createSale(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
-
-    const hasChests = await userHasAccessibleChests(dispensaryId, effectiveRole);
-    if (!hasChests) {
-      return {
-        status: 403,
-        error: 'Accès refusé : aucun coffre accessible pour enregistrer une vente',
-      };
-    }
 
     const data = createSaleSchema.parse(rawData);
     const customerName = data.customerName?.trim() || null;

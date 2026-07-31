@@ -6,7 +6,6 @@ import { getAuthSession } from '@/lib/authSession';
 import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
-import { userHasAccessibleChests } from '@/lib/chests/access';
 import { getDataOrThrow } from '@/lib/response';
 import type { AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
@@ -32,11 +31,6 @@ export default async function SalesPage({
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession, dispensary.id);
   if (!checkRolePermission(effectiveRole, 'sales', 'view_all')) {
     redirect(routes.auth.noManagementAccess);
-  }
-
-  const hasAccessibleChests = await userHasAccessibleChests(dispensary.id, effectiveRole);
-  if (!hasAccessibleChests) {
-    redirect(routes.auth.noAccess);
   }
 
   const canCancel = checkRolePermission(effectiveRole, 'sales', 'cancel');

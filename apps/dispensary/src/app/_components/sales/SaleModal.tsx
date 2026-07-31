@@ -131,7 +131,7 @@ export function SaleModal({
 
   useEffect(() => {
     if (opened) {
-      setDefaultChestId(initialChestId);
+      setDefaultChestId(chests.length > 0 ? initialChestId : null);
       setLines([]);
       setItemToAdd(null);
       setCustomerName('');
@@ -139,7 +139,7 @@ export function SaleModal({
       setDescription('');
       setPriceAdjustment(0);
     }
-  }, [opened, initialChestId]);
+  }, [opened, initialChestId, chests.length]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -326,21 +326,21 @@ export function SaleModal({
           />
         </SimpleGrid>
 
-        <Select
-          label="Coffre source de base"
-          placeholder={chests.length === 0 ? 'Aucun coffre accessible' : 'Optionnel'}
-          data={chestOptions}
-          value={defaultChestId}
-          onChange={setDefaultChestId}
-          clearable
-          searchable
-          disabled={chests.length === 0}
-          description={
-            chests.length === 0
-              ? 'Aucun coffre accessible avec votre rôle. Les ventes depuis un coffre sont indisponibles.'
-              : undefined
-          }
-        />
+        {chests.length > 0 ? (
+          <Select
+            label="Coffre source de base"
+            placeholder="Optionnel"
+            data={chestOptions}
+            value={defaultChestId}
+            onChange={setDefaultChestId}
+            clearable
+            searchable
+          />
+        ) : (
+          <Text size="sm" c="dimmed">
+            Aucun coffre accessible : les ventes se font depuis la poche.
+          </Text>
+        )}
 
         <Group align="flex-end" grow>
           <Select
@@ -400,30 +400,36 @@ export function SaleModal({
                       </Stack>
                     </Table.Td>
                     <Table.Td>
-                      <SegmentedControl
-                        size="xs"
-                        value={line.source}
-                        onChange={(value) =>
-                          setLines((prev) =>
-                            prev.map((entry) =>
-                              entry.key === line.key
-                                ? {
-                                    ...entry,
-                                    source: value as SaleItemSource,
-                                    chestId:
-                                      value === SaleItemSource.CHEST
-                                        ? entry.chestId || defaultChestId
-                                        : null,
-                                  }
-                                : entry,
-                            ),
-                          )
-                        }
-                        data={[
-                          { label: 'Coffre', value: SaleItemSource.CHEST },
-                          { label: 'Poche', value: SaleItemSource.POCKET },
-                        ]}
-                      />
+                      {chests.length === 0 ? (
+                        <Badge variant="outline" color="slate">
+                          Poche
+                        </Badge>
+                      ) : (
+                        <SegmentedControl
+                          size="xs"
+                          value={line.source}
+                          onChange={(value) =>
+                            setLines((prev) =>
+                              prev.map((entry) =>
+                                entry.key === line.key
+                                  ? {
+                                      ...entry,
+                                      source: value as SaleItemSource,
+                                      chestId:
+                                        value === SaleItemSource.CHEST
+                                          ? entry.chestId || defaultChestId
+                                          : null,
+                                    }
+                                  : entry,
+                              ),
+                            )
+                          }
+                          data={[
+                            { label: 'Coffre', value: SaleItemSource.CHEST },
+                            { label: 'Poche', value: SaleItemSource.POCKET },
+                          ]}
+                        />
+                      )}
                     </Table.Td>
                     <Table.Td>
                       {line.source === SaleItemSource.CHEST ? (

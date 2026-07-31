@@ -43,7 +43,7 @@ const admin = ac.newRole({
 
 const employee = ac.newRole({
   ...userAc.statements,
-  stock: ["view", "update"],
+  stock: ["view"],
   orders: ["view"],
   bank: ["access"],
   application: ["access"],
@@ -84,7 +84,7 @@ const inventory_viewer = ac.newRole({
 
 const direction = ac.newRole({
   ...userAc.statements,
-  stock: ["view", "hide"],
+  stock: ["view", "hide", "update"],
   orders: [],
   search: [],
   bank: [],
