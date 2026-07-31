@@ -94,13 +94,19 @@ export async function fetchStockHistoryRows(
   itemIds: string[],
   range: { gte: Date; lt: Date },
   chestId?: string | null,
+  allowedChestIds?: string[] | null,
 ): Promise<StockHistoryRow[]> {
   if (itemIds.length === 0) return [];
+  if (allowedChestIds && allowedChestIds.length === 0) return [];
 
   const rows = await prisma.stockHistory.findMany({
     where: {
       itemId: { in: itemIds },
-      ...(chestId ? { chestId } : {}),
+      ...(chestId
+        ? { chestId }
+        : allowedChestIds
+          ? { chestId: { in: allowedChestIds } }
+          : {}),
       timestamp: range,
       chest: {
         isEnabled: true,
@@ -143,13 +149,19 @@ export async function fetchLatestStockBeforeDate(
   itemIds: string[],
   beforeDate: Date,
   chestId?: string | null,
+  allowedChestIds?: string[] | null,
 ): Promise<StockHistoryRow[]> {
   if (itemIds.length === 0) return [];
+  if (allowedChestIds && allowedChestIds.length === 0) return [];
 
   const baseWhere = {
     itemId: { in: itemIds },
     timestamp: { lt: beforeDate },
-    ...(chestId ? { chestId } : {}),
+    ...(chestId
+      ? { chestId }
+      : allowedChestIds
+        ? { chestId: { in: allowedChestIds } }
+        : {}),
     chest: {
       isEnabled: true,
       ...tenantWhere(dispensaryId),

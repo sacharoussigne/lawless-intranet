@@ -55,7 +55,9 @@ export default function StockPageClient({
 }: StockPageClientProps) {
   const { permissions } = usePermissions();
   const chests = initialChests;
-  const [selectedChestId, setSelectedChestId] = useState<string | null>(null);
+  const [selectedChestId, setSelectedChestId] = useState<string | null>(() =>
+    initialChests.length === 1 ? initialChests[0].id : null,
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [craftModalOpened, setCraftModalOpened] = useState(false);
   const [transferModalOpened, setTransferModalOpened] = useState(false);
@@ -65,7 +67,9 @@ export default function StockPageClient({
   const [isManagingVisibility, setIsManagingVisibility] = useState(false);
 
   const canStockUpdate = Boolean(permissions?.stock.update);
-  const canManageVisibility = Boolean(selectedChestId && !isEditing && canStockUpdate);
+  const canStockHide = Boolean(permissions?.stock.hide);
+  const canTakeDeposit = chests.length > 0;
+  const canManageVisibility = Boolean(selectedChestId && !isEditing && canStockHide);
   const canToggleVisibility = Boolean(canManageVisibility && isManagingVisibility);
 
   const { data: items = initialItems, isFetching, isPending } = useStockItems(selectedChestId, initialItems);
@@ -273,23 +277,42 @@ export default function StockPageClient({
     return label ? `Dernier stock : ${label}` : null;
   }, [itemsWithStockToday, selectedChestId, chests, lastStockDaysByChest]);
 
-  const chestOptions = useMemo(
-    () => [
-      { value: '', label: 'Tous les coffres' },
-      ...chests.map((chest) => ({
-        value: chest.id,
-        label: chest.name,
-      })),
-    ],
-    [chests],
-  );
+  const chestOptions = useMemo(() => {
+    const options = chests.map((chest) => ({
+      value: chest.id,
+      label: chest.name,
+    }));
+    if (chests.length <= 1) return options;
+    return [{ value: '', label: 'Tous les coffres' }, ...options];
+  }, [chests]);
+
+  if (chests.length === 0) {
+    return (
+      <Container size="xl" py="xl">
+        <StockHeader
+          isEditing={false}
+          canCraftReadOrWrite={false}
+          canTakeDeposit={false}
+          canTransfer={false}
+          onOpenCraft={() => undefined}
+          onOpenTransfer={() => undefined}
+          onOpenTake={() => undefined}
+        />
+        <Text c="dimmed">
+          Aucun coffre accessible avec votre rôle. Demandez à un administrateur de configurer
+          l&apos;accès aux coffres.
+        </Text>
+      </Container>
+    );
+  }
 
   return (
     <Container size="xl" py="xl">
       <StockHeader
         isEditing={isEditing}
         canCraftReadOrWrite={Boolean(permissions?.stock.craftRead || permissions?.stock.craftWrite)}
-        canStockUpdate={canStockUpdate}
+        canTakeDeposit={canTakeDeposit}
+        canTransfer={canStockUpdate}
         onOpenCraft={() => setCraftModalOpened(true)}
         onOpenTransfer={() => setTransferModalOpened(true)}
         onOpenTake={() => setTakeModalOpened(true)}
@@ -307,6 +330,7 @@ export default function StockPageClient({
         canStockUpdate={canStockUpdate}
         canManageVisibility={canManageVisibility}
         isManagingVisibility={isManagingVisibility}
+        chestSelectLocked={chests.length === 1}
         onChangeChestId={handleChangeChestId}
         onToggleManagingVisibility={() => setIsManagingVisibility((prev) => !prev)}
         onStartEdit={handleStartEdit}

@@ -18,6 +18,7 @@ const PermissionsContext = createContext<PermissionsContextType>({
   accessibleAgendaIds: [],
   cabinetModuleAccess: false,
   accessibleCabinetIds: [],
+  hasAccessibleChests: false,
 });
 
 interface PermissionsProviderProps {
@@ -32,6 +33,7 @@ interface PermissionsProviderProps {
   accessibleAgendaIds?: string[];
   cabinetModuleAccess?: boolean;
   accessibleCabinetIds?: string[];
+  hasAccessibleChests?: boolean;
 }
 
 export function PermissionsProvider({
@@ -46,6 +48,7 @@ export function PermissionsProvider({
   accessibleAgendaIds = [],
   cabinetModuleAccess = false,
   accessibleCabinetIds = [],
+  hasAccessibleChests = false,
 }: PermissionsProviderProps) {
   return (
     <PermissionsContext.Provider
@@ -61,6 +64,7 @@ export function PermissionsProvider({
         accessibleAgendaIds,
         cabinetModuleAccess,
         accessibleCabinetIds,
+        hasAccessibleChests,
       }}
     >
       {children}

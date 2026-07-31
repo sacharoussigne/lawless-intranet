@@ -267,12 +267,18 @@ export default function TakeDepositModal({
 
         <Select
           label={isTake ? 'Coffre source de base' : 'Coffre de destination de base'}
-          placeholder="Sélectionner un coffre"
+          placeholder={chests.length === 0 ? 'Aucun coffre accessible' : 'Sélectionner un coffre'}
           data={chestOptions}
           value={defaultChestId}
           onChange={setDefaultChestId}
           searchable
           required
+          disabled={chests.length === 0}
+          description={
+            chests.length === 0
+              ? 'Aucun coffre accessible avec votre rôle.'
+              : undefined
+          }
         />
 
         <Group align="flex-end" grow>

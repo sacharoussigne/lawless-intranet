@@ -75,7 +75,7 @@ export async function setChestCategoryHidden(
       feature: 'stock',
       permission: {
         resource: 'stock',
-        action: 'update',
+        action: 'hide',
         message: 'Permission refusée : vous n\'avez pas la permission de masquer des éléments du stock',
       },
     });
@@ -135,7 +135,7 @@ export async function setChestItemHidden(
       feature: 'stock',
       permission: {
         resource: 'stock',
-        action: 'update',
+        action: 'hide',
         message: 'Permission refusée : vous n\'avez pas la permission de masquer des éléments du stock',
       },
     });

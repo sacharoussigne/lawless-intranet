@@ -7,6 +7,7 @@ import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getTodayStart, getTomorrowStart } from '@/lib/date';
 import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
+import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 
 export type ChestStockMoveMode = 'take' | 'deposit';
 
@@ -29,14 +30,9 @@ export async function moveItemsWithChests(
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'stock',
-      permission: {
-        resource: 'stock',
-        action: 'update',
-        message: `Permission refusée : vous n'avez pas la permission de ${actionLabel} du stock`,
-      },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
 
     const validItems = data.items.filter((item) => item.quantity > 0 && item.chestId);
@@ -46,6 +42,11 @@ export async function moveItemsWithChests(
 
     const itemIds = Array.from(new Set(validItems.map((item) => item.itemId)));
     const chestIds = Array.from(new Set(validItems.map((item) => item.chestId)));
+
+    const access = await resolveChestAccess(dispensaryId, effectiveRole);
+    if (chestIds.some((chestId) => !hasChestAccess(access, chestId))) {
+      return { status: 403, error: 'Accès refusé à un ou plusieurs coffres' };
+    }
 
     const [items, chests] = await Promise.all([
       prisma.item.findMany({

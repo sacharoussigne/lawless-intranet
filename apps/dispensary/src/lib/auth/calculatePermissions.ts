@@ -19,6 +19,7 @@ export function calculatePermissions(role: string | null | undefined): Permissio
       delete: checkRolePermission(role, 'stock', 'delete'),
       craftRead: checkRolePermission(role, 'stock', 'craft-read'),
       craftWrite: checkRolePermission(role, 'stock', 'craft-write'),
+      hide: checkRolePermission(role, 'stock', 'hide'),
     },
     orders: {
       view: checkRolePermission(role, 'orders', 'view'),

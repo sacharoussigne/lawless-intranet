@@ -34,6 +34,7 @@ model Dispensary {
   craftRecipes CraftRecipe[]
   cabinets Cabinet[]
   sales       Sale[]
+  roleChestAccesses RoleChestAccess[]
 
   @@index([createdById])
   @@map("dispensary")
@@ -186,9 +187,38 @@ model Chest {
   saleItems SaleItem[]
   hiddenCategories ChestHiddenCategory[]
   hiddenItems ChestHiddenItem[]
+  roleAccesses RoleChestAccessChest[]
 
   @@index([dispensaryId])
   @@map("chest")
+}
+
+model RoleChestAccess {
+  id           String                 @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary             @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  role         String
+  allChests    Boolean                @default(false)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  chests       RoleChestAccessChest[]
+
+  @@unique([dispensaryId, role])
+  @@index([dispensaryId])
+  @@map("role_chest_access")
+}
+
+model RoleChestAccessChest {
+  id       String          @id @default(uuid())
+  accessId String
+  access   RoleChestAccess @relation(fields: [accessId], references: [id], onDelete: Cascade)
+  chestId  String
+  chest    Chest           @relation(fields: [chestId], references: [id], onDelete: Cascade)
+
+  @@unique([accessId, chestId])
+  @@index([accessId])
+  @@index([chestId])
+  @@map("role_chest_access_chest")
 }
 
 model ChestHiddenCategory {

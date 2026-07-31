@@ -6,6 +6,7 @@ import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getTodayStart, getTomorrowStart } from '@/lib/date';
 import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
+import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 
 type TransferItem = { itemId: string; quantity: number };
 
@@ -115,7 +116,7 @@ export async function transferMultipleStock(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
 
     const { sourceChestId, destinationChestId, items } = data;
 
@@ -124,6 +125,11 @@ export async function transferMultipleStock(
         status: 400,
         error: 'Le coffre source et le coffre destination doivent être différents',
       };
+    }
+
+    const access = await resolveChestAccess(dispensaryId, effectiveRole);
+    if (!hasChestAccess(access, sourceChestId) || !hasChestAccess(access, destinationChestId)) {
+      return { status: 403, error: 'Accès refusé à un ou plusieurs coffres' };
     }
 
     const validItems = items.filter((i) => i.quantity > 0);
