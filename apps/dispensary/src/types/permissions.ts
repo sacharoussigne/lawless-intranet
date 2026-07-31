@@ -8,6 +8,7 @@ export interface Permissions {
     delete: boolean;
     craftRead: boolean;
     craftWrite: boolean;
+    hide: boolean;
   };
   orders: {
     view: boolean;

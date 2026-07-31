@@ -67,7 +67,8 @@ export default function StockPageClient({
   const [isManagingVisibility, setIsManagingVisibility] = useState(false);
 
   const canStockUpdate = Boolean(permissions?.stock.update);
-  const canManageVisibility = Boolean(selectedChestId && !isEditing && canStockUpdate);
+  const canStockHide = Boolean(permissions?.stock.hide);
+  const canManageVisibility = Boolean(selectedChestId && !isEditing && canStockHide);
   const canToggleVisibility = Boolean(canManageVisibility && isManagingVisibility);
 
   const { data: items = initialItems, isFetching, isPending } = useStockItems(selectedChestId, initialItems);
