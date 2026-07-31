@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Container, Text, Stack, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import CraftModal from './modals/CraftModal';
 import TransferModal from './modals/TransferModal';
 import TakeDepositModal from './modals/TakeModal';
 import type { ItemWithRelations } from '@/types/stock';
-import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { usePermissions, useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import type { ChestListItem } from '@/types/chests';
 import { StockHeader } from './components/StockHeader';
 import { ChestSelectorBar } from './components/ChestSelectorBar';
@@ -18,6 +19,7 @@ import { getEffectiveStockQuantity } from '@/lib/stock/ensureTodayStock';
 import { getContrastTextColor } from '@/lib/color/contrastTextColor';
 import type { StockChecksSummary } from '@/app/_actions/stockChecks';
 import type { StockUiPreferences } from '@/types/stockUiPreferences';
+import { stockKeys } from '@/lib/stock/queryKeys';
 import {
   EMPTY_CHEST_STOCK_VISIBILITY,
   buildManualStockSavePayload,
@@ -54,6 +56,8 @@ export default function StockPageClient({
   initialLastStockDaysByChest,
 }: StockPageClientProps) {
   const { permissions } = usePermissions();
+  const dispensarySlug = useRequiredDispensarySlug();
+  const queryClient = useQueryClient();
   const chests = initialChests;
   const [selectedChestId, setSelectedChestId] = useState<string | null>(() =>
     initialChests.length === 1 ? initialChests[0].id : null,
@@ -72,7 +76,23 @@ export default function StockPageClient({
   const canManageVisibility = Boolean(selectedChestId && !isEditing && canStockHide);
   const canToggleVisibility = Boolean(canManageVisibility && isManagingVisibility);
 
-  const { data: items = initialItems, isFetching, isPending } = useStockItems(selectedChestId, initialItems);
+  const ssrItemsChestId = initialChests.length === 1 ? initialChests[0].id : null;
+  const stockItemsInitialData =
+    selectedChestId === ssrItemsChestId && initialItems.length > 0 ? initialItems : undefined;
+
+  // Overwrite empty poisoned cache before useQuery reads it (same render).
+  if (stockItemsInitialData) {
+    const key = stockKeys.items(dispensarySlug, selectedChestId);
+    const cached = queryClient.getQueryData<ItemWithRelations[]>(key);
+    if (!cached || cached.length === 0) {
+      queryClient.setQueryData(key, stockItemsInitialData);
+    }
+  }
+
+  const { data: items = initialItems, isFetching, isPending } = useStockItems(
+    selectedChestId,
+    stockItemsInitialData,
+  );
   const { data: stockChecksSummary = initialStockChecksSummary } = useStockChecksSummary(initialStockChecksSummary);
   const { data: lastStockDaysByChest = initialLastStockDaysByChest } = useLastStockDaysByChest(initialLastStockDaysByChest);
   const { data: visibility = EMPTY_CHEST_STOCK_VISIBILITY } = useChestStockVisibility(selectedChestId);

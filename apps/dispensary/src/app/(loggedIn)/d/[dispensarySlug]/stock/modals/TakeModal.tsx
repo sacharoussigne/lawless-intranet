@@ -14,7 +14,7 @@ import {
   Table,
   Text,
 } from '@mantine/core';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
@@ -58,9 +58,10 @@ export default function TakeDepositModal({
   const [mode, setMode] = useState<ChestStockMoveMode>('take');
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
   const [lines, setLines] = useState<MoveLine[]>([]);
-  const [itemToAdd, setItemToAdd] = useState<string | null>(null);
 
-  const { data: defaultChestItems = [], isFetching } = useStockItems(defaultChestId, []);
+  const { data: defaultChestItems = [], isFetching } = useStockItems(defaultChestId, undefined, {
+    enabled: opened && Boolean(defaultChestId),
+  });
   const moveMutation = useChestStockMoveMutation();
 
   const isTake = mode === 'take';
@@ -102,13 +103,11 @@ export default function TakeDepositModal({
       setMode('take');
       setDefaultChestId(initialChestId);
       setLines([]);
-      setItemToAdd(null);
     }
   }, [opened, initialChestId]);
 
   useEffect(() => {
     setLines([]);
-    setItemToAdd(null);
   }, [mode]);
 
   const chestOptions = useMemo(
@@ -160,18 +159,16 @@ export default function TakeDepositModal({
     });
   }, [defaultChestId, lines, isTake, itemsByChest]);
 
-  const handleAddLine = () => {
-    if (!itemToAdd) return;
+  const handleAddLine = (itemId: string) => {
     setLines((prev) => [
       ...prev,
       {
-        key: `${itemToAdd}-${Date.now()}`,
-        itemId: itemToAdd,
+        key: `${itemId}-${Date.now()}`,
+        itemId,
         quantity: 1,
         chestId: defaultChestId,
       },
     ]);
-    setItemToAdd(null);
   };
 
   const handleSubmit = async () => {
@@ -281,25 +278,17 @@ export default function TakeDepositModal({
           }
         />
 
-        <Group align="flex-end" grow>
-          <Select
-            label="Ajouter un objet"
-            placeholder={isFetching ? 'Chargement…' : 'Choisir un objet'}
-            data={itemOptions}
-            value={itemToAdd}
-            onChange={setItemToAdd}
-            searchable
-            disabled={!defaultChestId || isFetching}
-          />
-          <Button
-            leftSection={<IconPlus size={16} />}
-            onClick={handleAddLine}
-            disabled={!itemToAdd}
-            variant="light"
-          >
-            Ajouter
-          </Button>
-        </Group>
+        <Select
+          label="Ajouter un objet"
+          placeholder={isFetching ? 'Chargement…' : 'Choisir un objet'}
+          data={itemOptions}
+          value={null}
+          onChange={(value) => {
+            if (value) handleAddLine(value);
+          }}
+          searchable
+          disabled={!defaultChestId || isFetching}
+        />
 
         {lines.length === 0 ? (
           <Text c="dimmed" size="sm">
