@@ -15,6 +15,7 @@ interface ChestSelectorBarProps {
   canStockUpdate: boolean;
   canManageVisibility: boolean;
   isManagingVisibility: boolean;
+  chestSelectLocked?: boolean;
   onChangeChestId: (value: string | null) => void;
   onToggleManagingVisibility: () => void;
   onStartEdit: () => void;
@@ -35,6 +36,7 @@ export function ChestSelectorBar({
   canStockUpdate,
   canManageVisibility,
   isManagingVisibility,
+  chestSelectLocked = false,
   onChangeChestId,
   onToggleManagingVisibility,
   onStartEdit,
@@ -51,7 +53,7 @@ export function ChestSelectorBar({
           value={selectedChestId || ''}
           onChange={(value) => onChangeChestId(value === '' ? null : value)}
           clearable={false}
-          disabled={isEditing || isManagingVisibility}
+          disabled={chestSelectLocked || isEditing || isManagingVisibility}
           style={{ minWidth: 200 }}
         />
 

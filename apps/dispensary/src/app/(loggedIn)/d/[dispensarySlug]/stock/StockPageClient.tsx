@@ -330,6 +330,7 @@ export default function StockPageClient({
         canStockUpdate={canStockUpdate}
         canManageVisibility={canManageVisibility}
         isManagingVisibility={isManagingVisibility}
+        chestSelectLocked={chests.length === 1}
         onChangeChestId={handleChangeChestId}
         onToggleManagingVisibility={() => setIsManagingVisibility((prev) => !prev)}
         onStartEdit={handleStartEdit}
