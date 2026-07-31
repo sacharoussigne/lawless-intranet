@@ -284,6 +284,25 @@ export default function StockPageClient({
     [chests],
   );
 
+  if (chests.length === 0) {
+    return (
+      <Container size="xl" py="xl">
+        <StockHeader
+          isEditing={false}
+          canCraftReadOrWrite={false}
+          canStockUpdate={false}
+          onOpenCraft={() => undefined}
+          onOpenTransfer={() => undefined}
+          onOpenTake={() => undefined}
+        />
+        <Text c="dimmed">
+          Aucun coffre accessible avec votre rôle. Demandez à un administrateur de configurer
+          l&apos;accès aux coffres.
+        </Text>
+      </Container>
+    );
+  }
+
   return (
     <Container size="xl" py="xl">
       <StockHeader

@@ -328,12 +328,18 @@ export function SaleModal({
 
         <Select
           label="Coffre source de base"
-          placeholder="Optionnel"
+          placeholder={chests.length === 0 ? 'Aucun coffre accessible' : 'Optionnel'}
           data={chestOptions}
           value={defaultChestId}
           onChange={setDefaultChestId}
           clearable
           searchable
+          disabled={chests.length === 0}
+          description={
+            chests.length === 0
+              ? 'Aucun coffre accessible avec votre rôle. Les ventes depuis un coffre sont indisponibles.'
+              : undefined
+          }
         />
 
         <Group align="flex-end" grow>

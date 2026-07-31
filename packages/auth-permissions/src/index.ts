@@ -43,6 +43,7 @@ const admin = ac.newRole({
 
 const employee = ac.newRole({
   ...userAc.statements,
+  stock: ["view", "update"],
   orders: ["view"],
   bank: ["access"],
   application: ["access"],

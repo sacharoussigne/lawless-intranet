@@ -18,6 +18,7 @@ import {
   mapItemWithStockSnapshot,
   ITEM_STOCK_SELECT,
 } from '@/app/_actions/stock/queryHelpers';
+import { resolveChestAccess, hasChestAccess, chestAccessWhereFilter } from '@/lib/chests/access';
 
 export async function getLastStockDaysByChest(dispensarySlug: string) {
   try {
@@ -25,12 +26,18 @@ export async function getLastStockDaysByChest(dispensarySlug: string) {
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
+
+    const access = await resolveChestAccess(dispensaryId, effectiveRole);
+    if (!access.all && access.chestIds.length === 0) {
+      return { status: 200, data: {} };
+    }
 
     const chests = await prisma.chest.findMany({
       where: {
         isEnabled: true,
         ...tenantWhere(dispensaryId),
+        ...chestAccessWhereFilter(access),
       },
       select: { id: true },
     });
@@ -61,7 +68,16 @@ export async function getItemsWithStock(
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
+
+    const access = await resolveChestAccess(dispensaryId, effectiveRole);
+    if (chestId) {
+      if (!hasChestAccess(access, chestId)) {
+        return { status: 403, error: 'Accès refusé à ce coffre' };
+      }
+    }
+
+    const allowedChestIds = access.all ? null : access.chestIds;
 
     const today = getTodayStart();
     const tomorrow = getTomorrowStart();
@@ -74,8 +90,16 @@ export async function getItemsWithStock(
         itemIds,
         { gte: today, lt: tomorrow },
         chestId,
+        allowedChestIds,
       ),
-      fetchLatestStockBeforeDate(prisma, dispensaryId, itemIds, today, chestId),
+      fetchLatestStockBeforeDate(
+        prisma,
+        dispensaryId,
+        itemIds,
+        today,
+        chestId,
+        allowedChestIds,
+      ),
     ]);
 
     const snapshots = buildStockSnapshotsWithPrevious(todayRows, previousRows, today, chestId);
@@ -103,7 +127,14 @@ export async function getItemsWithStockForDate(
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
+
+    if (chestId) {
+      const access = await resolveChestAccess(dispensaryId, effectiveRole);
+      if (!hasChestAccess(access, chestId)) {
+        return { status: 403, error: 'Accès refusé à ce coffre' };
+      }
+    }
 
     const dayStart = getStartOfDay(date);
     const dayEnd = new Date(dayStart);
@@ -168,7 +199,10 @@ export async function getItemsWithDetailedStock(
       feature: 'search',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
+
+    const access = await resolveChestAccess(dispensaryId, effectiveRole);
+    const allowedChestIds = access.all ? null : access.chestIds;
 
     const today = getTodayStart();
     const tomorrow = getTomorrowStart();
@@ -185,14 +219,15 @@ export async function getItemsWithDetailedStock(
 
     const ids = items.map((item) => item.id);
     const [todayRows, previousRows] = await Promise.all([
-      fetchStockHistoryRows(dispensaryId, ids, { gte: today, lt: tomorrow }),
-      fetchLatestStockBeforeDate(prisma, dispensaryId, ids, today),
+      fetchStockHistoryRows(dispensaryId, ids, { gte: today, lt: tomorrow }, null, allowedChestIds),
+      fetchLatestStockBeforeDate(prisma, dispensaryId, ids, today, null, allowedChestIds),
     ]);
 
     const allChests = await prisma.chest.findMany({
       where: {
         isEnabled: true,
         ...tenantWhere(dispensaryId),
+        ...chestAccessWhereFilter(access),
       },
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
