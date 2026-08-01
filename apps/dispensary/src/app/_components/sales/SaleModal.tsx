@@ -74,7 +74,7 @@ export function SaleModal({
   const [customerName, setCustomerName] = useState('');
   const [individualCustomerId, setIndividualCustomerId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [priceAdjustment, setPriceAdjustment] = useState<number | string>(0);
+  const [priceAdjustment, setPriceAdjustment] = useState<number | string>('');
   const [debouncedCustomerQuery] = useDebouncedValue(customerName.trim(), 300);
 
   const sellableQuery = useQuery({
@@ -138,7 +138,7 @@ export function SaleModal({
       setCustomerName('');
       setIndividualCustomerId(null);
       setDescription('');
-      setPriceAdjustment(0);
+      setPriceAdjustment('');
     }
   }, [opened, initialChestId, chests.length]);
 
