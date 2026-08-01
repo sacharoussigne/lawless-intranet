@@ -2,7 +2,10 @@ export type OrdersPageFilters = {
   page: number;
   pageSize: number;
   status: string | null;
+  type: string | null;
   search: string;
+  createdAtFrom: string | null;
+  createdAtTo: string | null;
 };
 
 export const ordersKeys = {

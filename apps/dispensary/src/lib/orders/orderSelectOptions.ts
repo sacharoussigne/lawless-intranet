@@ -37,3 +37,8 @@ export const orderStatusFilterOptions = [
   { value: '', label: 'Tous les statuts' },
   ...orderStatusSelectOptions,
 ];
+
+export const orderTypeFilterOptions = [
+  { value: '', label: 'Tous les types' },
+  ...orderTypeSelectOptions,
+];

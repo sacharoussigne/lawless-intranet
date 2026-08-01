@@ -18,7 +18,10 @@ import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { OrdersTable } from './components/OrdersTable';
 import CreateOrderModal from './components/CreateOrderModal';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
-import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import {
+  usePermissions,
+  useRequiredDispensarySlug,
+} from '@/app/_contexts/PermissionsContext';
 import type { OrderSummary, OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import {
@@ -27,10 +30,30 @@ import {
   useOrdersPage,
 } from './hooks/useOrdersQueries';
 import type { OrdersPageFilters } from '@/lib/orders/queryKeys';
+import {
+  readOrdersFiltersPreference,
+  writeOrdersFiltersPreference,
+} from './ordersFiltersStorage';
+import { getOrderStatusLabel } from '@/types/enum/orderStatus';
+import { getOrderTypeLabel } from '@/types/enum/orderType';
+import type { OrderStatus, OrderType } from '@prisma/client';
 
 interface OrdersPageClientProps {
   initialOrdersPage: OrdersPageResult;
   initialAssignments: OrderMailTemplateAssignment[];
+}
+
+function formatDateRangeChip(from: string | null, to: string | null): string {
+  const format = (iso: string) =>
+    new Date(iso).toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  if (from && to) return `${format(from)} → ${format(to)}`;
+  if (from) return `Depuis ${format(from)}`;
+  if (to) return `Jusqu'au ${format(to)}`;
+  return '';
 }
 
 export default function OrdersPageClient({
@@ -38,10 +61,15 @@ export default function OrdersPageClient({
   initialAssignments,
 }: OrdersPageClientProps) {
   const { permissions } = usePermissions();
+  const dispensarySlug = useRequiredDispensarySlug();
+  const [filtersReady, setFiltersReady] = useState(false);
   const [filters, setFilters] = useState<Omit<OrdersPageFilters, 'search'>>({
     page: defaultOrdersPageFilters.page,
     pageSize: defaultOrdersPageFilters.pageSize,
     status: defaultOrdersPageFilters.status,
+    type: defaultOrdersPageFilters.type,
+    createdAtFrom: defaultOrdersPageFilters.createdAtFrom,
+    createdAtTo: defaultOrdersPageFilters.createdAtTo,
   });
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
@@ -62,14 +90,61 @@ export default function OrdersPageClient({
     null,
   );
 
-  const { data: ordersPage, isFetching } = useOrdersPage(queryFilters, initialOrdersPage);
+  useEffect(() => {
+    const saved = readOrdersFiltersPreference(dispensarySlug);
+    if (saved) {
+      setFilters((current) => ({
+        ...current,
+        page: 1,
+        pageSize: saved.pageSize,
+        status: saved.status,
+        type: saved.type,
+        createdAtFrom: saved.createdAtFrom,
+        createdAtTo: saved.createdAtTo,
+      }));
+      setSearchInput(saved.search);
+    }
+    setFiltersReady(true);
+  }, [dispensarySlug]);
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    writeOrdersFiltersPreference(dispensarySlug, {
+      status: filters.status,
+      type: filters.type,
+      search: searchInput,
+      pageSize: filters.pageSize,
+      createdAtFrom: filters.createdAtFrom,
+      createdAtTo: filters.createdAtTo,
+    });
+  }, [
+    dispensarySlug,
+    filtersReady,
+    filters.status,
+    filters.type,
+    filters.pageSize,
+    filters.createdAtFrom,
+    filters.createdAtTo,
+    searchInput,
+  ]);
+
+  const { data: ordersPage, isFetching } = useOrdersPage(
+    queryFilters,
+    filtersReady ? initialOrdersPage : undefined,
+  );
   const { data: assignments = initialAssignments } = useOrderLetterAssignments(
     initialAssignments,
   );
 
   const orders = ordersPage?.orders ?? [];
   const totalRecords = ordersPage?.totalCount ?? 0;
-  const hasActiveFilters = Boolean(filters.status || searchInput.trim());
+  const hasActiveFilters = Boolean(
+    filters.status ||
+      filters.type ||
+      filters.createdAtFrom ||
+      filters.createdAtTo ||
+      searchInput.trim(),
+  );
   const isSearchDebouncing = searchInput !== debouncedSearch;
   const showEmptyCatalog = totalRecords === 0 && !isFetching && !hasActiveFilters;
   const tableLoading = isFetching && !isSearchDebouncing;
@@ -92,14 +167,26 @@ export default function OrdersPageClient({
 
   useEffect(() => {
     setFilters((current) => ({ ...current, page: 1 }));
-  }, [filters.status, debouncedSearch]);
+  }, [filters.status, filters.type, filters.createdAtFrom, filters.createdAtTo, debouncedSearch]);
 
   const handleStatusFilterChange = (value: string | null) => {
     setFilters((current) => ({ ...current, status: value }));
   };
 
+  const handleTypeFilterChange = (value: string | null) => {
+    setFilters((current) => ({ ...current, type: value }));
+  };
+
   const handleNameFilterChange = (value: string) => {
     setSearchInput(value);
+  };
+
+  const handleCreatedAtRangeChange = (from: string | null, to: string | null) => {
+    setFilters((current) => ({
+      ...current,
+      createdAtFrom: from,
+      createdAtTo: to,
+    }));
   };
 
   const handlePageChange = (page: number) => {
@@ -143,22 +230,46 @@ export default function OrdersPageClient({
               {
                 label: 'Statut',
                 value: filters.status,
+                displayValue: filters.status
+                  ? getOrderStatusLabel(filters.status as OrderStatus)
+                  : undefined,
                 onRemove: () => handleStatusFilterChange(null),
+              },
+              {
+                label: 'Type',
+                value: filters.type,
+                displayValue: filters.type
+                  ? getOrderTypeLabel(filters.type as OrderType)
+                  : undefined,
+                onRemove: () => handleTypeFilterChange(null),
+              },
+              {
+                label: 'Date de création',
+                value:
+                  filters.createdAtFrom || filters.createdAtTo
+                    ? formatDateRangeChip(filters.createdAtFrom, filters.createdAtTo)
+                    : null,
+                onRemove: () => handleCreatedAtRangeChange(null, null),
               },
             ]}
           />
 
           <OrdersTable
             orders={orders}
-            loading={tableLoading}
+            loading={tableLoading || !filtersReady}
             statusFilter={filters.status}
+            typeFilter={filters.type}
             nameFilter={searchInput}
+            createdAtFrom={filters.createdAtFrom}
+            createdAtTo={filters.createdAtTo}
             page={filters.page}
             pageSize={filters.pageSize}
             totalRecords={totalRecords}
             permissions={permissions}
             onStatusFilterChange={handleStatusFilterChange}
+            onTypeFilterChange={handleTypeFilterChange}
             onNameFilterChange={handleNameFilterChange}
+            onCreatedAtRangeChange={handleCreatedAtRangeChange}
             onPageChange={handlePageChange}
             onView={(order) => {
               setViewingOrderId(order.id);

@@ -9,6 +9,7 @@ export interface OrderItem {
     name: string;
     price: number | null;
     weight?: number | null;
+    isEnabled?: boolean;
   };
 }
 

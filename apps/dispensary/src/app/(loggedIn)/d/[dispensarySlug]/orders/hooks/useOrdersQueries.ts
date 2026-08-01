@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
+  completeOrder,
   createOrder,
   deleteOrder,
   getActiveOrdersForCompanyGroup,
@@ -19,6 +20,7 @@ import {
   ordersKeys,
   type OrdersPageFilters,
 } from '@/lib/orders/queryKeys';
+import { stockKeys } from '@/lib/stock/queryKeys';
 import { normalizeItemPrice } from '@/lib/orders/calculateOrderPriceFromItems';
 import type { OrdersPageResult, OrderWithRelations } from '@/types/orders';
 import type { ItemWithRelations } from '@/types/stock';
@@ -30,7 +32,10 @@ export const defaultOrdersPageFilters: OrdersPageFilters = {
   page: 1,
   pageSize: DEFAULT_PAGE_SIZE,
   status: null,
+  type: null,
   search: '',
+  createdAtFrom: null,
+  createdAtTo: null,
 };
 
 function isDefaultInitialPage(filters: OrdersPageFilters): boolean {
@@ -38,7 +43,10 @@ function isDefaultInitialPage(filters: OrdersPageFilters): boolean {
     filters.page === 1 &&
     filters.pageSize === DEFAULT_PAGE_SIZE &&
     filters.status === null &&
-    filters.search === ''
+    filters.type === null &&
+    filters.search === '' &&
+    filters.createdAtFrom === null &&
+    filters.createdAtTo === null
   );
 }
 
@@ -55,7 +63,10 @@ async function fetchOrdersPage(dispensarySlug: string, filters: OrdersPageFilter
       | 'CANCELLED'
       | null
       | undefined,
+    type: filters.type as 'INCOMING' | 'OUTGOING' | null | undefined,
     search: filters.search || undefined,
+    createdAtFrom: filters.createdAtFrom,
+    createdAtTo: filters.createdAtTo,
   });
   return handleAction(result) as OrdersPageResult;
 }
@@ -264,6 +275,46 @@ export function useDeleteOrderMutation() {
       notifications.show({
         title: 'Erreur',
         message: error.message || 'Erreur lors de la suppression',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useCompleteOrderMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const invalidateOrders = useInvalidateOrders();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      vars: Parameters<typeof completeOrder>[1] & { affectedChestIds?: string[] },
+    ) => {
+      const { affectedChestIds: _affectedChestIds, ...payload } = vars;
+      const result = await completeOrder(dispensarySlug, payload);
+      handleAction(result);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      invalidateOrders();
+      for (const chestId of vars.affectedChestIds ?? []) {
+        void queryClient.invalidateQueries({
+          queryKey: stockKeys.items(dispensarySlug, chestId),
+        });
+      }
+      void queryClient.invalidateQueries({
+        queryKey: stockKeys.items(dispensarySlug, null),
+      });
+      notifications.show({
+        title: 'Succès',
+        message: 'Commande terminée avec succès',
+        color: 'moss',
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la finalisation de la commande',
         color: 'danger',
       });
     },

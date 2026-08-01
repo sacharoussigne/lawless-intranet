@@ -299,6 +299,8 @@ enum StockMovementKind {
   DEPOSIT_IN
   SALE_OUT
   SALE_CANCEL_RESTORE
+  ORDER_IN
+  ORDER_OUT
 }
 
 enum SaleStatus {

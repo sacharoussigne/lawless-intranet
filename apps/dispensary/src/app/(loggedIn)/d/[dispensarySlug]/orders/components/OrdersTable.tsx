@@ -1,12 +1,17 @@
 'use client';
 
 import { Paper, TextInput, Select, Group, ActionIcon, Tooltip } from '@mantine/core';
+import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import type { CSSProperties, ReactNode } from 'react';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconTrash, IconEye, IconMail } from '@tabler/icons-react';
-import { orderStatusFilterOptions } from '@/lib/orders/orderSelectOptions';
+import {
+  orderStatusFilterOptions,
+  orderTypeFilterOptions,
+} from '@/lib/orders/orderSelectOptions';
+import { parsePickerDate } from '@/lib/date';
 import { getOrderClientDisplayName, type OrderSummary } from '@/types/orders';
 import { OrderStatusEnum } from '@/types/enum/orderStatus';
 
@@ -14,13 +19,18 @@ interface OrdersTableProps {
   orders: OrderSummary[];
   loading: boolean;
   statusFilter: string | null;
+  typeFilter: string | null;
   nameFilter: string;
+  createdAtFrom: string | null;
+  createdAtTo: string | null;
   page: number;
   pageSize: number;
   totalRecords: number;
   permissions: any;
   onStatusFilterChange: (value: string | null) => void;
+  onTypeFilterChange: (value: string | null) => void;
   onNameFilterChange: (value: string) => void;
+  onCreatedAtRangeChange: (from: string | null, to: string | null) => void;
   onPageChange: (page: number) => void;
   onView: (order: OrderSummary) => void;
   onEdit: (order: OrderSummary) => void;
@@ -81,13 +91,18 @@ export function OrdersTable({
   orders,
   loading,
   statusFilter,
+  typeFilter,
   nameFilter,
+  createdAtFrom,
+  createdAtTo,
   page,
   pageSize,
   totalRecords,
   permissions,
   onStatusFilterChange,
+  onTypeFilterChange,
   onNameFilterChange,
+  onCreatedAtRangeChange,
   onPageChange,
   onView,
   onEdit,
@@ -95,6 +110,11 @@ export function OrdersTable({
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
+  const dateRange: [Date | null, Date | null] = [
+    createdAtFrom ? new Date(createdAtFrom) : null,
+    createdAtTo ? new Date(createdAtTo) : null,
+  ];
+
   return (
     <Paper shadow="sm" withBorder>
       <DataTable
@@ -114,7 +134,7 @@ export function OrdersTable({
                 value={statusFilter || ''}
                 onChange={(value) => onStatusFilterChange(value || null)}
                 clearable
-                style={{ minWidth: 200 }}
+                style={{ minWidth: 180 }}
               />
             ),
           },
@@ -123,6 +143,16 @@ export function OrdersTable({
             title: 'Type',
             render: (order: OrderSummary) => (
               <OrderTypeBadge type={order.type || 'INCOMING'} />
+            ),
+            filter: (
+              <Select
+                placeholder="Tous les types"
+                data={orderTypeFilterOptions}
+                value={typeFilter || ''}
+                onChange={(value) => onTypeFilterChange(value || null)}
+                clearable
+                style={{ minWidth: 160 }}
+              />
             ),
           },
           {
@@ -134,7 +164,7 @@ export function OrdersTable({
                 placeholder="Rechercher un nom..."
                 value={nameFilter}
                 onChange={(e) => onNameFilterChange(e.currentTarget.value)}
-                style={{ minWidth: 200 }}
+                style={{ minWidth: 180 }}
               />
             ),
           },
@@ -161,6 +191,30 @@ export function OrdersTable({
                 day: 'numeric',
               }),
             sortable: true,
+            filter: (
+              <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
+                <DatePickerInput
+                  type="range"
+                  placeholder="Période"
+                  value={dateRange}
+                  onChange={(value) => {
+                    const [rawFrom, rawTo] = (value ?? [null, null]) as [
+                      Date | string | null,
+                      Date | string | null,
+                    ];
+                    const from = parsePickerDate(rawFrom);
+                    const to = parsePickerDate(rawTo);
+                    onCreatedAtRangeChange(
+                      from?.toISOString() ?? null,
+                      to?.toISOString() ?? null,
+                    );
+                  }}
+                  valueFormat="D MMM YYYY"
+                  clearable
+                  style={{ minWidth: 220 }}
+                />
+              </DatesProvider>
+            ),
           },
           {
             accessor: 'actions',
