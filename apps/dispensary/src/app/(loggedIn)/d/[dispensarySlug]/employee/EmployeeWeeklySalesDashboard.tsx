@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Badge,
@@ -20,11 +20,14 @@ import { DataTable, type DataTableColumn } from 'mantine-datatable';
 import { IconCashRegister, IconSearch } from '@tabler/icons-react';
 import {
   cancelSale,
+  deleteSale,
+  depositSaleInCashRegister,
   listWeeklySales,
   type SaleListItem,
   type WeeklySalesSummary,
 } from '@/app/_actions/sales';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { handleAction } from '@/lib/action';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import { formatDate, parsePickerDate } from '@/lib/date';
@@ -34,12 +37,33 @@ import { SaleStatus } from '@prisma/client';
 import { apothecaryBooleanPills, apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { amberPalette } from '@/lib/design-tokens';
 import { normalizeString } from '@/lib/string/normalizeString';
+import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
+import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
 
 const PAGE_SIZE = 10;
+const STATUS_FILTER_STORAGE_KEY = 'employee-sales-status-filter';
+const STATUS_FILTER_VALUES = [
+  'completed',
+  'cancelled',
+  'deposited',
+  'not_deposited',
+] as const;
+
+function readStatusFilterPreference(): string | null {
+  try {
+    const raw = window.localStorage.getItem(STATUS_FILTER_STORAGE_KEY);
+    if (raw == null || raw === '') return null;
+    return (STATUS_FILTER_VALUES as readonly string[]).includes(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
 
 type EmployeeWeeklySalesDashboardProps = {
   dispensarySlug: string;
   canCancel: boolean;
+  canDepositOthers: boolean;
+  canDelete: boolean;
   canViewAll: boolean;
   sessionUserId: string;
   initialSummary: WeeklySalesSummary;
@@ -49,6 +73,8 @@ type EmployeeWeeklySalesDashboardProps = {
 export function EmployeeWeeklySalesDashboard({
   dispensarySlug,
   canCancel,
+  canDepositOthers,
+  canDelete,
   canViewAll,
   sessionUserId,
   initialSummary,
@@ -58,12 +84,41 @@ export function EmployeeWeeklySalesDashboard({
   const [employeeFilter, setEmployeeFilter] = useState<string | null>(null);
   const [dayFilter, setDayFilter] = useState<Date | null>(null);
   const [itemFilter, setItemFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilterReady, setStatusFilterReady] = useState(false);
   const [page, setPage] = useState(1);
+
+  const handleRealtimeChange = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['weekly-sales', dispensarySlug] });
+  }, [dispensarySlug, queryClient]);
+
+  const { clientId } = useSalesRealtime({
+    onChange: handleRealtimeChange,
+  });
+  const mutationMeta = salesMutationMeta(clientId);
 
   const currentWeekBounds = useMemo(
     () => getBankWeekBounds(periodWeekDateValue),
     [periodWeekDateValue],
   );
+
+  useEffect(() => {
+    setStatusFilter(readStatusFilterPreference());
+    setStatusFilterReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!statusFilterReady) return;
+    try {
+      if (statusFilter == null) {
+        window.localStorage.removeItem(STATUS_FILTER_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter);
+      }
+    } catch {
+      // Ignore quota / private mode write failures.
+    }
+  }, [statusFilter, statusFilterReady]);
 
   useEffect(() => {
     setEmployeeFilter(null);
@@ -95,7 +150,7 @@ export function EmployeeWeeklySalesDashboard({
 
   const cancelMutation = useMutation({
     mutationFn: async (saleId: string) => {
-      const result = await cancelSale(dispensarySlug, saleId);
+      const result = await cancelSale(dispensarySlug, saleId, mutationMeta);
       handleAction(result);
       return saleId;
     },
@@ -111,6 +166,52 @@ export function EmployeeWeeklySalesDashboard({
       notifications.show({
         title: 'Erreur',
         message: error.message || 'Erreur lors de l\'annulation',
+        color: 'danger',
+      });
+    },
+  });
+
+  const depositMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const result = await depositSaleInCashRegister(dispensarySlug, saleId, mutationMeta);
+      handleAction(result);
+      return saleId;
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Succès',
+        message: 'Déposé en caisse',
+        color: 'moss',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', dispensarySlug] });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du dépôt en caisse',
+        color: 'danger',
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const result = await deleteSale(dispensarySlug, saleId, mutationMeta);
+      handleAction(result);
+      return saleId;
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Succès',
+        message: 'Vente supprimée',
+        color: 'moss',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', dispensarySlug] });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la suppression',
         color: 'danger',
       });
     },
@@ -144,9 +245,17 @@ export function EmployeeWeeklySalesDashboard({
         );
         if (!matchesItem) return false;
       }
+      if (statusFilter === 'completed' && sale.status !== SaleStatus.COMPLETED) return false;
+      if (statusFilter === 'cancelled' && sale.status !== SaleStatus.CANCELLED) return false;
+      if (statusFilter === 'deposited') {
+        if (sale.status !== SaleStatus.COMPLETED || !sale.depositedInCashRegister) return false;
+      }
+      if (statusFilter === 'not_deposited') {
+        if (sale.status !== SaleStatus.COMPLETED || sale.depositedInCashRegister) return false;
+      }
       return true;
     });
-  }, [summary.sales, employeeFilter, dayFilter, itemFilter]);
+  }, [summary.sales, employeeFilter, dayFilter, itemFilter, statusFilter]);
 
   const totalRecords = filteredSales.length;
   const maxPage = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE) || 1);
@@ -263,7 +372,7 @@ export function EmployeeWeeklySalesDashboard({
       {
         accessor: 'status',
         title: 'Statut',
-        width: 110,
+        width: 140,
         render: (sale) => (
           <Badge
             variant="outline"
@@ -276,29 +385,115 @@ export function EmployeeWeeklySalesDashboard({
             {sale.status === SaleStatus.COMPLETED ? 'Validée' : 'Annulée'}
           </Badge>
         ),
+        filter: (
+          <Select
+            placeholder="Tous"
+            data={[
+              { value: 'completed', label: 'Validée' },
+              { value: 'cancelled', label: 'Annulée' },
+              { value: 'deposited', label: 'Déposé en caisse' },
+              { value: 'not_deposited', label: 'Non déposé' },
+            ]}
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            clearable
+            style={{ minWidth: 160 }}
+          />
+        ),
       },
       {
         accessor: 'actions',
         title: '',
-        width: 110,
+        width: 220,
         render: (sale) => {
+          const isCompleted = sale.status === SaleStatus.COMPLETED;
+          const canDepositSale =
+            isCompleted &&
+            !sale.depositedInCashRegister &&
+            (sale.userId === sessionUserId || canDepositOthers);
           const canCancelSale =
             canCancel &&
-            sale.status === SaleStatus.COMPLETED &&
+            isCompleted &&
+            !sale.depositedInCashRegister &&
             (sale.userId === sessionUserId || canViewAll);
 
-          if (!canCancelSale) return null;
+          if (
+            !canDepositSale &&
+            !canCancelSale &&
+            !canDelete &&
+            !(sale.depositedInCashRegister && isCompleted)
+          ) {
+            return null;
+          }
 
           return (
-            <Button
-              size="xs"
-              variant="light"
-              color="danger"
-              loading={cancelMutation.isPending}
-              onClick={() => cancelMutation.mutate(sale.id)}
-            >
-              Annuler
-            </Button>
+            <Group gap="xs" wrap="nowrap">
+              {sale.depositedInCashRegister && isCompleted && (
+                <Badge variant="outline" style={apothecaryBooleanPills.yes}>
+                  Déposé en caisse
+                </Badge>
+              )}
+              {canDepositSale && (
+                <DeleteConfirmPopover
+                  title="Déposer en caisse ?"
+                  message="Action irréversible : la vente ne pourra plus être annulée."
+                  confirmLabel="Confirmer"
+                  confirmColor="sage"
+                  onConfirm={async () => {
+                    await depositMutation.mutateAsync(sale.id);
+                  }}
+                >
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="sage"
+                    loading={depositMutation.isPending && depositMutation.variables === sale.id}
+                  >
+                    Caisse
+                  </Button>
+                </DeleteConfirmPopover>
+              )}
+              {canCancelSale && (
+                <DeleteConfirmPopover
+                  title="Confirmer l'annulation ?"
+                  message="Le stock coffre sera restauré. Cette action est irréversible."
+                  confirmLabel="Confirmer"
+                  onConfirm={async () => {
+                    await cancelMutation.mutateAsync(sale.id);
+                  }}
+                >
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="danger"
+                    loading={cancelMutation.isPending && cancelMutation.variables === sale.id}
+                  >
+                    Annuler
+                  </Button>
+                </DeleteConfirmPopover>
+              )}
+              {canDelete && (
+                <DeleteConfirmPopover
+                  title="Supprimer la vente ?"
+                  message="La vente sera définitivement supprimée. Le stock coffre sera restauré si elle était encore validée."
+                  onConfirm={async () => {
+                    await deleteMutation.mutateAsync(sale.id);
+                  }}
+                >
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="danger"
+                    loading={deleteMutation.isPending && deleteMutation.variables === sale.id}
+                  >
+                    Supprimer
+                  </Button>
+                </DeleteConfirmPopover>
+              )}
+            </Group>
           );
         },
       },
@@ -307,15 +502,23 @@ export function EmployeeWeeklySalesDashboard({
     return cols;
   }, [
     canCancel,
+    canDelete,
+    canDepositOthers,
     canViewAll,
     cancelMutation.isPending,
+    cancelMutation.variables,
     currentWeekBounds.end,
     currentWeekBounds.start,
     dayFilter,
+    deleteMutation.isPending,
+    deleteMutation.variables,
+    depositMutation.isPending,
+    depositMutation.variables,
     employeeFilter,
     employeeOptions,
     itemFilter,
     sessionUserId,
+    statusFilter,
   ]);
 
   return (
@@ -382,7 +585,7 @@ export function EmployeeWeeklySalesDashboard({
           <Text size="sm" fw={600}>
             Détail
           </Text>
-          {(employeeFilter || dayFilter || itemFilter.trim()) && (
+          {(employeeFilter || dayFilter || itemFilter.trim() || statusFilter) && (
             <Button
               variant="subtle"
               color="slate"
@@ -391,6 +594,7 @@ export function EmployeeWeeklySalesDashboard({
                 setEmployeeFilter(null);
                 setDayFilter(null);
                 setItemFilter('');
+                setStatusFilter(null);
                 setPage(1);
               }}
             >

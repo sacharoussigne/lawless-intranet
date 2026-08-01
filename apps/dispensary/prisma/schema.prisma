@@ -322,10 +322,13 @@ model Sale {
   individualCustomerId String?
   individualCustomer   IndividualCustomer? @relation(fields: [individualCustomerId], references: [id], onDelete: SetNull)
   priceAdjustment      Decimal             @default(0) @db.Decimal(10, 2)
-  createdAt            DateTime            @default(now())
-  cancelledAt          DateTime?
-  cancelledByUserId    String?
-  items                SaleItem[]
+  createdAt                   DateTime            @default(now())
+  cancelledAt                 DateTime?
+  cancelledByUserId           String?
+  depositedInCashRegister     Boolean             @default(false)
+  depositedInCashRegisterAt   DateTime?
+  depositedByUserId           String?
+  items                       SaleItem[]
 
   @@index([dispensaryId, createdAt])
   @@index([dispensaryId, userId, createdAt])

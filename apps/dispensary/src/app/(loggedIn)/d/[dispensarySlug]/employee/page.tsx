@@ -18,7 +18,7 @@ import {
 } from '@tabler/icons-react';
 import { getAuthSession } from '@/lib/authSession';
 import { calculatePermissions } from '@/lib/auth/calculatePermissions';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
 import { dispensarySiteTitle, getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
@@ -38,6 +38,7 @@ import { getDataOrThrow } from '@/lib/response';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import type { ChestListItem } from '@/types/chests';
+import { Role } from '@/types/enum/roles';
 import { EmployeeWeeklyOverview } from './EmployeeWeeklyOverview';
 import { EmployeeQuickActions } from './EmployeeQuickActions';
 
@@ -79,6 +80,8 @@ export default async function EmployeePage({
   const canViewSales = salesFeatureEnabled && (permissions?.sales.view ?? false);
   const canCancelSale = salesFeatureEnabled && (permissions?.sales.cancel ?? false);
   const canViewAllSales = salesFeatureEnabled && (permissions?.sales.viewAll ?? false);
+  const canDepositOthers =
+    hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
   const canTakeStock = Boolean(appSettings.featureStockEnabled && hasAccessibleChests);
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
@@ -240,6 +243,7 @@ export default async function EmployeePage({
             canViewSales && initialSalesSummary
               ? {
                   canCancel: canCancelSale,
+                  canDepositOthers,
                   canViewAll: canViewAllSales,
                   sessionUserId: userId,
                   initialSummary: initialSalesSummary,

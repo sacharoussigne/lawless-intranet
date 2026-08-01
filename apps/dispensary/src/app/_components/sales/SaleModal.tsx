@@ -25,6 +25,8 @@ import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import { createSale, getSellableItems } from '@/app/_actions/sales';
 import { searchIndividualCustomers } from '@/app/_actions/individualCustomers';
 import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
+import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
+import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
 import { getChestsList } from '@/app/_actions/chests';
 import { getItemsWithStock } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
@@ -66,12 +68,13 @@ export function SaleModal({
 }: SaleModalProps) {
   const dispensarySlug = useRequiredDispensarySlug();
   const queryClient = useQueryClient();
+  const { clientId } = useSalesRealtime({});
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [individualCustomerId, setIndividualCustomerId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [priceAdjustment, setPriceAdjustment] = useState<number | string>(0);
+  const [priceAdjustment, setPriceAdjustment] = useState<number | string>('');
   const [debouncedCustomerQuery] = useDebouncedValue(customerName.trim(), 300);
 
   const sellableQuery = useQuery({
@@ -135,7 +138,7 @@ export function SaleModal({
       setCustomerName('');
       setIndividualCustomerId(null);
       setDescription('');
-      setPriceAdjustment(0);
+      setPriceAdjustment('');
     }
   }, [opened, initialChestId, chests.length]);
 
@@ -153,14 +156,18 @@ export function SaleModal({
         }))
         .filter((line) => line.quantity > 0);
 
-      const result = await createSale(dispensarySlug, {
-        defaultChestId,
-        customerName: customerName.trim() || null,
-        description: description.trim() || null,
-        individualCustomerId,
-        priceAdjustment: typeof priceAdjustment === 'number' ? priceAdjustment : 0,
-        items: payload,
-      });
+      const result = await createSale(
+        dispensarySlug,
+        {
+          defaultChestId,
+          customerName: customerName.trim() || null,
+          description: description.trim() || null,
+          individualCustomerId,
+          priceAdjustment: typeof priceAdjustment === 'number' ? priceAdjustment : 0,
+          items: payload,
+        },
+        salesMutationMeta(clientId),
+      );
       return handleAction(result);
     },
     onSuccess: () => {

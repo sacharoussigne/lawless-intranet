@@ -16,6 +16,8 @@ type DeleteConfirmPopoverProps = {
   message: ReactNode;
   onConfirm: () => void | Promise<void>;
   position?: PopoverProps['position'];
+  confirmLabel?: string;
+  confirmColor?: string;
   children: ReactElement<{ onClick?: (event: React.MouseEvent) => void }>;
 };
 
@@ -24,6 +26,8 @@ export function DeleteConfirmPopover({
   message,
   onConfirm,
   position = 'bottom-end',
+  confirmLabel = 'Supprimer',
+  confirmColor = 'danger',
   children,
 }: DeleteConfirmPopoverProps) {
   const [open, setOpen] = useState(false);
@@ -79,11 +83,11 @@ export function DeleteConfirmPopover({
             </Button>
             <Button
               size="xs"
-              color="danger"
+              color={confirmColor}
               loading={confirming}
               onClick={() => void handleConfirm()}
             >
-              Supprimer
+              {confirmLabel}
             </Button>
           </Group>
         </Stack>
