@@ -18,6 +18,8 @@ import { handleAction } from '@/lib/action';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import {
   ordersKeys,
+  defaultOrdersPageFilters,
+  defaultActiveOrdersPageFilters,
   type OrdersPageFilters,
 } from '@/lib/orders/queryKeys';
 import { stockKeys } from '@/lib/stock/queryKeys';
@@ -26,27 +28,18 @@ import type { OrdersPageResult, OrderWithRelations } from '@/types/orders';
 import type { ItemWithRelations } from '@/types/stock';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 
-const DEFAULT_PAGE_SIZE = 10;
+export { defaultOrdersPageFilters, defaultActiveOrdersPageFilters };
 
-export const defaultOrdersPageFilters: OrdersPageFilters = {
-  page: 1,
-  pageSize: DEFAULT_PAGE_SIZE,
-  status: [],
-  type: null,
-  search: '',
-  createdAtFrom: null,
-  createdAtTo: null,
-};
-
-function isDefaultInitialPage(filters: OrdersPageFilters): boolean {
+function filtersMatchSeed(filters: OrdersPageFilters, seed: OrdersPageFilters): boolean {
   return (
-    filters.page === 1 &&
-    filters.pageSize === DEFAULT_PAGE_SIZE &&
-    filters.status.length === 0 &&
-    filters.type === null &&
-    filters.search === '' &&
-    filters.createdAtFrom === null &&
-    filters.createdAtTo === null
+    filters.page === seed.page &&
+    filters.pageSize === seed.pageSize &&
+    filters.type === seed.type &&
+    filters.search === seed.search &&
+    filters.createdAtFrom === seed.createdAtFrom &&
+    filters.createdAtTo === seed.createdAtTo &&
+    filters.status.length === seed.status.length &&
+    filters.status.every((status, index) => status === seed.status[index])
   );
 }
 
@@ -113,6 +106,7 @@ async function fetchOrderFormItems(
 export function useOrdersPage(
   filters: OrdersPageFilters,
   initialData?: OrdersPageResult,
+  seedFilters: OrdersPageFilters = defaultOrdersPageFilters,
 ) {
   const dispensarySlug = useRequiredDispensarySlug();
 
@@ -120,7 +114,7 @@ export function useOrdersPage(
     queryKey: ordersKeys.page(dispensarySlug, filters),
     queryFn: () => fetchOrdersPage(dispensarySlug, filters),
     initialData:
-      initialData && isDefaultInitialPage(filters) ? initialData : undefined,
+      initialData && filtersMatchSeed(filters, seedFilters) ? initialData : undefined,
     placeholderData: (previous) => previous,
     enabled: Boolean(dispensarySlug),
     staleTime: DEFAULT_STALE_TIME_MS,

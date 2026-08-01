@@ -36,6 +36,7 @@ interface OrdersTableProps {
   pageSize: number;
   totalRecords: number;
   permissions: any;
+  hideStatusFilter?: boolean;
   onStatusFilterChange: (value: string[]) => void;
   onTypeFilterChange: (value: string | null) => void;
   onNameFilterChange: (value: string) => void;
@@ -170,6 +171,7 @@ export function OrdersTable({
   pageSize,
   totalRecords,
   permissions,
+  hideStatusFilter = false,
   onStatusFilterChange,
   onTypeFilterChange,
   onNameFilterChange,
@@ -198,14 +200,18 @@ export function OrdersTable({
             render: (order: OrderSummary) => (
               <OrderStatusBadge status={order.status} />
             ),
-            filtering: statusFilter.length > 0,
-            filterPopoverProps: { trapFocus: false },
-            filter: (
-              <StatusMultiSelectFilter
-                value={statusFilter}
-                onChange={onStatusFilterChange}
-              />
-            ),
+            ...(hideStatusFilter
+              ? {}
+              : {
+                  filtering: statusFilter.length > 0,
+                  filterPopoverProps: { trapFocus: false },
+                  filter: (
+                    <StatusMultiSelectFilter
+                      value={statusFilter}
+                      onChange={onStatusFilterChange}
+                    />
+                  ),
+                }),
           },
           {
             accessor: 'type',

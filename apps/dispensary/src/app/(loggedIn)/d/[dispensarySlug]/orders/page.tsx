@@ -3,7 +3,7 @@ import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTem
 import OrdersPageClient from './OrdersPageClient';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getDataOrThrow } from '@/lib/response';
-import { defaultOrdersPageFilters } from './hooks/useOrdersQueries';
+import { defaultOrdersPageFilters } from '@/lib/orders/queryKeys';
 
 async function OrdersContent({ dispensarySlug }: { dispensarySlug: string }) {
   const [ordersResult, assignmentsResult] = await Promise.all([

@@ -1,6 +1,8 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
 import { listWeeklySales } from '@/app/_actions/sales';
 import { getChestsList } from '@/app/_actions/chests';
+import { getOrdersPage } from '@/app/_actions/orders';
+import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
 import { tenantRoutes } from '@/types/routes';
 import { Container, SimpleGrid, Text } from '@mantine/core';
 import {
@@ -38,9 +40,13 @@ import { getDataOrThrow } from '@/lib/response';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import type { ChestListItem } from '@/types/chests';
+import type { OrdersPageResult } from '@/types/orders';
+import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import { Role } from '@/types/enum/roles';
+import { defaultActiveOrdersPageFilters } from '@/lib/orders/queryKeys';
 import { EmployeeWeeklyOverview } from './EmployeeWeeklyOverview';
 import { EmployeeQuickActions } from './EmployeeQuickActions';
+import { EmployeeActiveOrdersSection } from './EmployeeActiveOrdersSection';
 
 export default async function EmployeePage({
   params,
@@ -83,6 +89,8 @@ export default async function EmployeePage({
   const canDepositOthers =
     hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
   const canTakeStock = Boolean(appSettings.featureStockEnabled && hasAccessibleChests);
+  const ordersFeatureEnabled = appSettings.featureOrdersEnabled;
+  const canManageOrders = ordersFeatureEnabled && (permissions?.orders.view ?? false);
 
   const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
     {
@@ -101,7 +109,7 @@ export default async function EmployeePage({
       description: 'Gérez les commandes passées aux entreprises et suivez leur statut.',
       icon: IconNotebook,
       href: t.orders.index,
-      hasAccess: appSettings.featureOrdersEnabled && (permissions?.orders.view ?? false),
+      hasAccess: canManageOrders,
     },
     {
       title: 'Banque',
@@ -202,6 +210,34 @@ export default async function EmployeePage({
     initialSalesSummary = getDataOrThrow(salesResult, 'Erreur lors du chargement des ventes');
   }
 
+  let initialActiveOrdersPage: OrdersPageResult | null = null;
+  let initialOrderAssignments: OrderMailTemplateAssignment[] = [];
+  if (canManageOrders) {
+    const [ordersResult, assignmentsResult] = await Promise.all([
+      getOrdersPage(dispensarySlug, {
+        page: defaultActiveOrdersPageFilters.page,
+        pageSize: defaultActiveOrdersPageFilters.pageSize,
+        status: defaultActiveOrdersPageFilters.status as Array<
+          'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY'
+        >,
+      }),
+      getOrderLetterTemplateAssignments(dispensarySlug),
+    ]);
+    initialActiveOrdersPage = getDataOrThrow(
+      ordersResult,
+      'Erreur lors du chargement des commandes',
+    );
+    initialOrderAssignments = getDataOrThrow(
+      assignmentsResult,
+      'Erreur lors du chargement des assignations de modèles de courriers',
+    );
+  }
+
+  const showActiveOrders =
+    canManageOrders &&
+    initialActiveOrdersPage != null &&
+    initialActiveOrdersPage.totalCount > 0;
+
   let chests: ChestListItem[] = [];
   if (canCreateSale || canTakeStock) {
     const chestsResult = await getChestsList(dispensarySlug, true);
@@ -250,6 +286,14 @@ export default async function EmployeePage({
                 }
               : undefined
           }
+        />
+      )}
+
+      {showActiveOrders && initialActiveOrdersPage && (
+        <EmployeeActiveOrdersSection
+          dispensarySlug={dispensarySlug}
+          initialOrdersPage={initialActiveOrdersPage}
+          initialAssignments={initialOrderAssignments}
         />
       )}
 
