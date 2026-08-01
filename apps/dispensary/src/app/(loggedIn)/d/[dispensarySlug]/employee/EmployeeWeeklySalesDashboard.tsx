@@ -533,7 +533,16 @@ export function EmployeeWeeklySalesDashboard({
   return (
     <Stack gap="md">
       <Group justify="space-between" align="center" wrap="wrap">
-        <Text className="disp-display-title">Ventes de la semaine</Text>
+        <Text
+          className="disp-display-title"
+          style={{ cursor: showDetailToggle ? 'pointer' : undefined }}
+          onClick={() => {
+            if (!onDetailVisibleChange) return;
+            onDetailVisibleChange(!showSalesDetail);
+          }}
+        >
+          Ventes de la semaine
+        </Text>
         {showDetailToggle && onDetailVisibleChange && (
           <Switch
             label="Afficher le détail des ventes"

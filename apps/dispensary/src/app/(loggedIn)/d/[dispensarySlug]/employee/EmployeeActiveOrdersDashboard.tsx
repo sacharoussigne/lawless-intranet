@@ -33,25 +33,14 @@ function formatDateRangeChip(from: string | null, to: string | null): string {
   return '';
 }
 
-function isBaseActiveFilters(filters: OrdersPageFilters): boolean {
-  return (
-    filters.type === null &&
-    filters.search === '' &&
-    filters.createdAtFrom === null &&
-    filters.createdAtTo === null
-  );
-}
-
 type EmployeeActiveOrdersDashboardProps = {
   initialOrdersPage: OrdersPageResult;
   initialAssignments: OrderMailTemplateAssignment[];
-  onActiveCountChange?: (count: number) => void;
 };
 
 export function EmployeeActiveOrdersDashboard({
   initialOrdersPage,
   initialAssignments,
-  onActiveCountChange,
 }: EmployeeActiveOrdersDashboardProps) {
   const { permissions } = usePermissions();
   const [filters, setFilters] = useState<Omit<OrdersPageFilters, 'search'>>({
@@ -94,12 +83,6 @@ export function EmployeeActiveOrdersDashboard({
   const totalRecords = ordersPage?.totalCount ?? 0;
   const isSearchDebouncing = searchInput !== debouncedSearch;
   const tableLoading = isFetching && !isSearchDebouncing;
-
-  useEffect(() => {
-    if (!onActiveCountChange) return;
-    if (!isBaseActiveFilters(queryFilters)) return;
-    onActiveCountChange(totalRecords);
-  }, [totalRecords, queryFilters, onActiveCountChange]);
 
   const assignmentKeys = useMemo(() => {
     const keys = new Set<string>();

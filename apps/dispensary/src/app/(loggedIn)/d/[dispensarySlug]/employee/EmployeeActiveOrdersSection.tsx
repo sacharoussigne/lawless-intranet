@@ -1,11 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Anchor, Badge, Group, Stack, Switch, Text } from '@mantine/core';
 import Link from 'next/link';
 import { tenantRoutes } from '@/types/routes';
 import type { OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
+import {
+  defaultActiveOrdersPageFilters,
+  useOrdersPage,
+} from '../orders/hooks/useOrdersQueries';
 import { EmployeeActiveOrdersDashboard } from './EmployeeActiveOrdersDashboard';
 
 const ORDERS_VISIBLE_STORAGE_KEY = 'employee-home-orders-visible';
@@ -32,7 +36,14 @@ export function EmployeeActiveOrdersSection({
   initialAssignments,
 }: EmployeeActiveOrdersSectionProps) {
   const [ordersVisible, setOrdersVisible] = useState<boolean | null>(null);
-  const [activeCount, setActiveCount] = useState(initialOrdersPage.totalCount);
+
+  const { data: summaryPage } = useOrdersPage(
+    defaultActiveOrdersPageFilters,
+    initialOrdersPage,
+    defaultActiveOrdersPageFilters,
+  );
+
+  const activeCount = summaryPage?.totalCount ?? initialOrdersPage.totalCount;
 
   useEffect(() => {
     setOrdersVisible(readOrdersVisiblePreference());
@@ -46,10 +57,6 @@ export function EmployeeActiveOrdersSection({
       // Ignore quota / private mode write failures.
     }
   }, [ordersVisible]);
-
-  const handleActiveCountChange = useCallback((count: number) => {
-    setActiveCount(count);
-  }, []);
 
   if (activeCount <= 0) {
     return null;
@@ -94,9 +101,8 @@ export function EmployeeActiveOrdersSection({
 
       {ordersSectionVisible && (
         <EmployeeActiveOrdersDashboard
-          initialOrdersPage={initialOrdersPage}
+          initialOrdersPage={summaryPage ?? initialOrdersPage}
           initialAssignments={initialAssignments}
-          onActiveCountChange={handleActiveCountChange}
         />
       )}
     </Stack>
