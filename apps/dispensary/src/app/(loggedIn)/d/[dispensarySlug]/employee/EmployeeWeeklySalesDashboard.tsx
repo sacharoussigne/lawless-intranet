@@ -359,7 +359,7 @@ export function EmployeeWeeklySalesDashboard({
             <Group gap="xs" wrap="nowrap">
               {sale.depositedInCashRegister && isCompleted && (
                 <Badge variant="outline" style={apothecaryBooleanPills.yes}>
-                  Déposé
+                  Déposé en caisse
                 </Badge>
               )}
               {canDepositSale && (
