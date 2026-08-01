@@ -23,10 +23,10 @@ const SALES_DETAIL_VISIBLE_STORAGE_KEY = 'employee-home-sales-visible';
 function readSalesDetailVisiblePreference(): boolean {
   try {
     const raw = window.localStorage.getItem(SALES_DETAIL_VISIBLE_STORAGE_KEY);
-    if (raw == null) return true;
+    if (raw == null) return false;
     return JSON.parse(raw) === true;
   } catch {
-    return true;
+    return false;
   }
 }
 

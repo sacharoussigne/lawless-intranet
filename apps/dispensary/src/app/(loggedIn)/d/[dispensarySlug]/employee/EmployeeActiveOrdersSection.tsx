@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Anchor, Group, Stack, Switch, Text } from '@mantine/core';
+import { Anchor, Badge, Group, Stack, Switch, Text } from '@mantine/core';
 import Link from 'next/link';
 import { tenantRoutes } from '@/types/routes';
 import type { OrdersPageResult } from '@/types/orders';
@@ -13,10 +13,10 @@ const ORDERS_VISIBLE_STORAGE_KEY = 'employee-home-orders-visible';
 function readOrdersVisiblePreference(): boolean {
   try {
     const raw = window.localStorage.getItem(ORDERS_VISIBLE_STORAGE_KEY);
-    if (raw == null) return true;
+    if (raw == null) return false;
     return JSON.parse(raw) === true;
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -62,7 +62,21 @@ export function EmployeeActiveOrdersSection({
   return (
     <Stack gap="md" mt="xl" mb="xl">
       <Group justify="space-between" align="center" wrap="wrap">
-        <Text className="disp-display-title">Commandes en cours</Text>
+        <Group gap="sm" align="center">
+          <Text
+            className="disp-display-title"
+            style={{ cursor: preferenceReady ? 'pointer' : undefined }}
+            onClick={() => {
+              if (!preferenceReady) return;
+              setOrdersVisible((current) => !current);
+            }}
+          >
+            Commandes en cours
+          </Text>
+          <Badge variant="filled" color="sage" radius="lg" size="lg">
+            {activeCount}
+          </Badge>
+        </Group>
         <Group gap="md" align="center">
           {preferenceReady && (
             <Switch
