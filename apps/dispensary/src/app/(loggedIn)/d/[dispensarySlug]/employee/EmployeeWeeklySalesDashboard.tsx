@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Badge,
@@ -37,6 +37,8 @@ import { SaleStatus } from '@prisma/client';
 import { apothecaryBooleanPills, apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { amberPalette } from '@/lib/design-tokens';
 import { normalizeString } from '@/lib/string/normalizeString';
+import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
+import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
 
 const PAGE_SIZE = 10;
 const STATUS_FILTER_STORAGE_KEY = 'employee-sales-status-filter';
@@ -85,6 +87,15 @@ export function EmployeeWeeklySalesDashboard({
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [statusFilterReady, setStatusFilterReady] = useState(false);
   const [page, setPage] = useState(1);
+
+  const handleRealtimeChange = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['weekly-sales', dispensarySlug] });
+  }, [dispensarySlug, queryClient]);
+
+  const { clientId } = useSalesRealtime({
+    onChange: handleRealtimeChange,
+  });
+  const mutationMeta = salesMutationMeta(clientId);
 
   const currentWeekBounds = useMemo(
     () => getBankWeekBounds(periodWeekDateValue),
@@ -139,7 +150,7 @@ export function EmployeeWeeklySalesDashboard({
 
   const cancelMutation = useMutation({
     mutationFn: async (saleId: string) => {
-      const result = await cancelSale(dispensarySlug, saleId);
+      const result = await cancelSale(dispensarySlug, saleId, mutationMeta);
       handleAction(result);
       return saleId;
     },
@@ -162,7 +173,7 @@ export function EmployeeWeeklySalesDashboard({
 
   const depositMutation = useMutation({
     mutationFn: async (saleId: string) => {
-      const result = await depositSaleInCashRegister(dispensarySlug, saleId);
+      const result = await depositSaleInCashRegister(dispensarySlug, saleId, mutationMeta);
       handleAction(result);
       return saleId;
     },
@@ -185,7 +196,7 @@ export function EmployeeWeeklySalesDashboard({
 
   const deleteMutation = useMutation({
     mutationFn: async (saleId: string) => {
-      const result = await deleteSale(dispensarySlug, saleId);
+      const result = await deleteSale(dispensarySlug, saleId, mutationMeta);
       handleAction(result);
       return saleId;
     },

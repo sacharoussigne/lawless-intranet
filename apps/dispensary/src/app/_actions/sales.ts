@@ -14,6 +14,11 @@ import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 import { Role } from '@/types/enum/roles';
+import {
+  emitWeeklySalesChange,
+  saleToWeeklySalesRealtimePayload,
+} from '@/lib/sales/realtime/broadcast';
+import type { SalesMutationMeta } from '@/lib/sales/realtime/types';
 
 const saleItemSchema = z.object({
   itemId: z.string().uuid(),
@@ -30,6 +35,38 @@ const createSaleSchema = z.object({
   priceAdjustment: z.number().finite().default(0),
   items: z.array(saleItemSchema).min(1),
 });
+
+const salesMutationMetaSchema = z
+  .object({
+    originClientId: z.string().min(1).max(128).optional(),
+  })
+  .optional();
+
+function parseMutationMeta(meta: unknown): SalesMutationMeta | undefined {
+  const parsed = salesMutationMetaSchema.safeParse(meta);
+  if (!parsed.success || !parsed.data?.originClientId) {
+    return undefined;
+  }
+  return { originClientId: parsed.data.originClientId };
+}
+
+async function emitSaleRealtime(
+  dispensaryId: string,
+  sale: { id: string; userId: string; createdAt: Date },
+  meta?: SalesMutationMeta,
+) {
+  const bounds = getBankWeekBounds(sale.createdAt);
+  await emitWeeklySalesChange(
+    dispensaryId,
+    saleToWeeklySalesRealtimePayload({
+      id: sale.id,
+      userId: sale.userId,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+    }),
+    meta,
+  );
+}
 
 export type SaleListItem = {
   id: string;
@@ -141,6 +178,7 @@ function mapSaleRow(
 export async function createSale(
   dispensarySlug: string,
   rawData: z.infer<typeof createSaleSchema>,
+  meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -154,6 +192,7 @@ export async function createSale(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
+    const mutationMeta = parseMutationMeta(meta);
 
     const data = createSaleSchema.parse(rawData);
     const customerName = data.customerName?.trim() || null;
@@ -329,6 +368,8 @@ export async function createSale(
       });
     });
 
+    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
+
     return {
       status: 200,
       data: mapSaleRow(sale, new Map([[userId, ctx.session.user.name ?? 'Utilisateur']])),
@@ -338,7 +379,11 @@ export async function createSale(
   }
 }
 
-export async function cancelSale(dispensarySlug: string, saleId: string) {
+export async function cancelSale(
+  dispensarySlug: string,
+  saleId: string,
+  meta?: unknown,
+) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'sales',
@@ -352,6 +397,7 @@ export async function cancelSale(dispensarySlug: string, saleId: string) {
     const { dispensaryId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
     const canViewAll = checkRolePermission(effectiveRole, 'sales', 'view_all');
+    const mutationMeta = parseMutationMeta(meta);
 
     const sale = await prisma.sale.findFirst({
       where: {
@@ -440,6 +486,8 @@ export async function cancelSale(dispensarySlug: string, saleId: string) {
       });
     });
 
+    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
+
     return { status: 200, data: { success: true } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de l\'annulation de la vente');
@@ -449,6 +497,7 @@ export async function cancelSale(dispensarySlug: string, saleId: string) {
 export async function depositSaleInCashRegister(
   dispensarySlug: string,
   saleId: string,
+  meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -464,6 +513,7 @@ export async function depositSaleInCashRegister(
     const userId = ctx.session.user.id;
     const canDepositOthers =
       hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
+    const mutationMeta = parseMutationMeta(meta);
 
     const sale = await prisma.sale.findFirst({
       where: {
@@ -474,6 +524,7 @@ export async function depositSaleInCashRegister(
         id: true,
         userId: true,
         status: true,
+        createdAt: true,
         depositedInCashRegister: true,
       },
     });
@@ -506,13 +557,19 @@ export async function depositSaleInCashRegister(
       },
     });
 
+    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
+
     return { status: 200, data: { success: true } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du dépôt en caisse');
   }
 }
 
-export async function deleteSale(dispensarySlug: string, saleId: string) {
+export async function deleteSale(
+  dispensarySlug: string,
+  saleId: string,
+  meta?: unknown,
+) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'sales',
@@ -525,6 +582,7 @@ export async function deleteSale(dispensarySlug: string, saleId: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
+    const mutationMeta = parseMutationMeta(meta);
 
     if (!hasRole(effectiveRole, Role.ADMIN)) {
       return { status: 403, error: 'Seuls les administrateurs peuvent supprimer une vente' };
@@ -596,6 +654,8 @@ export async function deleteSale(dispensarySlug: string, saleId: string) {
 
       await tx.sale.delete({ where: { id: sale.id } });
     });
+
+    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
 
     return { status: 200, data: { success: true } };
   } catch (error) {
