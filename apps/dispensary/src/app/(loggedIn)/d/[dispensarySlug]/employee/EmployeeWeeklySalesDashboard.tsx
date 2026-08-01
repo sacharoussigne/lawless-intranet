@@ -457,15 +457,23 @@ export function EmployeeWeeklySalesDashboard({
                 </DeleteConfirmPopover>
               )}
               {canCancelSale && (
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="danger"
-                  loading={cancelMutation.isPending && cancelMutation.variables === sale.id}
-                  onClick={() => cancelMutation.mutate(sale.id)}
+                <DeleteConfirmPopover
+                  title="Confirmer l'annulation ?"
+                  message="Le stock coffre sera restauré. Cette action est irréversible."
+                  confirmLabel="Confirmer"
+                  onConfirm={async () => {
+                    await cancelMutation.mutateAsync(sale.id);
+                  }}
                 >
-                  Annuler
-                </Button>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="danger"
+                    loading={cancelMutation.isPending && cancelMutation.variables === sale.id}
+                  >
+                    Annuler
+                  </Button>
+                </DeleteConfirmPopover>
               )}
               {canDelete && (
                 <DeleteConfirmPopover
