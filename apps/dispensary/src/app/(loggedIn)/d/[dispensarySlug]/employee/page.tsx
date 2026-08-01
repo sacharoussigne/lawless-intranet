@@ -7,7 +7,7 @@ import { Container } from '@mantine/core';
 import { getAuthSession } from '@/lib/authSession';
 import { calculatePermissions } from '@/lib/auth/calculatePermissions';
 import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
-import { dispensarySiteTitle, getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
+import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { userHasAccessibleChests } from '@/lib/chests/access';
@@ -29,7 +29,6 @@ import { Role } from '@/types/enum/roles';
 import { defaultActiveOrdersPageFilters } from '@/lib/orders/queryKeys';
 import { EmployeeWeeklyOverview } from './EmployeeWeeklyOverview';
 import { EmployeeQuickActions } from './EmployeeQuickActions';
-import { EmployeeActiveOrdersSection } from './EmployeeActiveOrdersSection';
 
 export default async function EmployeePage({
   params,
@@ -42,7 +41,6 @@ export default async function EmployeePage({
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession | null, dispensary.id);
   const permissions = calculatePermissions(effectiveRole);
   const appSettings = await getAppSettings(dispensary.id);
-  const siteTitle = dispensarySiteTitle(appSettings);
   const userId = session?.user?.id ?? '';
   const hasAccessibleChests = await userHasAccessibleChests(dispensary.id, effectiveRole);
 
@@ -136,15 +134,10 @@ export default async function EmployeePage({
         canCreateSale={canCreateSale}
         canTakeStock={canTakeStock}
         chests={chests}
+        dispensarySlug={dispensarySlug}
+        initialOrdersPage={showActiveOrders ? initialActiveOrdersPage : null}
+        initialAssignments={showActiveOrders ? initialOrderAssignments : []}
       />
-
-      {showActiveOrders && initialActiveOrdersPage && (
-        <EmployeeActiveOrdersSection
-          dispensarySlug={dispensarySlug}
-          initialOrdersPage={initialActiveOrdersPage}
-          initialAssignments={initialOrderAssignments}
-        />
-      )}
 
       {((weeklyFeatureEnabled && canViewWeekly) || (canViewSales && initialSalesSummary)) && (
         <EmployeeWeeklyOverview
@@ -154,25 +147,25 @@ export default async function EmployeePage({
           activity={
             weeklyFeatureEnabled && canViewWeekly
               ? {
-                  canEdit,
-                  canEditAll,
-                  sessionUserId: userId,
-                  viewerDiscordId,
-                  defaultDisplayName,
-                  initialWeekBounds,
-                  initialRows,
-                }
+                canEdit,
+                canEditAll,
+                sessionUserId: userId,
+                viewerDiscordId,
+                defaultDisplayName,
+                initialWeekBounds,
+                initialRows,
+              }
               : undefined
           }
           sales={
             canViewSales && initialSalesSummary
               ? {
-                  canCancel: canCancelSale,
-                  canDepositOthers,
-                  canViewAll: canViewAllSales,
-                  sessionUserId: userId,
-                  initialSummary: initialSalesSummary,
-                }
+                canCancel: canCancelSale,
+                canDepositOthers,
+                canViewAll: canViewAllSales,
+                sessionUserId: userId,
+                initialSummary: initialSalesSummary,
+              }
               : undefined
           }
         />
