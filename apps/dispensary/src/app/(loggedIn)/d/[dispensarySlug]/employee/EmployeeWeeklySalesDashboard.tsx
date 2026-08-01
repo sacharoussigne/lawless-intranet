@@ -10,6 +10,7 @@ import {
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Table,
   Text,
   TextInput,
@@ -40,7 +41,7 @@ import { normalizeString } from '@/lib/string/normalizeString';
 import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
 import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 10;
 const STATUS_FILTER_STORAGE_KEY = 'employee-sales-status-filter';
 const STATUS_FILTER_VALUES = [
   'completed',
@@ -68,6 +69,9 @@ type EmployeeWeeklySalesDashboardProps = {
   sessionUserId: string;
   initialSummary: WeeklySalesSummary;
   periodWeekDateValue: Date;
+  pageSize?: number;
+  detailVisible?: boolean;
+  onDetailVisibleChange?: (visible: boolean) => void;
 };
 
 export function EmployeeWeeklySalesDashboard({
@@ -79,6 +83,9 @@ export function EmployeeWeeklySalesDashboard({
   sessionUserId,
   initialSummary,
   periodWeekDateValue,
+  pageSize = DEFAULT_PAGE_SIZE,
+  detailVisible = true,
+  onDetailVisibleChange,
 }: EmployeeWeeklySalesDashboardProps) {
   const queryClient = useQueryClient();
   const [employeeFilter, setEmployeeFilter] = useState<string | null>(null);
@@ -258,12 +265,14 @@ export function EmployeeWeeklySalesDashboard({
   }, [summary.sales, employeeFilter, dayFilter, itemFilter, statusFilter]);
 
   const totalRecords = filteredSales.length;
-  const maxPage = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE) || 1);
+  const maxPage = Math.max(1, Math.ceil(totalRecords / pageSize) || 1);
   const safePage = Math.min(page, maxPage);
   const paginatedSales = useMemo(
-    () => filteredSales.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filteredSales, safePage],
+    () => filteredSales.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredSales, safePage, pageSize],
   );
+  const showSalesDetail = detailVisible;
+  const showDetailToggle = typeof onDetailVisibleChange === 'function';
 
   const columns = useMemo((): DataTableColumn<SaleListItem>[] => {
     const cols: DataTableColumn<SaleListItem>[] = [
@@ -523,36 +532,48 @@ export function EmployeeWeeklySalesDashboard({
 
   return (
     <Stack gap="md">
-      <Text className="disp-display-title">Ventes de la semaine</Text>
+      <Group justify="space-between" align="center" wrap="wrap">
+        <Text className="disp-display-title">Ventes de la semaine</Text>
+        {showDetailToggle && onDetailVisibleChange && (
+          <Switch
+            label="Afficher le détail des ventes"
+            checked={showSalesDetail}
+            onChange={(event) => onDetailVisibleChange(event.currentTarget.checked)}
+            size="sm"
+          />
+        )}
+      </Group>
 
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-        <Paper withBorder p="md">
-          <Text size="xs" c="dimmed" tt="uppercase">
-            CA (ventes validées)
-          </Text>
-          <Text fw={700} size="xl">
-            {summary.totalAmount.toFixed(2)} $
-          </Text>
-        </Paper>
-        <Paper withBorder p="md">
-          <Text size="xs" c="dimmed" tt="uppercase">
-            Quantité vendue
-          </Text>
-          <Text fw={700} size="xl">
-            {summary.totalQuantity}
-          </Text>
-        </Paper>
-        <Paper withBorder p="md">
-          <Text size="xs" c="dimmed" tt="uppercase">
-            Ventes / annulées
-          </Text>
-          <Text fw={700} size="xl">
-            {summary.completedCount} / {summary.cancelledCount}
-          </Text>
-        </Paper>
-      </SimpleGrid>
+      {showSalesDetail && (
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+          <Paper withBorder p="md">
+            <Text size="xs" c="dimmed" tt="uppercase">
+              CA (ventes validées)
+            </Text>
+            <Text fw={700} size="xl">
+              {summary.totalAmount.toFixed(2)} $
+            </Text>
+          </Paper>
+          <Paper withBorder p="md">
+            <Text size="xs" c="dimmed" tt="uppercase">
+              Quantité vendue
+            </Text>
+            <Text fw={700} size="xl">
+              {summary.totalQuantity}
+            </Text>
+          </Paper>
+          <Paper withBorder p="md">
+            <Text size="xs" c="dimmed" tt="uppercase">
+              Ventes / annulées
+            </Text>
+            <Text fw={700} size="xl">
+              {summary.completedCount} / {summary.cancelledCount}
+            </Text>
+          </Paper>
+        </SimpleGrid>
+      )}
 
-      {canViewAll && summary.byUser.length > 0 && (
+      {showSalesDetail && canViewAll && summary.byUser.length > 0 && (
         <Paper withBorder p="md">
           <Text size="sm" fw={600} mb="sm">
             Par employé
@@ -583,7 +604,7 @@ export function EmployeeWeeklySalesDashboard({
       <Paper withBorder p="md">
         <Group justify="space-between" mb="sm" wrap="wrap">
           <Text size="sm" fw={600}>
-            Détail
+            Ventes
           </Text>
           {(employeeFilter || dayFilter || itemFilter.trim() || statusFilter) && (
             <Button
@@ -612,7 +633,7 @@ export function EmployeeWeeklySalesDashboard({
           highlightOnHover
           withTableBorder={false}
           totalRecords={totalRecords}
-          recordsPerPage={PAGE_SIZE}
+          recordsPerPage={pageSize}
           page={safePage}
           onPageChange={setPage}
           paginationSize="sm"

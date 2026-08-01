@@ -69,6 +69,7 @@ export default function SalesPageClient({
         sessionUserId={sessionUserId}
         initialSummary={initialSummary}
         periodWeekDateValue={periodWeekDateValue}
+        pageSize={10}
       />
     </Stack>
   );

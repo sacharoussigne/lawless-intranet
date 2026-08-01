@@ -24,6 +24,7 @@ export const defaultOrdersPageFilters: OrdersPageFilters = {
 
 export const defaultActiveOrdersPageFilters: OrdersPageFilters = {
   ...defaultOrdersPageFilters,
+  pageSize: 5,
   status: [...ACTIVE_ORDER_STATUSES],
 };
 
