@@ -5,7 +5,7 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getTodayStart, getTomorrowStart } from '@/lib/date';
 import { getBankWeekBounds } from '@/lib/bankWeek';
@@ -13,6 +13,7 @@ import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/
 import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
+import { Role } from '@/types/enum/roles';
 
 const saleItemSchema = z.object({
   itemId: z.string().uuid(),
@@ -37,6 +38,8 @@ export type SaleListItem = {
   status: SaleStatus;
   createdAt: Date;
   cancelledAt: Date | null;
+  depositedInCashRegister: boolean;
+  depositedInCashRegisterAt: Date | null;
   customerName: string | null;
   description: string | null;
   priceAdjustment: number;
@@ -79,6 +82,8 @@ function mapSaleRow(
     status: SaleStatus;
     createdAt: Date;
     cancelledAt: Date | null;
+    depositedInCashRegister: boolean;
+    depositedInCashRegisterAt: Date | null;
     customerName: string | null;
     description: string | null;
     priceAdjustment: unknown;
@@ -121,6 +126,8 @@ function mapSaleRow(
     status: sale.status,
     createdAt: sale.createdAt,
     cancelledAt: sale.cancelledAt,
+    depositedInCashRegister: sale.depositedInCashRegister,
+    depositedInCashRegisterAt: sale.depositedInCashRegisterAt,
     customerName: sale.customerName,
     description: sale.description,
     priceAdjustment,
@@ -364,6 +371,13 @@ export async function cancelSale(dispensarySlug: string, saleId: string) {
       return { status: 400, error: 'Cette vente est déjà annulée' };
     }
 
+    if (sale.depositedInCashRegister) {
+      return {
+        status: 400,
+        error: 'Cette vente est déjà déposée en caisse et ne peut plus être annulée',
+      };
+    }
+
     if (sale.userId !== userId && !canViewAll) {
       return { status: 403, error: 'Vous ne pouvez annuler que vos propres ventes' };
     }
@@ -429,6 +443,72 @@ export async function cancelSale(dispensarySlug: string, saleId: string) {
     return { status: 200, data: { success: true } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de l\'annulation de la vente');
+  }
+}
+
+export async function depositSaleInCashRegister(
+  dispensarySlug: string,
+  saleId: string,
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'sales',
+      permission: {
+        resource: 'sales',
+        action: 'view',
+        message: 'Permission refusée : vous n\'avez pas la permission de consulter les ventes',
+      },
+    });
+    if (!ctx.ok) return ctx.response;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const userId = ctx.session.user.id;
+    const canDepositOthers =
+      hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
+
+    const sale = await prisma.sale.findFirst({
+      where: {
+        id: saleId,
+        dispensaryId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        depositedInCashRegister: true,
+      },
+    });
+
+    if (!sale) {
+      return { status: 404, error: 'Vente introuvable' };
+    }
+
+    if (sale.status === SaleStatus.CANCELLED) {
+      return { status: 400, error: 'Cette vente est annulée' };
+    }
+
+    if (sale.depositedInCashRegister) {
+      return { status: 400, error: 'Cette vente est déjà déposée en caisse' };
+    }
+
+    if (sale.userId !== userId && !canDepositOthers) {
+      return {
+        status: 403,
+        error: 'Vous ne pouvez déposer en caisse que vos propres ventes',
+      };
+    }
+
+    await prisma.sale.update({
+      where: { id: sale.id },
+      data: {
+        depositedInCashRegister: true,
+        depositedInCashRegisterAt: new Date(),
+        depositedByUserId: userId,
+      },
+    });
+
+    return { status: 200, data: { success: true } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du dépôt en caisse');
   }
 }
 

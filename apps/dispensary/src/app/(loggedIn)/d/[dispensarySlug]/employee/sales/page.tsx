@@ -3,12 +3,13 @@ import { redirect } from 'next/navigation';
 import { listWeeklySales } from '@/app/_actions/sales';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { getAuthSession } from '@/lib/authSession';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import { getDataOrThrow } from '@/lib/response';
 import type { AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
+import { Role } from '@/types/enum/roles';
 import SalesPageClient from './SalesPageClient';
 
 export default async function SalesPage({
@@ -34,6 +35,8 @@ export default async function SalesPage({
   }
 
   const canCancel = checkRolePermission(effectiveRole, 'sales', 'cancel');
+  const canDepositOthers =
+    hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
   const salesResult = await listWeeklySales(dispensarySlug);
   const initialSummary = getDataOrThrow(salesResult, 'Erreur lors du chargement des ventes');
 
@@ -47,6 +50,7 @@ export default async function SalesPage({
       <SalesPageClient
         dispensarySlug={dispensarySlug}
         canCancel={canCancel}
+        canDepositOthers={canDepositOthers}
         sessionUserId={session.user.id}
         initialSummary={initialSummary}
       />

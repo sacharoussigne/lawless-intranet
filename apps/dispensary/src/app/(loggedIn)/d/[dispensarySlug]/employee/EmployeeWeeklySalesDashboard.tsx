@@ -20,6 +20,7 @@ import { DataTable, type DataTableColumn } from 'mantine-datatable';
 import { IconCashRegister, IconSearch } from '@tabler/icons-react';
 import {
   cancelSale,
+  depositSaleInCashRegister,
   listWeeklySales,
   type SaleListItem,
   type WeeklySalesSummary,
@@ -40,6 +41,7 @@ const PAGE_SIZE = 10;
 type EmployeeWeeklySalesDashboardProps = {
   dispensarySlug: string;
   canCancel: boolean;
+  canDepositOthers: boolean;
   canViewAll: boolean;
   sessionUserId: string;
   initialSummary: WeeklySalesSummary;
@@ -49,6 +51,7 @@ type EmployeeWeeklySalesDashboardProps = {
 export function EmployeeWeeklySalesDashboard({
   dispensarySlug,
   canCancel,
+  canDepositOthers,
   canViewAll,
   sessionUserId,
   initialSummary,
@@ -111,6 +114,29 @@ export function EmployeeWeeklySalesDashboard({
       notifications.show({
         title: 'Erreur',
         message: error.message || 'Erreur lors de l\'annulation',
+        color: 'danger',
+      });
+    },
+  });
+
+  const depositMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const result = await depositSaleInCashRegister(dispensarySlug, saleId);
+      handleAction(result);
+      return saleId;
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Succès',
+        message: 'Déposé en caisse',
+        color: 'moss',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', dispensarySlug] });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du dépôt en caisse',
         color: 'danger',
       });
     },
@@ -280,25 +306,56 @@ export function EmployeeWeeklySalesDashboard({
       {
         accessor: 'actions',
         title: '',
-        width: 110,
+        width: 180,
         render: (sale) => {
+          const isCompleted = sale.status === SaleStatus.COMPLETED;
+          const canDepositSale =
+            isCompleted &&
+            !sale.depositedInCashRegister &&
+            (sale.userId === sessionUserId || canDepositOthers);
           const canCancelSale =
             canCancel &&
-            sale.status === SaleStatus.COMPLETED &&
+            isCompleted &&
+            !sale.depositedInCashRegister &&
             (sale.userId === sessionUserId || canViewAll);
 
-          if (!canCancelSale) return null;
+          if (sale.depositedInCashRegister && isCompleted) {
+            return (
+              <Group gap="xs" wrap="nowrap">
+                <Badge variant="outline" style={apothecaryBooleanPills.yes}>
+                  Déposé en caisse
+                </Badge>
+              </Group>
+            );
+          }
+
+          if (!canDepositSale && !canCancelSale) return null;
 
           return (
-            <Button
-              size="xs"
-              variant="light"
-              color="danger"
-              loading={cancelMutation.isPending}
-              onClick={() => cancelMutation.mutate(sale.id)}
-            >
-              Annuler
-            </Button>
+            <Group gap="xs" wrap="nowrap">
+              {canDepositSale && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="sage"
+                  loading={depositMutation.isPending && depositMutation.variables === sale.id}
+                  onClick={() => depositMutation.mutate(sale.id)}
+                >
+                  Caisse
+                </Button>
+              )}
+              {canCancelSale && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="danger"
+                  loading={cancelMutation.isPending && cancelMutation.variables === sale.id}
+                  onClick={() => cancelMutation.mutate(sale.id)}
+                >
+                  Annuler
+                </Button>
+              )}
+            </Group>
           );
         },
       },
@@ -307,11 +364,15 @@ export function EmployeeWeeklySalesDashboard({
     return cols;
   }, [
     canCancel,
+    canDepositOthers,
     canViewAll,
     cancelMutation.isPending,
+    cancelMutation.variables,
     currentWeekBounds.end,
     currentWeekBounds.start,
     dayFilter,
+    depositMutation.isPending,
+    depositMutation.variables,
     employeeFilter,
     employeeOptions,
     itemFilter,

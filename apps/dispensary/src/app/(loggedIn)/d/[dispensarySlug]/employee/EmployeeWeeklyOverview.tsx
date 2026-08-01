@@ -45,6 +45,7 @@ type EmployeeWeeklyOverviewProps = {
   };
   sales?: {
     canCancel: boolean;
+    canDepositOthers: boolean;
     canViewAll: boolean;
     sessionUserId: string;
     initialSummary: WeeklySalesSummary;
@@ -141,6 +142,7 @@ export function EmployeeWeeklyOverview({
         <EmployeeWeeklySalesDashboard
           dispensarySlug={dispensarySlug}
           canCancel={sales.canCancel}
+          canDepositOthers={sales.canDepositOthers}
           canViewAll={sales.canViewAll}
           sessionUserId={sales.sessionUserId}
           initialSummary={sales.initialSummary}

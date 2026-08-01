@@ -16,6 +16,7 @@ import { EmployeeWeeklySalesDashboard } from '../EmployeeWeeklySalesDashboard';
 type SalesPageClientProps = {
   dispensarySlug: string;
   canCancel: boolean;
+  canDepositOthers: boolean;
   sessionUserId: string;
   initialSummary: WeeklySalesSummary;
 };
@@ -23,6 +24,7 @@ type SalesPageClientProps = {
 export default function SalesPageClient({
   dispensarySlug,
   canCancel,
+  canDepositOthers,
   sessionUserId,
   initialSummary,
 }: SalesPageClientProps) {
@@ -59,6 +61,7 @@ export default function SalesPageClient({
       <EmployeeWeeklySalesDashboard
         dispensarySlug={dispensarySlug}
         canCancel={canCancel}
+        canDepositOthers={canDepositOthers}
         canViewAll
         sessionUserId={sessionUserId}
         initialSummary={initialSummary}
