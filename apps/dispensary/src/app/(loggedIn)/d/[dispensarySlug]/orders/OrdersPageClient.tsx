@@ -139,7 +139,7 @@ export default function OrdersPageClient({
   const orders = ordersPage?.orders ?? [];
   const totalRecords = ordersPage?.totalCount ?? 0;
   const hasActiveFilters = Boolean(
-    filters.status ||
+    filters.status.length > 0 ||
       filters.type ||
       filters.createdAtFrom ||
       filters.createdAtTo ||
@@ -169,7 +169,7 @@ export default function OrdersPageClient({
     setFilters((current) => ({ ...current, page: 1 }));
   }, [filters.status, filters.type, filters.createdAtFrom, filters.createdAtTo, debouncedSearch]);
 
-  const handleStatusFilterChange = (value: string | null) => {
+  const handleStatusFilterChange = (value: string[]) => {
     setFilters((current) => ({ ...current, status: value }));
   };
 
@@ -229,11 +229,13 @@ export default function OrdersPageClient({
               },
               {
                 label: 'Statut',
-                value: filters.status,
-                displayValue: filters.status
-                  ? getOrderStatusLabel(filters.status as OrderStatus)
-                  : undefined,
-                onRemove: () => handleStatusFilterChange(null),
+                value:
+                  filters.status.length > 0
+                    ? filters.status
+                        .map((status) => getOrderStatusLabel(status as OrderStatus))
+                        .join(', ')
+                    : null,
+                onRemove: () => handleStatusFilterChange([]),
               },
               {
                 label: 'Type',

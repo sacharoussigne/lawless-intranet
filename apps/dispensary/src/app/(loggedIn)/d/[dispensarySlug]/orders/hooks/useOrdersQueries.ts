@@ -31,7 +31,7 @@ const DEFAULT_PAGE_SIZE = 10;
 export const defaultOrdersPageFilters: OrdersPageFilters = {
   page: 1,
   pageSize: DEFAULT_PAGE_SIZE,
-  status: null,
+  status: [],
   type: null,
   search: '',
   createdAtFrom: null,
@@ -42,7 +42,7 @@ function isDefaultInitialPage(filters: OrdersPageFilters): boolean {
   return (
     filters.page === 1 &&
     filters.pageSize === DEFAULT_PAGE_SIZE &&
-    filters.status === null &&
+    filters.status.length === 0 &&
     filters.type === null &&
     filters.search === '' &&
     filters.createdAtFrom === null &&
@@ -54,15 +54,9 @@ async function fetchOrdersPage(dispensarySlug: string, filters: OrdersPageFilter
   const result = await getOrdersPage(dispensarySlug, {
     page: filters.page,
     pageSize: filters.pageSize,
-    status: filters.status as
-      | 'DRAFT'
-      | 'LETTER_SENT'
-      | 'PROCESSING'
-      | 'READY'
-      | 'COMPLETED'
-      | 'CANCELLED'
-      | null
-      | undefined,
+    status: filters.status as Array<
+      'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED'
+    >,
     type: filters.type as 'INCOMING' | 'OUTGOING' | null | undefined,
     search: filters.search || undefined,
     createdAtFrom: filters.createdAtFrom,

@@ -1,7 +1,7 @@
 export type OrdersPageFilters = {
   page: number;
   pageSize: number;
-  status: string | null;
+  status: string[];
   type: string | null;
   search: string;
   createdAtFrom: string | null;

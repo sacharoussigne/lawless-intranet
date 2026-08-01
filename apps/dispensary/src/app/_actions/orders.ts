@@ -363,7 +363,7 @@ const orderTypeValues = ['INCOMING', 'OUTGOING'] as const;
 const getOrdersPageSchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(50).default(10),
-  status: z.enum(orderStatusValues).optional().nullable(),
+  status: z.array(z.enum(orderStatusValues)).optional().nullable(),
   type: z.enum(orderTypeValues).optional().nullable(),
   search: z.string().max(255).optional(),
   createdAtFrom: z.string().optional().nullable(),
@@ -408,7 +408,7 @@ export async function getOrdersPage(
   params: {
     page?: number;
     pageSize?: number;
-    status?: (typeof orderStatusValues)[number] | null;
+    status?: Array<(typeof orderStatusValues)[number]> | null;
     type?: (typeof orderTypeValues)[number] | null;
     search?: string;
     createdAtFrom?: string | null;
@@ -423,6 +423,7 @@ export async function getOrdersPage(
     const { page, pageSize, status, type, search, createdAtFrom, createdAtTo } =
       getOrdersPageSchema.parse(params);
     const searchTerm = search?.trim();
+    const statuses = status?.filter(Boolean) ?? [];
 
     const fromDate = createdAtFrom ? parsePickerDate(createdAtFrom) : null;
     const toDate = createdAtTo ? parsePickerDate(createdAtTo) : null;
@@ -436,7 +437,11 @@ export async function getOrdersPage(
 
     const where = {
       ...tenantWhere(dispensaryId),
-      ...(status ? { status } : {}),
+      ...(statuses.length === 1
+        ? { status: statuses[0] }
+        : statuses.length > 1
+          ? { status: { in: statuses } }
+          : {}),
       ...(type ? { type } : {}),
       ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
       ...(searchTerm

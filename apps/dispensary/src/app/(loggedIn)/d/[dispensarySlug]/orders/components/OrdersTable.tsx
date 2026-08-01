@@ -1,6 +1,15 @@
 'use client';
 
-import { Paper, TextInput, Select, Group, ActionIcon, Tooltip } from '@mantine/core';
+import { useState } from 'react';
+import {
+  Paper,
+  TextInput,
+  Select,
+  MultiSelect,
+  Group,
+  ActionIcon,
+  Tooltip,
+} from '@mantine/core';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import type { CSSProperties, ReactNode } from 'react';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
@@ -8,7 +17,7 @@ import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconTrash, IconEye, IconMail } from '@tabler/icons-react';
 import {
-  orderStatusFilterOptions,
+  orderStatusSelectOptions,
   orderTypeFilterOptions,
 } from '@/lib/orders/orderSelectOptions';
 import { parsePickerDate } from '@/lib/date';
@@ -18,7 +27,7 @@ import { OrderStatusEnum } from '@/types/enum/orderStatus';
 interface OrdersTableProps {
   orders: OrderSummary[];
   loading: boolean;
-  statusFilter: string | null;
+  statusFilter: string[];
   typeFilter: string | null;
   nameFilter: string;
   createdAtFrom: string | null;
@@ -27,7 +36,7 @@ interface OrdersTableProps {
   pageSize: number;
   totalRecords: number;
   permissions: any;
-  onStatusFilterChange: (value: string | null) => void;
+  onStatusFilterChange: (value: string[]) => void;
   onTypeFilterChange: (value: string | null) => void;
   onNameFilterChange: (value: string) => void;
   onCreatedAtRangeChange: (from: string | null, to: string | null) => void;
@@ -87,6 +96,68 @@ function LockedActionIcon({
   );
 }
 
+function StatusMultiSelectFilter({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const [dropdownOpened, setDropdownOpened] = useState(false);
+
+  return (
+    <MultiSelect
+      placeholder="Tous les statuts"
+      data={orderStatusSelectOptions}
+      value={value}
+      onChange={(next) => {
+        onChange(next);
+        requestAnimationFrame(() => setDropdownOpened(true));
+      }}
+      clearable
+      searchable
+      hidePickedOptions
+      dropdownOpened={dropdownOpened}
+      onDropdownClose={() => setDropdownOpened(false)}
+      onClick={() => setDropdownOpened(true)}
+      comboboxProps={{ withinPortal: false }}
+      style={{ minWidth: 240 }}
+    />
+  );
+}
+
+function CreatedAtRangeFilter({
+  value,
+  onChange,
+}: {
+  value: [Date | null, Date | null];
+  onChange: (from: string | null, to: string | null) => void;
+}) {
+  return (
+    <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
+      <DatePickerInput
+        type="range"
+        placeholder="Période"
+        value={value}
+        onChange={(next) => {
+          const [rawFrom, rawTo] = (next ?? [null, null]) as [
+            Date | string | null,
+            Date | string | null,
+          ];
+          const from = parsePickerDate(rawFrom);
+          const to = parsePickerDate(rawTo);
+          onChange(from?.toISOString() ?? null, to?.toISOString() ?? null);
+        }}
+        valueFormat="D MMM YYYY"
+        clearable
+        closeOnChange={false}
+        popoverProps={{ withinPortal: false, trapFocus: false }}
+        style={{ minWidth: 240 }}
+      />
+    </DatesProvider>
+  );
+}
+
 export function OrdersTable({
   orders,
   loading,
@@ -127,14 +198,12 @@ export function OrdersTable({
             render: (order: OrderSummary) => (
               <OrderStatusBadge status={order.status} />
             ),
+            filtering: statusFilter.length > 0,
+            filterPopoverProps: { trapFocus: false },
             filter: (
-              <Select
-                placeholder="Tous les statuts"
-                data={orderStatusFilterOptions}
-                value={statusFilter || ''}
-                onChange={(value) => onStatusFilterChange(value || null)}
-                clearable
-                style={{ minWidth: 180 }}
+              <StatusMultiSelectFilter
+                value={statusFilter}
+                onChange={onStatusFilterChange}
               />
             ),
           },
@@ -144,6 +213,7 @@ export function OrdersTable({
             render: (order: OrderSummary) => (
               <OrderTypeBadge type={order.type || 'INCOMING'} />
             ),
+            filtering: Boolean(typeFilter),
             filter: (
               <Select
                 placeholder="Tous les types"
@@ -159,6 +229,7 @@ export function OrdersTable({
             accessor: 'name',
             title: 'Nom',
             sortable: true,
+            filtering: Boolean(nameFilter.trim()),
             filter: (
               <TextInput
                 placeholder="Rechercher un nom..."
@@ -191,29 +262,13 @@ export function OrdersTable({
                 day: 'numeric',
               }),
             sortable: true,
+            filtering: Boolean(createdAtFrom || createdAtTo),
+            filterPopoverProps: { trapFocus: false },
             filter: (
-              <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
-                <DatePickerInput
-                  type="range"
-                  placeholder="Période"
-                  value={dateRange}
-                  onChange={(value) => {
-                    const [rawFrom, rawTo] = (value ?? [null, null]) as [
-                      Date | string | null,
-                      Date | string | null,
-                    ];
-                    const from = parsePickerDate(rawFrom);
-                    const to = parsePickerDate(rawTo);
-                    onCreatedAtRangeChange(
-                      from?.toISOString() ?? null,
-                      to?.toISOString() ?? null,
-                    );
-                  }}
-                  valueFormat="D MMM YYYY"
-                  clearable
-                  style={{ minWidth: 220 }}
-                />
-              </DatesProvider>
+              <CreatedAtRangeFilter
+                value={dateRange}
+                onChange={onCreatedAtRangeChange}
+              />
             ),
           },
           {
