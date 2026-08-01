@@ -512,6 +512,97 @@ export async function depositSaleInCashRegister(
   }
 }
 
+export async function deleteSale(dispensarySlug: string, saleId: string) {
+  try {
+    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+      feature: 'sales',
+      permission: {
+        resource: 'sales',
+        action: 'view_all',
+        message: 'Permission refusée : vous n\'avez pas la permission de supprimer une vente',
+      },
+    });
+    if (!ctx.ok) return ctx.response;
+    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const userId = ctx.session.user.id;
+
+    if (!hasRole(effectiveRole, Role.ADMIN)) {
+      return { status: 403, error: 'Seuls les administrateurs peuvent supprimer une vente' };
+    }
+
+    const sale = await prisma.sale.findFirst({
+      where: {
+        id: saleId,
+        dispensaryId,
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!sale) {
+      return { status: 404, error: 'Vente introuvable' };
+    }
+
+    const today = getTodayStart();
+    const tomorrow = getTomorrowStart();
+
+    await prisma.$transaction(async (tx) => {
+      if (sale.status === SaleStatus.COMPLETED) {
+        await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
+
+        const chestLines = sale.items.filter(
+          (item) => item.source === SaleItemSource.CHEST && item.chestId,
+        );
+
+        if (chestLines.length > 0) {
+          const ensured = await ensureTodayStockForPairs(
+            tx,
+            dispensaryId,
+            chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
+            { today, tomorrow },
+          );
+
+          for (const line of chestLines) {
+            const key = `${line.itemId}:${line.chestId}`;
+            const stock = ensured.get(key);
+            if (stock) {
+              await tx.stockHistory.update({
+                where: { id: stock.id },
+                data: { quantity: stock.quantity + line.quantity },
+              });
+            } else {
+              await tx.stockHistory.create({
+                data: {
+                  itemId: line.itemId,
+                  chestId: line.chestId!,
+                  quantity: line.quantity,
+                },
+              });
+            }
+          }
+
+          await tx.stockItemMovement.createMany({
+            data: chestLines.map((line) => ({
+              itemId: line.itemId,
+              quantity: line.quantity,
+              kind: StockMovementKind.SALE_CANCEL_RESTORE,
+              chestId: line.chestId,
+              userId,
+            })),
+          });
+        }
+      }
+
+      await tx.sale.delete({ where: { id: sale.id } });
+    });
+
+    return { status: 200, data: { success: true } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la suppression de la vente');
+  }
+}
+
 export async function listWeeklySales(
   dispensarySlug: string,
   weekDate?: Date,

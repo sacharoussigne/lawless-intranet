@@ -37,6 +37,7 @@ export default async function SalesPage({
   const canCancel = checkRolePermission(effectiveRole, 'sales', 'cancel');
   const canDepositOthers =
     hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
+  const canDelete = hasRole(effectiveRole, Role.ADMIN);
   const salesResult = await listWeeklySales(dispensarySlug);
   const initialSummary = getDataOrThrow(salesResult, 'Erreur lors du chargement des ventes');
 
@@ -51,6 +52,7 @@ export default async function SalesPage({
         dispensarySlug={dispensarySlug}
         canCancel={canCancel}
         canDepositOthers={canDepositOthers}
+        canDelete={canDelete}
         sessionUserId={session.user.id}
         initialSummary={initialSummary}
       />

@@ -20,12 +20,14 @@ import { DataTable, type DataTableColumn } from 'mantine-datatable';
 import { IconCashRegister, IconSearch } from '@tabler/icons-react';
 import {
   cancelSale,
+  deleteSale,
   depositSaleInCashRegister,
   listWeeklySales,
   type SaleListItem,
   type WeeklySalesSummary,
 } from '@/app/_actions/sales';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { handleAction } from '@/lib/action';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import { formatDate, parsePickerDate } from '@/lib/date';
@@ -42,6 +44,7 @@ type EmployeeWeeklySalesDashboardProps = {
   dispensarySlug: string;
   canCancel: boolean;
   canDepositOthers: boolean;
+  canDelete: boolean;
   canViewAll: boolean;
   sessionUserId: string;
   initialSummary: WeeklySalesSummary;
@@ -52,6 +55,7 @@ export function EmployeeWeeklySalesDashboard({
   dispensarySlug,
   canCancel,
   canDepositOthers,
+  canDelete,
   canViewAll,
   sessionUserId,
   initialSummary,
@@ -137,6 +141,29 @@ export function EmployeeWeeklySalesDashboard({
       notifications.show({
         title: 'Erreur',
         message: error.message || 'Erreur lors du dépôt en caisse',
+        color: 'danger',
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const result = await deleteSale(dispensarySlug, saleId);
+      handleAction(result);
+      return saleId;
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Succès',
+        message: 'Vente supprimée',
+        color: 'moss',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', dispensarySlug] });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la suppression',
         color: 'danger',
       });
     },
@@ -306,7 +333,7 @@ export function EmployeeWeeklySalesDashboard({
       {
         accessor: 'actions',
         title: '',
-        width: 180,
+        width: 220,
         render: (sale) => {
           const isCompleted = sale.status === SaleStatus.COMPLETED;
           const canDepositSale =
@@ -319,30 +346,41 @@ export function EmployeeWeeklySalesDashboard({
             !sale.depositedInCashRegister &&
             (sale.userId === sessionUserId || canViewAll);
 
-          if (sale.depositedInCashRegister && isCompleted) {
-            return (
-              <Group gap="xs" wrap="nowrap">
-                <Badge variant="outline" style={apothecaryBooleanPills.yes}>
-                  Déposé en caisse
-                </Badge>
-              </Group>
-            );
+          if (
+            !canDepositSale &&
+            !canCancelSale &&
+            !canDelete &&
+            !(sale.depositedInCashRegister && isCompleted)
+          ) {
+            return null;
           }
-
-          if (!canDepositSale && !canCancelSale) return null;
 
           return (
             <Group gap="xs" wrap="nowrap">
+              {sale.depositedInCashRegister && isCompleted && (
+                <Badge variant="outline" style={apothecaryBooleanPills.yes}>
+                  Déposé
+                </Badge>
+              )}
               {canDepositSale && (
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="sage"
-                  loading={depositMutation.isPending && depositMutation.variables === sale.id}
-                  onClick={() => depositMutation.mutate(sale.id)}
+                <DeleteConfirmPopover
+                  title="Déposer en caisse ?"
+                  message="Action irréversible : la vente ne pourra plus être annulée."
+                  confirmLabel="Confirmer"
+                  confirmColor="sage"
+                  onConfirm={async () => {
+                    await depositMutation.mutateAsync(sale.id);
+                  }}
                 >
-                  Caisse
-                </Button>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="sage"
+                    loading={depositMutation.isPending && depositMutation.variables === sale.id}
+                  >
+                    Caisse
+                  </Button>
+                </DeleteConfirmPopover>
               )}
               {canCancelSale && (
                 <Button
@@ -355,6 +393,24 @@ export function EmployeeWeeklySalesDashboard({
                   Annuler
                 </Button>
               )}
+              {canDelete && (
+                <DeleteConfirmPopover
+                  title="Supprimer la vente ?"
+                  message="La vente sera définitivement supprimée. Le stock coffre sera restauré si elle était encore validée."
+                  onConfirm={async () => {
+                    await deleteMutation.mutateAsync(sale.id);
+                  }}
+                >
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="danger"
+                    loading={deleteMutation.isPending && deleteMutation.variables === sale.id}
+                  >
+                    Supprimer
+                  </Button>
+                </DeleteConfirmPopover>
+              )}
             </Group>
           );
         },
@@ -364,6 +420,7 @@ export function EmployeeWeeklySalesDashboard({
     return cols;
   }, [
     canCancel,
+    canDelete,
     canDepositOthers,
     canViewAll,
     cancelMutation.isPending,
@@ -371,6 +428,8 @@ export function EmployeeWeeklySalesDashboard({
     currentWeekBounds.end,
     currentWeekBounds.start,
     dayFilter,
+    deleteMutation.isPending,
+    deleteMutation.variables,
     depositMutation.isPending,
     depositMutation.variables,
     employeeFilter,

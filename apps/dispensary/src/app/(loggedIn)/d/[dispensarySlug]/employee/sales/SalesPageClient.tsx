@@ -17,6 +17,7 @@ type SalesPageClientProps = {
   dispensarySlug: string;
   canCancel: boolean;
   canDepositOthers: boolean;
+  canDelete: boolean;
   sessionUserId: string;
   initialSummary: WeeklySalesSummary;
 };
@@ -25,6 +26,7 @@ export default function SalesPageClient({
   dispensarySlug,
   canCancel,
   canDepositOthers,
+  canDelete,
   sessionUserId,
   initialSummary,
 }: SalesPageClientProps) {
@@ -62,6 +64,7 @@ export default function SalesPageClient({
         dispensarySlug={dispensarySlug}
         canCancel={canCancel}
         canDepositOthers={canDepositOthers}
+        canDelete={canDelete}
         canViewAll
         sessionUserId={sessionUserId}
         initialSummary={initialSummary}

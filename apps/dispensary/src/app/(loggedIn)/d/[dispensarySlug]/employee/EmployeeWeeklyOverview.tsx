@@ -143,6 +143,7 @@ export function EmployeeWeeklyOverview({
           dispensarySlug={dispensarySlug}
           canCancel={sales.canCancel}
           canDepositOthers={sales.canDepositOthers}
+          canDelete={false}
           canViewAll={sales.canViewAll}
           sessionUserId={sales.sessionUserId}
           initialSummary={sales.initialSummary}
