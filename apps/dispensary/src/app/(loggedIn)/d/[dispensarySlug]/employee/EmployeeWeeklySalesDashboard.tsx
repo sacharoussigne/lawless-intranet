@@ -39,6 +39,23 @@ import { amberPalette } from '@/lib/design-tokens';
 import { normalizeString } from '@/lib/string/normalizeString';
 
 const PAGE_SIZE = 10;
+const STATUS_FILTER_STORAGE_KEY = 'employee-sales-status-filter';
+const STATUS_FILTER_VALUES = [
+  'completed',
+  'cancelled',
+  'deposited',
+  'not_deposited',
+] as const;
+
+function readStatusFilterPreference(): string | null {
+  try {
+    const raw = window.localStorage.getItem(STATUS_FILTER_STORAGE_KEY);
+    if (raw == null || raw === '') return null;
+    return (STATUS_FILTER_VALUES as readonly string[]).includes(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
 
 type EmployeeWeeklySalesDashboardProps = {
   dispensarySlug: string;
@@ -65,12 +82,32 @@ export function EmployeeWeeklySalesDashboard({
   const [employeeFilter, setEmployeeFilter] = useState<string | null>(null);
   const [dayFilter, setDayFilter] = useState<Date | null>(null);
   const [itemFilter, setItemFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilterReady, setStatusFilterReady] = useState(false);
   const [page, setPage] = useState(1);
 
   const currentWeekBounds = useMemo(
     () => getBankWeekBounds(periodWeekDateValue),
     [periodWeekDateValue],
   );
+
+  useEffect(() => {
+    setStatusFilter(readStatusFilterPreference());
+    setStatusFilterReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!statusFilterReady) return;
+    try {
+      if (statusFilter == null) {
+        window.localStorage.removeItem(STATUS_FILTER_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter);
+      }
+    } catch {
+      // Ignore quota / private mode write failures.
+    }
+  }, [statusFilter, statusFilterReady]);
 
   useEffect(() => {
     setEmployeeFilter(null);
@@ -197,9 +234,17 @@ export function EmployeeWeeklySalesDashboard({
         );
         if (!matchesItem) return false;
       }
+      if (statusFilter === 'completed' && sale.status !== SaleStatus.COMPLETED) return false;
+      if (statusFilter === 'cancelled' && sale.status !== SaleStatus.CANCELLED) return false;
+      if (statusFilter === 'deposited') {
+        if (sale.status !== SaleStatus.COMPLETED || !sale.depositedInCashRegister) return false;
+      }
+      if (statusFilter === 'not_deposited') {
+        if (sale.status !== SaleStatus.COMPLETED || sale.depositedInCashRegister) return false;
+      }
       return true;
     });
-  }, [summary.sales, employeeFilter, dayFilter, itemFilter]);
+  }, [summary.sales, employeeFilter, dayFilter, itemFilter, statusFilter]);
 
   const totalRecords = filteredSales.length;
   const maxPage = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE) || 1);
@@ -316,7 +361,7 @@ export function EmployeeWeeklySalesDashboard({
       {
         accessor: 'status',
         title: 'Statut',
-        width: 110,
+        width: 140,
         render: (sale) => (
           <Badge
             variant="outline"
@@ -328,6 +373,24 @@ export function EmployeeWeeklySalesDashboard({
           >
             {sale.status === SaleStatus.COMPLETED ? 'Validée' : 'Annulée'}
           </Badge>
+        ),
+        filter: (
+          <Select
+            placeholder="Tous"
+            data={[
+              { value: 'completed', label: 'Validée' },
+              { value: 'cancelled', label: 'Annulée' },
+              { value: 'deposited', label: 'Déposé en caisse' },
+              { value: 'not_deposited', label: 'Non déposé' },
+            ]}
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            clearable
+            style={{ minWidth: 160 }}
+          />
         ),
       },
       {
@@ -436,6 +499,7 @@ export function EmployeeWeeklySalesDashboard({
     employeeOptions,
     itemFilter,
     sessionUserId,
+    statusFilter,
   ]);
 
   return (
@@ -502,7 +566,7 @@ export function EmployeeWeeklySalesDashboard({
           <Text size="sm" fw={600}>
             Détail
           </Text>
-          {(employeeFilter || dayFilter || itemFilter.trim()) && (
+          {(employeeFilter || dayFilter || itemFilter.trim() || statusFilter) && (
             <Button
               variant="subtle"
               color="slate"
@@ -511,6 +575,7 @@ export function EmployeeWeeklySalesDashboard({
                 setEmployeeFilter(null);
                 setDayFilter(null);
                 setItemFilter('');
+                setStatusFilter(null);
                 setPage(1);
               }}
             >
