@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Anchor, Group, Stack, Switch } from '@mantine/core';
+import { Anchor, Group, Stack, Text } from '@mantine/core';
 import Link from 'next/link';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
 import {
@@ -18,15 +18,15 @@ import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
 import { EmployeeWeeklySalesDashboard } from './EmployeeWeeklySalesDashboard';
 
-const SALES_VISIBLE_STORAGE_KEY = 'employee-home-sales-visible';
+const SALES_DETAIL_VISIBLE_STORAGE_KEY = 'employee-home-sales-visible';
 
-function readSalesVisiblePreference(): boolean {
+function readSalesDetailVisiblePreference(): boolean {
   try {
-    const raw = window.localStorage.getItem(SALES_VISIBLE_STORAGE_KEY);
-    if (raw == null) return true;
+    const raw = window.localStorage.getItem(SALES_DETAIL_VISIBLE_STORAGE_KEY);
+    if (raw == null) return false;
     return JSON.parse(raw) === true;
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -63,20 +63,23 @@ export function EmployeeWeeklyOverview({
   const [periodWeekDateValue, setPeriodWeekDateValue] = useState<Date>(() =>
     getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,
   );
-  const [salesVisible, setSalesVisible] = useState<boolean | null>(null);
+  const [salesDetailVisible, setSalesDetailVisible] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setSalesVisible(readSalesVisiblePreference());
+    setSalesDetailVisible(readSalesDetailVisiblePreference());
   }, []);
 
   useEffect(() => {
-    if (salesVisible == null) return;
+    if (salesDetailVisible == null) return;
     try {
-      window.localStorage.setItem(SALES_VISIBLE_STORAGE_KEY, JSON.stringify(salesVisible));
+      window.localStorage.setItem(
+        SALES_DETAIL_VISIBLE_STORAGE_KEY,
+        JSON.stringify(salesDetailVisible),
+      );
     } catch {
       // Ignore quota / private mode write failures.
     }
-  }, [salesVisible]);
+  }, [salesDetailVisible]);
 
   const currentWeekBounds = useMemo(
     () => getBankWeekBounds(periodWeekDateValue),
@@ -84,61 +87,51 @@ export function EmployeeWeeklyOverview({
   );
 
   const weeklyActivityHref = tenantRoutes(dispensarySlug).weeklyActivity.index;
-  const preferenceReady = salesVisible != null;
-  const salesSectionVisible = showSales && preferenceReady && salesVisible;
+  const preferenceReady = salesDetailVisible != null;
 
   return (
     <Stack gap="xl" mt="xl" mb="xl">
-      <Group justify="space-between" align="flex-end" wrap="wrap">
-        <WeekNavigation
-          weekStart={currentWeekBounds.start}
-          weekEnd={currentWeekBounds.end}
-          weekDateValue={periodWeekDateValue}
-          maxWeekStart={currentParisWeekStart}
-          onWeekChange={(date) => {
-            if (date) {
-              setPeriodWeekDateValue(clampParisWeekDateToMax(date, currentParisWeekStart));
-            }
-          }}
-          onPreviousWeek={() => setPeriodWeekDateValue((d) => addParisWeeks(d, -1))}
-          onNextWeek={() =>
-            setPeriodWeekDateValue((d) =>
-              clampParisWeekDateToMax(addParisWeeks(d, 1), currentParisWeekStart),
-            )
+      <WeekNavigation
+        weekStart={currentWeekBounds.start}
+        weekEnd={currentWeekBounds.end}
+        weekDateValue={periodWeekDateValue}
+        maxWeekStart={currentParisWeekStart}
+        onWeekChange={(date) => {
+          if (date) {
+            setPeriodWeekDateValue(clampParisWeekDateToMax(date, currentParisWeekStart));
           }
-        />
-        <Group gap="md" align="center">
-          {showSales && preferenceReady && (
-            <Switch
-              label="Afficher les ventes"
-              checked={salesVisible}
-              onChange={(event) => setSalesVisible(event.currentTarget.checked)}
-              size="sm"
-            />
-          )}
-          {showActivity && (
+        }}
+        onPreviousWeek={() => setPeriodWeekDateValue((d) => addParisWeeks(d, -1))}
+        onNextWeek={() =>
+          setPeriodWeekDateValue((d) =>
+            clampParisWeekDateToMax(addParisWeeks(d, 1), currentParisWeekStart),
+          )
+        }
+      />
+
+      {showActivity && activity && (
+        <Stack gap="md">
+          <Group justify="space-between" align="center" wrap="wrap">
+            <Text className="disp-display-title">Activité hebdo</Text>
             <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed">
               Détail complet
             </Anchor>
-          )}
-        </Group>
-      </Group>
-
-      {showActivity && activity && (
-        <EmployeeWeeklyDashboard
-          dispensarySlug={dispensarySlug}
-          canEdit={activity.canEdit}
-          canEditAll={activity.canEditAll}
-          sessionUserId={activity.sessionUserId}
-          viewerDiscordId={activity.viewerDiscordId}
-          defaultDisplayName={activity.defaultDisplayName}
-          initialWeekBounds={activity.initialWeekBounds}
-          initialRows={activity.initialRows}
-          periodWeekDateValue={periodWeekDateValue}
-        />
+          </Group>
+          <EmployeeWeeklyDashboard
+            dispensarySlug={dispensarySlug}
+            canEdit={activity.canEdit}
+            canEditAll={activity.canEditAll}
+            sessionUserId={activity.sessionUserId}
+            viewerDiscordId={activity.viewerDiscordId}
+            defaultDisplayName={activity.defaultDisplayName}
+            initialWeekBounds={activity.initialWeekBounds}
+            initialRows={activity.initialRows}
+            periodWeekDateValue={periodWeekDateValue}
+          />
+        </Stack>
       )}
 
-      {salesSectionVisible && sales && (
+      {showSales && sales && preferenceReady && (
         <EmployeeWeeklySalesDashboard
           dispensarySlug={dispensarySlug}
           canCancel={sales.canCancel}
@@ -148,6 +141,9 @@ export function EmployeeWeeklyOverview({
           sessionUserId={sales.sessionUserId}
           initialSummary={sales.initialSummary}
           periodWeekDateValue={periodWeekDateValue}
+          pageSize={5}
+          detailVisible={salesDetailVisible}
+          onDetailVisibleChange={setSalesDetailVisible}
         />
       )}
     </Stack>

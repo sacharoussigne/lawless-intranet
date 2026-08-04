@@ -7,6 +7,14 @@ import {
   getOrderTypeLabel,
 } from '@/types/enum/orderType';
 
+/** Order statuses that are still in progress (not completed or cancelled). */
+export const ACTIVE_ORDER_STATUSES = [
+  OrderStatusEnum.DRAFT,
+  OrderStatusEnum.LETTER_SENT,
+  OrderStatusEnum.PROCESSING,
+  OrderStatusEnum.READY,
+] as const;
+
 export const orderStatusSelectOptions = [
   { value: OrderStatusEnum.DRAFT, label: getOrderStatusLabel(OrderStatusEnum.DRAFT) },
   {
@@ -33,7 +41,9 @@ export const orderTypeSelectOptions = [
   { value: OrderTypeEnum.OUTGOING, label: getOrderTypeLabel(OrderTypeEnum.OUTGOING) },
 ];
 
-export const orderStatusFilterOptions = [
-  { value: '', label: 'Tous les statuts' },
-  ...orderStatusSelectOptions,
+export const orderStatusFilterOptions = [...orderStatusSelectOptions];
+
+export const orderTypeFilterOptions = [
+  { value: '', label: 'Tous les types' },
+  ...orderTypeSelectOptions,
 ];
