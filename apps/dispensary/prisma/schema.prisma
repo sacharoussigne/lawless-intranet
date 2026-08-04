@@ -380,14 +380,15 @@ model StockItemMovement {
 }
 
 model Company {
-  id            String                @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary            @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name          String
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  companyGroups CompanyGroupCompany[]
-  orders        Order[]
+  id                 String                @id @default(uuid())
+  dispensaryId       String
+  dispensary         Dispensary            @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  name               String
+  bankAccountNumber  String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  companyGroups      CompanyGroupCompany[]
+  orders             Order[]
 
   @@index([dispensaryId])
   @@map("company")

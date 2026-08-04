@@ -34,6 +34,7 @@ export function CompanyModal({
   const form = useForm({
     initialValues: {
       name: '',
+      bankAccountNumber: '',
       companyGroupIds: [] as string[],
     },
     validate: {
@@ -45,6 +46,7 @@ export function CompanyModal({
     if (editingCompany) {
       form.setValues({
         name: editingCompany.name,
+        bankAccountNumber: editingCompany.bankAccountNumber || '',
         companyGroupIds: editingCompany.companyGroups.map(
           (g) => g.companyGroupId ?? g.companyGroup.id,
         ),
@@ -61,6 +63,7 @@ export function CompanyModal({
     try {
       const payload = {
         name: values.name,
+        bankAccountNumber: values.bankAccountNumber.trim() || null,
         companyGroupIds:
           values.companyGroupIds.length > 0 ? values.companyGroupIds : undefined,
       };
@@ -118,6 +121,11 @@ export function CompanyModal({
             placeholder="Nom de l'entreprise"
             required
             {...form.getInputProps('name')}
+          />
+          <TextInput
+            label="Numéro de compte bancaire"
+            placeholder="Optionnel"
+            {...form.getInputProps('bankAccountNumber')}
           />
           <MultiSelect
             label="Groupes d'entreprises"
