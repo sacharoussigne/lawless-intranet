@@ -262,6 +262,23 @@ export async function deleteDocument(
   return parseJsonResponse(response);
 }
 
+export async function purgeDocumentsByScope(
+  scopeId: string,
+  options: ClientOptions = {},
+): Promise<{
+  success: true;
+  deletedTemplates: number;
+  deletedDocuments: number;
+}> {
+  const response = await documentsFetch('/api/purge-scope', {
+    method: 'DELETE',
+    cookieHeader: options.cookieHeader,
+    body: JSON.stringify({ scopeId }),
+  });
+
+  return parseJsonResponse(response);
+}
+
 export async function listDocumentAccesses(
   documentId: string,
   options: ClientOptions = {},
