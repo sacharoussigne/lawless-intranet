@@ -44,7 +44,7 @@ const admin = ac.newRole({
 const employee = ac.newRole({
   ...userAc.statements,
   stock: ["view"],
-  orders: ["view"],
+  orders: [],
   bank: ["access"],
   application: ["access"],
   mails: ["access"],
@@ -71,7 +71,7 @@ const inventory_manager = ac.newRole({
 const inventory_viewer = ac.newRole({
   ...userAc.statements,
   stock: ["view", "craft-read"],
-  orders: ["view"],
+  orders: [],
   search: ["access"],
   bank: ["access"],
   application: ["access"],
@@ -85,7 +85,7 @@ const inventory_viewer = ac.newRole({
 const direction = ac.newRole({
   ...userAc.statements,
   stock: ["view", "hide", "update"],
-  orders: [],
+  orders: ["view", "create", "update", "delete"],
   search: [],
   bank: [],
   application: ["access"],

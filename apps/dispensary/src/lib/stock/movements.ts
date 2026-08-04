@@ -75,6 +75,8 @@ const STOCK_MOVEMENT_KIND_LABELS: Record<StockMovementKind, string> = {
   [StockMovementKind.DEPOSIT_IN]: 'Dépôt (entrée)',
   [StockMovementKind.SALE_OUT]: 'Vente (sortie)',
   [StockMovementKind.SALE_CANCEL_RESTORE]: 'Annulation vente (restauration)',
+  [StockMovementKind.ORDER_IN]: 'Commande entrante (entrée)',
+  [StockMovementKind.ORDER_OUT]: 'Commande sortante (sortie)',
 };
 
 export function getStockMovementKindLabel(kind: StockMovementKind): string {

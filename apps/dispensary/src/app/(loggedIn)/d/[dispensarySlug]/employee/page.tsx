@@ -1,31 +1,16 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
 import { listWeeklySales } from '@/app/_actions/sales';
 import { getChestsList } from '@/app/_actions/chests';
-import { tenantRoutes } from '@/types/routes';
-import { Container, SimpleGrid, Text } from '@mantine/core';
-import {
-  IconAbacus,
-  IconArchive,
-  IconCalendarEvent,
-  IconCalendarWeek,
-  IconCashRegister,
-  IconHistory,
-  IconMail,
-  IconNotebook,
-  IconReceipt,
-  IconReportMoney,
-  IconStethoscope,
-} from '@tabler/icons-react';
+import { getOrdersPage } from '@/app/_actions/orders';
+import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
+import { Container } from '@mantine/core';
 import { getAuthSession } from '@/lib/authSession';
 import { calculatePermissions } from '@/lib/auth/calculatePermissions';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
-import { dispensarySiteTitle, getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
+import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
+import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
-import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
-import { userHasAnyCabinetAccess } from '@/lib/cabinet/access';
 import { userHasAccessibleChests } from '@/lib/chests/access';
-import { ModuleCard, type ModuleCardProps } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
@@ -38,6 +23,10 @@ import { getDataOrThrow } from '@/lib/response';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import type { ChestListItem } from '@/types/chests';
+import type { OrdersPageResult } from '@/types/orders';
+import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
+import { Role } from '@/types/enum/roles';
+import { defaultActiveOrdersPageFilters } from '@/lib/orders/queryKeys';
 import { EmployeeWeeklyOverview } from './EmployeeWeeklyOverview';
 import { EmployeeQuickActions } from './EmployeeQuickActions';
 
@@ -52,20 +41,7 @@ export default async function EmployeePage({
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession | null, dispensary.id);
   const permissions = calculatePermissions(effectiveRole);
   const appSettings = await getAppSettings(dispensary.id);
-  const t = tenantRoutes(dispensarySlug);
-  const siteTitle = dispensarySiteTitle(appSettings);
   const userId = session?.user?.id ?? '';
-  const agendaModuleAccess = userId
-    ? await userHasAnyAgendaAccess(
-        dispensary.id,
-        userId,
-        session!.user.role,
-        effectiveRole,
-      )
-    : false;
-  const cabinetModuleAccess = userId
-    ? await userHasAnyCabinetAccess(dispensary.id, userId)
-    : false;
   const hasAccessibleChests = await userHasAccessibleChests(dispensary.id, effectiveRole);
 
   const weeklyFeatureEnabled = appSettings.featureWeeklyDispensaryActivityEnabled;
@@ -79,96 +55,11 @@ export default async function EmployeePage({
   const canViewSales = salesFeatureEnabled && (permissions?.sales.view ?? false);
   const canCancelSale = salesFeatureEnabled && (permissions?.sales.cancel ?? false);
   const canViewAllSales = salesFeatureEnabled && (permissions?.sales.viewAll ?? false);
+  const canDepositOthers =
+    hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
   const canTakeStock = Boolean(appSettings.featureStockEnabled && hasAccessibleChests);
-
-  const employeeSections: (ModuleCardProps & { hasAccess: boolean })[] = [
-    {
-      title: 'Stock',
-      description:
-        'Consultez et gérez le stock des objets disponibles dans les différents coffres.',
-      icon: IconArchive,
-      href: t.stock.index,
-      hasAccess:
-        appSettings.featureStockEnabled &&
-        (permissions?.stock.view ?? false) &&
-        hasAccessibleChests,
-    },
-    {
-      title: 'Commandes',
-      description: 'Gérez les commandes passées aux entreprises et suivez leur statut.',
-      icon: IconNotebook,
-      href: t.orders.index,
-      hasAccess: appSettings.featureOrdersEnabled && (permissions?.orders.view ?? false),
-    },
-    {
-      title: 'Banque',
-      description: 'Suivez les comptes bancaires et les transactions hebdomadaires.',
-      icon: IconCashRegister,
-      href: t.bank.index,
-      hasAccess:
-        appSettings.featureBankEnabled && checkRolePermission(effectiveRole, 'bank', 'access'),
-    },
-    {
-      title: 'Courriers',
-      description: 'Rédigez et gérez les courriers et modèles.',
-      icon: IconMail,
-      href: t.employee.mails,
-      hasAccess: appSettings.featureMailsEnabled && checkRolePermission(effectiveRole, 'mails', 'access'),
-    },
-    {
-      title: 'Salaires',
-      description: 'Consultez les rapports de paie hebdomadaires.',
-      icon: IconReportMoney,
-      href: t.employee.payroll,
-      hasAccess: appSettings.featurePayrollEnabled && (permissions?.payrollReports.view ?? false),
-    },
-    {
-      title: 'Agenda',
-      description: 'Calendrier partagé et listes de tâches de l\'organisation.',
-      icon: IconCalendarEvent,
-      href: t.agenda.index,
-      hasAccess: appSettings.featureAgendaEnabled && agendaModuleAccess,
-    },
-    {
-      title: 'Cabinet',
-      description: 'Dossiers patients et consultations des cabinets médicaux.',
-      icon: IconStethoscope,
-      href: t.cabinet.index,
-      hasAccess: isAppFeatureEnabled(appSettings, 'cabinet') && cabinetModuleAccess,
-    },
-    {
-      title: 'Activité hebdo',
-      description: 'Historique, filtres et détails complets de l’activité.',
-      icon: IconCalendarWeek,
-      href: t.weeklyActivity.index,
-      hasAccess: weeklyFeatureEnabled && canViewWeekly,
-    },
-    {
-      title: 'Ventes',
-      description: 'Suivi hebdomadaire des ventes de tous les employés.',
-      icon: IconReceipt,
-      href: t.employee.sales,
-      hasAccess: canViewAllSales,
-    },
-    {
-      title: 'Stats stock',
-      description: 'Visualisez les statistiques de stock.',
-      icon: IconAbacus,
-      href: t.employee.stockStatistics,
-      hasAccess: appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false),
-    },
-    {
-      title: 'Historique stock',
-      description: 'Consultez et corrigez le journal des mouvements de stock.',
-      icon: IconHistory,
-      href: t.employee.stockMovements,
-      hasAccess: appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false),
-    },
-  ];
-
-  const visibleSections = employeeSections
-    .filter((s) => s.hasAccess)
-    .map(({ hasAccess: _access, ...section }) => section);
+  const ordersFeatureEnabled = appSettings.featureOrdersEnabled;
+  const canManageOrders = ordersFeatureEnabled && (permissions?.orders.view ?? false);
 
   let initialWeekBounds = {
     periodStart: new Date(),
@@ -199,6 +90,34 @@ export default async function EmployeePage({
     initialSalesSummary = getDataOrThrow(salesResult, 'Erreur lors du chargement des ventes');
   }
 
+  let initialActiveOrdersPage: OrdersPageResult | null = null;
+  let initialOrderAssignments: OrderMailTemplateAssignment[] = [];
+  if (canManageOrders) {
+    const [ordersResult, assignmentsResult] = await Promise.all([
+      getOrdersPage(dispensarySlug, {
+        page: defaultActiveOrdersPageFilters.page,
+        pageSize: defaultActiveOrdersPageFilters.pageSize,
+        status: defaultActiveOrdersPageFilters.status as Array<
+          'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY'
+        >,
+      }),
+      getOrderLetterTemplateAssignments(dispensarySlug),
+    ]);
+    initialActiveOrdersPage = getDataOrThrow(
+      ordersResult,
+      'Erreur lors du chargement des commandes',
+    );
+    initialOrderAssignments = getDataOrThrow(
+      assignmentsResult,
+      'Erreur lors du chargement des assignations de modèles de courriers',
+    );
+  }
+
+  const showActiveOrders =
+    canManageOrders &&
+    initialActiveOrdersPage != null &&
+    initialActiveOrdersPage.totalCount > 0;
+
   let chests: ChestListItem[] = [];
   if (canCreateSale || canTakeStock) {
     const chestsResult = await getChestsList(dispensarySlug, true);
@@ -209,13 +128,15 @@ export default async function EmployeePage({
     <Container size="xl" py="xl">
       <PageHeader
         title="Espace employé"
-        description={`Retrouvez ici les outils du quotidien pour le ${siteTitle}.`}
       />
 
       <EmployeeQuickActions
         canCreateSale={canCreateSale}
         canTakeStock={canTakeStock}
         chests={chests}
+        dispensarySlug={dispensarySlug}
+        initialOrdersPage={showActiveOrders ? initialActiveOrdersPage : null}
+        initialAssignments={showActiveOrders ? initialOrderAssignments : []}
       />
 
       {((weeklyFeatureEnabled && canViewWeekly) || (canViewSales && initialSalesSummary)) && (
@@ -226,43 +147,29 @@ export default async function EmployeePage({
           activity={
             weeklyFeatureEnabled && canViewWeekly
               ? {
-                  canEdit,
-                  canEditAll,
-                  sessionUserId: userId,
-                  viewerDiscordId,
-                  defaultDisplayName,
-                  initialWeekBounds,
-                  initialRows,
-                }
+                canEdit,
+                canEditAll,
+                sessionUserId: userId,
+                viewerDiscordId,
+                defaultDisplayName,
+                initialWeekBounds,
+                initialRows,
+              }
               : undefined
           }
           sales={
             canViewSales && initialSalesSummary
               ? {
-                  canCancel: canCancelSale,
-                  canViewAll: canViewAllSales,
-                  sessionUserId: userId,
-                  initialSummary: initialSalesSummary,
-                }
+                canCancel: canCancelSale,
+                canDepositOthers,
+                canViewAll: canViewAllSales,
+                sessionUserId: userId,
+                initialSummary: initialSalesSummary,
+              }
               : undefined
           }
         />
       )}
-
-      <hr
-        className="disp-section-divider"
-        style={{ marginTop: 'var(--mantine-spacing-xl)' }}
-      />
-
-      <Text className="disp-display-title" mb="lg" mt="lg">
-        Accès aux modules
-      </Text>
-
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
-        {visibleSections.map((section) => (
-          <ModuleCard key={section.title} {...section} />
-        ))}
-      </SimpleGrid>
     </Container>
   );
 }

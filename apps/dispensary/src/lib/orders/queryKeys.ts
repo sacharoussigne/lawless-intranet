@@ -1,8 +1,31 @@
+import { ACTIVE_ORDER_STATUSES } from '@/lib/orders/orderSelectOptions';
+
 export type OrdersPageFilters = {
   page: number;
   pageSize: number;
-  status: string | null;
+  status: string[];
+  type: string | null;
   search: string;
+  createdAtFrom: string | null;
+  createdAtTo: string | null;
+};
+
+export const DEFAULT_ORDERS_PAGE_SIZE = 10;
+
+export const defaultOrdersPageFilters: OrdersPageFilters = {
+  page: 1,
+  pageSize: DEFAULT_ORDERS_PAGE_SIZE,
+  status: [],
+  type: null,
+  search: '',
+  createdAtFrom: null,
+  createdAtTo: null,
+};
+
+export const defaultActiveOrdersPageFilters: OrdersPageFilters = {
+  ...defaultOrdersPageFilters,
+  pageSize: 5,
+  status: [...ACTIVE_ORDER_STATUSES],
 };
 
 export const ordersKeys = {

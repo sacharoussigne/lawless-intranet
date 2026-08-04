@@ -33,6 +33,11 @@ import type { OrderItem } from '@/types/orders';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { OrderItemsTable } from './OrderItemsTable';
 import {
+  CompleteOrderStockModal,
+  type CompleteOrderPendingPayload,
+  type CompleteOrderStockLine,
+} from './CompleteOrderStockModal';
+import {
   useOrderDetail,
   useOrderFormItems,
   useUpdateOrderMutation,
@@ -58,6 +63,10 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
+  const [completeModalOpened, setCompleteModalOpened] = useState(false);
+  const [pendingComplete, setPendingComplete] = useState<CompleteOrderPendingPayload | null>(
+    null,
+  );
 
   const form = useForm({
     initialValues: {
@@ -84,6 +93,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
             name: item.item.name,
             price: item.item.price,
             weight: item.item.weight ?? null,
+            isEnabled: item.item.isEnabled ?? true,
           },
         })),
       );
@@ -145,6 +155,20 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
     [availableItems, orderItems],
   );
 
+  const completeStockLines = useMemo<CompleteOrderStockLine[]>(
+    () =>
+      orderItems.map((oi) => {
+        const catalogItem = allItems.find((item) => item.id === oi.itemId);
+        return {
+          itemId: oi.itemId,
+          quantity: oi.quantity,
+          name: oi.item.name,
+          isEnabled: catalogItem?.isEnabled ?? oi.item.isEnabled ?? true,
+        };
+      }),
+    [orderItems, allItems],
+  );
+
   const handleRemoveItem = (itemId: string) => {
     setOrderItems(orderItems.filter((oi) => oi.itemId !== itemId));
   };
@@ -176,10 +200,23 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
             name: itemToAdd.name,
             price: normalizeItemPrice(itemToAdd.price),
             weight: itemToAdd.weight ?? null,
+            isEnabled: itemToAdd.isEnabled ?? true,
           },
         },
       ]);
     }
+  };
+
+  const resetAndClose = () => {
+    setCompleteModalOpened(false);
+    setPendingComplete(null);
+    form.reset();
+    setOrderItems([]);
+    setPriceManuallyEdited(false);
+    // Defer parent close so nested Mantine modals unmount sequentially.
+    window.setTimeout(() => {
+      onClose();
+    }, 0);
   };
 
   const handleSubmit = async (values: typeof form.values) => {
@@ -194,22 +231,41 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
       return;
     }
 
+    const payloadItems = orderItems.map((oi) => ({
+      itemId: oi.itemId,
+      quantity: oi.quantity,
+    }));
+
+    if (
+      values.status === OrderStatusEnum.COMPLETED &&
+      editingOrder.status !== OrderStatusEnum.COMPLETED
+    ) {
+      setPendingComplete({
+        id: editingOrder.id,
+        name: values.name,
+        type: values.type,
+        details: values.details || undefined,
+        price: values.price !== '' ? Number(values.price) : null,
+        items: payloadItems,
+      });
+      setCompleteModalOpened(true);
+      return;
+    }
+
     try {
       await updateOrderMutation.mutateAsync({
         id: editingOrder.id,
         name: values.name,
-        status: values.status,
+        status: values.status as Exclude<
+          OrderStatusEnum,
+          typeof OrderStatusEnum.COMPLETED
+        >,
         type: values.type,
         details: values.details || undefined,
         price: values.price !== '' ? Number(values.price) : null,
-        items: orderItems.map((oi) => ({
-          itemId: oi.itemId,
-          quantity: oi.quantity,
-        })),
+        items: payloadItems,
       });
-      onClose();
-      form.reset();
-      setOrderItems([]);
+      resetAndClose();
     } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
         handleApiZodError(error.error, form);
@@ -221,135 +277,137 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
   const isLoading = loadingOrder || loadingItems;
 
   return (
-    <AppModal
-      opened={opened}
-      onClose={() => {
-        onClose();
-        form.reset();
-        setOrderItems([]);
-        setPriceManuallyEdited(false);
-      }}
-      title="Modifier la commande"
-      size="xl"
-      footer={
-        <AppModalFooter>
-          <Button
-            variant="subtle"
-            color="slate"
-            onClick={() => {
-              onClose();
-              form.reset();
-            }}
-          >
-            Annuler
-          </Button>
-          <Button
-            type="submit"
-            form="edit-order-form"
-            disabled={isCompleted || isLoading}
-            loading={updateOrderMutation.isPending}
-          >
-            Enregistrer
-          </Button>
-        </AppModalFooter>
-      }
-    >
-      {isLoading && !editingOrder ? (
-        <Stack align="center" py="xl">
-          <Loader />
-        </Stack>
-      ) : (
-        <form id="edit-order-form" onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack gap="md">
-            <Stack gap="sm">
-              <Text fw={600} size="xs" c="dimmed" tt="uppercase">
-                Informations générales
-              </Text>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <TextInput
-                  label="Nom"
-                  placeholder="Nom de la commande"
-                  required
-                  {...form.getInputProps('name')}
-                  disabled={isCompleted}
-                />
-                <Select
-                  label="Type"
-                  data={orderTypeSelectOptions}
-                  required
-                  value={form.values.type}
-                  onChange={(value) => {
-                    form.setFieldValue('type', value as OrderTypeEnum);
-                    setPriceManuallyEdited(false);
-                  }}
-                  disabled={isCompleted}
-                />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <Select
-                  label="Statut"
-                  data={orderStatusSelectOptions}
-                  required
-                  value={form.values.status}
-                  onChange={(value) =>
-                    value && form.setFieldValue('status', value as OrderStatusEnum)
-                  }
-                  disabled={isCompleted}
-                />
-                <NumberInput
-                  label="Prix (optionnel)"
-                  placeholder="Prix de la commande"
-                  min={0}
-                  decimalScale={2}
-                  fixedDecimalScale
-                  prefix="$ "
-                  value={form.values.price}
-                  onChange={(value) => {
-                    setPriceManuallyEdited(true);
-                    form.setFieldValue('price', value === '' ? '' : Number(value));
-                  }}
-                  disabled={isCompleted}
-                />
-              </SimpleGrid>
-
-              <Textarea
-                label="Détails (optionnel)"
-                placeholder="Détails de la commande"
-                minRows={3}
-                {...form.getInputProps('details')}
-                disabled={isCompleted}
-              />
-
-              {totalWeight != null && (
-                <Text size="sm" c="dimmed">
-                  Poids total :{' '}
-                  <Text span fw={500} c="inherit">
-                    {totalWeight.toFixed(2)} kg
-                  </Text>
-                </Text>
-              )}
-            </Stack>
-
-            <Divider />
-
-            <Stack gap="sm">
-              <Text fw={600} size="xs" c="dimmed" tt="uppercase">
-                Objets de la commande
-              </Text>
-              <OrderItemsTable
-                orderItems={orderItems}
-                disabled={isCompleted}
-                loadingItems={loadingItems}
-                availableItemOptions={availableItemOptions}
-                onQuantityChange={handleQuantityChange}
-                onRemoveItem={handleRemoveItem}
-                onAddItem={handleAddItem}
-              />
-            </Stack>
+    <>
+      <AppModal
+        opened={opened}
+        onClose={resetAndClose}
+        title="Modifier la commande"
+        size="xl"
+        footer={
+          <AppModalFooter>
+            <Button variant="subtle" color="slate" onClick={resetAndClose}>
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              form="edit-order-form"
+              disabled={isCompleted || isLoading}
+              loading={updateOrderMutation.isPending}
+            >
+              Enregistrer
+            </Button>
+          </AppModalFooter>
+        }
+      >
+        {isLoading && !editingOrder ? (
+          <Stack align="center" py="xl">
+            <Loader />
           </Stack>
-        </form>
-      )}
-    </AppModal>
+        ) : (
+          <form id="edit-order-form" onSubmit={form.onSubmit(handleSubmit)}>
+            <Stack gap="md">
+              <Stack gap="sm">
+                <Text fw={600} size="xs" c="dimmed" tt="uppercase">
+                  Informations générales
+                </Text>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <TextInput
+                    label="Nom"
+                    placeholder="Nom de la commande"
+                    required
+                    {...form.getInputProps('name')}
+                    disabled={isCompleted}
+                  />
+                  <Select
+                    label="Type"
+                    data={orderTypeSelectOptions}
+                    required
+                    value={form.values.type}
+                    onChange={(value) => {
+                      form.setFieldValue('type', value as OrderTypeEnum);
+                      setPriceManuallyEdited(false);
+                    }}
+                    disabled={isCompleted}
+                  />
+                </SimpleGrid>
+
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Select
+                    label="Statut"
+                    data={orderStatusSelectOptions}
+                    required
+                    value={form.values.status}
+                    onChange={(value) =>
+                      value && form.setFieldValue('status', value as OrderStatusEnum)
+                    }
+                    disabled={isCompleted}
+                  />
+                  <NumberInput
+                    label="Prix (optionnel)"
+                    placeholder="Prix de la commande"
+                    min={0}
+                    decimalScale={2}
+                    fixedDecimalScale
+                    prefix="$ "
+                    value={form.values.price}
+                    onChange={(value) => {
+                      setPriceManuallyEdited(true);
+                      form.setFieldValue('price', value === '' ? '' : Number(value));
+                    }}
+                    disabled={isCompleted}
+                  />
+                </SimpleGrid>
+
+                <Textarea
+                  label="Détails (optionnel)"
+                  placeholder="Détails de la commande"
+                  minRows={3}
+                  {...form.getInputProps('details')}
+                  disabled={isCompleted}
+                />
+
+                {totalWeight != null && (
+                  <Text size="sm" c="dimmed">
+                    Poids total :{' '}
+                    <Text span fw={500} c="inherit">
+                      {totalWeight.toFixed(2)} kg
+                    </Text>
+                  </Text>
+                )}
+              </Stack>
+
+              <Divider />
+
+              <Stack gap="sm">
+                <Text fw={600} size="xs" c="dimmed" tt="uppercase">
+                  Objets de la commande
+                </Text>
+                <OrderItemsTable
+                  orderItems={orderItems}
+                  disabled={isCompleted}
+                  loadingItems={loadingItems}
+                  availableItemOptions={availableItemOptions}
+                  onQuantityChange={handleQuantityChange}
+                  onRemoveItem={handleRemoveItem}
+                  onAddItem={handleAddItem}
+                />
+              </Stack>
+            </Stack>
+          </form>
+        )}
+      </AppModal>
+
+      <CompleteOrderStockModal
+        opened={completeModalOpened}
+        onClose={() => {
+          setCompleteModalOpened(false);
+          setPendingComplete(null);
+        }}
+        onCompleted={resetAndClose}
+        orderType={pendingComplete?.type ?? form.values.type}
+        pending={pendingComplete}
+        lines={completeStockLines}
+      />
+    </>
   );
 }

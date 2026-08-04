@@ -1,26 +1,46 @@
 'use client';
 
-import { Paper, TextInput, Select, Group, ActionIcon, Tooltip } from '@mantine/core';
+import { useState } from 'react';
+import {
+  Paper,
+  TextInput,
+  Select,
+  MultiSelect,
+  Group,
+  ActionIcon,
+  Tooltip,
+} from '@mantine/core';
+import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import type { CSSProperties, ReactNode } from 'react';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconTrash, IconEye, IconMail } from '@tabler/icons-react';
-import { orderStatusFilterOptions } from '@/lib/orders/orderSelectOptions';
+import {
+  orderStatusSelectOptions,
+  orderTypeFilterOptions,
+} from '@/lib/orders/orderSelectOptions';
+import { parsePickerDate } from '@/lib/date';
 import { getOrderClientDisplayName, type OrderSummary } from '@/types/orders';
 import { OrderStatusEnum } from '@/types/enum/orderStatus';
 
 interface OrdersTableProps {
   orders: OrderSummary[];
   loading: boolean;
-  statusFilter: string | null;
+  statusFilter: string[];
+  typeFilter: string | null;
   nameFilter: string;
+  createdAtFrom: string | null;
+  createdAtTo: string | null;
   page: number;
   pageSize: number;
   totalRecords: number;
   permissions: any;
-  onStatusFilterChange: (value: string | null) => void;
+  hideStatusFilter?: boolean;
+  onStatusFilterChange: (value: string[]) => void;
+  onTypeFilterChange: (value: string | null) => void;
   onNameFilterChange: (value: string) => void;
+  onCreatedAtRangeChange: (from: string | null, to: string | null) => void;
   onPageChange: (page: number) => void;
   onView: (order: OrderSummary) => void;
   onEdit: (order: OrderSummary) => void;
@@ -77,17 +97,85 @@ function LockedActionIcon({
   );
 }
 
+function StatusMultiSelectFilter({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const [dropdownOpened, setDropdownOpened] = useState(false);
+
+  return (
+    <MultiSelect
+      placeholder="Tous les statuts"
+      data={orderStatusSelectOptions}
+      value={value}
+      onChange={(next) => {
+        onChange(next);
+        requestAnimationFrame(() => setDropdownOpened(true));
+      }}
+      clearable
+      searchable
+      hidePickedOptions
+      dropdownOpened={dropdownOpened}
+      onDropdownClose={() => setDropdownOpened(false)}
+      onClick={() => setDropdownOpened(true)}
+      comboboxProps={{ withinPortal: false }}
+      style={{ minWidth: 240 }}
+    />
+  );
+}
+
+function CreatedAtRangeFilter({
+  value,
+  onChange,
+}: {
+  value: [Date | null, Date | null];
+  onChange: (from: string | null, to: string | null) => void;
+}) {
+  return (
+    <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
+      <DatePickerInput
+        type="range"
+        placeholder="Période"
+        value={value}
+        onChange={(next) => {
+          const [rawFrom, rawTo] = (next ?? [null, null]) as [
+            Date | string | null,
+            Date | string | null,
+          ];
+          const from = parsePickerDate(rawFrom);
+          const to = parsePickerDate(rawTo);
+          onChange(from?.toISOString() ?? null, to?.toISOString() ?? null);
+        }}
+        valueFormat="D MMM YYYY"
+        clearable
+        closeOnChange={false}
+        popoverProps={{ withinPortal: false, trapFocus: false }}
+        style={{ minWidth: 240 }}
+      />
+    </DatesProvider>
+  );
+}
+
 export function OrdersTable({
   orders,
   loading,
   statusFilter,
+  typeFilter,
   nameFilter,
+  createdAtFrom,
+  createdAtTo,
   page,
   pageSize,
   totalRecords,
   permissions,
+  hideStatusFilter = false,
   onStatusFilterChange,
+  onTypeFilterChange,
   onNameFilterChange,
+  onCreatedAtRangeChange,
   onPageChange,
   onView,
   onEdit,
@@ -95,6 +183,11 @@ export function OrdersTable({
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
+  const dateRange: [Date | null, Date | null] = [
+    createdAtFrom ? new Date(createdAtFrom) : null,
+    createdAtTo ? new Date(createdAtTo) : null,
+  ];
+
   return (
     <Paper shadow="sm" withBorder>
       <DataTable
@@ -107,16 +200,18 @@ export function OrdersTable({
             render: (order: OrderSummary) => (
               <OrderStatusBadge status={order.status} />
             ),
-            filter: (
-              <Select
-                placeholder="Tous les statuts"
-                data={orderStatusFilterOptions}
-                value={statusFilter || ''}
-                onChange={(value) => onStatusFilterChange(value || null)}
-                clearable
-                style={{ minWidth: 200 }}
-              />
-            ),
+            ...(hideStatusFilter
+              ? {}
+              : {
+                  filtering: statusFilter.length > 0,
+                  filterPopoverProps: { trapFocus: false },
+                  filter: (
+                    <StatusMultiSelectFilter
+                      value={statusFilter}
+                      onChange={onStatusFilterChange}
+                    />
+                  ),
+                }),
           },
           {
             accessor: 'type',
@@ -124,17 +219,29 @@ export function OrdersTable({
             render: (order: OrderSummary) => (
               <OrderTypeBadge type={order.type || 'INCOMING'} />
             ),
+            filtering: Boolean(typeFilter),
+            filter: (
+              <Select
+                placeholder="Tous les types"
+                data={orderTypeFilterOptions}
+                value={typeFilter || ''}
+                onChange={(value) => onTypeFilterChange(value || null)}
+                clearable
+                style={{ minWidth: 160 }}
+              />
+            ),
           },
           {
             accessor: 'name',
             title: 'Nom',
             sortable: true,
+            filtering: Boolean(nameFilter.trim()),
             filter: (
               <TextInput
                 placeholder="Rechercher un nom..."
                 value={nameFilter}
                 onChange={(e) => onNameFilterChange(e.currentTarget.value)}
-                style={{ minWidth: 200 }}
+                style={{ minWidth: 180 }}
               />
             ),
           },
@@ -161,6 +268,14 @@ export function OrdersTable({
                 day: 'numeric',
               }),
             sortable: true,
+            filtering: Boolean(createdAtFrom || createdAtTo),
+            filterPopoverProps: { trapFocus: false },
+            filter: (
+              <CreatedAtRangeFilter
+                value={dateRange}
+                onChange={onCreatedAtRangeChange}
+              />
+            ),
           },
           {
             accessor: 'actions',
