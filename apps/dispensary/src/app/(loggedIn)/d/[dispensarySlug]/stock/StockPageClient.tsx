@@ -110,7 +110,7 @@ export default function StockPageClient({
     [items, selectedChestId, activeVisibility],
   );
 
-  const showHiddenInPlace = Boolean(selectedChestId && (isEditing || isManagingVisibility));
+  const showHiddenInPlace = Boolean(selectedChestId && isManagingVisibility);
 
   const displayCategories = useMemo(() => {
     if (!selectedChestId) {
@@ -121,16 +121,6 @@ export default function StockPageClient({
     }
     return groupItemsByCategory(visibleItems);
   }, [selectedChestId, showHiddenInPlace, items, visibleItems]);
-
-  const seedEditedQuantity = useCallback((item: ItemWithRelations) => {
-    setEditedQuantitiesByItemId((prev) => {
-      if (item.id in prev) return prev;
-      return {
-        ...prev,
-        [item.id]: item.stockToday !== null ? item.stockToday : null,
-      };
-    });
-  }, []);
 
   const handleStartEdit = () => {
     setIsManagingVisibility(false);
@@ -213,14 +203,9 @@ export default function StockPageClient({
   const handleShowCategory = useCallback(
     (categoryId: string) => {
       if (!selectedChestId) return;
-      if (isEditing) {
-        items
-          .filter((item) => item.categoryId === categoryId)
-          .forEach((item) => seedEditedQuantity(item));
-      }
       setCategoryHiddenMutation.mutate({ chestId: selectedChestId, categoryId, hidden: false });
     },
-    [selectedChestId, isEditing, items, seedEditedQuantity, setCategoryHiddenMutation],
+    [selectedChestId, setCategoryHiddenMutation],
   );
 
   const handleHideItem = useCallback(
@@ -234,13 +219,9 @@ export default function StockPageClient({
   const handleShowItem = useCallback(
     (itemId: string) => {
       if (!selectedChestId) return;
-      if (isEditing) {
-        const item = items.find((entry) => entry.id === itemId);
-        if (item) seedEditedQuantity(item);
-      }
       setItemHiddenMutation.mutate({ chestId: selectedChestId, itemId, hidden: false });
     },
-    [selectedChestId, isEditing, items, seedEditedQuantity, setItemHiddenMutation],
+    [selectedChestId, setItemHiddenMutation],
   );
 
   const isItemHiddenForDisplay = useCallback(
@@ -385,7 +366,7 @@ export default function StockPageClient({
                 isItemHidden={isItemHiddenForDisplay}
                 canStockUpdate={canStockUpdate}
                 canHide={canToggleVisibility}
-                canUnhide={canToggleVisibility || (isEditing && canStockUpdate && Boolean(selectedChestId))}
+                canUnhide={canToggleVisibility}
                 selectedChestId={selectedChestId}
                 isCategoryCheckEnabled={isCategoryCheckEnabled}
                 getTextColor={getTextColor}
