@@ -45,20 +45,18 @@ import {
   addDescriptionSuggestion,
   deleteNameSuggestion,
   deleteDescriptionSuggestion,
-  getBankGlobalStats,
 } from '@/app/_actions/bankAccounts';
 import { handleAction } from '@/lib/action';
 import { addParisWeeks } from '@/lib/bankWeek';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { SerializedBankWeek, BankGlobalStats as BankGlobalStatsType } from '@/types/bankAccounts';
+import type { SerializedBankWeek } from '@/types/bankAccounts';
 
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
 import { SuggestionAutocomplete } from '@/app/_components/SuggestionAutocomplete/SuggestionAutocomplete';
 import { SummaryCards } from '@/app/_components/SummaryCards/SummaryCards';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
-import { BankGlobalStats } from './components/BankGlobalStats';
 import { BankPlannedPanel } from './components/BankPlannedPanel';
 
 function toDate(value: Date | string | number): Date {
@@ -83,7 +81,6 @@ function normalizeSerializedWeek(week: SerializedBankWeek): SerializedBankWeek {
 
 interface BankPageClientProps {
   initialWeek: SerializedBankWeek;
-  initialStats: BankGlobalStatsType;
 }
 
 const transactionTypeOptions = [
@@ -99,13 +96,11 @@ const getTransactionTypeInfo = (type: string) => {
 
 export default function BankPageClient({
   initialWeek,
-  initialStats,
 }: BankPageClientProps) {
   const dispensarySlug = useRequiredDispensarySlug();
   const [activeTab, setActiveTab] = useState<string | null>('ledger');
   const [week, setWeek] = useState<SerializedBankWeek>(() => normalizeSerializedWeek(initialWeek));
   const [weeks, setWeeks] = useState<SerializedBankWeek[]>([]);
-  const [stats, setStats] = useState<BankGlobalStatsType>(initialStats);
   const [loading, setLoading] = useState(false);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [companyNames, setCompanyNames] = useState<string[]>([]);
@@ -159,16 +154,6 @@ export default function BankPageClient({
       if (data) {
         setWeeks(data.map(normalizeSerializedWeek));
       }
-    } catch {
-      // Error handled by handleAction
-    }
-  }, [dispensarySlug]);
-
-  const loadStats = useCallback(async () => {
-    try {
-      const result = await getBankGlobalStats(dispensarySlug);
-      const data = handleAction(result);
-      if (data) setStats(data);
     } catch {
       // Error handled by handleAction
     }
@@ -309,7 +294,7 @@ export default function BankPageClient({
   };
 
   const refreshAfterPlannedChange = async () => {
-    await Promise.all([loadWeek(week.weekStart), loadWeeks(), loadStats()]);
+    await Promise.all([loadWeek(week.weekStart), loadWeeks()]);
   };
 
   const handlePreviousWeek = () => {
@@ -366,6 +351,20 @@ export default function BankPageClient({
     return runningBalance;
   }, [week.transactions, previousBalance]);
 
+  const weekFlow = useMemo(() => {
+    let weekIn = 0;
+    let weekOut = 0;
+    for (const transaction of week.transactions) {
+      const amount = Number(transaction.amount);
+      if (transaction.type === 'DEPOSIT' || transaction.type === 'TRANSFER_IN') {
+        weekIn += amount;
+      } else {
+        weekOut += amount;
+      }
+    }
+    return { weekIn, weekOut, weekNet: weekIn - weekOut };
+  }, [week.transactions]);
+
   const filteredTransactions = useMemo(() => {
     let transactions = week.transactions;
     if (typeFilter.length > 0) {
@@ -414,7 +413,7 @@ export default function BankPageClient({
     return records;
   }, [filteredTransactions, newTransaction, sortOrder]);
 
-  const balanceDifference = currentBalance - previousBalance;
+  const { weekIn, weekOut, weekNet } = weekFlow;
 
   const handleSaveTransaction = async (transaction: {
     id?: string;
@@ -446,7 +445,7 @@ export default function BankPageClient({
           });
           await loadWeek(week.weekStart);
           await loadWeeks();
-          await loadStats();
+          await loadWeeks();
           setEditingTransaction(null);
         }
       } else {
@@ -477,7 +476,7 @@ export default function BankPageClient({
           });
           await loadWeek(week.weekStart);
           await loadWeeks();
-          await loadStats();
+          await loadWeeks();
           await loadSuggestions();
           setNewTransaction(null);
         }
@@ -506,7 +505,7 @@ export default function BankPageClient({
         });
         await loadWeek(week.weekStart);
         await loadWeeks();
-        await loadStats();
+        await loadWeeks();
       }
     } catch (error: unknown) {
       notifications.show({
@@ -619,31 +618,30 @@ export default function BankPageClient({
                       {
                         label: 'Solde précédent',
                         value: previousBalance,
-                        color: 'dimmed',
+                        color: 'slate',
+                        backgroundColor: 'var(--mantine-color-slate-0)',
                       },
                       {
                         label: 'Solde actuel',
                         value: currentBalance,
+                        color: 'leather',
+                        backgroundColor: 'var(--mantine-color-leather-0)',
                       },
                       {
-                        label: 'Variation',
-                        value: balanceDifference,
-                        color: balanceDifference >= 0 ? 'moss' : 'danger',
+                        label: 'Net de la semaine',
+                        value: weekNet,
+                        color: weekNet >= 0 ? 'moss' : 'danger',
                         backgroundColor:
-                          balanceDifference >= 0
+                          weekNet >= 0
                             ? 'var(--mantine-color-moss-0)'
                             : 'var(--mantine-color-danger-0)',
                         formatValue: (value) => `${value >= 0 ? '+' : ''}${value.toFixed(2)} $`,
+                        detail: `Entrées ${weekIn.toFixed(2)} $ · Sorties ${weekOut.toFixed(2)} $`,
                       },
                     ]}
                   />
                 </Stack>
               </Paper>
-
-              <BankGlobalStats
-                stats={stats}
-                onPendingClick={() => setActiveTab('planned')}
-              />
 
               <DatesProvider settings={{ locale: 'fr' }}>
                 <ActiveFilters
