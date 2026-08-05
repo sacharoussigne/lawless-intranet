@@ -213,22 +213,22 @@ export default function BankPageClient({
   };
 
   const handleDeleteNameSuggestion = async (value: string, e?: React.MouseEvent) => {
+    e?.preventDefault();
     e?.stopPropagation();
     if (!value || value.trim().length === 0) return;
 
+    const trimmed = value.trim();
     try {
-      const result = await deleteNameSuggestion(dispensarySlug, { value });
-      const data = handleAction(result);
-      if (data) {
-        setNameSuggestions((prev) =>
-          prev.filter((s) => s.toLowerCase() !== value.toLowerCase().trim()),
-        );
-        notifications.show({
-          title: 'Succès',
-          message: 'Suggestion supprimée',
-          color: 'moss',
-        });
-      }
+      const result = await deleteNameSuggestion(dispensarySlug, { value: trimmed });
+      handleAction(result);
+      setNameSuggestions((prev) =>
+        prev.filter((s) => s.toLowerCase() !== trimmed.toLowerCase()),
+      );
+      notifications.show({
+        title: 'Succès',
+        message: 'Suggestion supprimée',
+        color: 'moss',
+      });
     } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',

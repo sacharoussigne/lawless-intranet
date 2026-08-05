@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ActionIcon, Autocomplete, Group, Popover, Stack, Text, Button } from '@mantine/core';
+import { useMemo } from 'react';
+import { ActionIcon, Autocomplete, Group, Text } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 
 interface SuggestionAutocompleteProps {
@@ -25,8 +25,6 @@ export function SuggestionAutocomplete({
   placeholder = '',
   size = 'xs',
 }: SuggestionAutocompleteProps) {
-  const [deleteMenuForValue, setDeleteMenuForValue] = useState<string | null>(null);
-
   const data = useMemo(() => {
     const merged = [...suggestions];
     for (const option of extraOptions) {
@@ -40,11 +38,6 @@ export function SuggestionAutocomplete({
   const deletableSet = useMemo(
     () => new Set(suggestions.map((s) => s.toLowerCase())),
     [suggestions],
-  );
-
-  const extraSet = useMemo(
-    () => new Set(extraOptions.map((s) => s.toLowerCase())),
-    [extraOptions],
   );
 
   const canAddSuggestion =
@@ -61,93 +54,32 @@ export function SuggestionAutocomplete({
       size={size}
       placeholder={placeholder}
       renderOption={({ option }) => {
-        const normalized = option.value.toLowerCase();
-        const canDelete = deletableSet.has(normalized) && !extraSet.has(normalized);
+        const canDelete = deletableSet.has(option.value.toLowerCase());
 
         return (
-          <Group justify="space-between" style={{ flex: 1 }}>
-            <Text size="xs" style={{ flex: 1 }}>
+          <Group justify="space-between" gap="xs" wrap="nowrap" style={{ flex: 1 }}>
+            <Text size="xs" style={{ flex: 1, minWidth: 0 }} truncate>
               {option.value}
             </Text>
-            {canDelete && (
-              <Popover
-                position="top"
-                withArrow
-                shadow="md"
-                withinPortal
-                opened={deleteMenuForValue === option.value}
-                onChange={(opened) => {
-                  if (!opened) setDeleteMenuForValue(null);
+            {canDelete ? (
+              <ActionIcon
+                size="xs"
+                variant="subtle"
+                color="danger"
+                aria-label={`Supprimer la suggestion ${option.value}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void onDeleteSuggestion(option.value, e);
                 }}
               >
-                <Popover.Target>
-                  <ActionIcon
-                    size="xs"
-                    variant="subtle"
-                    color="danger"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDeleteMenuForValue((v) =>
-                        v === option.value ? null : option.value,
-                      );
-                    }}
-                  >
-                    <IconTrash size={12} />
-                  </ActionIcon>
-                </Popover.Target>
-                <Popover.Dropdown>
-                  <Stack gap="xs" p="xs">
-                    <Text size="sm" fw={500}>
-                      Supprimer la suggestion
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Supprimer &quot;{option.value}&quot; des suggestions ?
-                    </Text>
-                    <Group gap="xs" justify="flex-end" mt="xs">
-                      <Button
-                        size="xs"
-                        variant="subtle"
-                        color="slate"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setDeleteMenuForValue(null);
-                        }}
-                      >
-                        Annuler
-                      </Button>
-                      <Button
-                        size="xs"
-                        color="danger"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void (async () => {
-                            await onDeleteSuggestion(option.value, e);
-                            setDeleteMenuForValue(null);
-                          })();
-                        }}
-                      >
-                        Supprimer
-                      </Button>
-                    </Group>
-                  </Stack>
-                </Popover.Dropdown>
-              </Popover>
-            )}
+                <IconTrash size={12} />
+              </ActionIcon>
+            ) : null}
           </Group>
         );
       }}
@@ -157,9 +89,13 @@ export function SuggestionAutocomplete({
           <ActionIcon
             size="sm"
             variant="subtle"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             onClick={(e) => {
-              e?.stopPropagation();
-              onAddSuggestion(value);
+              e.stopPropagation();
+              void onAddSuggestion(value);
             }}
           >
             <IconPlus size={14} />

@@ -132,9 +132,10 @@ export async function deleteNameSuggestion(dispensarySlug: string, data: { value
       return { status: 400, error: 'Le nom ne peut pas être vide' };
     }
 
-    await prisma.transactionNameSuggestion.delete({
+    await prisma.transactionNameSuggestion.deleteMany({
       where: {
-        dispensaryId_value: { dispensaryId, value: data.value.trim() },
+        dispensaryId,
+        value: data.value.trim(),
       },
     });
 
