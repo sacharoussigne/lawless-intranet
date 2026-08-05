@@ -158,9 +158,10 @@ export async function deleteDescriptionSuggestion(
       return { status: 400, error: 'La description ne peut pas être vide' };
     }
 
-    await prisma.transactionDescriptionSuggestion.delete({
+    await prisma.transactionDescriptionSuggestion.deleteMany({
       where: {
-        dispensaryId_value: { dispensaryId, value: data.value.trim() },
+        dispensaryId,
+        value: data.value.trim(),
       },
     });
 

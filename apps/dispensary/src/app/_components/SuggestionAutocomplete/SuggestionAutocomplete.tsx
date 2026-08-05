@@ -41,8 +41,7 @@ export function SuggestionAutocomplete({
   );
 
   const canAddSuggestion =
-    value &&
-    value.trim().length > 0 &&
+    Boolean(value?.trim()) &&
     !suggestions.some((s) => s.toLowerCase() === value.toLowerCase().trim()) &&
     !extraOptions.some((s) => s.toLowerCase() === value.toLowerCase().trim());
 
@@ -57,8 +56,24 @@ export function SuggestionAutocomplete({
         const canDelete = deletableSet.has(option.value.toLowerCase());
 
         return (
-          <Group justify="space-between" gap="xs" wrap="nowrap" style={{ flex: 1 }}>
-            <Text size="xs" style={{ flex: 1, minWidth: 0 }} truncate>
+          <Group
+            gap="xs"
+            wrap="nowrap"
+            align="flex-start"
+            justify="space-between"
+            w="100%"
+            style={{ minWidth: 0 }}
+          >
+            <Text
+              size="xs"
+              style={{
+                flex: '1 1 auto',
+                minWidth: 0,
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+                lineHeight: 1.35,
+              }}
+            >
               {option.value}
             </Text>
             {canDelete ? (
@@ -67,14 +82,15 @@ export function SuggestionAutocomplete({
                 variant="subtle"
                 color="danger"
                 aria-label={`Supprimer la suggestion ${option.value}`}
+                style={{ flex: '0 0 auto', marginTop: 1 }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  void onDeleteSuggestion(option.value, e);
                 }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  void onDeleteSuggestion(option.value, e);
                 }}
               >
                 <IconTrash size={12} />
@@ -83,17 +99,28 @@ export function SuggestionAutocomplete({
           </Group>
         );
       }}
-      comboboxProps={{ withinPortal: true }}
+      comboboxProps={{
+        withinPortal: true,
+      }}
+      styles={{
+        option: {
+          paddingInline: 8,
+          paddingBlock: 6,
+          alignItems: 'flex-start',
+        },
+      }}
       rightSection={
         canAddSuggestion ? (
           <ActionIcon
             size="sm"
             variant="subtle"
+            aria-label="Ajouter aux suggestions"
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
             }}
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               void onAddSuggestion(value);
             }}
