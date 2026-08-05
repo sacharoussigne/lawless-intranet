@@ -1,35 +1,28 @@
-import type { BankAccount, BankAccountAccess, BankAccountWeek, BankTransaction, TransactionType, BankAccountAccessType } from '@prisma/client';
+import type { BankWeek, BankTransaction, TransactionType, BankPlannedTransaction, BankPlannedOccurrence, BankScheduleKind, BankPlannedOccurrenceStatus } from '@prisma/client';
 
-export interface BankAccountWithRelations extends BankAccount {
-  owner: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  accesses: (BankAccountAccess & {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-    };
-  })[];
-}
+export type SerializedBankTransaction = Omit<BankTransaction, 'amount'> & {
+  amount: number;
+};
 
-export interface BankAccountWeekWithTransactions extends BankAccountWeek {
-  transactions: BankTransaction[];
-  account: {
-    id: string;
-    name: string;
-  };
-}
+export type SerializedBankWeek = Omit<BankWeek, 'balance'> & {
+  balance: number;
+  transactions: SerializedBankTransaction[];
+};
 
-export interface BankTransactionWithWeek extends BankTransaction {
-  week: {
-    id: string;
-    weekStart: Date;
-    weekEnd: Date;
-    accountId: string;
-  };
-}
+export type SerializedPlannedTransaction = Omit<BankPlannedTransaction, 'amount'> & {
+  amount: number;
+};
 
-export type { TransactionType, BankAccountAccessType };
+export type SerializedPlannedOccurrence = Omit<BankPlannedOccurrence, never> & {
+  plannedTransaction: SerializedPlannedTransaction;
+};
+
+export type BankGlobalStats = {
+  currentBalance: number;
+  monthIn: number;
+  monthOut: number;
+  monthNet: number;
+  pendingOccurrences: number;
+};
+
+export type { TransactionType, BankScheduleKind, BankPlannedOccurrenceStatus };

@@ -26,7 +26,9 @@ model Dispensary {
   individualCustomers IndividualCustomer[]
   orders      Order[]
   orderMailTemplateAssignments OrderMailTemplateAssignment[]
-  bankAccounts BankAccount[]
+  bankWeeks   BankWeek[]
+  bankPlannedTransactions BankPlannedTransaction[]
+  bankPlannedOccurrences BankPlannedOccurrence[]
   transactionNameSuggestions TransactionNameSuggestion[]
   transactionDescriptionSuggestions TransactionDescriptionSuggestion[]
   payrollWeeklyReports PayrollWeeklyReport[]
@@ -548,59 +550,6 @@ model OrderMailTemplateAssignment {
   @@map("order_mail_template_assignment")
 }
 
-enum BankAccountAccessType {
-  READ
-  WRITE
-}
-
-model BankAccount {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name      String
-  ownerId   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  accesses  BankAccountAccess[]
-  weeks     BankAccountWeek[]
-
-  @@index([ownerId])
-  @@index([dispensaryId])
-  @@map("bank_account")
-}
-
-model BankAccountAccess {
-  id        String   @id @default(uuid())
-  accountId String
-  account   BankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  userId    String
-  accessType BankAccountAccessType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([accountId, userId])
-  @@index([accountId])
-  @@index([userId])
-  @@map("bank_account_access")
-}
-
-model BankAccountWeek {
-  id        String   @id @default(uuid())
-  accountId String
-  account   BankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  weekStart DateTime
-  weekEnd   DateTime
-  balance   Decimal  @default(0) @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  transactions BankTransaction[]
-
-  @@unique([accountId, weekStart])
-  @@index([accountId])
-  @@index([weekStart])
-  @@map("bank_account_week")
-}
-
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL
@@ -608,43 +557,112 @@ enum TransactionType {
   TRANSFER_OUT
 }
 
+enum BankScheduleKind {
+  ONCE
+  WEEKLY
+}
+
+enum BankPlannedOccurrenceStatus {
+  PENDING
+  CONFIRMED
+  SKIPPED
+}
+
+model BankWeek {
+  id           String            @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary        @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  weekStart    DateTime
+  weekEnd      DateTime
+  balance      Decimal           @default(0) @db.Decimal(10, 2)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  transactions BankTransaction[]
+
+  @@unique([dispensaryId, weekStart])
+  @@index([dispensaryId])
+  @@index([weekStart])
+  @@map("bank_week")
+}
+
 model BankTransaction {
-  id          String   @id @default(uuid())
+  id          String          @id @default(uuid())
   weekId      String
-  week        BankAccountWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  week        BankWeek        @relation(fields: [weekId], references: [id], onDelete: Cascade)
   date        DateTime
   type        TransactionType
   name        String
   description String?
-  amount      Decimal  @db.Decimal(10, 2)
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  amount      Decimal         @db.Decimal(10, 2)
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  confirmedFromOccurrence BankPlannedOccurrence?
 
   @@index([weekId])
   @@index([date])
   @@map("bank_transaction")
 }
 
+model BankPlannedTransaction {
+  id           String                   @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary               @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  type         TransactionType
+  name         String
+  description  String?
+  amount       Decimal                  @db.Decimal(10, 2)
+  scheduleKind BankScheduleKind
+  onceDate     DateTime?
+  weekdays     Int[]
+  isActive     Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  occurrences  BankPlannedOccurrence[]
+
+  @@index([dispensaryId])
+  @@index([dispensaryId, isActive])
+  @@map("bank_planned_transaction")
+}
+
+model BankPlannedOccurrence {
+  id                      String                      @id @default(uuid())
+  dispensaryId            String
+  dispensary              Dispensary                  @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  plannedTransactionId    String
+  plannedTransaction      BankPlannedTransaction      @relation(fields: [plannedTransactionId], references: [id], onDelete: Cascade)
+  date                    DateTime
+  status                  BankPlannedOccurrenceStatus @default(PENDING)
+  confirmedTransactionId  String?                     @unique
+  confirmedTransaction    BankTransaction?            @relation(fields: [confirmedTransactionId], references: [id], onDelete: SetNull)
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+
+  @@unique([plannedTransactionId, date])
+  @@index([dispensaryId, status])
+  @@index([dispensaryId, date])
+  @@map("bank_planned_occurrence")
+}
+
 model TransactionNameSuggestion {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String     @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  value        String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@unique([dispensaryId, value])
   @@map("transaction_name_suggestion")
 }
 
 model TransactionDescriptionSuggestion {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String     @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  value        String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@unique([dispensaryId, value])
   @@map("transaction_description_suggestion")
