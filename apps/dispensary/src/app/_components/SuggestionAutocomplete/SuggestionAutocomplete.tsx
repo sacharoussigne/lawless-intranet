@@ -28,10 +28,10 @@ export function SuggestionAutocomplete({
   const [deleteMenuForValue, setDeleteMenuForValue] = useState<string | null>(null);
 
   const data = useMemo(() => {
-    const merged = [...extraOptions];
-    for (const suggestion of suggestions) {
-      if (!merged.some((v) => v.toLowerCase() === suggestion.toLowerCase())) {
-        merged.push(suggestion);
+    const merged = [...suggestions];
+    for (const option of extraOptions) {
+      if (!merged.some((v) => v.toLowerCase() === option.toLowerCase())) {
+        merged.push(option);
       }
     }
     return merged;
@@ -40,6 +40,11 @@ export function SuggestionAutocomplete({
   const deletableSet = useMemo(
     () => new Set(suggestions.map((s) => s.toLowerCase())),
     [suggestions],
+  );
+
+  const extraSet = useMemo(
+    () => new Set(extraOptions.map((s) => s.toLowerCase())),
+    [extraOptions],
   );
 
   const canAddSuggestion =
@@ -56,7 +61,8 @@ export function SuggestionAutocomplete({
       size={size}
       placeholder={placeholder}
       renderOption={({ option }) => {
-        const canDelete = deletableSet.has(option.value.toLowerCase());
+        const normalized = option.value.toLowerCase();
+        const canDelete = deletableSet.has(normalized) && !extraSet.has(normalized);
 
         return (
           <Group justify="space-between" style={{ flex: 1 }}>

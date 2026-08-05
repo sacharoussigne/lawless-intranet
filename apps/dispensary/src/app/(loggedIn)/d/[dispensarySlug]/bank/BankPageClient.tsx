@@ -415,6 +415,43 @@ export default function BankPageClient({
 
   const { weekIn, weekOut, weekNet } = weekFlow;
 
+  const persistFreeTextSuggestions = async (name?: string, description?: string | null) => {
+    const trimmedName = name?.trim();
+    if (
+      trimmedName &&
+      !companyNames.some((c) => c.toLowerCase() === trimmedName.toLowerCase())
+    ) {
+      try {
+        const result = await addNameSuggestion(dispensarySlug, { value: trimmedName });
+        const data = handleAction(result);
+        if (data) {
+          setNameSuggestions((prev) =>
+            prev.some((s) => s.toLowerCase() === data.toLowerCase()) ? prev : [...prev, data],
+          );
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    const trimmedDescription = description?.trim();
+    if (trimmedDescription) {
+      try {
+        const result = await addDescriptionSuggestion(dispensarySlug, {
+          value: trimmedDescription,
+        });
+        const data = handleAction(result);
+        if (data) {
+          setDescriptionSuggestions((prev) =>
+            prev.some((s) => s.toLowerCase() === data.toLowerCase()) ? prev : [...prev, data],
+          );
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+  };
+
   const handleSaveTransaction = async (transaction: {
     id?: string;
     date?: Date | string;
@@ -443,8 +480,8 @@ export default function BankPageClient({
             message: 'Transaction mise à jour',
             color: 'moss',
           });
+          await persistFreeTextSuggestions(transaction.name, transaction.description);
           await loadWeek(week.weekStart);
-          await loadWeeks();
           await loadWeeks();
           setEditingTransaction(null);
         }
@@ -474,10 +511,9 @@ export default function BankPageClient({
             message: 'Transaction créée',
             color: 'moss',
           });
+          await persistFreeTextSuggestions(transaction.name, transaction.description);
           await loadWeek(week.weekStart);
           await loadWeeks();
-          await loadWeeks();
-          await loadSuggestions();
           setNewTransaction(null);
         }
       }
@@ -504,7 +540,6 @@ export default function BankPageClient({
           color: 'moss',
         });
         await loadWeek(week.weekStart);
-        await loadWeeks();
         await loadWeeks();
       }
     } catch (error: unknown) {
@@ -664,9 +699,9 @@ export default function BankPageClient({
                     },
                   ]}
                 />
-                <Paper shadow="sm" withBorder radius="md" p={0}>
+                <Stack gap="sm">
                   {!newTransaction && (
-                    <Group p="md" justify="flex-end">
+                    <Group justify="flex-end">
                       <Button
                         leftSection={<IconPlus size={18} />}
                         onClick={() => {
@@ -686,6 +721,7 @@ export default function BankPageClient({
                       </Button>
                     </Group>
                   )}
+                  <Paper shadow="sm" withBorder radius="md" p={0}>
                   <DataTable
                     records={dataTableRecords}
                     columns={[
@@ -1248,7 +1284,8 @@ export default function BankPageClient({
                       }
                     }}
                   />
-                </Paper>
+                  </Paper>
+                </Stack>
               </DatesProvider>
             </Stack>
           </Tabs.Panel>
