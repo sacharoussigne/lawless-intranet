@@ -131,9 +131,10 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
   );
 
   useEffect(() => {
-    if (!priceManuallyEdited) {
-      form.setFieldValue('price', suggestedPrice ?? '');
-    }
+    if (priceManuallyEdited) return;
+    // Never clear a loaded/typed price when items have no catalog price (common for purchases).
+    if (suggestedPrice == null) return;
+    form.setFieldValue('price', suggestedPrice);
   }, [suggestedPrice, priceManuallyEdited]);
 
   const availableItems = useMemo(
@@ -236,6 +237,24 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
       quantity: oi.quantity,
     }));
 
+    const priceFromForm = (() => {
+      if (values.price === '' || values.price == null) return null;
+      const parsed = Number(values.price);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    })();
+    const priceFromOrder = (() => {
+      if (editingOrder.price == null) return null;
+      const parsed = Number(editingOrder.price);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    })();
+    const priceFromItems = calculateOrderPriceFromItems(
+      orderItems.map((orderItem) => ({
+        quantity: orderItem.quantity,
+        price: orderItem.item.price,
+      })),
+    );
+    const resolvedPrice = priceFromForm ?? priceFromOrder ?? priceFromItems;
+
     if (
       values.status === OrderStatusEnum.COMPLETED &&
       editingOrder.status !== OrderStatusEnum.COMPLETED
@@ -245,7 +264,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
         name: values.name,
         type: values.type,
         details: values.details || undefined,
-        price: values.price !== '' ? Number(values.price) : null,
+        price: resolvedPrice,
         items: payloadItems,
         company: editingOrder.company
           ? {
@@ -269,7 +288,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
         >,
         type: values.type,
         details: values.details || undefined,
-        price: values.price !== '' ? Number(values.price) : null,
+        price: resolvedPrice,
         items: payloadItems,
       });
       resetAndClose();
