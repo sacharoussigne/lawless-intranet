@@ -11,6 +11,7 @@ import {
   updatePlannedTransactionSchema,
   deletePlannedTransactionSchema,
   plannedOccurrenceIdSchema,
+  confirmPlannedOccurrenceSchema,
 } from '@/app/_actions/bank/schemas';
 import {
   confirmPlannedOccurrenceInternal,
@@ -197,15 +198,21 @@ export async function deletePlannedTransaction(
 
 export async function confirmPlannedOccurrence(
   dispensarySlug: string,
-  data: { id: string },
+  data: { id: string; date?: string | Date | null },
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, bankActionAuth);
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const validated = plannedOccurrenceIdSchema.parse(data);
-    const result = await confirmPlannedOccurrenceInternal(dispensaryId, validated.id);
+    const validated = confirmPlannedOccurrenceSchema.parse(data);
+    const dateOverride =
+      validated.date !== undefined ? parseOptionalDate(validated.date) : undefined;
+    const result = await confirmPlannedOccurrenceInternal(
+      dispensaryId,
+      validated.id,
+      dateOverride,
+    );
 
     if (!result.ok) {
       return { status: result.status, error: result.error };

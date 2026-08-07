@@ -95,3 +95,8 @@ export const deletePlannedTransactionSchema = z.object({
 export const plannedOccurrenceIdSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
+
+export const confirmPlannedOccurrenceSchema = z.object({
+  id: z.string().uuid('ID invalide'),
+  date: z.string().or(z.date()).optional(),
+});

@@ -101,6 +101,7 @@ export async function materializePlannedOccurrencesForDay(
 export async function confirmPlannedOccurrenceInternal(
   dispensaryId: string,
   occurrenceId: string,
+  dateOverride?: Date | null,
 ) {
   const occurrence = await prisma.bankPlannedOccurrence.findFirst({
     where: {
@@ -119,7 +120,10 @@ export async function confirmPlannedOccurrenceInternal(
   }
 
   const planned = occurrence.plannedTransaction;
-  const { start, end } = getWeekBounds(occurrence.date);
+  const transactionDate = dateOverride
+    ? startOfParisDay(dateOverride)
+    : occurrence.date;
+  const { start, end } = getWeekBounds(transactionDate);
 
   let week = await prisma.bankWeek.findFirst({
     where: {
@@ -151,7 +155,7 @@ export async function confirmPlannedOccurrenceInternal(
     where: { weekId: week.id },
     select: { date: true, order: true },
   });
-  const dayKey = startOfParisDay(occurrence.date).getTime();
+  const dayKey = startOfParisDay(transactionDate).getTime();
   const sameDay = sameDateTransactions.filter(
     (t) => startOfParisDay(t.date).getTime() === dayKey,
   );
@@ -160,7 +164,7 @@ export async function confirmPlannedOccurrenceInternal(
   const transaction = await prisma.bankTransaction.create({
     data: {
       weekId: week.id,
-      date: occurrence.date,
+      date: transactionDate,
       type: planned.type,
       name: planned.name,
       description: planned.description,

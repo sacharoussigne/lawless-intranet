@@ -314,10 +314,10 @@ export default function BankPageClient({
     await Promise.all([loadWeek(week.weekStart), loadWeeks(), loadPendingOccurrences()]);
   };
 
-  const handleConfirmPending = async (id: string) => {
+  const handleConfirmPending = async (id: string, date: Date) => {
     try {
       setPendingLoading(true);
-      const result = await confirmPlannedOccurrence(dispensarySlug, { id });
+      const result = await confirmPlannedOccurrence(dispensarySlug, { id, date });
       const data = handleAction(result);
       if (data) {
         notifications.show({
@@ -325,7 +325,7 @@ export default function BankPageClient({
           message: 'Transaction confirmée',
           color: 'moss',
         });
-        await refreshAfterPlannedChange();
+        await Promise.all([loadWeek(date), loadWeeks(), loadPendingOccurrences()]);
       }
     } catch (error: unknown) {
       notifications.show({
