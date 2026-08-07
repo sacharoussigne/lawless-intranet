@@ -13,7 +13,7 @@ import {
   Text,
 } from '@mantine/core';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
-import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
+import { useRequiredDispensarySlug, usePermissions } from '@/app/_contexts/PermissionsContext';
 import { getChestsList } from '@/app/_actions/chests';
 import { getItemsWithStock } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
@@ -25,6 +25,12 @@ import { amberPalette, dangerPalette, denimPalette } from '@/lib/design-tokens';
 import type { ChestListItem } from '@/types/chests';
 import type { ItemWithRelations } from '@/types/stock';
 import { OrderTypeEnum } from '@/types/enum/orderType';
+import { RpDateInput } from '@/app/_components/RpDatePicker/RpDateInput';
+import { getTodayRealDate } from '@/lib/rpCalendar';
+import {
+  getBankTransactionTypeLabelForOrder,
+  resolveBankTransactionNameForOrder,
+} from '@/lib/bank/orderTransactionLabels';
 import { useCompleteOrderMutation } from '../hooks/useOrdersQueries';
 
 export type CompleteOrderPendingPayload = {
@@ -34,6 +40,8 @@ export type CompleteOrderPendingPayload = {
   details?: string;
   price?: number | null;
   items: { itemId: string; quantity: number }[];
+  company?: { name: string; bankAccountNumber: string | null } | null;
+  individualCustomerName?: string | null;
 };
 
 export type CompleteOrderStockLine = {
@@ -97,12 +105,32 @@ function CompleteOrderStockBody({
   onCompleted,
 }: CompleteOrderStockBodyProps) {
   const completeMutation = useCompleteOrderMutation();
+  const { appSettings } = usePermissions();
+  const bankFeatureEnabled = appSettings.featureBankEnabled;
+
+  const [createBankTransaction, setCreateBankTransaction] = useState(
+    () => bankFeatureEnabled,
+  );
+  const [bankTransactionDate, setBankTransactionDate] = useState<Date | null>(() =>
+    getTodayRealDate(),
+  );
 
   const [skipStock, setSkipStock] = useState(() => enabledLines.length === 0);
   const [defaultChestId, setDefaultChestId] = useState<string | null>(firstChestId);
   const [lineStates, setLineStates] = useState<LineState[]>(() =>
     buildInitialLineStates(enabledLines, firstChestId),
   );
+
+  const bankTransactionName = resolveBankTransactionNameForOrder({
+    name: pending.name,
+    company: pending.company,
+    individualCustomer: pending.individualCustomerName
+      ? { name: pending.individualCustomerName }
+      : null,
+  });
+  const bankTransactionTypeLabel = getBankTransactionTypeLabelForOrder(pending.type);
+  const hasValidPrice = pending.price != null && pending.price > 0;
+  const bankBlocked = createBankTransaction && (!hasValidPrice || !bankTransactionDate);
 
   const trackedChestIds = useMemo(() => {
     const ids = new Set<string>();
@@ -157,6 +185,7 @@ function CompleteOrderStockBody({
 
   const canConfirm =
     !completeMutation.isPending &&
+    !bankBlocked &&
     (skipStock ||
       enabledLines.length === 0 ||
       (selectedLines.length === 0 && !missingChest) ||
@@ -188,6 +217,9 @@ function CompleteOrderStockBody({
         items: pending.items,
         skipStock: skipStock || stockLines.length === 0,
         stockLines,
+        createBankTransaction: bankFeatureEnabled && createBankTransaction,
+        bankTransactionDate:
+          bankFeatureEnabled && createBankTransaction ? bankTransactionDate : undefined,
         affectedChestIds: stockLines.map((line) => line.chestId),
       });
       window.setTimeout(() => {
@@ -230,6 +262,38 @@ function CompleteOrderStockBody({
           onChange={(event) => setSkipStock(event.currentTarget.checked)}
           disabled={enabledLines.length === 0}
         />
+
+        {bankFeatureEnabled ? (
+          <Stack gap="sm">
+            <Checkbox
+              label="Créer une transaction bancaire"
+              checked={createBankTransaction}
+              onChange={(event) => setCreateBankTransaction(event.currentTarget.checked)}
+            />
+            {createBankTransaction ? (
+              <Stack gap="xs">
+                <RpDateInput
+                  label="Date de la transaction"
+                  value={bankTransactionDate}
+                  onChange={setBankTransactionDate}
+                  required
+                />
+                <Text size="sm" c="dimmed">
+                  {bankTransactionTypeLabel}
+                  {' · '}
+                  {hasValidPrice ? `${Number(pending.price).toFixed(2)} $` : 'Prix manquant'}
+                  {' · '}
+                  {bankTransactionName}
+                </Text>
+                {!hasValidPrice ? (
+                  <Text size="sm" c="danger">
+                    Ajoutez un prix à la commande pour créer la transaction.
+                  </Text>
+                ) : null}
+              </Stack>
+            ) : null}
+          </Stack>
+        ) : null}
 
         {enabledLines.length === 0 ? (
           <Text size="sm" c="dimmed">

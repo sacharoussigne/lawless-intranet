@@ -247,6 +247,13 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
         details: values.details || undefined,
         price: values.price !== '' ? Number(values.price) : null,
         items: payloadItems,
+        company: editingOrder.company
+          ? {
+              name: editingOrder.company.name,
+              bankAccountNumber: editingOrder.company.bankAccountNumber ?? null,
+            }
+          : null,
+        individualCustomerName: editingOrder.individualCustomer?.name ?? null,
       });
       setCompleteModalOpened(true);
       return;

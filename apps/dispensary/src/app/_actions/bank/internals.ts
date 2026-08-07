@@ -2,6 +2,9 @@ import prisma from '@/lib/prisma';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import type { SerializedBankWeek } from '@/types/bankAccounts';
+import type { Prisma } from '@prisma/client';
+
+type DbClient = Prisma.TransactionClient | typeof prisma;
 
 export function getWeekBounds(date: Date) {
   return getBankWeekBounds(date);
@@ -24,6 +27,7 @@ export function serializeWeek(week: {
     description: string | null;
     amount: unknown;
     order: number;
+    orderId?: string | null;
     createdAt: Date;
     updatedAt: Date;
   }>;
@@ -45,14 +49,19 @@ export function serializeWeek(week: {
       description: transaction.description,
       amount: Number(transaction.amount),
       order: transaction.order,
+      orderId: transaction.orderId ?? null,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
     })),
   };
 }
 
-export async function recalculateWeekBalance(dispensaryId: string, weekId: string) {
-  const week = await prisma.bankWeek.findFirst({
+export async function recalculateWeekBalance(
+  dispensaryId: string,
+  weekId: string,
+  db: DbClient = prisma,
+) {
+  const week = await db.bankWeek.findFirst({
     where: {
       id: weekId,
       ...tenantWhere(dispensaryId),
@@ -66,7 +75,7 @@ export async function recalculateWeekBalance(dispensaryId: string, weekId: strin
 
   if (!week) return;
 
-  const previousWeek = await prisma.bankWeek.findFirst({
+  const previousWeek = await db.bankWeek.findFirst({
     where: {
       ...tenantWhere(dispensaryId),
       weekStart: { lt: week.weekStart },
@@ -85,12 +94,12 @@ export async function recalculateWeekBalance(dispensaryId: string, weekId: strin
     }
   }
 
-  await prisma.bankWeek.update({
+  await db.bankWeek.update({
     where: { id: weekId },
     data: { balance },
   });
 
-  const followingWeeks = await prisma.bankWeek.findMany({
+  const followingWeeks = await db.bankWeek.findMany({
     where: {
       ...tenantWhere(dispensaryId),
       weekStart: { gt: week.weekStart },
@@ -116,7 +125,7 @@ export async function recalculateWeekBalance(dispensaryId: string, weekId: strin
       }
     }
 
-    await prisma.bankWeek.update({
+    await db.bankWeek.update({
       where: { id: followingWeek.id },
       data: { balance: weekBalance },
     });

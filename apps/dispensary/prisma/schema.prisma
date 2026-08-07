@@ -507,6 +507,7 @@ model Order {
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   items                  OrderItem[]
+  bankTransaction        BankTransaction?
 
   @@index([companyId])
   @@index([companyGroupId])
@@ -595,6 +596,8 @@ model BankTransaction {
   description String?
   amount      Decimal         @db.Decimal(10, 2)
   order       Int             @default(0)
+  orderId     String?         @unique
+  sourceOrder Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   confirmedFromOccurrence BankPlannedOccurrence?

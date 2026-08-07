@@ -18,6 +18,7 @@ export interface OrderWithRelations extends Omit<Order, 'price'> {
   company: {
     id: string;
     name: string;
+    bankAccountNumber?: string | null;
   } | null;
   individualCustomer: {
     id: string;
