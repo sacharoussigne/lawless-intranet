@@ -21,6 +21,7 @@ import 'dayjs/locale/fr';
 import { notifications } from '@mantine/notifications';
 import {
   IconCheck,
+  IconPencil,
   IconPlus,
   IconTrash,
   IconX,
@@ -82,7 +83,8 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const [pending, setPending] = useState<SerializedPlannedOccurrence[]>([]);
   const [planned, setPlanned] = useState<SerializedPlannedTransaction[]>([]);
   const [loading, setLoading] = useState(false);
-  const [createOpened, setCreateOpened] = useState(false);
+  const [formOpened, setFormOpened] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [formType, setFormType] = useState<TransactionType>('DEPOSIT');
@@ -92,6 +94,8 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const [formScheduleKind, setFormScheduleKind] = useState<'ONCE' | 'WEEKLY'>('WEEKLY');
   const [formOnceDate, setFormOnceDate] = useState<Date | null>(null);
   const [formWeekdays, setFormWeekdays] = useState<string[]>([]);
+
+  const isEditing = editingId != null;
 
   const refresh = useCallback(async () => {
     try {
@@ -168,9 +172,32 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
     setFormScheduleKind('WEEKLY');
     setFormOnceDate(null);
     setFormWeekdays([]);
+    setEditingId(null);
   };
 
-  const handleCreate = async () => {
+  const closeForm = () => {
+    setFormOpened(false);
+    resetForm();
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setFormOpened(true);
+  };
+
+  const openEdit = (item: SerializedPlannedTransaction) => {
+    setEditingId(item.id);
+    setFormType(item.type);
+    setFormName(item.name);
+    setFormDescription(item.description ?? '');
+    setFormAmount(Number(item.amount));
+    setFormScheduleKind(item.scheduleKind);
+    setFormOnceDate(item.onceDate ? new Date(item.onceDate) : null);
+    setFormWeekdays(item.weekdays.map((d) => String(d)));
+    setFormOpened(true);
+  };
+
+  const handleSubmit = async () => {
     if (!formName.trim() || formAmount == null || formAmount <= 0) {
       notifyError('Veuillez remplir les champs requis');
       return;
@@ -184,29 +211,38 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
       return;
     }
 
+    const payload = {
+      type: formType,
+      name: formName.trim(),
+      description: formDescription.trim() || null,
+      amount: formAmount,
+      scheduleKind: formScheduleKind,
+      onceDate: formScheduleKind === 'ONCE' ? formOnceDate : null,
+      weekdays:
+        formScheduleKind === 'WEEKLY'
+          ? formWeekdays.map((d) => Number(d))
+          : undefined,
+    };
+
     try {
       setLoading(true);
-      const result = await createPlannedTransaction(dispensarySlug, {
-        type: formType,
-        name: formName.trim(),
-        description: formDescription.trim() || null,
-        amount: formAmount,
-        scheduleKind: formScheduleKind,
-        onceDate: formScheduleKind === 'ONCE' ? formOnceDate : null,
-        weekdays:
-          formScheduleKind === 'WEEKLY'
-            ? formWeekdays.map((d) => Number(d))
-            : undefined,
-      });
+      const result = editingId
+        ? await updatePlannedTransaction(dispensarySlug, { id: editingId, ...payload })
+        : await createPlannedTransaction(dispensarySlug, payload);
       const data = handleAction(result);
       if (data) {
-        notifySuccess('Transaction planifiée créée');
-        setCreateOpened(false);
-        resetForm();
+        notifySuccess(editingId ? 'Planification mise à jour' : 'Transaction planifiée créée');
+        closeForm();
         await afterMutation();
       }
     } catch (error: unknown) {
-      notifyError(error instanceof Error ? error.message : 'Erreur lors de la création');
+      notifyError(
+        error instanceof Error
+          ? error.message
+          : editingId
+            ? 'Erreur lors de la modification'
+            : 'Erreur lors de la création',
+      );
     } finally {
       setLoading(false);
     }
@@ -322,7 +358,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
               <Button
                 size="sm"
                 leftSection={<IconPlus size={16} />}
-                onClick={() => setCreateOpened(true)}
+                onClick={openCreate}
               >
                 Nouvelle planification
               </Button>
@@ -374,9 +410,19 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                         />
                         <ActionIcon
                           variant="light"
+                          color="slate"
+                          onClick={() => openEdit(item)}
+                          disabled={loading}
+                          aria-label="Modifier la planification"
+                        >
+                          <IconPencil size={16} />
+                        </ActionIcon>
+                        <ActionIcon
+                          variant="light"
                           color="danger"
                           onClick={() => setDeleteId(item.id)}
                           disabled={loading}
+                          aria-label="Supprimer la planification"
                         >
                           <IconTrash size={16} />
                         </ActionIcon>
@@ -390,28 +436,22 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
         </Paper>
 
         <AppModal
-          opened={createOpened}
-          onClose={() => {
-            setCreateOpened(false);
-            resetForm();
-          }}
-          title="Nouvelle planification"
-          description="Créez une transaction récurrente ou ponctuelle."
+          opened={formOpened}
+          onClose={closeForm}
+          title={isEditing ? 'Modifier la planification' : 'Nouvelle planification'}
+          description={
+            isEditing
+              ? 'Modifiez les détails de cette transaction planifiée.'
+              : 'Créez une transaction récurrente ou ponctuelle.'
+          }
           size="md"
           footer={
             <AppModalFooter>
-              <Button
-                variant="subtle"
-                color="slate"
-                onClick={() => {
-                  setCreateOpened(false);
-                  resetForm();
-                }}
-              >
+              <Button variant="subtle" color="slate" onClick={closeForm}>
                 Annuler
               </Button>
-              <Button onClick={handleCreate} loading={loading}>
-                Créer
+              <Button onClick={handleSubmit} loading={loading}>
+                {isEditing ? 'Enregistrer' : 'Créer'}
               </Button>
             </AppModalFooter>
           }
