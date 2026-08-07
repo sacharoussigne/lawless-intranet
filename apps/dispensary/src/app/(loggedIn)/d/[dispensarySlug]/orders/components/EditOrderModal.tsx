@@ -305,7 +305,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
   return (
     <>
       <AppModal
-        opened={opened}
+        opened={opened && !completeModalOpened}
         onClose={resetAndClose}
         title="Modifier la commande"
         size="xl"

@@ -238,7 +238,7 @@ function CompleteOrderStockBody({
     <AppModal
       opened={opened}
       onClose={onClose}
-      title={isIncoming ? 'Terminer — ajouter au stock' : 'Terminer — retirer du stock'}
+      title={isIncoming ? 'Finaliser l’achat' : 'Finaliser la vente'}
       size="xl"
       footer={
         <AppModalFooter>
@@ -492,7 +492,7 @@ export function CompleteOrderStockModal({
       <AppModal
         opened={false}
         onClose={onClose}
-        title={isIncoming ? 'Terminer — ajouter au stock' : 'Terminer — retirer du stock'}
+        title={isIncoming ? 'Finaliser l’achat' : 'Finaliser la vente'}
         size="xl"
       >
         {null}
