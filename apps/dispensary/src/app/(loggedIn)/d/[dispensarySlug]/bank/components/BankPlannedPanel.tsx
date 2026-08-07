@@ -20,29 +20,23 @@ import { DateInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/fr';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCheck,
   IconPencil,
   IconPlus,
   IconTrash,
-  IconX,
 } from '@tabler/icons-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { FormSection } from '@/app/_components/AppModal/FormSection';
 import {
-  confirmPlannedOccurrence,
   createPlannedTransaction,
   deletePlannedTransaction,
-  getPendingOccurrences,
   getPlannedTransactions,
-  skipPlannedOccurrence,
   updatePlannedTransaction,
 } from '@/app/_actions/bankAccounts';
 import { handleAction } from '@/lib/action';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import type {
-  SerializedPlannedOccurrence,
   SerializedPlannedTransaction,
   TransactionType,
 } from '@/types/bankAccounts';
@@ -80,7 +74,6 @@ function weekdayLabels(weekdays: number[]) {
 
 export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const dispensarySlug = useRequiredDispensarySlug();
-  const [pending, setPending] = useState<SerializedPlannedOccurrence[]>([]);
   const [planned, setPlanned] = useState<SerializedPlannedTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [formOpened, setFormOpened] = useState(false);
@@ -100,13 +93,8 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const [pendingResult, plannedResult] = await Promise.all([
-        getPendingOccurrences(dispensarySlug),
-        getPlannedTransactions(dispensarySlug),
-      ]);
-      const pendingData = handleAction(pendingResult);
+      const plannedResult = await getPlannedTransactions(dispensarySlug);
       const plannedData = handleAction(plannedResult);
-      if (pendingData) setPending(pendingData);
       if (plannedData) setPlanned(plannedData);
     } catch {
       // handled by handleAction
@@ -130,38 +118,6 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const afterMutation = async () => {
     await refresh();
     onChanged?.();
-  };
-
-  const handleConfirm = async (id: string) => {
-    try {
-      setLoading(true);
-      const result = await confirmPlannedOccurrence(dispensarySlug, { id });
-      const data = handleAction(result);
-      if (data) {
-        notifySuccess('Occurrence confirmée');
-        await afterMutation();
-      }
-    } catch (error: unknown) {
-      notifyError(error instanceof Error ? error.message : 'Erreur lors de la confirmation');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSkip = async (id: string) => {
-    try {
-      setLoading(true);
-      const result = await skipPlannedOccurrence(dispensarySlug, { id });
-      const data = handleAction(result);
-      if (data) {
-        notifySuccess('Occurrence ignorée');
-        await afterMutation();
-      }
-    } catch (error: unknown) {
-      notifyError(error instanceof Error ? error.message : "Erreur lors de l'ignorance");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const resetForm = () => {
@@ -287,68 +243,6 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   return (
     <DatesProvider settings={{ locale: 'fr' }}>
       <Stack gap="lg">
-        <Paper shadow="sm" p="md" withBorder radius="md">
-          <Stack gap="md">
-            <Text fw={600} style={{ fontFamily: 'var(--disp-font-display)' }}>
-              Occurrences en attente
-            </Text>
-            {pending.length === 0 ? (
-              <Text size="sm" c="dimmed">
-                Aucune occurrence en attente
-              </Text>
-            ) : (
-              <Stack gap="sm">
-                {pending.map((occurrence) => {
-                  const pt = occurrence.plannedTransaction;
-                  return (
-                    <Paper key={occurrence.id} p="sm" withBorder radius="sm">
-                      <Group justify="space-between" wrap="wrap" gap="sm">
-                        <Stack gap={2}>
-                          <Group gap="xs">
-                            <Text fw={600} size="sm">
-                              {pt.name}
-                            </Text>
-                            <Badge size="xs" variant="outline" color="slate">
-                              {TYPE_LABELS[pt.type] ?? pt.type}
-                            </Badge>
-                          </Group>
-                          <Text size="xs" c="dimmed">
-                            {format(new Date(occurrence.date), 'EEEE d MMMM yyyy', { locale: fr })}
-                            {' · '}
-                            {Number(pt.amount).toFixed(2)} $
-                            {pt.description ? ` · ${pt.description}` : ''}
-                          </Text>
-                        </Stack>
-                        <Group gap="xs">
-                          <Button
-                            size="xs"
-                            color="moss"
-                            leftSection={<IconCheck size={14} />}
-                            onClick={() => handleConfirm(occurrence.id)}
-                            loading={loading}
-                          >
-                            Confirmer
-                          </Button>
-                          <Button
-                            size="xs"
-                            variant="subtle"
-                            color="slate"
-                            leftSection={<IconX size={14} />}
-                            onClick={() => handleSkip(occurrence.id)}
-                            loading={loading}
-                          >
-                            Ignorer
-                          </Button>
-                        </Group>
-                      </Group>
-                    </Paper>
-                  );
-                })}
-              </Stack>
-            )}
-          </Stack>
-        </Paper>
-
         <Paper shadow="sm" p="md" withBorder radius="md">
           <Stack gap="md">
             <Group justify="space-between">

@@ -45,12 +45,15 @@ import {
   addDescriptionSuggestion,
   deleteNameSuggestion,
   deleteDescriptionSuggestion,
+  getPendingOccurrences,
+  confirmPlannedOccurrence,
+  skipPlannedOccurrence,
 } from '@/app/_actions/bankAccounts';
 import { handleAction } from '@/lib/action';
 import { addParisWeeks } from '@/lib/bankWeek';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { SerializedBankWeek } from '@/types/bankAccounts';
+import type { SerializedBankWeek, SerializedPlannedOccurrence } from '@/types/bankAccounts';
 
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
@@ -58,6 +61,7 @@ import { SuggestionAutocomplete } from '@/app/_components/SuggestionAutocomplete
 import { SummaryCards } from '@/app/_components/SummaryCards/SummaryCards';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { BankPlannedPanel } from './components/BankPlannedPanel';
+import { BankPendingOccurrencesBanner } from './components/BankPendingOccurrencesBanner';
 
 function toDate(value: Date | string | number): Date {
   return value instanceof Date ? value : new Date(value);
@@ -128,6 +132,8 @@ export default function BankPageClient({
   const [deletePopoverOpened, setDeletePopoverOpened] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [pendingOccurrences, setPendingOccurrences] = useState<SerializedPlannedOccurrence[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
 
   const loadSuggestions = useCallback(async () => {
     try {
@@ -159,10 +165,21 @@ export default function BankPageClient({
     }
   }, [dispensarySlug]);
 
+  const loadPendingOccurrences = useCallback(async () => {
+    try {
+      const result = await getPendingOccurrences(dispensarySlug);
+      const data = handleAction(result);
+      if (data) setPendingOccurrences(data);
+    } catch {
+      // Error handled by handleAction
+    }
+  }, [dispensarySlug]);
+
   useEffect(() => {
     void loadSuggestions();
     void loadWeeks();
-  }, [loadSuggestions, loadWeeks]);
+    void loadPendingOccurrences();
+  }, [loadSuggestions, loadWeeks, loadPendingOccurrences]);
 
   const handleAddNameSuggestion = async (value: string) => {
     if (!value || value.trim().length === 0) return;
@@ -294,7 +311,55 @@ export default function BankPageClient({
   };
 
   const refreshAfterPlannedChange = async () => {
-    await Promise.all([loadWeek(week.weekStart), loadWeeks()]);
+    await Promise.all([loadWeek(week.weekStart), loadWeeks(), loadPendingOccurrences()]);
+  };
+
+  const handleConfirmPending = async (id: string) => {
+    try {
+      setPendingLoading(true);
+      const result = await confirmPlannedOccurrence(dispensarySlug, { id });
+      const data = handleAction(result);
+      if (data) {
+        notifications.show({
+          title: 'Succès',
+          message: 'Occurrence confirmée',
+          color: 'moss',
+        });
+        await refreshAfterPlannedChange();
+      }
+    } catch (error: unknown) {
+      notifications.show({
+        title: 'Erreur',
+        message: error instanceof Error ? error.message : 'Erreur lors de la confirmation',
+        color: 'danger',
+      });
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  const handleSkipPending = async (id: string) => {
+    try {
+      setPendingLoading(true);
+      const result = await skipPlannedOccurrence(dispensarySlug, { id });
+      const data = handleAction(result);
+      if (data) {
+        notifications.show({
+          title: 'Succès',
+          message: 'Occurrence ignorée',
+          color: 'moss',
+        });
+        await refreshAfterPlannedChange();
+      }
+    } catch (error: unknown) {
+      notifications.show({
+        title: 'Erreur',
+        message: error instanceof Error ? error.message : "Erreur lors de l'ignorance",
+        color: 'danger',
+      });
+    } finally {
+      setPendingLoading(false);
+    }
   };
 
   const handlePreviousWeek = () => {
@@ -626,7 +691,17 @@ export default function BankPageClient({
 
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List>
-            <Tabs.Tab value="ledger" leftSection={<IconBook size={16} />}>
+            <Tabs.Tab
+              value="ledger"
+              leftSection={<IconBook size={16} />}
+              rightSection={
+                pendingOccurrences.length > 0 ? (
+                  <Badge size="xs" color="amber" circle variant="filled">
+                    {pendingOccurrences.length}
+                  </Badge>
+                ) : undefined
+              }
+            >
               Livre
             </Tabs.Tab>
             <Tabs.Tab value="planned" leftSection={<IconCalendarEvent size={16} />}>
@@ -636,6 +711,12 @@ export default function BankPageClient({
 
           <Tabs.Panel value="ledger" pt="md">
             <Stack gap="lg">
+              <BankPendingOccurrencesBanner
+                occurrences={pendingOccurrences}
+                loading={pendingLoading}
+                onConfirm={handleConfirmPending}
+                onSkip={handleSkipPending}
+              />
               <Paper shadow="sm" p="lg" withBorder radius="md">
                 <Stack gap="lg">
                   <WeekNavigation
