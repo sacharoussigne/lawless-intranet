@@ -17,12 +17,16 @@ import { slugifyOrderText } from '@/lib/orders/slugify';
 import { getDayAfter, getStartOfDay, getTodayStart, getTomorrowStart, parsePickerDate } from '@/lib/date';
 import { ensureTodayStockForAllActiveChests, ensureTodayStockForPairs } from '@/lib/stock/ensureTodayStock';
 import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
+import { getAppFeatureActionBlock } from '@/lib/appSettings';
+import { createBankTransactionFromOrder } from '@/lib/bank/fromOrder';
+import { parseISO } from 'date-fns';
 
 const ORDER_DETAIL_INCLUDE = {
   company: {
     select: {
       id: true,
       name: true,
+      bankAccountNumber: true,
     },
   },
   individualCustomer: {
@@ -314,36 +318,48 @@ const updateOrderSchema = z.object({
   ).min(1, 'Au moins un objet est requis').optional(),
 });
 
-const completeOrderSchema = z.object({
-  id: z.string().uuid('ID invalide'),
-  name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long').optional(),
-  type: z.enum(['INCOMING', 'OUTGOING']).optional(),
-  details: z.string().max(1000, 'Les détails sont trop longs').optional(),
-  price: z
-    .number()
-    .positive('Le prix doit être positif')
-    .optional()
-    .nullable(),
-  items: z
-    .array(
-      z.object({
-        itemId: z.string().uuid('ID d\'item invalide'),
-        quantity: z.number().int().min(1, 'La quantité doit être au moins 1'),
-      }),
-    )
-    .min(1, 'Au moins un objet est requis')
-    .optional(),
-  skipStock: z.boolean(),
-  stockLines: z
-    .array(
-      z.object({
-        itemId: z.string().uuid('ID d\'item invalide'),
-        quantity: z.number().int().min(1, 'La quantité doit être au moins 1'),
-        chestId: z.string().uuid('ID de coffre invalide'),
-      }),
-    )
-    .optional(),
-});
+const completeOrderSchema = z
+  .object({
+    id: z.string().uuid('ID invalide'),
+    name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long').optional(),
+    type: z.enum(['INCOMING', 'OUTGOING']).optional(),
+    details: z.string().max(1000, 'Les détails sont trop longs').optional(),
+    price: z
+      .number()
+      .positive('Le prix doit être positif')
+      .optional()
+      .nullable(),
+    items: z
+      .array(
+        z.object({
+          itemId: z.string().uuid('ID d\'item invalide'),
+          quantity: z.number().int().min(1, 'La quantité doit être au moins 1'),
+        }),
+      )
+      .min(1, 'Au moins un objet est requis')
+      .optional(),
+    skipStock: z.boolean(),
+    stockLines: z
+      .array(
+        z.object({
+          itemId: z.string().uuid('ID d\'item invalide'),
+          quantity: z.number().int().min(1, 'La quantité doit être au moins 1'),
+          chestId: z.string().uuid('ID de coffre invalide'),
+        }),
+      )
+      .optional(),
+    createBankTransaction: z.boolean().optional(),
+    bankTransactionDate: z.string().or(z.date()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.createBankTransaction && !data.bankTransactionDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La date de transaction bancaire est requise',
+        path: ['bankTransactionDate'],
+      });
+    }
+  });
 
 const deleteOrderSchema = z.object({
   id: z.string().uuid('ID invalide'),
@@ -723,6 +739,8 @@ export async function completeOrder(
     items?: { itemId: string; quantity: number }[];
     skipStock: boolean;
     stockLines?: { itemId: string; quantity: number; chestId: string }[];
+    createBankTransaction?: boolean;
+    bankTransactionDate?: string | Date | null;
   },
 ) {
   try {
@@ -745,6 +763,19 @@ export async function completeOrder(
       select: {
         status: true,
         type: true,
+        price: true,
+        name: true,
+        company: {
+          select: {
+            name: true,
+            bankAccountNumber: true,
+          },
+        },
+        individualCustomer: {
+          select: {
+            name: true,
+          },
+        },
         items: {
           select: {
             itemId: true,
@@ -851,6 +882,38 @@ export async function completeOrder(
       updateData.price = orderPrice;
     }
 
+    const createBankTransaction = Boolean(validatedData.createBankTransaction);
+    let bankTransactionDate: Date | null = null;
+    if (createBankTransaction) {
+      const featureBlock = await getAppFeatureActionBlock(dispensaryId, 'bank');
+      if (featureBlock) {
+        return { status: featureBlock.status, error: featureBlock.error };
+      }
+
+      const finalPrice =
+        updateData.price !== undefined
+          ? Number(updateData.price)
+          : oldOrder.price != null
+            ? Number(oldOrder.price)
+            : null;
+      if (finalPrice == null || finalPrice <= 0) {
+        return {
+          status: 400,
+          error: 'Un prix de commande est requis pour créer une transaction bancaire',
+        };
+      }
+
+      const rawDate = validatedData.bankTransactionDate;
+      if (rawDate == null) {
+        return { status: 400, error: 'La date de transaction bancaire est requise' };
+      }
+      bankTransactionDate =
+        typeof rawDate === 'string' ? parseISO(rawDate) : rawDate;
+      if (Number.isNaN(bankTransactionDate.getTime())) {
+        return { status: 400, error: 'Date de transaction bancaire invalide' };
+      }
+    }
+
     const today = getTodayStart();
     const tomorrow = getTomorrowStart();
 
@@ -877,70 +940,90 @@ export async function completeOrder(
         include: ORDER_DETAIL_INCLUDE,
       });
 
-      if (stockLines.length === 0) {
-        return updated;
-      }
+      if (stockLines.length > 0) {
+        await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
+        const ensured = await ensureTodayStockForPairs(
+          tx,
+          dispensaryId,
+          stockLines.map((line) => ({ itemId: line.itemId, chestId: line.chestId })),
+          { today, tomorrow },
+        );
 
-      await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
-      const ensured = await ensureTodayStockForPairs(
-        tx,
-        dispensaryId,
-        stockLines.map((line) => ({ itemId: line.itemId, chestId: line.chestId })),
-        { today, tomorrow },
-      );
+        for (const line of stockLines) {
+          const key = `${line.itemId}:${line.chestId}`;
+          const stock = ensured.get(key);
 
-      for (const line of stockLines) {
-        const key = `${line.itemId}:${line.chestId}`;
-        const stock = ensured.get(key);
-
-        if (isIncoming) {
-          if (stock) {
-            await tx.stockHistory.update({
-              where: { id: stock.id },
-              data: { quantity: stock.quantity + line.quantity },
-            });
-            stock.quantity += line.quantity;
-          } else {
-            const created = await tx.stockHistory.create({
-              data: {
+          if (isIncoming) {
+            if (stock) {
+              await tx.stockHistory.update({
+                where: { id: stock.id },
+                data: { quantity: stock.quantity + line.quantity },
+              });
+              stock.quantity += line.quantity;
+            } else {
+              const created = await tx.stockHistory.create({
+                data: {
+                  itemId: line.itemId,
+                  chestId: line.chestId,
+                  quantity: line.quantity,
+                },
+              });
+              ensured.set(key, {
+                id: created.id,
                 itemId: line.itemId,
                 chestId: line.chestId,
                 quantity: line.quantity,
-              },
+              });
+            }
+          } else {
+            if (!stock) {
+              throw new Error(`Aucun stock trouvé pour l'objet dans le coffre sélectionné`);
+            }
+            if (stock.quantity < line.quantity) {
+              throw new Error(
+                `Stock insuffisant (disponible: ${stock.quantity}, demandé: ${line.quantity})`,
+              );
+            }
+            await tx.stockHistory.update({
+              where: { id: stock.id },
+              data: { quantity: stock.quantity - line.quantity },
             });
-            ensured.set(key, {
-              id: created.id,
-              itemId: line.itemId,
-              chestId: line.chestId,
-              quantity: line.quantity,
-            });
+            stock.quantity -= line.quantity;
           }
-        } else {
-          if (!stock) {
-            throw new Error(`Aucun stock trouvé pour l'objet dans le coffre sélectionné`);
-          }
-          if (stock.quantity < line.quantity) {
-            throw new Error(
-              `Stock insuffisant (disponible: ${stock.quantity}, demandé: ${line.quantity})`,
-            );
-          }
-          await tx.stockHistory.update({
-            where: { id: stock.id },
-            data: { quantity: stock.quantity - line.quantity },
-          });
-          stock.quantity -= line.quantity;
         }
+
+        await tx.stockItemMovement.createMany({
+          data: stockLines.map((line) => ({
+            itemId: line.itemId,
+            quantity: isIncoming ? line.quantity : -line.quantity,
+            kind: isIncoming ? StockMovementKind.ORDER_IN : StockMovementKind.ORDER_OUT,
+            chestId: line.chestId,
+            userId,
+          })),
+        });
       }
 
-      await tx.stockItemMovement.createMany({
-        data: stockLines.map((line) => ({
-          itemId: line.itemId,
-          quantity: isIncoming ? line.quantity : -line.quantity,
-          kind: isIncoming ? StockMovementKind.ORDER_IN : StockMovementKind.ORDER_OUT,
-          chestId: line.chestId,
-          userId,
-        })),
-      });
+      if (createBankTransaction && bankTransactionDate) {
+        const amount = updated.price != null ? Number(updated.price) : 0;
+        if (amount <= 0) {
+          throw new Error('Un prix de commande est requis pour créer une transaction bancaire');
+        }
+
+        const bankResult = await createBankTransactionFromOrder(tx, {
+          dispensaryId,
+          orderId: updated.id,
+          orderName: updated.name,
+          orderType: updated.type,
+          amount,
+          date: bankTransactionDate,
+          company: updated.company,
+          individualCustomer: updated.individualCustomer,
+        });
+
+        if (!bankResult.ok) {
+          throw new Error(bankResult.error);
+        }
+      }
 
       return updated;
     });

@@ -257,7 +257,7 @@ export function ItemModal({
             <Switch
               mt="xs"
               label="Peut être vendu"
-              description="Inclut cet objet dans les commandes sortantes (vente)"
+              description="Inclut cet objet dans les commandes de vente"
               {...form.getInputProps('canBeSold', { type: 'checkbox' })}
             />
           </FormSection>
