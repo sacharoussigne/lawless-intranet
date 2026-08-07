@@ -18,7 +18,7 @@ import {
   Tabs,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { DateInput, DatesProvider } from '@mantine/dates';
+import { DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/fr';
 import {
   IconPlus,
@@ -51,8 +51,7 @@ import {
 } from '@/app/_actions/bankAccounts';
 import { handleAction } from '@/lib/action';
 import { addParisWeeks } from '@/lib/bankWeek';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { formatRpDate } from '@/lib/rpCalendar';
 import type { SerializedBankWeek, SerializedPlannedOccurrence } from '@/types/bankAccounts';
 
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
@@ -60,6 +59,7 @@ import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation'
 import { SuggestionAutocomplete } from '@/app/_components/SuggestionAutocomplete/SuggestionAutocomplete';
 import { SummaryCards } from '@/app/_components/SummaryCards/SummaryCards';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { RpDateInput } from '@/app/_components/RpDatePicker/RpDateInput';
 import { BankPlannedPanel } from './components/BankPlannedPanel';
 import { BankPendingOccurrencesBanner } from './components/BankPendingOccurrencesBanner';
 
@@ -727,6 +727,7 @@ export default function BankPageClient({
                     onPreviousWeek={handlePreviousWeek}
                     onNextWeek={handleNextWeek}
                     loading={loading}
+                    useRpCalendar
                   />
 
                   <SummaryCards
@@ -816,7 +817,7 @@ export default function BankPageClient({
 
                           if (isNew) {
                             return (
-                              <DateInput
+                              <RpDateInput
                                 value={
                                   newTransaction?.date
                                     ? new Date(newTransaction.date)
@@ -826,19 +827,18 @@ export default function BankPageClient({
                                   if (date && newTransaction) {
                                     setNewTransaction({
                                       ...newTransaction,
-                                      date: new Date(date),
+                                      date,
                                     });
                                   }
                                 }}
                                 size="xs"
-                                valueFormat="DD/MM/YYYY"
                               />
                             );
                           }
 
                           if (isEditing) {
                             return (
-                              <DateInput
+                              <RpDateInput
                                 value={
                                   editingTransactionData?.date
                                     ? new Date(editingTransactionData.date)
@@ -848,19 +848,18 @@ export default function BankPageClient({
                                   if (date && editingTransactionData) {
                                     setEditingTransactionData({
                                       ...editingTransactionData,
-                                      date: new Date(date),
+                                      date,
                                     });
                                   }
                                 }}
                                 size="xs"
-                                valueFormat="DD/MM/YYYY"
                               />
                             );
                           }
 
                           return (
                             <Text size="sm">
-                              {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: fr })}
+                              {formatRpDate(new Date(transaction.date), 'dd/MM/yyyy')}
                             </Text>
                           );
                         },

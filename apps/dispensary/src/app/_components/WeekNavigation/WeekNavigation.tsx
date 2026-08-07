@@ -6,6 +6,7 @@ import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { formatDate, parsePickerDate } from '@/lib/date';
 import { getBankWeekBounds, isParisWeekAfter } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
+import { fromRpDisplayDate, toRpDisplayDate } from '@/lib/rpCalendar';
 
 interface WeekNavigationProps {
   weekStart: Date;
@@ -17,6 +18,8 @@ interface WeekNavigationProps {
   loading?: boolean;
   /** Latest selectable week (Monday, Europe/Paris). Blocks future weeks in picker and next button. */
   maxWeekStart?: Date;
+  /** Display and pick dates in RP calendar (−136 years). Stored/emitted dates stay real. */
+  useRpCalendar?: boolean;
 }
 
 export function WeekNavigation({
@@ -28,10 +31,21 @@ export function WeekNavigation({
   onNextWeek,
   loading = false,
   maxWeekStart,
+  useRpCalendar = false,
 }: WeekNavigationProps) {
-  const weekRange = `${dayjs(weekStart).tz('Europe/Paris').format('D MMM')} - ${dayjs(weekEnd).tz('Europe/Paris').format('D MMM YYYY')}`;
-  const pickerValue = weekDateValue ? formatDate(weekDateValue) : null;
+  const displayStart = useRpCalendar ? toRpDisplayDate(weekStart) : weekStart;
+  const displayEnd = useRpCalendar ? toRpDisplayDate(weekEnd) : weekEnd;
+  const weekRange = `${dayjs(displayStart).tz('Europe/Paris').format('D MMM')} - ${dayjs(displayEnd).tz('Europe/Paris').format('D MMM YYYY')}`;
+
+  const pickerValue = weekDateValue
+    ? formatDate(useRpCalendar ? toRpDisplayDate(weekDateValue) : weekDateValue)
+    : null;
   const maxWeekBounds = maxWeekStart ? getBankWeekBounds(maxWeekStart) : null;
+  const pickerMaxDate = maxWeekBounds
+    ? useRpCalendar
+      ? toRpDisplayDate(maxWeekBounds.end)
+      : maxWeekBounds.end
+    : undefined;
   const isAtMaxWeek =
     maxWeekBounds != null && weekStart.getTime() >= maxWeekBounds.start.getTime();
 
@@ -59,10 +73,11 @@ export function WeekNavigation({
                 onWeekChange(null);
                 return;
               }
-              if (maxWeekStart && isParisWeekAfter(parsed, maxWeekStart)) {
+              const realDate = useRpCalendar ? fromRpDisplayDate(parsed) : parsed;
+              if (maxWeekStart && isParisWeekAfter(realDate, maxWeekStart)) {
                 return;
               }
-              onWeekChange(parsed);
+              onWeekChange(realDate);
             }}
             placeholder="Sélectionner le lundi"
             valueFormat="D MMMM YYYY"
@@ -70,7 +85,7 @@ export function WeekNavigation({
             clearable={false}
             radius="md"
             size="sm"
-            maxDate={maxWeekBounds?.end}
+            maxDate={pickerMaxDate}
           />
         </Group>
         <ActionIcon

@@ -14,7 +14,7 @@ import {
   Switch,
   Text,
 } from '@mantine/core';
-import { DateInput, DatesProvider } from '@mantine/dates';
+import { DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/fr';
 import { notifications } from '@mantine/notifications';
 import {
@@ -22,11 +22,10 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { FormSection } from '@/app/_components/AppModal/FormSection';
 import { SuggestionAutocomplete } from '@/app/_components/SuggestionAutocomplete/SuggestionAutocomplete';
+import { RpDateInput } from '@/app/_components/RpDatePicker/RpDateInput';
 import {
   addDescriptionSuggestion,
   addNameSuggestion,
@@ -40,6 +39,7 @@ import {
   updatePlannedTransaction,
 } from '@/app/_actions/bankAccounts';
 import { handleAction } from '@/lib/action';
+import { formatRpDate } from '@/lib/rpCalendar';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import type {
   SerializedPlannedTransaction,
@@ -383,7 +383,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                           {' · '}
                           {item.scheduleKind === 'ONCE'
                             ? item.onceDate
-                              ? `Une fois le ${format(new Date(item.onceDate), 'dd/MM/yyyy', { locale: fr })}`
+                              ? `Une fois le ${formatRpDate(new Date(item.onceDate), 'dd/MM/yyyy')}`
                               : 'Une fois'
                             : `Hebdo · ${weekdayLabels(item.weekdays)}`}
                           {item.description ? ` · ${item.description}` : ''}
@@ -496,11 +496,10 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
               required
             />
             {formScheduleKind === 'ONCE' ? (
-              <DateInput
+              <RpDateInput
                 label="Date"
                 value={formOnceDate}
-                onChange={(d) => setFormOnceDate(d as Date | null)}
-                valueFormat="DD/MM/YYYY"
+                onChange={setFormOnceDate}
                 required
               />
             ) : (
