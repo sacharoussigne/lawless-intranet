@@ -30,7 +30,7 @@ export function BankPendingOccurrencesBanner({
 
   const count = occurrences.length;
   const title =
-    count === 1 ? '1 occurrence à confirmer' : `${count} occurrences à confirmer`;
+    count === 1 ? '1 transaction à confirmer' : `${count} transactions à confirmer`;
 
   return (
     <Accordion variant="contained" radius="md" styles={{ item: { borderColor: 'var(--mantine-color-amber-3)' } }}>

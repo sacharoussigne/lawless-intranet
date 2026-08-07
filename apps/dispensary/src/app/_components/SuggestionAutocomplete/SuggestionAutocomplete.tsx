@@ -13,6 +13,8 @@ interface SuggestionAutocompleteProps {
   onDeleteSuggestion: (value: string, e?: React.MouseEvent) => Promise<void>;
   placeholder?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg';
+  label?: string;
+  required?: boolean;
 }
 
 export function SuggestionAutocomplete({
@@ -24,6 +26,8 @@ export function SuggestionAutocomplete({
   onDeleteSuggestion,
   placeholder = '',
   size = 'xs',
+  label,
+  required,
 }: SuggestionAutocompleteProps) {
   const data = useMemo(() => {
     const merged = [...suggestions];
@@ -51,6 +55,8 @@ export function SuggestionAutocomplete({
       value={value}
       onChange={onChange}
       size={size}
+      label={label}
+      required={required}
       placeholder={placeholder}
       renderOption={({ option }) => {
         const canDelete = deletableSet.has(option.value.toLowerCase());

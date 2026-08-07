@@ -13,8 +13,6 @@ import {
   Stack,
   Switch,
   Text,
-  TextInput,
-  Textarea,
 } from '@mantine/core';
 import { DateInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/fr';
@@ -28,9 +26,16 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { FormSection } from '@/app/_components/AppModal/FormSection';
+import { SuggestionAutocomplete } from '@/app/_components/SuggestionAutocomplete/SuggestionAutocomplete';
 import {
+  addDescriptionSuggestion,
+  addNameSuggestion,
   createPlannedTransaction,
+  deleteDescriptionSuggestion,
+  deleteNameSuggestion,
   deletePlannedTransaction,
+  getDescriptionSuggestions,
+  getNameSuggestions,
   getPlannedTransactions,
   updatePlannedTransaction,
 } from '@/app/_actions/bankAccounts';
@@ -79,6 +84,9 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const [formOpened, setFormOpened] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [companyNames, setCompanyNames] = useState<string[]>([]);
+  const [descriptionSuggestions, setDescriptionSuggestions] = useState<string[]>([]);
 
   const [formType, setFormType] = useState<TransactionType>('DEPOSIT');
   const [formName, setFormName] = useState('');
@@ -103,9 +111,28 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
     }
   }, [dispensarySlug]);
 
+  const loadSuggestions = useCallback(async () => {
+    try {
+      const [nameResult, descResult] = await Promise.all([
+        getNameSuggestions(dispensarySlug),
+        getDescriptionSuggestions(dispensarySlug),
+      ]);
+      const nameData = handleAction(nameResult);
+      const descData = handleAction(descResult);
+      if (nameData) {
+        setNameSuggestions(nameData.suggestions);
+        setCompanyNames(nameData.companyNames);
+      }
+      if (descData) setDescriptionSuggestions(descData);
+    } catch {
+      // handled by handleAction
+    }
+  }, [dispensarySlug]);
+
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void loadSuggestions();
+  }, [refresh, loadSuggestions]);
 
   const notifySuccess = (message: string) => {
     notifications.show({ title: 'Succès', message, color: 'moss' });
@@ -118,6 +145,74 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const afterMutation = async () => {
     await refresh();
     onChanged?.();
+  };
+
+  const handleAddNameSuggestion = async (value: string) => {
+    if (!value.trim()) return;
+    try {
+      const result = await addNameSuggestion(dispensarySlug, { value });
+      const data = handleAction(result);
+      if (data) {
+        setNameSuggestions((prev) =>
+          prev.some((s) => s.toLowerCase() === data.toLowerCase()) ? prev : [...prev, data],
+        );
+        notifySuccess('Suggestion ajoutée');
+      }
+    } catch (error: unknown) {
+      notifyError(error instanceof Error ? error.message : "Erreur lors de l'ajout de la suggestion");
+    }
+  };
+
+  const handleAddDescriptionSuggestion = async (value: string) => {
+    if (!value.trim()) return;
+    try {
+      const result = await addDescriptionSuggestion(dispensarySlug, { value });
+      const data = handleAction(result);
+      if (data) {
+        setDescriptionSuggestions((prev) => [...prev, data]);
+        notifySuccess('Suggestion ajoutée');
+      }
+    } catch (error: unknown) {
+      notifyError(error instanceof Error ? error.message : "Erreur lors de l'ajout de la suggestion");
+    }
+  };
+
+  const handleDeleteNameSuggestion = async (value: string, e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    try {
+      const result = await deleteNameSuggestion(dispensarySlug, { value: trimmed });
+      handleAction(result);
+      setNameSuggestions((prev) =>
+        prev.filter((s) => s.toLowerCase() !== trimmed.toLowerCase()),
+      );
+      notifySuccess('Suggestion supprimée');
+    } catch (error: unknown) {
+      notifyError(
+        error instanceof Error ? error.message : 'Erreur lors de la suppression de la suggestion',
+      );
+    }
+  };
+
+  const handleDeleteDescriptionSuggestion = async (value: string, e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    try {
+      const result = await deleteDescriptionSuggestion(dispensarySlug, { value: trimmed });
+      handleAction(result);
+      setDescriptionSuggestions((prev) =>
+        prev.filter((s) => s.toLowerCase() !== trimmed.toLowerCase()),
+      );
+      notifySuccess('Suggestion supprimée');
+    } catch (error: unknown) {
+      notifyError(
+        error instanceof Error ? error.message : 'Erreur lors de la suppression de la suggestion',
+      );
+    }
   };
 
   const resetForm = () => {
@@ -358,17 +453,27 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
               onChange={(v) => v && setFormType(v as TransactionType)}
               required
             />
-            <TextInput
+            <SuggestionAutocomplete
               label="Nom"
-              value={formName}
-              onChange={(e) => setFormName(e.currentTarget.value)}
               required
+              value={formName}
+              onChange={setFormName}
+              suggestions={nameSuggestions}
+              extraOptions={companyNames}
+              onAddSuggestion={handleAddNameSuggestion}
+              onDeleteSuggestion={handleDeleteNameSuggestion}
+              placeholder="Nom"
+              size="sm"
             />
-            <Textarea
+            <SuggestionAutocomplete
               label="Description"
               value={formDescription}
-              onChange={(e) => setFormDescription(e.currentTarget.value)}
-              minRows={2}
+              onChange={setFormDescription}
+              suggestions={descriptionSuggestions}
+              onAddSuggestion={handleAddDescriptionSuggestion}
+              onDeleteSuggestion={handleDeleteDescriptionSuggestion}
+              placeholder="Description"
+              size="sm"
             />
             <NumberInput
               label="Montant"

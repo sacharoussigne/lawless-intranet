@@ -322,7 +322,7 @@ export default function BankPageClient({
       if (data) {
         notifications.show({
           title: 'Succès',
-          message: 'Occurrence confirmée',
+          message: 'Transaction confirmée',
           color: 'moss',
         });
         await refreshAfterPlannedChange();
@@ -346,7 +346,7 @@ export default function BankPageClient({
       if (data) {
         notifications.show({
           title: 'Succès',
-          message: 'Occurrence ignorée',
+          message: 'Transaction ignorée',
           color: 'moss',
         });
         await refreshAfterPlannedChange();
