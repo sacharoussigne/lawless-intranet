@@ -34,7 +34,7 @@ import { getBankWeekBounds } from '@/lib/bankWeek';
 import { formatDate, parsePickerDate } from '@/lib/date';
 import dayjs from '@/lib/dayjs';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
-import { SaleStatus } from '@prisma/client';
+import { SaleStatus } from '@lawless-intranet/inventory-client';
 import { apothecaryBooleanPills, apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { amberPalette } from '@/lib/design-tokens';
 import { normalizeString } from '@/lib/string/normalizeString';

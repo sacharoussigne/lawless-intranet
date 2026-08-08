@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { StockMovementKind } from '@prisma/client';
 import {
+  StockMovementKind,
   buildManualMovements,
   computeManualStockDelta,
   getDisplayValue,

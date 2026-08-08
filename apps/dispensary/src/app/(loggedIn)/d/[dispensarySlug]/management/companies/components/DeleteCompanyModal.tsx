@@ -29,8 +29,8 @@ export function DeleteCompanyModal({
     }
   };
 
-  const groupCount = companyToDelete?._count.companyGroups ?? 0;
-  const orderCount = companyToDelete?._count.orders ?? 0;
+  const groupCount = companyToDelete?._count?.companyGroups ?? 0;
+  const orderCount = companyToDelete?._count?.orders ?? 0;
 
   return (
     <AppModal

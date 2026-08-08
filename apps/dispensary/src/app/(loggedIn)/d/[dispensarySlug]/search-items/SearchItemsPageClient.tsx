@@ -20,35 +20,9 @@ import { getStockPreviousColumnLabel, getStockTotalPreviousLabel } from '@/lib/s
 import { notifications } from '@mantine/notifications';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
 import type { ItemWithRelations } from '@/types/items';
+import type { StockItemWithStockRecord } from '@lawless-intranet/types';
 
-interface ItemWithDetailedStock {
-  id: string;
-  name: string;
-  description: string | null;
-  minimalQuantity: number;
-  isCraftable: boolean;
-  canBeSold: boolean;
-  price: number | null;
-  category: {
-    id: string;
-    name: string;
-    color: string;
-  } | null;
-  companyGroup: {
-    id: string;
-    name: string;
-  } | null;
-  totalStockToday: number | null;
-  totalStockYesterday: number | null;
-  totalStockPreviousAt: Date | null;
-  stockByChest: {
-    chestId: string;
-    chestName: string;
-    stockToday: number | null;
-    stockYesterday: number | null;
-    stockPreviousAt: Date | null;
-  }[];
-}
+type ItemWithDetailedStock = StockItemWithStockRecord;
 
 interface SearchItemsPageClientProps {
   initialItems: ItemWithRelations[];
@@ -118,12 +92,13 @@ export default function SearchItemsPageClient({
             {itemsWithStock.length > 0 && (
               <Stack gap="lg" mt="md">
                 {itemsWithStock.map((item) => {
+                  const stockByChest = item.stockByChest ?? [];
                   const previousStockColumnLabel = getStockPreviousColumnLabel(
-                    item.stockByChest.map((chestStock) => chestStock.stockPreviousAt),
+                    stockByChest.map((chestStock) => chestStock.stockPreviousAt),
                   );
                   const totalPreviousLabel = getStockTotalPreviousLabel([
-                    item.totalStockPreviousAt,
-                    ...item.stockByChest.map((chestStock) => chestStock.stockPreviousAt),
+                    item.stockPreviousAt,
+                    ...stockByChest.map((chestStock) => chestStock.stockPreviousAt),
                   ]);
 
                   return (
@@ -191,16 +166,16 @@ export default function SearchItemsPageClient({
                               <Text size="xs" c="dimmed">
                                 {totalPreviousLabel}
                               </Text>
-                              <Text size="lg" fw={500} c={item.totalStockYesterday !== null ? 'dimmed' : 'dimmed'}>
-                                {item.totalStockYesterday !== null ? item.totalStockYesterday : '?'}
+                              <Text size="lg" fw={500} c="dimmed">
+                                {item.stockYesterday !== null ? item.stockYesterday : '?'}
                               </Text>
                             </Stack>
                             <Stack gap={2} align="flex-end">
                               <Text size="xs" c="dimmed">
                                 Stock total aujourd'hui
                               </Text>
-                              <Text size="xl" fw={700} c={item.totalStockToday !== null ? 'blue' : 'dimmed'}>
-                                {item.totalStockToday !== null ? item.totalStockToday : '?'}
+                              <Text size="xl" fw={700} c={item.stockToday !== null ? 'blue' : 'dimmed'}>
+                                {item.stockToday !== null ? item.stockToday : '?'}
                               </Text>
                             </Stack>
                           </Group>
@@ -216,7 +191,7 @@ export default function SearchItemsPageClient({
                           </Table.Tr>
                         </Table.Thead>
                         <Table.Tbody>
-                          {item.stockByChest.map((chestStock) => (
+                          {stockByChest.map((chestStock) => (
                             <Table.Tr key={chestStock.chestId}>
                               <Table.Td>
                                 <Text fw={500}>{chestStock.chestName}</Text>

@@ -21,10 +21,12 @@ export function formatLastStockDayLabel(date: Date): string {
 }
 
 export function resolveLastStockDayLabel(
-  dates: (Date | null | undefined)[],
+  dates: (Date | string | null | undefined)[],
   mode: 'newest' | 'oldest',
 ): string | null {
-  const defined = dates.filter((date): date is Date => date != null);
+  const defined = dates
+    .filter((date): date is Date | string => date != null)
+    .map((date) => (date instanceof Date ? date : new Date(date)));
   if (defined.length === 0) {
     return null;
   }
@@ -55,8 +57,12 @@ export function getStockPreviousLabelForDate(date: Date): string {
   return 'Stock précédent';
 }
 
-export function getStockPreviousColumnLabel(dates: (Date | null | undefined)[]): string {
-  const defined = dates.filter((date): date is Date => date != null);
+export function getStockPreviousColumnLabel(
+  dates: (Date | string | null | undefined)[],
+): string {
+  const defined = dates
+    .filter((date): date is Date | string => date != null)
+    .map((date) => (date instanceof Date ? date : new Date(date)));
   if (defined.length === 0) {
     return 'Stock précédent';
   }
@@ -69,6 +75,8 @@ export function getStockPreviousColumnLabel(dates: (Date | null | undefined)[]):
   return getStockPreviousLabelForDate(defined[0]);
 }
 
-export function getStockTotalPreviousLabel(dates: (Date | null | undefined)[]): string {
+export function getStockTotalPreviousLabel(
+  dates: (Date | string | null | undefined)[],
+): string {
   return getStockPreviousColumnLabel(dates).replace('Stock ', 'Stock total ');
 }

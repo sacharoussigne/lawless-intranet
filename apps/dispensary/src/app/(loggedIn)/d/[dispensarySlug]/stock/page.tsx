@@ -1,10 +1,10 @@
 import { getItemsWithStock, getLastStockDaysByChest } from '@/app/_actions/stock';
 import { getChestsList } from '@/app/_actions/chests';
 import { getStockChecksSummary } from '@/app/_actions/stockChecks';
-import StockPageClient from './StockPageClient';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getDataOrThrow } from '@/lib/response';
 import { getMyStockUiPreferences } from '@/app/_actions/stockUiPreferences';
+import { DispensaryStockWorkspace } from './DispensaryStockWorkspace';
 
 async function StockContent({ dispensarySlug }: { dispensarySlug: string }) {
   const [chestsResult, stockUiPreferencesResult, stockChecksSummaryResult, lastStockDaysResult] =
@@ -16,16 +16,26 @@ async function StockContent({ dispensarySlug }: { dispensarySlug: string }) {
     ]);
 
   const chests = getDataOrThrow(chestsResult, 'Erreur lors du chargement des coffres');
-  const stockUiPreferences = getDataOrThrow(stockUiPreferencesResult, 'Erreur lors du chargement des préférences');
-  const stockChecksSummary = getDataOrThrow(stockChecksSummaryResult, 'Erreur lors du chargement des contrôles stock');
-  const lastStockDaysByChest = getDataOrThrow(lastStockDaysResult, 'Erreur lors du chargement des dates de dernier stock');
+  const stockUiPreferences = getDataOrThrow(
+    stockUiPreferencesResult,
+    'Erreur lors du chargement des préférences',
+  );
+  const stockChecksSummary = getDataOrThrow(
+    stockChecksSummaryResult,
+    'Erreur lors du chargement des contrôles stock',
+  );
+  const lastStockDaysByChest = getDataOrThrow(
+    lastStockDaysResult,
+    'Erreur lors du chargement des dates de dernier stock',
+  );
 
   const initialChestId = chests.length === 1 ? chests[0].id : null;
   const itemsResult = await getItemsWithStock(dispensarySlug, initialChestId);
   const items = getDataOrThrow(itemsResult, 'Erreur lors du chargement du stock');
 
   return (
-    <StockPageClient
+    <DispensaryStockWorkspace
+      dispensarySlug={dispensarySlug}
       initialItems={items}
       initialChests={chests}
       initialStockChecksSummary={stockChecksSummary}
@@ -35,7 +45,11 @@ async function StockContent({ dispensarySlug }: { dispensarySlug: string }) {
   );
 }
 
-export default async function StockPage({ params }: { params: Promise<{ dispensarySlug: string }> }) {
+export default async function StockPage({
+  params,
+}: {
+  params: Promise<{ dispensarySlug: string }>;
+}) {
   const { dispensarySlug } = await params;
   return (
     <SuspenseLoader>
