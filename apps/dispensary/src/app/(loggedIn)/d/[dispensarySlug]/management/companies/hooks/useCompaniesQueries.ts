@@ -85,7 +85,11 @@ export function useCreateCompanyMutation() {
   const { updateCache, invalidateSelect, invalidateCompanyGroups } = useManagementCompaniesCache();
 
   return useMutation({
-    mutationFn: async (vars: { name: string; companyGroupIds?: string[] }) => {
+    mutationFn: async (vars: {
+      name: string;
+      bankAccountNumber?: string | null;
+      companyGroupIds?: string[];
+    }) => {
       const result = await createCompany(dispensarySlug, vars);
       return handleAction(result) as CompanyWithRelations;
     },
@@ -115,7 +119,12 @@ export function useUpdateCompanyMutation() {
   const { updateCache, invalidateSelect, invalidateCompanyGroups } = useManagementCompaniesCache();
 
   return useMutation({
-    mutationFn: async (vars: { id: string; name: string; companyGroupIds?: string[] }) => {
+    mutationFn: async (vars: {
+      id: string;
+      name: string;
+      bankAccountNumber?: string | null;
+      companyGroupIds?: string[];
+    }) => {
       const result = await updateCompany(dispensarySlug, vars);
       return handleAction(result) as CompanyWithRelations;
     },

@@ -13,9 +13,7 @@ import {
   setUserPassword,
   updateUser as updateAuthUser,
 } from '@lawless-intranet/auth-client/admin';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { getAuthSession } from '@/lib/authSession';
-import { fetchAllUserProfiles } from '@/lib/authUsers';
 import { type Role } from '@/types/enum/roles';
 import { actionErrorParser } from '@/lib/action';
 import { requirePlatformAdminContext } from '@/lib/dispensary/serverActionContext';
@@ -76,46 +74,6 @@ export async function listUsers(params?: {
     return {
       status: 200,
       data: result,
-    };
-  } catch (error: unknown) {
-    return {
-      status: 500,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Erreur lors de la récupération des utilisateurs',
-    };
-  }
-}
-
-export async function listUsersForBankAccess() {
-  try {
-    const session = await getAuthSession();
-
-    if (!session) {
-      return {
-        status: 401,
-        error: 'Non autorisé',
-      };
-    }
-
-    const role = session.user?.role ?? null;
-    const hasAccess = checkRolePermission(role, 'application', 'access');
-
-    if (!hasAccess) {
-      return {
-        status: 403,
-        error: 'Accès refusé',
-      };
-    }
-
-    const users = await fetchAllUserProfiles();
-
-    return {
-      status: 200,
-      data: {
-        users: users.map((user) => ({ id: user.id, name: user.name })),
-      },
     };
   } catch (error: unknown) {
     return {

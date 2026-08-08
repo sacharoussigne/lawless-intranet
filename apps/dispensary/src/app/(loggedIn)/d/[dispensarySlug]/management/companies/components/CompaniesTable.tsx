@@ -49,6 +49,18 @@ export function CompaniesTable({
             ),
           },
           {
+            accessor: 'bankAccountNumber',
+            title: 'N° compte bancaire',
+            render: (company: CompanyWithRelations) =>
+              company.bankAccountNumber ? (
+                <Text size="sm">{company.bankAccountNumber}</Text>
+              ) : (
+                <Text c="dimmed" size="sm">
+                  -
+                </Text>
+              ),
+          },
+          {
             accessor: 'companyGroups',
             title: "Groupes d'entreprises",
             render: (company: CompanyWithRelations) => (

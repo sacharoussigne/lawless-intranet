@@ -285,10 +285,9 @@ export default function CreateOrderModal({
   );
 
   useEffect(() => {
-    if (!priceManuallyEdited) {
-      const nextPrice = suggestedPrice ?? '';
-      setOrderPrice((prev) => (prev === nextPrice ? prev : nextPrice));
-    }
+    if (priceManuallyEdited) return;
+    if (suggestedPrice == null) return;
+    setOrderPrice((prev) => (prev === suggestedPrice ? prev : suggestedPrice));
   }, [suggestedPrice, priceManuallyEdited]);
 
   // Réinitialiser le formulaire quand la modal se ferme

@@ -8,14 +8,23 @@ import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 
 const companyGroupIdsSchema = z.array(z.string().uuid('ID de groupe invalide')).optional();
 
+const bankAccountNumberSchema = z
+  .string()
+  .trim()
+  .max(64, 'Le numéro de compte bancaire est trop long')
+  .optional()
+  .nullable();
+
 const createCompanySchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
+  bankAccountNumber: bankAccountNumberSchema,
   companyGroupIds: companyGroupIdsSchema,
 });
 
 const updateCompanySchema = z.object({
   id: z.string().uuid('ID invalide'),
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
+  bankAccountNumber: bankAccountNumberSchema,
   companyGroupIds: companyGroupIdsSchema,
 });
 
@@ -70,6 +79,7 @@ export async function createCompany(
   dispensarySlug: string,
   data: {
     name: string;
+    bankAccountNumber?: string | null;
     companyGroupIds?: string[];
   },
 ) {
@@ -89,6 +99,7 @@ export async function createCompany(
       data: {
         dispensaryId,
         name: validatedData.name,
+        bankAccountNumber: validatedData.bankAccountNumber?.trim() || null,
         companyGroups: validatedData.companyGroupIds
           ? {
               create: validatedData.companyGroupIds.map((companyGroupId) => ({
@@ -160,6 +171,7 @@ export async function updateCompany(
   data: {
     id: string;
     name: string;
+    bankAccountNumber?: string | null;
     companyGroupIds?: string[];
   },
 ) {
@@ -204,6 +216,7 @@ export async function updateCompany(
       },
       data: {
         name: validatedData.name,
+        bankAccountNumber: validatedData.bankAccountNumber?.trim() || null,
         companyGroups: {
           deleteMany:
             companyGroupIdsToRemove.length > 0

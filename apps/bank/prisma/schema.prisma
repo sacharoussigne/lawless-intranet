@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum BankScheduleKind {
+  ONCE
+  WEEKLY
+}
+
+enum BankPlannedOccurrenceStatus {
+  PENDING
+  CONFIRMED
+  SKIPPED
+}
+
+model BankWeek {
+  id           String            @id @default(uuid())
+  scopeType    String
+  scopeId      String
+  weekStart    DateTime
+  weekEnd      DateTime
+  balance      Decimal           @default(0) @db.Decimal(10, 2)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  transactions BankTransaction[]
+
+  @@unique([scopeType, scopeId, weekStart])
+  @@index([scopeType, scopeId])
+  @@index([weekStart])
+  @@map("bank_week")
+}
+
+model BankTransaction {
+  id          String          @id @default(uuid())
+  weekId      String
+  week        BankWeek        @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  date        DateTime
+  type        TransactionType
+  name        String
+  description String?
+  amount      Decimal         @db.Decimal(10, 2)
+  order       Int             @default(0)
+  /// Opaque reference to a host-side order (no cross-DB FK)
+  orderId     String?         @unique
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  confirmedFromOccurrence BankPlannedOccurrence?
+
+  @@index([weekId])
+  @@index([date])
+  @@map("bank_transaction")
+}
+
+model BankPlannedTransaction {
+  id           String                   @id @default(uuid())
+  scopeType    String
+  scopeId      String
+  type         TransactionType
+  name         String
+  description  String?
+  amount       Decimal                  @db.Decimal(10, 2)
+  scheduleKind BankScheduleKind
+  onceDate     DateTime?
+  weekdays     Int[]
+  isActive     Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  occurrences  BankPlannedOccurrence[]
+
+  @@index([scopeType, scopeId])
+  @@index([scopeType, scopeId, isActive])
+  @@map("bank_planned_transaction")
+}
+
+model BankPlannedOccurrence {
+  id                      String                      @id @default(uuid())
+  scopeType               String
+  scopeId                 String
+  plannedTransactionId    String
+  plannedTransaction      BankPlannedTransaction      @relation(fields: [plannedTransactionId], references: [id], onDelete: Cascade)
+  date                    DateTime
+  status                  BankPlannedOccurrenceStatus @default(PENDING)
+  confirmedTransactionId  String?                     @unique
+  confirmedTransaction    BankTransaction?            @relation(fields: [confirmedTransactionId], references: [id], onDelete: SetNull)
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+
+  @@unique([plannedTransactionId, date])
+  @@index([scopeType, scopeId, status])
+  @@index([scopeType, scopeId, date])
+  @@map("bank_planned_occurrence")
+}
+
+model TransactionNameSuggestion {
+  id        String   @id @default(uuid())
+  scopeType String
+  scopeId   String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scopeType, scopeId, value])
+  @@map("transaction_name_suggestion")
+}
+
+model TransactionDescriptionSuggestion {
+  id        String   @id @default(uuid())
+  scopeType String
+  scopeId   String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scopeType, scopeId, value])
+  @@map("transaction_description_suggestion")
+}

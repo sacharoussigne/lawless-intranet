@@ -10,6 +10,8 @@
           "DOCUMENTS_DATABASE_URL",
           "AGENDA_URL",
           "AGENDA_DATABASE_URL",
+          "BANK_URL",
+          "BANK_DATABASE_URL",
           "NEXT_PUBLIC_AUTH_URL",
           "NEXT_PUBLIC_DISPENSARY_URL",
           "NEXT_PUBLIC_APP_URL",

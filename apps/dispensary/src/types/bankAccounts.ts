@@ -1,35 +1,18 @@
-import type { BankAccount, BankAccountAccess, BankAccountWeek, BankTransaction, TransactionType, BankAccountAccessType } from '@prisma/client';
+import type {
+  BankGlobalStatsRecord,
+  BankPlannedOccurrenceRecord,
+  BankPlannedTransactionRecord,
+  BankScheduleKind,
+  BankPlannedOccurrenceStatus,
+  BankTransactionRecord,
+  BankTransactionType,
+  BankWeekRecord,
+} from '@lawless-intranet/types';
 
-export interface BankAccountWithRelations extends BankAccount {
-  owner: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  accesses: (BankAccountAccess & {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-    };
-  })[];
-}
+export type SerializedBankTransaction = BankTransactionRecord;
+export type SerializedBankWeek = BankWeekRecord;
+export type SerializedPlannedTransaction = BankPlannedTransactionRecord;
+export type SerializedPlannedOccurrence = BankPlannedOccurrenceRecord;
+export type BankGlobalStats = BankGlobalStatsRecord;
 
-export interface BankAccountWeekWithTransactions extends BankAccountWeek {
-  transactions: BankTransaction[];
-  account: {
-    id: string;
-    name: string;
-  };
-}
-
-export interface BankTransactionWithWeek extends BankTransaction {
-  week: {
-    id: string;
-    weekStart: Date;
-    weekEnd: Date;
-    accountId: string;
-  };
-}
-
-export type { TransactionType, BankAccountAccessType };
+export type { BankTransactionType as TransactionType, BankScheduleKind, BankPlannedOccurrenceStatus };
