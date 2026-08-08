@@ -32,6 +32,7 @@ import {
   IconCheck,
   IconEdit,
   IconPlus,
+  IconReceipt,
   IconTransfer,
   IconTrash,
   IconX,
@@ -40,6 +41,7 @@ import { useBankUi } from "./BankUiProvider";
 import { addParisWeeks } from "./bankWeek";
 import { BankPlannedPanel } from "./components/BankPlannedPanel";
 import { BankPendingOccurrencesBanner } from "./components/BankPendingOccurrencesBanner";
+import { DataTableEmptyState } from "./components/DataTableEmptyState";
 import type {
   BankActionResult,
   SerializedBankWeek,
@@ -560,10 +562,16 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                   fetching={loading}
                   striped
                   highlightOnHover
-                  noRecordsText={
-                    typeFilter.length
-                      ? "Aucune transaction trouvée avec ces filtres"
-                      : "Aucune transaction trouvée"
+                  minHeight={records.length === 0 ? 200 : undefined}
+                  emptyState={
+                    <DataTableEmptyState
+                      icon={IconReceipt}
+                      message={
+                        typeFilter.length
+                          ? "Aucune transaction ne correspond aux filtres."
+                          : "Aucune transaction sur cette semaine."
+                      }
+                    />
                   }
                   sortStatus={{ columnAccessor: "date", direction: sortOrder }}
                   onSortStatusChange={(status) =>
