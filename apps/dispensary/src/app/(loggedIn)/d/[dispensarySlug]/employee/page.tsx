@@ -113,10 +113,7 @@ export default async function EmployeePage({
     );
   }
 
-  const showActiveOrders =
-    canManageOrders &&
-    initialActiveOrdersPage != null &&
-    initialActiveOrdersPage.totalCount > 0;
+  const showActiveOrders = canManageOrders && initialActiveOrdersPage != null;
 
   let chests: ChestListItem[] = [];
   if (canCreateSale || canTakeStock) {

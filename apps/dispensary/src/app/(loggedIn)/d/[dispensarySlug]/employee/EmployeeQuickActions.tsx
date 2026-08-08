@@ -70,10 +70,6 @@ function ActiveOrdersChrome({
     }
   }, [ordersVisible]);
 
-  if (activeCount <= 0) {
-    return <Group mb="lg">{leadingActions}</Group>;
-  }
-
   const preferenceReady = ordersVisible != null;
   const ordersExpanded = preferenceReady && ordersVisible;
   const ordersHref = tenantRoutes(dispensarySlug).orders.index;
