@@ -11,6 +11,7 @@
     "migrate:mails-to-documents": "tsx scripts/migrate-mails-to-documents.ts",
     "migrate:agenda-to-service": "tsx scripts/migrate-agenda-to-agenda-service.ts",
     "migrate:bank-to-service": "tsx scripts/migrate-bank-to-bank-service.ts",
+    "migrate:legacy-bank-account": "tsx scripts/migrate-legacy-bank-account-to-bank-service.ts",
     "docker:build:auth": "docker build --build-arg APP_NAME=auth --build-arg APP_PORT=3001 -t lawless-auth .",
     "docker:build:dispensary": "docker build --build-arg APP_NAME=dispensary --build-arg APP_PORT=3000 -t lawless-dispensary .",
     "docker:build:documents": "docker build --build-arg APP_NAME=documents --build-arg APP_PORT=3002 -t lawless-documents .",
