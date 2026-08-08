@@ -3,11 +3,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActionIcon,
-  Badge,
   Button,
   Card,
   Group,
   MultiSelect,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -30,8 +30,6 @@ import {
   parseRoleList,
   rolesAsString,
 } from '@/types/enum/roles';
-import { apothecaryPillStyle } from '@/lib/apothecaryPill';
-import { sagePalette } from '@/lib/design-tokens';
 
 const ROLE_OPTIONS = DISPENSARY_MEMBER_ROLES.map((role) => ({
   value: role,
@@ -57,6 +55,7 @@ export function DispensaryMembersPanel({
   const [members, setMembers] = useState(initialMembers);
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([Role.EMPLOYEE]);
+  const [newMemberGrade, setNewMemberGrade] = useState('');
   const [loading, setLoading] = useState(false);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [roleEdits, setRoleEdits] = useState<Record<string, string[]>>(() =>
@@ -147,10 +146,12 @@ export function DispensaryMembersPanel({
     try {
       const ok = await saveMemberRoles(selectedUser.id, selectedRoles, {
         successMessage: 'Membre ajouté',
+        description: newMemberGrade.trim() || null,
       });
       if (!ok) return;
       setSelectedUser(null);
       setSelectedRoles([Role.EMPLOYEE]);
+      setNewMemberGrade('');
     } finally {
       setLoading(false);
     }
@@ -224,14 +225,28 @@ export function DispensaryMembersPanel({
               Sélectionné : {selectedUser.name}
             </Text>
           )}
-          <MultiSelect
-            label="Rôles"
-            data={ROLE_OPTIONS}
-            value={selectedRoles}
-            onChange={setSelectedRoles}
-            searchable
-            clearable={false}
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <MultiSelect
+              label="Rôles"
+              data={ROLE_OPTIONS}
+              value={selectedRoles}
+              onChange={setSelectedRoles}
+              searchable
+              clearable={false}
+            />
+            <TextInput
+              label="Grade"
+              placeholder="Directeur, Co-directrice…"
+              value={newMemberGrade}
+              onChange={(event) => {
+                const nextValue =
+                  typeof event === 'string'
+                    ? event
+                    : (event.currentTarget?.value ?? event.target?.value ?? '');
+                setNewMemberGrade(nextValue);
+              }}
+            />
+          </SimpleGrid>
           <Group justify="flex-end">
             <Button
               color="sage"
@@ -258,28 +273,19 @@ export function DispensaryMembersPanel({
         </Stack>
       ) : (
         <Stack gap="sm">
-          <Title order={5}>Membres ({members.length})</Title>
+          <div>
+            <Title order={5}>Membres ({members.length})</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Le grade est affiché dans les courriers du dispensaire.
+            </Text>
+          </div>
           {members.map((m) => {
             const memberRoles = getRolesForMember(m);
             return (
               <Card key={m.id} withBorder padding="md" radius="md">
-                <Stack gap="sm">
-                  <Group justify="space-between" align="flex-start" wrap="nowrap">
-                    <Stack gap={6}>
-                      <Text fw={600}>{m.user.name}</Text>
-                      <Group gap={6}>
-                        {memberRoles.map((role) => (
-                          <Badge
-                            key={role}
-                            variant="outline"
-                            radius="sm"
-                            style={apothecaryPillStyle(sagePalette)}
-                          >
-                            {rolesAsString(role as Role)}
-                          </Badge>
-                        ))}
-                      </Group>
-                    </Stack>
+                <Stack gap="md">
+                  <Group justify="space-between" align="center" wrap="nowrap">
+                    <Text fw={600}>{m.user.name}</Text>
                     <DeleteConfirmPopover
                       title="Retirer ce membre ?"
                       message={`« ${m.user.name} » perdra l’accès à ce dispensaire.`}
@@ -296,6 +302,7 @@ export function DispensaryMembersPanel({
                       </ActionIcon>
                     </DeleteConfirmPopover>
                   </Group>
+
                   <MultiSelect
                     label="Rôles"
                     data={ROLE_OPTIONS}
@@ -306,24 +313,25 @@ export function DispensaryMembersPanel({
                     searchable
                     clearable={false}
                   />
-                  <TextInput
-                    label="Grade"
-                    placeholder="Directeur, Co-directrice…"
-                    value={descriptionEdits[m.user.id] ?? ''}
-                    onChange={(event) => {
-                      const nextValue =
-                        typeof event === 'string'
-                          ? event
-                          : (event.currentTarget?.value ?? event.target?.value ?? '');
-                      setDescriptionEdits((prev) => ({
-                        ...prev,
-                        [m.user.id]: nextValue,
-                      }));
-                    }}
-                  />
-                  <Group justify="flex-end">
+
+                  <Group align="flex-end" wrap="nowrap" gap="sm">
+                    <TextInput
+                      style={{ flex: 1 }}
+                      label="Grade"
+                      placeholder="Directeur, Co-directrice…"
+                      value={descriptionEdits[m.user.id] ?? ''}
+                      onChange={(event) => {
+                        const nextValue =
+                          typeof event === 'string'
+                            ? event
+                            : (event.currentTarget?.value ?? event.target?.value ?? '');
+                        setDescriptionEdits((prev) => ({
+                          ...prev,
+                          [m.user.id]: nextValue,
+                        }));
+                      }}
+                    />
                     <Button
-                      variant="light"
                       color="sage"
                       loading={savingUserId === m.user.id}
                       disabled={!memberChanged(m) || memberRoles.length === 0}
