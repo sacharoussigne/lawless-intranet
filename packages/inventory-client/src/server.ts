@@ -845,6 +845,7 @@ export async function createSale(
     priceAdjustment?: number;
     items: SaleItemInput[];
     effectiveRole?: string | null;
+    originClientId?: string;
   },
   options: ClientOptions = {},
 ): Promise<SaleListItemRecord> {
@@ -861,6 +862,7 @@ export async function cancelSale(
     id: string;
     userId?: string;
     canViewAll?: boolean;
+    originClientId?: string;
   },
   options: ClientOptions = {},
 ): Promise<SuccessResponse> {
@@ -877,6 +879,7 @@ export async function depositSale(
     id: string;
     userId?: string;
     canDepositOthers?: boolean;
+    originClientId?: string;
   },
   options: ClientOptions = {},
 ): Promise<SuccessResponse> {
@@ -893,6 +896,7 @@ export async function deleteSale(
     id: string;
     userId?: string;
     isAdmin?: boolean;
+    originClientId?: string;
   },
   options: ClientOptions = {},
 ): Promise<SuccessResponse> {

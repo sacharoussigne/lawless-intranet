@@ -1,4 +1,7 @@
-export { InventoryClientError } from './config';
+export {
+  InventoryClientError,
+  INVENTORY_INTERNAL_SECRET_HEADER,
+} from './config';
 export { SaleStatus, SaleItemSource } from './types';
 export type {
   InventoryScopeParams,

@@ -211,6 +211,7 @@ export const createSaleSchema = scopeFieldsSchema.extend({
   priceAdjustment: z.number().finite().optional(),
   items: z.array(saleItemSchema).min(1),
   effectiveRole: z.string().optional().nullable(),
+  originClientId: z.string().min(1).max(128).optional(),
 });
 
 export const saleActionSchema = scopeFieldsSchema.extend({
@@ -219,6 +220,7 @@ export const saleActionSchema = scopeFieldsSchema.extend({
   canViewAll: z.boolean().optional(),
   canDepositOthers: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
+  originClientId: z.string().min(1).max(128).optional(),
 });
 
 export const updateStockSchema = scopeFieldsSchema.extend({

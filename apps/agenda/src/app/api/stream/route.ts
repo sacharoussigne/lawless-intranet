@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createSseResponse } from '@lawless-intranet/realtime/server';
 import { corsPreflightResponse, withCors } from '@/lib/cors';
 import { requireSession } from '@/lib/auth';
 import { userHasAnyAgendaAccess } from '@/lib/access';
@@ -9,8 +10,6 @@ import { streamQuerySchema, zodErrorMessage } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const HEARTBEAT_MS = 30_000;
 
 export async function OPTIONS(request: Request) {
   return corsPreflightResponse(request);
@@ -55,49 +54,16 @@ export async function GET(request: Request) {
   await ensureAgendaRealtimePgListener();
 
   const channel = scopeKey(scopeType, scopeId);
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    start(controller) {
-      const send = (chunk: string) => {
-        controller.enqueue(encoder.encode(chunk));
-      };
-
-      send(': connected\n\n');
-
-      const unsubscribe = subscribeAgendaRealtime(channel, send);
-
-      const heartbeat = setInterval(() => {
-        try {
-          send(': ping\n\n');
-        } catch {
-          clearInterval(heartbeat);
-        }
-      }, HEARTBEAT_MS);
-
-      const close = () => {
-        clearInterval(heartbeat);
-        unsubscribe();
-        try {
-          controller.close();
-        } catch {
-          // Stream may already be closed.
-        }
-      };
-
-      request.signal.addEventListener('abort', close, { once: true });
-    },
+  const response = createSseResponse({
+    request,
+    onStart: (send) => subscribeAgendaRealtime(channel, send),
   });
 
   return withCors(
     request,
-    new NextResponse(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
+    new NextResponse(response.body, {
+      status: response.status,
+      headers: response.headers,
     }),
   );
 }

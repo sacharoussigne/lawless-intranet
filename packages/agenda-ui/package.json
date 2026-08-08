@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@lawless-intranet/realtime": "workspace:*",
     "@lawless-intranet/types": "workspace:*",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.19",

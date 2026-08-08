@@ -1,4 +1,4 @@
-import { Client } from 'pg';
+import { createPgNotifyListener } from '@lawless-intranet/realtime/server';
 import { broadcastAgendaRealtime } from '@/lib/realtime/hub';
 import type { AgendaRealtimeEvent } from '@/lib/realtime/types';
 import { scopeKey } from '@/lib/scope';
@@ -12,47 +12,17 @@ type AgendaRealtimePgPayload = {
   event: AgendaRealtimeEvent;
 };
 
-type AgendaRealtimePgGlobal = typeof globalThis & {
-  __agendaRealtimePgListener?: Promise<void>;
-};
+const listener = createPgNotifyListener<AgendaRealtimePgPayload>({
+  globalKey: '__agendaRealtimePgListener',
+  channel: CHANNEL,
+  logLabel: 'agenda-realtime',
+  onPayload: (payload) => {
+    broadcastAgendaRealtime(scopeKey(payload.scopeType, payload.scopeId), payload.event);
+  },
+});
 
 export async function ensureAgendaRealtimePgListener(): Promise<void> {
-  const globalStore = globalThis as AgendaRealtimePgGlobal;
-  if (globalStore.__agendaRealtimePgListener) {
-    return globalStore.__agendaRealtimePgListener;
-  }
-
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    return;
-  }
-
-  globalStore.__agendaRealtimePgListener = (async () => {
-    const client = new Client({ connectionString });
-    await client.connect();
-    await client.query(`LISTEN ${CHANNEL}`);
-
-    client.on('notification', (message) => {
-      if (!message.payload) return;
-
-      try {
-        const payload = JSON.parse(message.payload) as AgendaRealtimePgPayload;
-        broadcastAgendaRealtime(
-          scopeKey(payload.scopeType, payload.scopeId),
-          payload.event,
-        );
-      } catch {
-        // Ignore malformed payloads.
-      }
-    });
-
-    client.on('error', (error) => {
-      console.error('[agenda-realtime] PostgreSQL listener error', error);
-      globalStore.__agendaRealtimePgListener = undefined;
-    });
-  })();
-
-  return globalStore.__agendaRealtimePgListener;
+  await listener.ensureListener();
 }
 
 export async function publishAgendaRealtime(
