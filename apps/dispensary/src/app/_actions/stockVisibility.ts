@@ -9,9 +9,7 @@ import {
   setChestCategoryHidden as setChestCategoryHiddenClient,
   setChestItemHidden as setChestItemHiddenClient,
 } from '@lawless-intranet/inventory-client/server';
-import {
-  type ChestStockVisibility,
-} from '@/lib/stock/stockVisibility';
+import type { ChestStockVisibilityRecord } from '@lawless-intranet/types';
 
 const chestIdSchema = z.string().uuid('ID de coffre invalide');
 const categoryIdSchema = z.string().uuid('ID de catégorie invalide');
@@ -38,7 +36,7 @@ export async function getChestStockVisibility(
     const data = await getChestStockVisibilityClient(
       { ...inventoryScope(dispensaryId), chestId: parsedChestId },
       await inventoryCookie(),
-    ) as ChestStockVisibility;
+    ) as ChestStockVisibilityRecord;
 
     return { status: 200, data };
   } catch (error) {

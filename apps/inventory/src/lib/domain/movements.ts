@@ -148,3 +148,166 @@ export async function deleteStockMovements(input: {
   });
   return ok({ deleted: result.count });
 }
+
+function resolveReconciliationChestId(
+  chestFilter: 'all' | 'global' | string,
+): string | null | undefined {
+  if (chestFilter === 'all') return undefined;
+  if (chestFilter === 'global') return null;
+  return chestFilter;
+}
+
+function aggregateStockQuantity(
+  rows: { chestId: string; quantity: number }[],
+  chestId?: string | null,
+): number | null {
+  if (rows.length === 0) return null;
+  if (chestId) return rows[0]?.quantity ?? null;
+
+  const latestByChest = new Map<string, number>();
+  for (const row of rows) {
+    if (!latestByChest.has(row.chestId)) {
+      latestByChest.set(row.chestId, row.quantity);
+    }
+  }
+  return [...latestByChest.values()].reduce((sum, qty) => sum + qty, 0);
+}
+
+export async function getStockMovementReconciliation(input: {
+  scopeType: string;
+  scopeId: string;
+  itemId: string;
+  chestFilter?: 'all' | 'global' | string;
+  from: Date;
+  to: Date;
+}): Promise<
+  DomainResult<{
+    itemId: string;
+    itemName: string;
+    chestFilter: 'all' | 'global' | string;
+    chestName: string | null;
+    from: string;
+    to: string;
+    stockAtPeriodStart: number | null;
+    stockAtPeriodEnd: number | null;
+    stockDelta: number;
+    movementsSum: number;
+    gap: number;
+    hasGap: boolean;
+    movementsWithoutChest: number;
+    stockReconciliationAvailable: boolean;
+  }>
+> {
+  const chestFilter = input.chestFilter ?? 'all';
+  const fromStart = getStartOfDay(input.from);
+  const toStart = getStartOfDay(input.to);
+  if (fromStart > toStart) {
+    return err('La date de début doit être antérieure ou égale à la date de fin', 400);
+  }
+
+  const toEndExclusive = getDayAfter(toStart);
+  const periodBeforeStart = getStartOfDay(new Date(fromStart.getTime() - 24 * 60 * 60 * 1000));
+  const resolvedChestId = resolveReconciliationChestId(chestFilter);
+  const stockReconciliationAvailable = chestFilter !== 'global';
+
+  const item = await prisma.item.findFirst({
+    where: { id: input.itemId, ...scopeWhere(input.scopeType, input.scopeId) },
+    select: { id: true, name: true },
+  });
+  if (!item) return err('Item introuvable', 404);
+
+  let chestName: string | null = null;
+  if (chestFilter === 'global') {
+    chestName = 'Sans coffre';
+  } else if (chestFilter !== 'all') {
+    const chest = await prisma.chest.findFirst({
+      where: { id: chestFilter, ...scopeWhere(input.scopeType, input.scopeId) },
+      select: { name: true },
+    });
+    if (!chest) return err('Coffre introuvable', 404);
+    chestName = chest.name;
+  }
+
+  const stockHistoryWhere = {
+    itemId: input.itemId,
+    ...(resolvedChestId ? { chestId: resolvedChestId } : {}),
+  };
+
+  const movementWhere: Prisma.StockItemMovementWhereInput = {
+    itemId: input.itemId,
+    createdAt: { gte: fromStart, lt: toEndExclusive },
+  };
+  if (chestFilter === 'global') {
+    movementWhere.chestId = null;
+  } else if (resolvedChestId) {
+    movementWhere.chestId = resolvedChestId;
+  }
+
+  const [periodEndRows, periodStartRows, movementAgg, movementsWithoutChest] =
+    await Promise.all([
+      stockReconciliationAvailable
+        ? prisma.stockHistory.findMany({
+            where: {
+              ...stockHistoryWhere,
+              timestamp: { gte: toStart, lt: toEndExclusive },
+            },
+            orderBy: { timestamp: 'desc' },
+            select: { chestId: true, quantity: true },
+          })
+        : Promise.resolve([]),
+      stockReconciliationAvailable
+        ? prisma.stockHistory.findMany({
+            where: {
+              ...stockHistoryWhere,
+              timestamp: { gte: periodBeforeStart, lt: fromStart },
+            },
+            orderBy: { timestamp: 'desc' },
+            select: { chestId: true, quantity: true },
+          })
+        : Promise.resolve([]),
+      prisma.stockItemMovement.aggregate({
+        where: movementWhere,
+        _sum: { quantity: true },
+      }),
+      chestFilter === 'all'
+        ? prisma.stockItemMovement.count({
+            where: {
+              itemId: input.itemId,
+              createdAt: { gte: fromStart, lt: toEndExclusive },
+              chestId: null,
+            },
+          })
+        : Promise.resolve(0),
+    ]);
+
+  const stockAtPeriodEnd = stockReconciliationAvailable
+    ? aggregateStockQuantity(periodEndRows, resolvedChestId)
+    : null;
+  const stockAtPeriodStart = stockReconciliationAvailable
+    ? aggregateStockQuantity(periodStartRows, resolvedChestId)
+    : null;
+
+  const stockDelta = stockReconciliationAvailable
+    ? (stockAtPeriodEnd ?? 0) - (stockAtPeriodStart ?? 0)
+    : 0;
+  const movementsSum = movementAgg._sum.quantity ?? 0;
+  const gap = stockReconciliationAvailable ? stockDelta - movementsSum : 0;
+
+  return ok({
+    itemId: item.id,
+    itemName: item.name,
+    chestFilter,
+    chestName,
+    from: fromStart.toISOString(),
+    to: toStart.toISOString(),
+    stockAtPeriodStart,
+    stockAtPeriodEnd,
+    stockDelta,
+    movementsSum,
+    gap,
+    hasGap: stockReconciliationAvailable && gap !== 0,
+    movementsWithoutChest,
+    stockReconciliationAvailable,
+  });
+}
+

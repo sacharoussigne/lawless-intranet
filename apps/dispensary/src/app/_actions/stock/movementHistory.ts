@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { StockMovementKind as StockMovementKindType } from '@lawless-intranet/types';
 import {
   deleteStockMovements as deleteStockMovementsApi,
+  getStockMovementReconciliation as getStockMovementReconciliationApi,
   listStockMovements,
   updateStockMovement as updateStockMovementApi,
 } from '@lawless-intranet/inventory-client/server';
@@ -266,14 +267,27 @@ export async function getStockMovementReconciliation(
       },
     });
     if (!ctx.ok) return ctx.response;
+    const { dispensaryId } = ctx.tenant;
 
-    getStockMovementReconciliationSchema.parse(data);
+    const validated = getStockMovementReconciliationSchema.parse(data);
+    const record = await getStockMovementReconciliationApi(
+      {
+        ...inventoryScope(dispensaryId),
+        itemId: validated.itemId,
+        chestFilter: validated.chestFilter,
+        from: validated.from.toISOString(),
+        to: validated.to.toISOString(),
+      },
+      await inventoryCookie(),
+    );
 
-    // TODO: Inventory service has no stock movement reconciliation endpoint yet.
-    return {
-      status: 501,
-      error: 'Stock movement reconciliation is not available via inventory service yet',
-    } as { status: 501; error: string; data?: StockMovementReconciliationResult };
+    const result: StockMovementReconciliationResult = {
+      ...record,
+      from: new Date(record.from),
+      to: new Date(record.to),
+    };
+
+    return { status: 200, data: result };
   } catch (error) {
     try {
       return inventoryActionError(

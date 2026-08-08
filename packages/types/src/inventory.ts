@@ -344,6 +344,23 @@ export type ChestStockVisibilityRecord = {
   hiddenItemIds: string[];
 };
 
+export type StockMovementReconciliationRecord = {
+  itemId: string;
+  itemName: string;
+  chestFilter: 'all' | 'global' | string;
+  chestName: string | null;
+  from: string;
+  to: string;
+  stockAtPeriodStart: number | null;
+  stockAtPeriodEnd: number | null;
+  stockDelta: number;
+  movementsSum: number;
+  gap: number;
+  hasGap: boolean;
+  movementsWithoutChest: number;
+  stockReconciliationAvailable: boolean;
+};
+
 export type IdNameRecord = {
   id: string;
   name: string;

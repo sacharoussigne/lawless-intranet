@@ -146,6 +146,7 @@ export type {
   StockMovementKind,
   StockMovementRecord,
   StockMovementsPageRecord,
+  StockMovementReconciliationRecord,
   StockStatsItemRecord,
   StockStatsRecord,
   WeeklySalesRecord,

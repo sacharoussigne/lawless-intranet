@@ -2,13 +2,11 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type {
-  ChestListItem,
   ChestStockMoveMode,
   ChestStockVisibility,
   CraftRecipeWithIngredients,
   InventoryActionResult,
   InventoryUiPermissions,
-  ItemWithDetailedStock,
   ItemWithRelations,
   StockChecksSummary,
 } from './types';
@@ -43,9 +41,6 @@ export type InventoryUiActions = {
   getItemsWithStock: (
     chestId?: string | null,
   ) => Promise<InventoryActionResult<ItemWithRelations[]>>;
-  getItemsWithDetailedStock: (
-    itemIds?: string[],
-  ) => Promise<InventoryActionResult<ItemWithDetailedStock[]>>;
   updateStock: (input: UpdateStockInput) => Promise<InventoryActionResult<unknown>>;
   craftItem: (
     input: CraftItemInput,
@@ -71,7 +66,6 @@ export type InventoryUiActions = {
     hidden: boolean;
   }) => Promise<InventoryActionResult<{ ok: true }>>;
   getLastStockDaysByChest: () => Promise<InventoryActionResult<Record<string, Date | null>>>;
-  getChestsList: (enabledOnly?: boolean) => Promise<InventoryActionResult<ChestListItem[]>>;
   getCraftRecipesByItemId: (
     itemId: string,
     onlyEnabled?: boolean,

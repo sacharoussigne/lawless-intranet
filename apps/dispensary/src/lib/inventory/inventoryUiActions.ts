@@ -1,9 +1,7 @@
 import type { InventoryActionResult, InventoryUiActions } from '@lawless-intranet/inventory-ui';
-import { getChestsList } from '@/app/_actions/chests';
 import { getCraftRecipesByItemId } from '@/app/_actions/craftRecipes';
 import { craftItem, updateStock } from '@/app/_actions/stock/mutations';
 import {
-  getItemsWithDetailedStock,
   getItemsWithStock,
   getLastStockDaysByChest,
 } from '@/app/_actions/stock/queries';
@@ -46,8 +44,6 @@ export function createDispensaryInventoryActions(dispensarySlug: string): Invent
   return {
     getItemsWithStock: (chestId) =>
       asInventoryResult(getItemsWithStock(dispensarySlug, chestId)),
-    getItemsWithDetailedStock: (itemIds) =>
-      asInventoryResult(getItemsWithDetailedStock(dispensarySlug, itemIds)),
     updateStock: (input) =>
       asInventoryResult(
         updateStock(dispensarySlug, input.stockData, input.targetChestId, {
@@ -82,8 +78,6 @@ export function createDispensaryInventoryActions(dispensarySlug: string): Invent
       asInventoryResult(setChestCategoryHidden(dispensarySlug, input)),
     setChestItemHidden: (input) => asInventoryResult(setChestItemHidden(dispensarySlug, input)),
     getLastStockDaysByChest: () => asInventoryResult(getLastStockDaysByChest(dispensarySlug)),
-    getChestsList: (enabledOnly) =>
-      asInventoryResult(getChestsList(dispensarySlug, enabledOnly ?? true)),
     getCraftRecipesByItemId: async (itemId, onlyEnabled) => {
       const result = await asInventoryResult(
         getCraftRecipesByItemId(dispensarySlug, itemId, onlyEnabled),

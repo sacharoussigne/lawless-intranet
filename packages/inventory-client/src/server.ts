@@ -25,6 +25,7 @@ import type {
   StockItemWithStockRecord,
   StockMovementKind,
   StockMovementsPageRecord,
+  StockMovementReconciliationRecord,
   StockStatsRecord,
   WeeklySalesRecord,
 } from '@lawless-intranet/types';
@@ -1231,6 +1232,29 @@ export async function deleteStockMovements(
     cookieHeader: options.cookieHeader,
     body: JSON.stringify(input),
   });
+  return parseJsonResponse(response);
+}
+
+export async function getStockMovementReconciliation(
+  params: InventoryScopeParams & {
+    itemId: string;
+    chestFilter?: 'all' | 'global' | string;
+    from: string;
+    to: string;
+  },
+  options: ClientOptions = {},
+): Promise<StockMovementReconciliationRecord> {
+  const response = await inventoryFetch(
+    `/api/stock/movements/reconciliation${toQuery({
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      itemId: params.itemId,
+      chestFilter: params.chestFilter,
+      from: params.from,
+      to: params.to,
+    })}`,
+    { cookieHeader: options.cookieHeader },
+  );
   return parseJsonResponse(response);
 }
 

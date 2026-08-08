@@ -74,9 +74,3 @@ export function getStockPreviousColumnLabel(
 
   return getStockPreviousLabelForDate(defined[0]);
 }
-
-export function getStockTotalPreviousLabel(
-  dates: (Date | string | null | undefined)[],
-): string {
-  return getStockPreviousColumnLabel(dates).replace('Stock ', 'Stock total ');
-}
