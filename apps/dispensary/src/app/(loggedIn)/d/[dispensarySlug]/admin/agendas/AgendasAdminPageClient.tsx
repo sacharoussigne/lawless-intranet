@@ -62,7 +62,7 @@ export function AgendasAdminPageClient({
   return (
     <Container size="xl" py="xl">
       <PageHeader
-        title="Agendas"
+        title="Gestion des agendas"
         description="Créer et gérer les agendas partagés du dispensaire."
         actions={
           <Button

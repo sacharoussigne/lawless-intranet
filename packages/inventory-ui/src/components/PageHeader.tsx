@@ -11,22 +11,29 @@ export type PageHeaderProps = {
 
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <header style={{ marginBottom: 'var(--mantine-spacing-md)' }}>
+    <header style={{ marginBottom: 'var(--mantine-spacing-xl)' }}>
       <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
         <div>
           <h1
             style={{
               margin: 0,
-              fontFamily: 'var(--disp-font-display, inherit)',
+              fontFamily: 'var(--disp-font-display)',
               fontWeight: 400,
-              fontSize: '1.75rem',
-              color: 'var(--disp-ink, inherit)',
+              fontSize: '2rem',
+              lineHeight: 1.25,
+              color: 'var(--disp-ink)',
             }}
           >
             {title}
           </h1>
           {description && (
-            <Text size="sm" c="dimmed" mt={4}>
+            <Text
+              mt="xs"
+              style={{
+                color: 'var(--disp-ink-muted)',
+                maxWidth: '42rem',
+              }}
+            >
               {description}
             </Text>
           )}
@@ -35,12 +42,7 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
       </Group>
       <hr
         className="disp-section-divider"
-        style={{
-          marginTop: 'var(--mantine-spacing-md)',
-          marginBottom: 'var(--mantine-spacing-md)',
-          border: 'none',
-          borderTop: '1px solid var(--disp-border, var(--mantine-color-slate-3, #d8d0c4))',
-        }}
+        style={{ marginTop: 'var(--mantine-spacing-md)' }}
       />
     </header>
   );

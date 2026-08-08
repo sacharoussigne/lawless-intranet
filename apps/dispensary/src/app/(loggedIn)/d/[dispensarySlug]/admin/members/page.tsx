@@ -1,5 +1,5 @@
-import { listDispensaryMembers } from '@/app/_actions/dispensaryMembers';
-import { DispensaryMembersClient } from './DispensaryMembersClient';
+import { redirect } from 'next/navigation';
+import { tenantRoutes } from '@/types/routes';
 
 export default async function DispensaryMembersPage({
   params,
@@ -7,13 +7,5 @@ export default async function DispensaryMembersPage({
   params: Promise<{ dispensarySlug: string }>;
 }) {
   const { dispensarySlug } = await params;
-  const result = await listDispensaryMembers(dispensarySlug);
-
-  return (
-    <DispensaryMembersClient
-      dispensarySlug={dispensarySlug}
-      initialMembers={result.status === 200 ? result.data ?? [] : []}
-      error={result.status !== 200 ? result.error : undefined}
-    />
-  );
+  redirect(`${tenantRoutes(dispensarySlug).admin.settings}?tab=members`);
 }

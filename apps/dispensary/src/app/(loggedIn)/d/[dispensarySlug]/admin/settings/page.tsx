@@ -1,21 +1,63 @@
 import { redirect } from 'next/navigation';
 import { getAppSettingsForAdmin } from '@/app/_actions/appSettings';
-import AppSettingsPageClient from './AppSettingsPageClient';
+import { listDispensaryMembers } from '@/app/_actions/dispensaryMembers';
 import { routes } from '@/types/routes';
+import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
+import DispensarySettingsPageClient, {
+  type DispensarySettingsTab,
+} from './DispensarySettingsPageClient';
+import type { DispensaryMemberRow } from './DispensaryMembersPanel';
 
-export default async function AdminAppSettingsPage({ params }: { params: Promise<{ dispensarySlug: string }> }) {
-  const { dispensarySlug } = await params;
-  const result = await getAppSettingsForAdmin(dispensarySlug);
+async function SettingsContent({
+  dispensarySlug,
+  initialTab,
+}: {
+  dispensarySlug: string;
+  initialTab: DispensarySettingsTab;
+}) {
+  const [settingsResult, membersResult] = await Promise.all([
+    getAppSettingsForAdmin(dispensarySlug),
+    listDispensaryMembers(dispensarySlug),
+  ]);
 
-  if (result.status === 401) {
+  if (settingsResult.status === 401) {
     redirect(routes.auth.login);
   }
-  if (result.status === 403) {
-    redirect(routes.auth.noManagementAccess);
-  }
-  if (result.status !== 200 || !('data' in result)) {
+  if (settingsResult.status === 403 || settingsResult.status !== 200 || !('data' in settingsResult)) {
     redirect(routes.auth.noManagementAccess);
   }
 
-  return <AppSettingsPageClient dispensarySlug={dispensarySlug} initial={result.data} />;
+  return (
+    <DispensarySettingsPageClient
+      dispensarySlug={dispensarySlug}
+      initialTab={initialTab}
+      initialSettings={settingsResult.data}
+      initialMembers={
+        membersResult.status === 200
+          ? ((membersResult.data ?? []) as DispensaryMemberRow[])
+          : []
+      }
+      membersError={
+        membersResult.status !== 200 ? membersResult.error : undefined
+      }
+    />
+  );
+}
+
+export default async function AdminAppSettingsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ dispensarySlug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { dispensarySlug } = await params;
+  const { tab } = await searchParams;
+  const initialTab: DispensarySettingsTab = tab === 'members' ? 'members' : 'general';
+
+  return (
+    <SuspenseLoader>
+      <SettingsContent dispensarySlug={dispensarySlug} initialTab={initialTab} />
+    </SuspenseLoader>
+  );
 }

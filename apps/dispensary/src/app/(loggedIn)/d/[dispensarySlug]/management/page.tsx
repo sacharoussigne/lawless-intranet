@@ -78,8 +78,8 @@ export default async function ManagementPage({
         ))}
         {showAdminSettings && (
           <ModuleCard
-            title="Paramètres application"
-            description="Nom du site, activation des modules employés (stock, banque, etc.)."
+            title="Paramètres du dispensaire"
+            description="Identité, modules employés et gestion des membres."
             icon={IconSettings}
             href={t.admin.settings}
           />

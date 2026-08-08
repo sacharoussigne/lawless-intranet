@@ -273,17 +273,14 @@ export default function Header({
                     {hasRole(userRole, Role.ADMIN) && t && (
                       <>
                         <Menu.Label>Admin dispensaire</Menu.Label>
-                        <Link href={t.admin.members}>
-                          <Menu.Item>Membres</Menu.Item>
-                        </Link>
                         {appSettings.featureAgendaEnabled && (
                           <Link href={t.admin.agendas}>
-                            <Menu.Item>Agendas</Menu.Item>
+                            <Menu.Item>Gestion des agendas</Menu.Item>
                           </Link>
                         )}
                         {isAppFeatureEnabled(appSettings, 'cabinet') && (
                           <Link href={t.admin.cabinets}>
-                            <Menu.Item>Cabinets</Menu.Item>
+                            <Menu.Item>Gestion des cabinets</Menu.Item>
                           </Link>
                         )}
                         {appSettings.featureStockEnabled && (
