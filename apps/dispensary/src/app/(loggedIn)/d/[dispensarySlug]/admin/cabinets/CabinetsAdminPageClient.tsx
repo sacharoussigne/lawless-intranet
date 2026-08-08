@@ -62,7 +62,7 @@ export function CabinetsAdminPageClient({
   return (
     <Container size="xl" py="xl">
       <PageHeader
-        title="Cabinets"
+        title="Gestion des cabinets"
         description="Créer et gérer les cabinets médicaux du dispensaire."
         actions={
           <Button
