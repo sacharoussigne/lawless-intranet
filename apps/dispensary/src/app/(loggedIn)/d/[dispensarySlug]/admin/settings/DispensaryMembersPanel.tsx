@@ -2,9 +2,10 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import {
+  ActionIcon,
+  Badge,
   Button,
   Card,
-  Container,
   Group,
   MultiSelect,
   Stack,
@@ -13,7 +14,9 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { IconTrash, IconUsers } from '@tabler/icons-react';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import {
   listDispensaryMembers,
   removeDispensaryMember,
@@ -27,26 +30,28 @@ import {
   parseRoleList,
   rolesAsString,
 } from '@/types/enum/roles';
+import { apothecaryPillStyle } from '@/lib/apothecaryPill';
+import { sagePalette } from '@/lib/design-tokens';
 
 const ROLE_OPTIONS = DISPENSARY_MEMBER_ROLES.map((role) => ({
   value: role,
   label: rolesAsString(role),
 }));
 
-type MemberRow = {
+export type DispensaryMemberRow = {
   id: string;
   role: string;
   description: string | null;
   user: { id: string; name: string };
 };
 
-export function DispensaryMembersClient({
+export function DispensaryMembersPanel({
   dispensarySlug,
   initialMembers,
   error,
 }: {
   dispensarySlug: string;
-  initialMembers: MemberRow[];
+  initialMembers: DispensaryMemberRow[];
   error?: string;
 }) {
   const [members, setMembers] = useState(initialMembers);
@@ -58,9 +63,7 @@ export function DispensaryMembersClient({
     Object.fromEntries(initialMembers.map((m) => [m.user.id, parseRoleList(m.role)])),
   );
   const [descriptionEdits, setDescriptionEdits] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      initialMembers.map((m) => [m.user.id, m.description ?? '']),
-    ),
+    Object.fromEntries(initialMembers.map((m) => [m.user.id, m.description ?? ''])),
   );
 
   const memberUserIds = useMemo(
@@ -82,7 +85,7 @@ export function DispensaryMembersClient({
   const refresh = async () => {
     const result = await listDispensaryMembers(dispensarySlug);
     if (result.status === 200 && result.data) {
-      const rows = result.data as MemberRow[];
+      const rows = result.data as DispensaryMemberRow[];
       setMembers(rows);
       setRoleEdits(
         Object.fromEntries(rows.map((m) => [m.user.id, parseRoleList(m.role)])),
@@ -93,7 +96,7 @@ export function DispensaryMembersClient({
     }
   };
 
-  const getRolesForMember = (member: MemberRow): string[] => {
+  const getRolesForMember = (member: DispensaryMemberRow): string[] => {
     if (roleEdits[member.user.id] !== undefined) {
       return roleEdits[member.user.id];
     }
@@ -166,13 +169,13 @@ export function DispensaryMembersClient({
     }
   };
 
-  const rolesChangedForMember = (member: MemberRow) => {
+  const rolesChangedForMember = (member: DispensaryMemberRow) => {
     const current = getRolesForMember(member).slice().sort().join(',');
     const original = parseRoleList(member.role).slice().sort().join(',');
     return current !== original;
   };
 
-  const memberChanged = (member: MemberRow) => {
+  const memberChanged = (member: DispensaryMemberRow) => {
     const currentDescription = (descriptionEdits[member.user.id] ?? '').trim();
     const originalDescription = (member.description ?? '').trim();
     return rolesChangedForMember(member) || currentDescription !== originalDescription;
@@ -186,22 +189,30 @@ export function DispensaryMembersClient({
       notifications.show({ title: 'Erreur', message, color: 'danger' });
       return;
     }
+    notifications.show({
+      title: 'Membre retiré',
+      message: 'Le membre a été retiré du dispensaire.',
+      color: 'moss',
+    });
     await refresh();
   };
 
   return (
-    <Container size="xl" py="xl" w="100%">
     <Stack gap="lg">
-      <Title order={2}>Membres du dispensaire</Title>
       {error && (
         <Text c="danger" size="sm">
           {error}
         </Text>
       )}
 
-      <Card withBorder padding="md">
+      <Card withBorder shadow="sm" radius="md" padding="lg">
         <Stack gap="sm">
-          <Text fw={600}>Ajouter un membre</Text>
+          <div>
+            <Text fw={600}>Ajouter un membre</Text>
+            <Text size="sm" c="dimmed" mt={4}>
+              Recherchez un compte utilisateur, attribuez des rôles, puis enregistrez.
+            </Text>
+          </div>
           <UserPseudoSearch
             inputName="dispensary-member-user-search"
             excludeUserIds={memberUserIds}
@@ -210,7 +221,7 @@ export function DispensaryMembersClient({
           />
           {selectedUser && (
             <Text size="sm" c="dimmed">
-              Utilisateur sélectionné : {selectedUser.name}
+              Sélectionné : {selectedUser.name}
             </Text>
           )}
           <MultiSelect
@@ -221,76 +232,112 @@ export function DispensaryMembersClient({
             searchable
             clearable={false}
           />
-          <Button
-            color="sage"
-            loading={loading}
-            onClick={handleAdd}
-            disabled={!selectedUser || selectedRoles.length === 0}
-          >
-            Enregistrer
-          </Button>
+          <Group justify="flex-end">
+            <Button
+              color="sage"
+              loading={loading}
+              onClick={handleAdd}
+              disabled={!selectedUser || selectedRoles.length === 0}
+            >
+              Ajouter
+            </Button>
+          </Group>
         </Stack>
       </Card>
 
-      <Stack gap="sm">
-        {members.map((m) => {
-          const memberRoles = getRolesForMember(m);
-          return (
-            <Card key={m.id} withBorder padding="md">
-              <Stack gap="sm">
-                <Group justify="space-between" align="flex-start">
-                  <Text fw={600}>{m.user.name}</Text>
-                  <Button
-                    color="danger"
-                    variant="light"
-                    size="xs"
-                    onClick={() => handleRemove(m.user.id)}
-                  >
-                    Retirer
-                  </Button>
-                </Group>
-                <MultiSelect
-                  label="Rôles"
-                  data={ROLE_OPTIONS}
-                  value={memberRoles}
-                  onChange={(roles) =>
-                    setRoleEdits((prev) => ({ ...prev, [m.user.id]: roles }))
-                  }
-                  searchable
-                  clearable={false}
-                />
-                <TextInput
-                  label="Grade"
-                  placeholder="Directeur, Co-directrice…"
-                  value={descriptionEdits[m.user.id] ?? ''}
-                  onChange={(event) => {
-                    const nextValue =
-                      typeof event === 'string'
-                        ? event
-                        : (event.currentTarget?.value ?? event.target?.value ?? '');
-                    setDescriptionEdits((prev) => ({
-                      ...prev,
-                      [m.user.id]: nextValue,
-                    }));
-                  }}
-                />
-                <Group justify="flex-end">
-                  <Button
-                    variant="light"
-                    color="sage"
-                    loading={savingUserId === m.user.id}
-                    disabled={!memberChanged(m) || memberRoles.length === 0}
-                    onClick={() => handleSaveMember(m.user.id)}
-                  >
-                    Enregistrer
-                  </Button>
-                </Group>
-              </Stack>
-            </Card>
-          );
-        })}
-      </Stack>
+      {members.length === 0 ? (
+        <Stack align="center" gap="xs" py="xl">
+          <IconUsers
+            size={40}
+            stroke={1.5}
+            style={{ color: 'var(--mantine-color-dimmed)' }}
+          />
+          <Text size="sm" c="dimmed" fw={500} ta="center">
+            Aucun membre dans ce dispensaire.
+          </Text>
+        </Stack>
+      ) : (
+        <Stack gap="sm">
+          <Title order={5}>Membres ({members.length})</Title>
+          {members.map((m) => {
+            const memberRoles = getRolesForMember(m);
+            return (
+              <Card key={m.id} withBorder padding="md" radius="md">
+                <Stack gap="sm">
+                  <Group justify="space-between" align="flex-start" wrap="nowrap">
+                    <Stack gap={6}>
+                      <Text fw={600}>{m.user.name}</Text>
+                      <Group gap={6}>
+                        {memberRoles.map((role) => (
+                          <Badge
+                            key={role}
+                            variant="outline"
+                            radius="sm"
+                            style={apothecaryPillStyle(sagePalette)}
+                          >
+                            {rolesAsString(role as Role)}
+                          </Badge>
+                        ))}
+                      </Group>
+                    </Stack>
+                    <DeleteConfirmPopover
+                      title="Retirer ce membre ?"
+                      message={`« ${m.user.name} » perdra l’accès à ce dispensaire.`}
+                      confirmLabel="Retirer"
+                      position="left"
+                      onConfirm={() => handleRemove(m.user.id)}
+                    >
+                      <ActionIcon
+                        variant="light"
+                        color="danger"
+                        aria-label={`Retirer ${m.user.name}`}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </DeleteConfirmPopover>
+                  </Group>
+                  <MultiSelect
+                    label="Rôles"
+                    data={ROLE_OPTIONS}
+                    value={memberRoles}
+                    onChange={(roles) =>
+                      setRoleEdits((prev) => ({ ...prev, [m.user.id]: roles }))
+                    }
+                    searchable
+                    clearable={false}
+                  />
+                  <TextInput
+                    label="Grade"
+                    placeholder="Directeur, Co-directrice…"
+                    value={descriptionEdits[m.user.id] ?? ''}
+                    onChange={(event) => {
+                      const nextValue =
+                        typeof event === 'string'
+                          ? event
+                          : (event.currentTarget?.value ?? event.target?.value ?? '');
+                      setDescriptionEdits((prev) => ({
+                        ...prev,
+                        [m.user.id]: nextValue,
+                      }));
+                    }}
+                  />
+                  <Group justify="flex-end">
+                    <Button
+                      variant="light"
+                      color="sage"
+                      loading={savingUserId === m.user.id}
+                      disabled={!memberChanged(m) || memberRoles.length === 0}
+                      onClick={() => handleSaveMember(m.user.id)}
+                    >
+                      Enregistrer
+                    </Button>
+                  </Group>
+                </Stack>
+              </Card>
+            );
+          })}
+        </Stack>
+      )}
     </Stack>
-    </Container>
   );
 }

@@ -273,9 +273,6 @@ export default function Header({
                     {hasRole(userRole, Role.ADMIN) && t && (
                       <>
                         <Menu.Label>Admin dispensaire</Menu.Label>
-                        <Link href={t.admin.members}>
-                          <Menu.Item>Membres</Menu.Item>
-                        </Link>
                         {appSettings.featureAgendaEnabled && (
                           <Link href={t.admin.agendas}>
                             <Menu.Item>Agendas</Menu.Item>
