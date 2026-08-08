@@ -1,29 +1,17 @@
-export interface ItemWithRelations {
-  id: string;
-  name: string;
-  description: string | null;
-  minimalQuantity: number;
-  isCraftable: boolean;
-  isEnabled?: boolean;
-  canBeSold?: boolean;
-  price?: number | string | null;
-  weight?: number | null;
-  categoryId: string;
-  companyGroupId: string | null;
-  order: number;
-  createdAt: Date;
-  updatedAt: Date;
-  category: { id: string; name: string; color: string; order?: number } | null;
-  companyGroup: { id: string; name: string } | null;
-  stockToday: number | null;
-  stockYesterday: number | null;
-  stockPreviousAt: Date | null;
-}
+import type {
+  StockItemWithStockRecord,
+  StockMovementRecord,
+  StockMovementsPageRecord,
+} from '@lawless-intranet/types';
+
+export type ItemWithRelations = StockItemWithStockRecord;
 
 export interface CategoryWithItems {
   category: { id: string; name: string; color: string; order?: number };
   items: ItemWithRelations[];
 }
+
+export type ItemWithDetailedStock = StockItemWithStockRecord;
 
 export type StockMovementChestFilter = 'all' | 'global' | string;
 
@@ -48,18 +36,15 @@ export type StockMovementListItem = {
   destinationChestId: string | null;
   destinationChestName: string | null;
   quantity: number;
-  kind: string;
+  kind: StockMovementRecord['kind'];
   userId: string | null;
   userName: string | null;
   note: string | null;
-  createdAt: Date;
+  createdAt: Date | string;
 };
 
-export type StockMovementsPageResult = {
+export type StockMovementsPageResult = Omit<StockMovementsPageRecord, 'items'> & {
   items: StockMovementListItem[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
 };
 
 export type StockMovementReconciliationResult = {
@@ -78,4 +63,3 @@ export type StockMovementReconciliationResult = {
   movementsWithoutChest: number;
   stockReconciliationAvailable: boolean;
 };
-

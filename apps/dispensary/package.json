@@ -26,6 +26,9 @@
     "@lawless-intranet/bank-client": "workspace:*",
     "@lawless-intranet/bank-ui": "workspace:*",
     "@lawless-intranet/documents-client": "workspace:*",
+    "@lawless-intranet/inventory-client": "workspace:*",
+    "@lawless-intranet/inventory-ui": "workspace:*",
+
     "@lawless-intranet/mail-template-engine": "workspace:*",
     "@lawless-intranet/mail-template-ui": "workspace:*",
     "@lawless-intranet/types": "workspace:*",

@@ -47,7 +47,7 @@ export function CompanyModal({
       form.setValues({
         name: editingCompany.name,
         bankAccountNumber: editingCompany.bankAccountNumber || '',
-        companyGroupIds: editingCompany.companyGroups.map(
+        companyGroupIds: (editingCompany.companyGroups ?? []).map(
           (g) => g.companyGroupId ?? g.companyGroup.id,
         ),
       });

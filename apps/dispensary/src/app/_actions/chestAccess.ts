@@ -1,10 +1,13 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import {
+  listRoleChestAccesses,
+  upsertRoleChestAccess as upsertRoleChestAccessClient,
+} from '@lawless-intranet/inventory-client/server';
 import { DISPENSARY_MEMBER_ROLES, Role, type DispensaryMemberRole } from '@/types/enum/roles';
 
 const dispensaryMemberRoleSchema = z
@@ -39,14 +42,10 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const accesses = await prisma.roleChestAccess.findMany({
-      where: tenantWhere(dispensaryId),
-      select: {
-        role: true,
-        allChests: true,
-        chests: { select: { chestId: true } },
-      },
-    });
+    const accesses = await listRoleChestAccesses(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
+    );
 
     const byRole = new Map(
       accesses.map((access) => [
@@ -54,7 +53,7 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
         {
           role: access.role,
           allChests: access.allChests,
-          chestIds: access.chests.map((c) => c.chestId),
+          chestIds: access.chestIds,
         } satisfies RoleChestAccessRow,
       ]),
     );
@@ -68,7 +67,11 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
 
     return { status: 200, data };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des accès aux coffres');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des accès aux coffres');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des accès aux coffres');
+    }
   }
 }
 
@@ -100,66 +103,29 @@ export async function upsertRoleChestAccess(
       };
     }
 
-    const chestIds = validated.allChests
-      ? []
-      : Array.from(new Set(validated.chestIds));
-
-    if (chestIds.length > 0) {
-      const chests = await prisma.chest.findMany({
-        where: {
-          id: { in: chestIds },
-          ...tenantWhere(dispensaryId),
-        },
-        select: { id: true },
-      });
-      if (chests.length !== chestIds.length) {
-        return { status: 400, error: 'Un ou plusieurs coffres sont invalides' };
-      }
-    }
-
-    const access = await prisma.$transaction(async (tx) => {
-      const upserted = await tx.roleChestAccess.upsert({
-        where: {
-          dispensaryId_role: {
-            dispensaryId,
-            role: validated.role,
-          },
-        },
-        create: {
-          dispensaryId,
-          role: validated.role,
-          allChests: validated.allChests,
-        },
-        update: {
-          allChests: validated.allChests,
-        },
-      });
-
-      await tx.roleChestAccessChest.deleteMany({
-        where: { accessId: upserted.id },
-      });
-
-      if (!validated.allChests && chestIds.length > 0) {
-        await tx.roleChestAccessChest.createMany({
-          data: chestIds.map((chestId) => ({
-            accessId: upserted.id,
-            chestId,
-          })),
-        });
-      }
-
-      return upserted;
-    });
+    const access = await upsertRoleChestAccessClient(
+      {
+        ...inventoryScope(dispensaryId),
+        role: validated.role,
+        allChests: validated.allChests,
+        chestIds: validated.chestIds,
+      },
+      await inventoryCookie(),
+    );
 
     return {
       status: 200,
       data: {
         role: access.role,
         allChests: access.allChests,
-        chestIds,
+        chestIds: access.chestIds,
       } satisfies RoleChestAccessRow,
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la sauvegarde des accès aux coffres');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la sauvegarde des accès aux coffres');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la sauvegarde des accès aux coffres');
+    }
   }
 }

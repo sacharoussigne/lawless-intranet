@@ -1,11 +1,17 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Anchor, Badge, Button, Group, Stack, Text, UnstyledButton } from '@mantine/core';
 import { IconArrowsExchange2, IconCash, IconChevronDown } from '@tabler/icons-react';
 import Link from 'next/link';
+import {
+  InventoryUiProvider,
+  TakeDepositModal,
+  type InventoryUiPermissions,
+} from '@lawless-intranet/inventory-ui';
 import { SaleModal } from '@/app/_components/sales/SaleModal';
-import TakeDepositModal from '@/app/(loggedIn)/d/[dispensarySlug]/stock/modals/TakeModal';
+import { usePermissions, useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
+import { createDispensaryInventoryActions } from '@/lib/inventory/inventoryUiActions';
 import type { ChestListItem } from '@/types/chests';
 import type { OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
@@ -137,6 +143,24 @@ export function EmployeeQuickActions({
 }: EmployeeQuickActionsProps) {
   const [saleOpened, setSaleOpened] = useState(false);
   const [takeOpened, setTakeOpened] = useState(false);
+  const { permissions } = usePermissions();
+  const requiredSlug = useRequiredDispensarySlug();
+  const scopeSlug = dispensarySlug ?? requiredSlug;
+  const inventoryActions = useMemo(
+    () => createDispensaryInventoryActions(scopeSlug),
+    [scopeSlug],
+  );
+  const inventoryPermissions: InventoryUiPermissions = useMemo(
+    () => ({
+      stock: {
+        update: Boolean(permissions?.stock.update),
+        hide: Boolean(permissions?.stock.hide),
+        craftRead: Boolean(permissions?.stock.craftRead),
+        craftWrite: Boolean(permissions?.stock.craftWrite),
+      },
+    }),
+    [permissions],
+  );
 
   const showOrdersSlot = Boolean(dispensarySlug && initialOrdersPage);
   const showActionButtons = canCreateSale || canTakeStock;
@@ -166,7 +190,11 @@ export function EmployeeQuickActions({
   );
 
   return (
-    <>
+    <InventoryUiProvider
+      scopeKey={scopeSlug}
+      actions={inventoryActions}
+      permissions={inventoryPermissions}
+    >
       {showOrdersSlot && dispensarySlug && initialOrdersPage ? (
         <ActiveOrdersChrome
           dispensarySlug={dispensarySlug}
@@ -191,6 +219,6 @@ export function EmployeeQuickActions({
           chests={chests}
         />
       )}
-    </>
+    </InventoryUiProvider>
   );
 }

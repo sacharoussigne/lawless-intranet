@@ -1,7 +1,6 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import {
   createTemplate,
   deleteTemplate,
@@ -10,12 +9,20 @@ import {
   updateTemplate,
 } from '@lawless-intranet/documents-client/server';
 import { DocumentsClientError } from '@lawless-intranet/documents-client';
+import {
+  getOrderById,
+  getOrderMailAssignment,
+} from '@lawless-intranet/inventory-client/server';
+import {
+  InventoryClientError,
+  type OrderStatus,
+  type OrderType,
+} from '@lawless-intranet/inventory-client';
 import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import { renderTemplate, buildUserTemplateRenderContext } from '@lawless-intranet/mail-template-engine';
-import type { OrderStatus, OrderType } from '@prisma/client';
 import {
   buildOrderMailVariables,
   type OrderMailPreviewSource,
@@ -305,54 +312,57 @@ export async function generateOrderMailPreview(
         };
       }
 
-      const dbOrder = await prisma.order.findFirst({
-        where: { id: data.orderId, ...tenantWhere(dispensaryId) },
-        include: {
-          company: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          individualCustomer: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          items: {
-            include: {
-              item: {
-                select: {
-                  id: true,
-                  name: true,
-                  price: true,
-                },
-              },
-            },
-          },
-        },
-      });
+      try {
+        const dbOrder = await getOrderById(
+          { ...inventoryScope(dispensaryId), id: data.orderId },
+          await inventoryCookie(),
+        );
 
-      if (!dbOrder) {
-        return {
-          status: 404,
-          error: 'Commande introuvable',
+        order = {
+          type: dbOrder.type,
+          status: dbOrder.status,
+          price: dbOrder.price,
+          company: dbOrder.company ? { name: dbOrder.company.name } : null,
+          individualCustomer: dbOrder.individualCustomer
+            ? { name: dbOrder.individualCustomer.name }
+            : null,
+          items: (dbOrder.items ?? []).map((orderItem) => ({
+            quantity: orderItem.quantity,
+            item: { name: orderItem.item?.name ?? '' },
+          })),
         };
+      } catch (error) {
+        if (error instanceof InventoryClientError && error.status === 404) {
+          return {
+            status: 404,
+            error: 'Commande introuvable',
+          };
+        }
+        try {
+          return inventoryActionError(error, 'Erreur lors de la récupération de la commande');
+        } catch (e) {
+          return documentsActionError(e, 'Erreur lors de la récupération de la commande');
+        }
       }
-
-      order = dbOrder;
     }
 
-    const assignment = await prisma.orderMailTemplateAssignment.findUnique({
-      where: {
-        dispensaryId_orderType_orderStatus: {
-          dispensaryId,
+    let assignment;
+    try {
+      assignment = await getOrderMailAssignment(
+        {
+          ...inventoryScope(dispensaryId),
           orderType: order.type as OrderType,
           orderStatus: order.status as OrderStatus,
         },
-      },
-    });
+        await inventoryCookie(),
+      );
+    } catch (error) {
+      try {
+        return inventoryActionError(error, 'Erreur lors de la récupération de l\'assignation de courrier');
+      } catch (e) {
+        return documentsActionError(e, 'Erreur lors de la récupération de l\'assignation de courrier');
+      }
+    }
 
     if (!assignment) {
       return {

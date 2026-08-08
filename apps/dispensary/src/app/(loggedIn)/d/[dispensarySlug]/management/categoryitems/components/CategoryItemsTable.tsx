@@ -68,7 +68,7 @@ export function CategoryItemsTable({
           {
             accessor: '_count.items',
             title: "Nombre d'objets",
-            render: (categoryItem: CategoryItemWithCount) => categoryItem._count.items,
+            render: (categoryItem: CategoryItemWithCount) => categoryItem._count?.items ?? 0,
           },
           {
             accessor: 'actions',

@@ -1,18 +1,28 @@
 'use server';
 
-import { SaleItemSource, SaleStatus, StockMovementKind } from '@prisma/client';
+import type {
+  SaleItemSource as SaleItemSourceType,
+  SaleStatus as SaleStatusType,
+} from '@lawless-intranet/inventory-client';
+import {
+  cancelSale as cancelSaleApi,
+  createSale as createSaleApi,
+  deleteSale as deleteSaleApi,
+  depositSale as depositSaleApi,
+  getSellableItems as getSellableItemsApi,
+  listWeeklySales as listWeeklySalesApi,
+} from '@lawless-intranet/inventory-client/server';
 import { z } from 'zod';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { getTodayStart, getTomorrowStart } from '@/lib/date';
-import { getBankWeekBounds } from '@/lib/bankWeek';
-import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
-import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { fetchUserProfiles } from '@/lib/authUsers';
-import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
+import { getBankWeekBounds } from '@/lib/bankWeek';
+import {
+  inventoryActionError,
+  inventoryCookie,
+  inventoryScope,
+} from '@/lib/inventory/client';
 import { Role } from '@/types/enum/roles';
 import {
   emitWeeklySalesChange,
@@ -23,7 +33,7 @@ import type { SalesMutationMeta } from '@/lib/sales/realtime/types';
 const saleItemSchema = z.object({
   itemId: z.string().uuid(),
   quantity: z.number().int().positive(),
-  source: z.nativeEnum(SaleItemSource),
+  source: z.enum(['POCKET', 'CHEST']),
   chestId: z.string().uuid().nullable().optional(),
 });
 
@@ -52,10 +62,12 @@ function parseMutationMeta(meta: unknown): SalesMutationMeta | undefined {
 
 async function emitSaleRealtime(
   dispensaryId: string,
-  sale: { id: string; userId: string; createdAt: Date },
+  sale: { id: string; userId: string; createdAt: Date | string },
   meta?: SalesMutationMeta,
 ) {
-  const bounds = getBankWeekBounds(sale.createdAt);
+  const createdAt =
+    typeof sale.createdAt === 'string' ? new Date(sale.createdAt) : sale.createdAt;
+  const bounds = getBankWeekBounds(createdAt);
   await emitWeeklySalesChange(
     dispensaryId,
     saleToWeeklySalesRealtimePayload({
@@ -72,7 +84,7 @@ export type SaleListItem = {
   id: string;
   userId: string;
   userName: string;
-  status: SaleStatus;
+  status: SaleStatusType;
   createdAt: Date;
   cancelledAt: Date | null;
   depositedInCashRegister: boolean;
@@ -89,7 +101,7 @@ export type SaleListItem = {
     itemName: string;
     quantity: number;
     unitPrice: number | null;
-    source: SaleItemSource;
+    source: SaleItemSourceType;
     chestId: string | null;
     chestName: string | null;
   }[];
@@ -112,66 +124,52 @@ export type WeeklySalesSummary = {
   }[];
 };
 
-function mapSaleRow(
+function mapWeeklySaleRow(
   sale: {
     id: string;
     userId: string;
-    status: SaleStatus;
-    createdAt: Date;
-    cancelledAt: Date | null;
+    status: SaleStatusType;
+    createdAt: string;
+    cancelledAt: string | null;
     depositedInCashRegister: boolean;
-    depositedInCashRegisterAt: Date | null;
+    depositedInCashRegisterAt: string | null;
     customerName: string | null;
     description: string | null;
-    priceAdjustment: unknown;
+    priceAdjustment: number;
+    subtotalAmount: number;
+    totalAmount: number;
+    totalQuantity: number;
     items: {
       id: string;
       itemId: string;
+      itemName: string;
       quantity: number;
-      unitPrice: unknown;
-      source: SaleItemSource;
+      unitPrice: number | null;
+      source: SaleItemSourceType;
       chestId: string | null;
-      item: { name: string };
-      chest: { name: string } | null;
+      chestName: string | null;
     }[];
   },
   userNameById: Map<string, string>,
 ): SaleListItem {
-  const items = sale.items.map((item) => ({
-    id: item.id,
-    itemId: item.itemId,
-    itemName: item.item.name,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice != null ? Number(item.unitPrice) : null,
-    source: item.source,
-    chestId: item.chestId,
-    chestName: item.chest?.name ?? null,
-  }));
-
-  const subtotalAmount = items.reduce(
-    (sum, item) => sum + (item.unitPrice ?? 0) * item.quantity,
-    0,
-  );
-  const priceAdjustment = Number(sale.priceAdjustment ?? 0);
-  const totalAmount = getSaleEffectiveTotal(subtotalAmount, priceAdjustment);
-  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-
   return {
     id: sale.id,
     userId: sale.userId,
     userName: userNameById.get(sale.userId) ?? 'Utilisateur',
     status: sale.status,
-    createdAt: sale.createdAt,
-    cancelledAt: sale.cancelledAt,
+    createdAt: new Date(sale.createdAt),
+    cancelledAt: sale.cancelledAt ? new Date(sale.cancelledAt) : null,
     depositedInCashRegister: sale.depositedInCashRegister,
-    depositedInCashRegisterAt: sale.depositedInCashRegisterAt,
+    depositedInCashRegisterAt: sale.depositedInCashRegisterAt
+      ? new Date(sale.depositedInCashRegisterAt)
+      : null,
     customerName: sale.customerName,
     description: sale.description,
-    priceAdjustment,
-    subtotalAmount,
-    totalAmount,
-    totalQuantity,
-    items,
+    priceAdjustment: sale.priceAdjustment,
+    subtotalAmount: sale.subtotalAmount,
+    totalAmount: sale.totalAmount,
+    totalQuantity: sale.totalQuantity,
+    items: sale.items,
   };
 }
 
@@ -186,7 +184,8 @@ export async function createSale(
       permission: {
         resource: 'sales',
         action: 'create',
-        message: 'Permission refusée : vous n\'avez pas la permission de créer une vente',
+        message:
+          "Permission refusée : vous n'avez pas la permission de créer une vente",
       },
     });
     if (!ctx.ok) return ctx.response;
@@ -195,187 +194,49 @@ export async function createSale(
     const mutationMeta = parseMutationMeta(meta);
 
     const data = createSaleSchema.parse(rawData);
-    const customerName = data.customerName?.trim() || null;
-    const description = data.description?.trim() || null;
-    const priceAdjustment = data.priceAdjustment ?? 0;
-    let individualCustomerId = data.individualCustomerId ?? null;
 
-    if (individualCustomerId) {
-      const linked = await prisma.individualCustomer.findFirst({
-        where: { id: individualCustomerId, ...tenantWhere(dispensaryId) },
-        select: { id: true, name: true },
-      });
-      if (!linked) {
-        return { status: 400, error: 'Client introuvable' };
-      }
-      if (customerName && linked.name.trim().toLowerCase() !== customerName.toLowerCase()) {
-        individualCustomerId = null;
-      }
-    }
-
-    if (!individualCustomerId && customerName) {
-      const match = await prisma.individualCustomer.findFirst({
-        where: {
-          ...tenantWhere(dispensaryId),
-          name: { equals: customerName, mode: 'insensitive' },
-        },
-        select: { id: true },
-      });
-      individualCustomerId = match?.id ?? null;
-    }
-
-    const normalizedItems = data.items.map((item) => {
-      const source = item.source;
-      const chestId =
-        source === SaleItemSource.CHEST
-          ? item.chestId || data.defaultChestId || null
-          : null;
-      return { ...item, source, chestId };
-    });
-
-    for (const item of normalizedItems) {
-      if (item.source === SaleItemSource.CHEST && !item.chestId) {
-        return { status: 400, error: 'Un coffre est requis pour les objets provenant d\'un coffre' };
-      }
-    }
-
-    const itemIds = Array.from(new Set(normalizedItems.map((item) => item.itemId)));
-    const items = await prisma.item.findMany({
-      where: {
-        id: { in: itemIds },
-        isEnabled: true,
-        canBeSold: true,
-        ...tenantWhere(dispensaryId),
+    const sale = await createSaleApi(
+      {
+        ...inventoryScope(dispensaryId),
+        userId,
+        defaultChestId: data.defaultChestId,
+        customerName: data.customerName,
+        description: data.description,
+        individualCustomerId: data.individualCustomerId,
+        priceAdjustment: data.priceAdjustment ?? 0,
+        items: data.items.map((item) => ({
+          itemId: item.itemId,
+          quantity: item.quantity,
+          source: item.source,
+          chestId: item.chestId,
+        })),
+        effectiveRole,
       },
-      select: { id: true, price: true, name: true },
-    });
-
-    if (items.length !== itemIds.length) {
-      return { status: 400, error: 'Un ou plusieurs objets ne sont pas vendables' };
-    }
-
-    const itemById = new Map(items.map((item) => [item.id, item]));
-
-    const subtotal = normalizedItems.reduce((sum, line) => {
-      const catalogPrice = itemById.get(line.itemId)?.price;
-      const unitPrice = catalogPrice != null ? Number(catalogPrice) : 0;
-      return sum + unitPrice * line.quantity;
-    }, 0);
-    if (priceAdjustment < -subtotal) {
-      return { status: 400, error: 'Le total ne peut pas être négatif' };
-    }
-    const chestIds = Array.from(
-      new Set(
-        normalizedItems
-          .filter((item) => item.source === SaleItemSource.CHEST && item.chestId)
-          .map((item) => item.chestId!),
-      ),
+      await inventoryCookie(),
     );
 
-    if (chestIds.length > 0) {
-      const access = await resolveChestAccess(dispensaryId, effectiveRole);
-      if (chestIds.some((chestId) => !hasChestAccess(access, chestId))) {
-        return { status: 403, error: 'Accès refusé à un ou plusieurs coffres' };
-      }
+    // Inventory createSale returns the list-item shape (with totals / item names).
+    const listItem = sale as unknown as Parameters<typeof mapWeeklySaleRow>[0];
 
-      const chests = await prisma.chest.findMany({
-        where: {
-          id: { in: chestIds },
-          isEnabled: true,
-          ...tenantWhere(dispensaryId),
-        },
-        select: { id: true },
-      });
-      if (chests.length !== chestIds.length) {
-        return { status: 400, error: 'Un ou plusieurs coffres sont invalides' };
-      }
-    }
-
-    const today = getTodayStart();
-    const tomorrow = getTomorrowStart();
-
-    const sale = await prisma.$transaction(async (tx) => {
-      await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
-
-      const chestLines = normalizedItems.filter(
-        (item) => item.source === SaleItemSource.CHEST && item.chestId,
-      );
-
-      if (chestLines.length > 0) {
-        const ensured = await ensureTodayStockForPairs(
-          tx,
-          dispensaryId,
-          chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
-          { today, tomorrow },
-        );
-
-        for (const line of chestLines) {
-          const key = `${line.itemId}:${line.chestId}`;
-          const stock = ensured.get(key);
-          if (!stock) {
-            throw new Error(`Stock introuvable pour ${itemById.get(line.itemId)?.name ?? line.itemId}`);
-          }
-          if (stock.quantity < line.quantity) {
-            throw new Error(
-              `Stock insuffisant pour ${itemById.get(line.itemId)?.name ?? line.itemId} (disponible: ${stock.quantity})`,
-            );
-          }
-          await tx.stockHistory.update({
-            where: { id: stock.id },
-            data: { quantity: stock.quantity - line.quantity },
-          });
-          stock.quantity -= line.quantity;
-        }
-
-        await tx.stockItemMovement.createMany({
-          data: chestLines.map((line) => ({
-            itemId: line.itemId,
-            quantity: -line.quantity,
-            kind: StockMovementKind.SALE_OUT,
-            chestId: line.chestId,
-            userId,
-          })),
-        });
-      }
-
-      return tx.sale.create({
-        data: {
-          dispensaryId,
-          userId,
-          status: SaleStatus.COMPLETED,
-          customerName,
-          description,
-          individualCustomerId,
-          priceAdjustment,
-          items: {
-            create: normalizedItems.map((line) => ({
-              itemId: line.itemId,
-              quantity: line.quantity,
-              unitPrice: itemById.get(line.itemId)?.price ?? null,
-              source: line.source,
-              chestId: line.chestId,
-            })),
-          },
-        },
-        include: {
-          items: {
-            include: {
-              item: { select: { name: true } },
-              chest: { select: { name: true } },
-            },
-          },
-        },
-      });
-    });
-
-    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
+    await emitSaleRealtime(
+      dispensaryId,
+      { id: listItem.id, userId: listItem.userId, createdAt: listItem.createdAt },
+      mutationMeta,
+    );
 
     return {
       status: 200,
-      data: mapSaleRow(sale, new Map([[userId, ctx.session.user.name ?? 'Utilisateur']])),
+      data: mapWeeklySaleRow(
+        listItem,
+        new Map([[userId, ctx.session.user.name ?? 'Utilisateur']]),
+      ),
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création de la vente');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la création de la vente');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la création de la vente');
+    }
   }
 }
 
@@ -390,7 +251,8 @@ export async function cancelSale(
       permission: {
         resource: 'sales',
         action: 'cancel',
-        message: 'Permission refusée : vous n\'avez pas la permission d\'annuler une vente',
+        message:
+          "Permission refusée : vous n'avez pas la permission d'annuler une vente",
       },
     });
     if (!ctx.ok) return ctx.response;
@@ -399,98 +261,33 @@ export async function cancelSale(
     const canViewAll = checkRolePermission(effectiveRole, 'sales', 'view_all');
     const mutationMeta = parseMutationMeta(meta);
 
-    const sale = await prisma.sale.findFirst({
-      where: {
+    const sale = await cancelSaleApi(
+      {
+        ...inventoryScope(dispensaryId),
         id: saleId,
-        dispensaryId,
+        userId,
+        canViewAll,
       },
-      include: {
-        items: true,
+      await inventoryCookie(),
+    );
+
+    await emitSaleRealtime(
+      dispensaryId,
+      {
+        id: saleId,
+        userId: (sale as { userId?: string }).userId ?? userId,
+        createdAt: (sale as { createdAt?: string }).createdAt ?? new Date(),
       },
-    });
-
-    if (!sale) {
-      return { status: 404, error: 'Vente introuvable' };
-    }
-
-    if (sale.status === SaleStatus.CANCELLED) {
-      return { status: 400, error: 'Cette vente est déjà annulée' };
-    }
-
-    if (sale.depositedInCashRegister) {
-      return {
-        status: 400,
-        error: 'Cette vente est déjà déposée en caisse et ne peut plus être annulée',
-      };
-    }
-
-    if (sale.userId !== userId && !canViewAll) {
-      return { status: 403, error: 'Vous ne pouvez annuler que vos propres ventes' };
-    }
-
-    const today = getTodayStart();
-    const tomorrow = getTomorrowStart();
-
-    await prisma.$transaction(async (tx) => {
-      await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
-
-      const chestLines = sale.items.filter(
-        (item) => item.source === SaleItemSource.CHEST && item.chestId,
-      );
-
-      if (chestLines.length > 0) {
-        const ensured = await ensureTodayStockForPairs(
-          tx,
-          dispensaryId,
-          chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
-          { today, tomorrow },
-        );
-
-        for (const line of chestLines) {
-          const key = `${line.itemId}:${line.chestId}`;
-          const stock = ensured.get(key);
-          if (stock) {
-            await tx.stockHistory.update({
-              where: { id: stock.id },
-              data: { quantity: stock.quantity + line.quantity },
-            });
-          } else {
-            await tx.stockHistory.create({
-              data: {
-                itemId: line.itemId,
-                chestId: line.chestId!,
-                quantity: line.quantity,
-              },
-            });
-          }
-        }
-
-        await tx.stockItemMovement.createMany({
-          data: chestLines.map((line) => ({
-            itemId: line.itemId,
-            quantity: line.quantity,
-            kind: StockMovementKind.SALE_CANCEL_RESTORE,
-            chestId: line.chestId,
-            userId,
-          })),
-        });
-      }
-
-      await tx.sale.update({
-        where: { id: sale.id },
-        data: {
-          status: SaleStatus.CANCELLED,
-          cancelledAt: new Date(),
-          cancelledByUserId: userId,
-        },
-      });
-    });
-
-    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
+      mutationMeta,
+    );
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de l\'annulation de la vente');
+    try {
+      return inventoryActionError(error, "Erreur lors de l'annulation de la vente");
+    } catch (e) {
+      return actionErrorParser(e, "Erreur lors de l'annulation de la vente");
+    }
   }
 }
 
@@ -505,7 +302,8 @@ export async function depositSaleInCashRegister(
       permission: {
         resource: 'sales',
         action: 'view',
-        message: 'Permission refusée : vous n\'avez pas la permission de consulter les ventes',
+        message:
+          "Permission refusée : vous n'avez pas la permission de consulter les ventes",
       },
     });
     if (!ctx.ok) return ctx.response;
@@ -515,53 +313,33 @@ export async function depositSaleInCashRegister(
       hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
     const mutationMeta = parseMutationMeta(meta);
 
-    const sale = await prisma.sale.findFirst({
-      where: {
+    const sale = await depositSaleApi(
+      {
+        ...inventoryScope(dispensaryId),
         id: saleId,
-        dispensaryId,
+        userId,
+        canDepositOthers,
       },
-      select: {
-        id: true,
-        userId: true,
-        status: true,
-        createdAt: true,
-        depositedInCashRegister: true,
+      await inventoryCookie(),
+    );
+
+    await emitSaleRealtime(
+      dispensaryId,
+      {
+        id: saleId,
+        userId: (sale as { userId?: string }).userId ?? userId,
+        createdAt: (sale as { createdAt?: string }).createdAt ?? new Date(),
       },
-    });
-
-    if (!sale) {
-      return { status: 404, error: 'Vente introuvable' };
-    }
-
-    if (sale.status === SaleStatus.CANCELLED) {
-      return { status: 400, error: 'Cette vente est annulée' };
-    }
-
-    if (sale.depositedInCashRegister) {
-      return { status: 400, error: 'Cette vente est déjà déposée en caisse' };
-    }
-
-    if (sale.userId !== userId && !canDepositOthers) {
-      return {
-        status: 403,
-        error: 'Vous ne pouvez déposer en caisse que vos propres ventes',
-      };
-    }
-
-    await prisma.sale.update({
-      where: { id: sale.id },
-      data: {
-        depositedInCashRegister: true,
-        depositedInCashRegisterAt: new Date(),
-        depositedByUserId: userId,
-      },
-    });
-
-    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
+      mutationMeta,
+    );
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du dépôt en caisse');
+    try {
+      return inventoryActionError(error, 'Erreur lors du dépôt en caisse');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du dépôt en caisse');
+    }
   }
 }
 
@@ -576,7 +354,8 @@ export async function deleteSale(
       permission: {
         resource: 'sales',
         action: 'view_all',
-        message: 'Permission refusée : vous n\'avez pas la permission de supprimer une vente',
+        message:
+          "Permission refusée : vous n'avez pas la permission de supprimer une vente",
       },
     });
     if (!ctx.ok) return ctx.response;
@@ -588,78 +367,29 @@ export async function deleteSale(
       return { status: 403, error: 'Seuls les administrateurs peuvent supprimer une vente' };
     }
 
-    const sale = await prisma.sale.findFirst({
-      where: {
+    await deleteSaleApi(
+      {
+        ...inventoryScope(dispensaryId),
         id: saleId,
-        dispensaryId,
+        userId,
+        isAdmin: true,
       },
-      include: {
-        items: true,
-      },
-    });
+      await inventoryCookie(),
+    );
 
-    if (!sale) {
-      return { status: 404, error: 'Vente introuvable' };
-    }
-
-    const today = getTodayStart();
-    const tomorrow = getTomorrowStart();
-
-    await prisma.$transaction(async (tx) => {
-      if (sale.status === SaleStatus.COMPLETED) {
-        await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
-
-        const chestLines = sale.items.filter(
-          (item) => item.source === SaleItemSource.CHEST && item.chestId,
-        );
-
-        if (chestLines.length > 0) {
-          const ensured = await ensureTodayStockForPairs(
-            tx,
-            dispensaryId,
-            chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
-            { today, tomorrow },
-          );
-
-          for (const line of chestLines) {
-            const key = `${line.itemId}:${line.chestId}`;
-            const stock = ensured.get(key);
-            if (stock) {
-              await tx.stockHistory.update({
-                where: { id: stock.id },
-                data: { quantity: stock.quantity + line.quantity },
-              });
-            } else {
-              await tx.stockHistory.create({
-                data: {
-                  itemId: line.itemId,
-                  chestId: line.chestId!,
-                  quantity: line.quantity,
-                },
-              });
-            }
-          }
-
-          await tx.stockItemMovement.createMany({
-            data: chestLines.map((line) => ({
-              itemId: line.itemId,
-              quantity: line.quantity,
-              kind: StockMovementKind.SALE_CANCEL_RESTORE,
-              chestId: line.chestId,
-              userId,
-            })),
-          });
-        }
-      }
-
-      await tx.sale.delete({ where: { id: sale.id } });
-    });
-
-    await emitSaleRealtime(dispensaryId, sale, mutationMeta);
+    await emitSaleRealtime(
+      dispensaryId,
+      { id: saleId, userId, createdAt: new Date() },
+      mutationMeta,
+    );
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression de la vente');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la suppression de la vente');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression de la vente');
+    }
   }
 }
 
@@ -673,75 +403,65 @@ export async function listWeeklySales(
       permission: {
         resource: 'sales',
         action: 'view',
-        message: 'Permission refusée : vous n\'avez pas la permission de consulter les ventes',
+        message:
+          "Permission refusée : vous n'avez pas la permission de consulter les ventes",
       },
     });
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
-    const userId = ctx.session.user.id;
     const canViewAll = checkRolePermission(effectiveRole, 'sales', 'view_all');
 
-    const bounds = getBankWeekBounds(weekDate ?? new Date());
-
-    const sales = await prisma.sale.findMany({
-      where: {
-        dispensaryId,
-        createdAt: {
-          gte: bounds.start,
-          lte: bounds.end,
-        },
-        ...(canViewAll ? {} : { userId }),
+    const weekly = await listWeeklySalesApi(
+      {
+        ...inventoryScope(dispensaryId),
+        weekDate: weekDate?.toISOString(),
+        canViewAll,
       },
-      include: {
-        items: {
-          include: {
-            item: { select: { name: true } },
-            chest: { select: { name: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+      await inventoryCookie(),
+    );
 
-    const userIds = Array.from(new Set(sales.map((sale) => sale.userId)));
+    const userIds = Array.from(
+      new Set([
+        ...weekly.sales.map((sale) => sale.userId),
+        ...weekly.byUser.map((row) => row.userId),
+      ]),
+    );
     const profiles = await fetchUserProfiles(userIds);
     const userNameById = new Map(
       Array.from(profiles.entries()).map(([id, profile]) => [id, profile.name]),
     );
 
-    const mapped = sales.map((sale) => mapSaleRow(sale, userNameById));
-    const completed = mapped.filter((sale) => sale.status === SaleStatus.COMPLETED);
-    const cancelled = mapped.filter((sale) => sale.status === SaleStatus.CANCELLED);
-
-    const byUserMap = new Map<string, WeeklySalesSummary['byUser'][number]>();
-    for (const sale of completed) {
-      const existing = byUserMap.get(sale.userId) ?? {
-        userId: sale.userId,
-        userName: sale.userName,
-        totalAmount: 0,
-        totalQuantity: 0,
-        completedCount: 0,
-      };
-      existing.totalAmount += sale.totalAmount;
-      existing.totalQuantity += sale.totalQuantity;
-      existing.completedCount += 1;
-      byUserMap.set(sale.userId, existing);
-    }
+    const mapped = weekly.sales.map((sale) => mapWeeklySaleRow(sale, userNameById));
 
     const summary: WeeklySalesSummary = {
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      totalAmount: completed.reduce((sum, sale) => sum + sale.totalAmount, 0),
-      totalQuantity: completed.reduce((sum, sale) => sum + sale.totalQuantity, 0),
-      completedCount: completed.length,
-      cancelledCount: cancelled.length,
+      periodStart: new Date(weekly.periodStart),
+      periodEnd: new Date(weekly.periodEnd),
+      totalAmount: weekly.totalAmount,
+      totalQuantity: weekly.totalQuantity,
+      completedCount: weekly.completedCount,
+      cancelledCount: weekly.cancelledCount,
       sales: mapped,
-      byUser: Array.from(byUserMap.values()).sort((a, b) => b.totalAmount - a.totalAmount),
+      byUser: weekly.byUser
+        .map((row) => ({
+          userId: row.userId,
+          userName: userNameById.get(row.userId) ?? 'Utilisateur',
+          totalAmount: row.totalAmount,
+          totalQuantity: row.totalQuantity,
+          completedCount: row.completedCount,
+        }))
+        .sort((a, b) => b.totalAmount - a.totalAmount),
     };
 
     return { status: 200, data: summary };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des ventes');
+    try {
+      return inventoryActionError(
+        error,
+        'Erreur lors de la récupération des ventes',
+      );
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des ventes');
+    }
   }
 }
 
@@ -758,29 +478,26 @@ export async function getSellableItems(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const items = await prisma.item.findMany({
-      where: {
-        isEnabled: true,
-        canBeSold: true,
-        ...tenantWhere(dispensaryId),
-      },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        category: { select: { id: true, name: true, color: true } },
-      },
-    });
+    const items = await getSellableItemsApi(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
+    );
 
     return {
       status: 200,
-      data: items.map((item) => ({
-        ...item,
-        price: item.price != null ? Number(item.price) : null,
-      })),
+      data: items,
     };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des objets vendables');
+    try {
+      return inventoryActionError(
+        error,
+        'Erreur lors de la récupération des objets vendables',
+      );
+    } catch (e) {
+      return actionErrorParser(
+        e,
+        'Erreur lors de la récupération des objets vendables',
+      );
+    }
   }
 }

@@ -1,10 +1,17 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import {
+  createCompanyGroup as createCompanyGroupClient,
+  deleteCompanyGroup as deleteCompanyGroupClient,
+  listCompanyGroups,
+  listCompanyGroupsForOrders,
+  listCompanyGroupsForSelect,
+  updateCompanyGroup as updateCompanyGroupClient,
+} from '@lawless-intranet/inventory-client/server';
 
 const createCompanyGroupSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
@@ -23,62 +30,6 @@ const deleteCompanyGroupSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-const companyGroupManagementInclude = {
-  _count: {
-    select: {
-      items: true,
-    },
-  },
-  companies: {
-    select: {
-      id: true,
-      companyId: true,
-      company: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  },
-} as const;
-
-const companyGroupForOrdersInclude = {
-  companies: {
-    select: {
-      company: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  },
-} as const;
-
-async function validateCompanyIds(
-  dispensaryId: string,
-  companyIds: string[],
-): Promise<{ ok: true } | { ok: false; response: { status: number; error: string } }> {
-  if (companyIds.length === 0) {
-    return { ok: true };
-  }
-
-  const companies = await prisma.company.findMany({
-    where: {
-      id: { in: companyIds },
-      ...tenantWhere(dispensaryId),
-    },
-    select: { id: true },
-  });
-
-  if (companies.length !== companyIds.length) {
-    return { ok: false, response: { status: 400, error: 'Une ou plusieurs entreprises sont invalides' } };
-  }
-
-  return { ok: true };
-}
-
 export async function createCompanyGroup(
   dispensarySlug: string,
   data: {
@@ -93,34 +44,18 @@ export async function createCompanyGroup(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createCompanyGroupSchema.parse(data);
+    const companyGroup = await createCompanyGroupClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    if (validatedData.companyIds && validatedData.companyIds.length > 0) {
-      const companiesResult = await validateCompanyIds(dispensaryId, validatedData.companyIds);
-      if (!companiesResult.ok) return companiesResult.response;
-    }
-
-    const companyGroup = await prisma.companyGroup.create({
-      data: {
-        dispensaryId,
-        name: validatedData.name,
-        description: validatedData.description,
-        companies: validatedData.companyIds
-          ? {
-              create: validatedData.companyIds.map((companyId) => ({
-                companyId,
-              })),
-            }
-          : undefined,
-      },
-      include: companyGroupManagementInclude,
-    });
-
-    return {
-      status: 201,
-      data: companyGroup,
-    };
+    return { status: 201, data: companyGroup };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création du groupe d\'entreprises');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la création du groupe d\'entreprises');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la création du groupe d\'entreprises');
+    }
   }
 }
 
@@ -130,23 +65,18 @@ export async function getCompanyGroupsForSelect(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const companyGroups = await prisma.companyGroup.findMany({
-      where: tenantWhere(dispensaryId),
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const companyGroups = await listCompanyGroupsForSelect(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
+    );
 
-    return {
-      status: 200,
-      data: companyGroups,
-    };
+    return { status: 200, data: companyGroups };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des groupes d\'entreprises');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des groupes d\'entreprises');
+    }
   }
 }
 
@@ -156,24 +86,18 @@ export async function getCompanyGroupsForOrders(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const companyGroups = await prisma.companyGroup.findMany({
-      where: tenantWhere(dispensaryId),
-      select: {
-        id: true,
-        name: true,
-        ...companyGroupForOrdersInclude,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    const companyGroups = await listCompanyGroupsForOrders(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
+    );
 
-    return {
-      status: 200,
-      data: companyGroups,
-    };
+    return { status: 200, data: companyGroups };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des groupes d\'entreprises');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des groupes d\'entreprises');
+    }
   }
 }
 
@@ -183,17 +107,18 @@ export async function getCompanyGroups(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const companyGroups = await prisma.companyGroup.findMany({
-      where: tenantWhere(dispensaryId),
-      include: companyGroupManagementInclude,
-    });
+    const companyGroups = await listCompanyGroups(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
+    );
 
-    return {
-      status: 200,
-      data: companyGroups,
-    };
+    return { status: 200, data: companyGroups };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des groupes d\'entreprises');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des groupes d\'entreprises');
+    }
   }
 }
 
@@ -212,54 +137,24 @@ export async function updateCompanyGroup(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = updateCompanyGroupSchema.parse(data);
-
-    const existingCompanyGroup = await prisma.companyGroup.findFirst({
-      where: { id: validatedData.id, ...tenantWhere(dispensaryId) },
-      include: {
-        companies: {
-          select: {
-            companyId: true,
-          },
-        },
-      },
-    });
-
-    if (!existingCompanyGroup) {
-      return { status: 404, error: 'Groupe d\'entreprises introuvable' };
-    }
-
-    const newCompanyIds = validatedData.companyIds || [];
-    const companiesResult = await validateCompanyIds(dispensaryId, newCompanyIds);
-    if (!companiesResult.ok) return companiesResult.response;
-
-    const existingCompanyIds = existingCompanyGroup.companies.map((c) => c.companyId);
-    const companyIdsToAdd = newCompanyIds.filter((id) => !existingCompanyIds.includes(id));
-    const companyIdsToRemove = existingCompanyIds.filter((id) => !newCompanyIds.includes(id));
-
-    const companyGroup = await prisma.companyGroup.update({
-      where: {
+    const companyGroup = await updateCompanyGroupClient(
+      {
+        ...inventoryScope(dispensaryId),
         id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-      data: {
         name: validatedData.name,
         description: validatedData.description,
-        companies: {
-          deleteMany: companyIdsToRemove.length > 0 ? { companyId: { in: companyIdsToRemove } } : undefined,
-          create: companyIdsToAdd.map((companyId) => ({
-            companyId,
-          })),
-        },
+        companyIds: validatedData.companyIds ?? [],
       },
-      include: companyGroupManagementInclude,
-    });
+      await inventoryCookie(),
+    );
 
-    return {
-      status: 200,
-      data: companyGroup,
-    };
+    return { status: 200, data: companyGroup };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification du groupe d\'entreprises');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la modification du groupe d\'entreprises');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la modification du groupe d\'entreprises');
+    }
   }
 }
 
@@ -270,19 +165,17 @@ export async function deleteCompanyGroup(dispensarySlug: string, data: { id: str
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = deleteCompanyGroupSchema.parse(data);
+    await deleteCompanyGroupClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    await prisma.companyGroup.delete({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    return {
-      status: 200,
-      data: { success: true },
-    };
+    return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du groupe d\'entreprises');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la suppression du groupe d\'entreprises');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression du groupe d\'entreprises');
+    }
   }
 }

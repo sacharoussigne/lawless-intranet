@@ -47,6 +47,7 @@ export function getTrustedOrigins(): string[] {
   addHostOrigins(origins, process.env.DOCUMENTS_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.AGENDA_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.BANK_VIRTUAL_HOST);
+  addHostOrigins(origins, process.env.INVENTORY_VIRTUAL_HOST);
 
   for (const extra of process.env.EXTRA_TRUSTED_ORIGINS?.split(',') ?? []) {
     addOrigin(origins, extra.trim());

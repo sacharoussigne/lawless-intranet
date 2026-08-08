@@ -1,13 +1,13 @@
 'use server';
 
-import { StockMovementKind } from '@prisma/client';
-import prisma from '@/lib/prisma';
+import { moveItemsWithChests as moveItemsWithChestsApi } from '@lawless-intranet/inventory-client/server';
 import { actionErrorParser } from '@/lib/action';
+import {
+  inventoryActionError,
+  inventoryCookie,
+  inventoryScope,
+} from '@/lib/inventory/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { getTodayStart, getTomorrowStart } from '@/lib/date';
-import { ensureTodayStockForPairs, ensureTodayStockForAllActiveChests } from '@/lib/stock/ensureTodayStock';
-import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 
 export type ChestStockMoveMode = 'take' | 'deposit';
 
@@ -40,113 +40,37 @@ export async function moveItemsWithChests(
       return { status: 400, error: `Aucun objet à ${actionLabel}` };
     }
 
-    const itemIds = Array.from(new Set(validItems.map((item) => item.itemId)));
-    const chestIds = Array.from(new Set(validItems.map((item) => item.chestId)));
-
-    const access = await resolveChestAccess(dispensaryId, effectiveRole);
-    if (chestIds.some((chestId) => !hasChestAccess(access, chestId))) {
-      return { status: 403, error: 'Accès refusé à un ou plusieurs coffres' };
-    }
-
-    const [items, chests] = await Promise.all([
-      prisma.item.findMany({
-        where: {
-          id: { in: itemIds },
-          isEnabled: true,
-          ...tenantWhere(dispensaryId),
-        },
-        select: { id: true },
-      }),
-      prisma.chest.findMany({
-        where: {
-          id: { in: chestIds },
-          isEnabled: true,
-          ...tenantWhere(dispensaryId),
-        },
-        select: { id: true },
-      }),
-    ]);
-
-    if (items.length !== itemIds.length) {
-      return { status: 400, error: 'Un ou plusieurs objets sont invalides' };
-    }
-    if (chests.length !== chestIds.length) {
-      return { status: 400, error: 'Un ou plusieurs coffres sont invalides' };
-    }
-
-    const today = getTodayStart();
-    const tomorrow = getTomorrowStart();
-
-    await prisma.$transaction(async (tx) => {
-      await ensureTodayStockForAllActiveChests(tx, dispensaryId, { today, tomorrow });
-      const ensured = await ensureTodayStockForPairs(
-        tx,
-        dispensaryId,
-        validItems.map((item) => ({ itemId: item.itemId, chestId: item.chestId })),
-        { today, tomorrow },
-      );
-
-      for (const item of validItems) {
-        const key = `${item.itemId}:${item.chestId}`;
-        const stock = ensured.get(key);
-
-        if (isTake) {
-          if (!stock) {
-            throw new Error(`Aucun stock trouvé pour l'objet dans le coffre sélectionné`);
-          }
-          if (stock.quantity < item.quantity) {
-            throw new Error(
-              `Stock insuffisant (disponible: ${stock.quantity}, demandé: ${item.quantity})`,
-            );
-          }
-          await tx.stockHistory.update({
-            where: { id: stock.id },
-            data: { quantity: stock.quantity - item.quantity },
-          });
-          stock.quantity -= item.quantity;
-        } else if (stock) {
-          await tx.stockHistory.update({
-            where: { id: stock.id },
-            data: { quantity: stock.quantity + item.quantity },
-          });
-          stock.quantity += item.quantity;
-        } else {
-          const created = await tx.stockHistory.create({
-            data: {
-              itemId: item.itemId,
-              chestId: item.chestId,
-              quantity: item.quantity,
-            },
-          });
-          ensured.set(key, {
-            id: created.id,
-            itemId: item.itemId,
-            chestId: item.chestId,
-            quantity: item.quantity,
-          });
-        }
-      }
-
-      await tx.stockItemMovement.createMany({
-        data: validItems.map((item) => ({
-          itemId: item.itemId,
-          quantity: isTake ? -item.quantity : item.quantity,
-          kind: isTake ? StockMovementKind.TAKE_OUT : StockMovementKind.DEPOSIT_IN,
-          chestId: item.chestId,
-          userId,
-        })),
-      });
-    });
+    await moveItemsWithChestsApi(
+      {
+        ...inventoryScope(dispensaryId),
+        mode: data.mode,
+        items: validItems,
+        userId,
+        effectiveRole,
+      },
+      await inventoryCookie(),
+    );
 
     return {
       status: 200,
       data: { success: true, count: validItems.length, mode: data.mode },
     };
   } catch (error) {
-    return actionErrorParser(
-      error,
-      isTake ? 'Erreur lors de la prise d\'objets' : 'Erreur lors du dépôt d\'objets',
-    );
+    try {
+      return inventoryActionError(
+        error,
+        isTake
+          ? "Erreur lors de la prise d'objets"
+          : "Erreur lors du dépôt d'objets",
+      );
+    } catch (e) {
+      return actionErrorParser(
+        e,
+        isTake
+          ? "Erreur lors de la prise d'objets"
+          : "Erreur lors du dépôt d'objets",
+      );
+    }
   }
 }
 

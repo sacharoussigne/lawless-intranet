@@ -1,5 +1,5 @@
 import { Badge } from '@mantine/core';
-import type { OrderType } from '@prisma/client';
+import type { OrderType } from '@lawless-intranet/inventory-client';
 import { getOrderTypeLabel, getOrderTypePillStyle } from '@/types/enum/orderType';
 
 export function OrderTypeBadge({ type }: { type: OrderType }) {

@@ -1,13 +1,13 @@
 # Déploiement Docker (monorepo)
 
-Une image par app (`auth`, `dispensary`, `documents`, `agenda`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
+Une image par app (`auth`, `dispensary`, `documents`, `agenda`, `bank`, `inventory`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
 
 ## Principe
 
 ```
 docker build (context: .)
     │
-    ├─ turbo prune auth|dispensary|documents|agenda --docker   → apps + packages nécessaires
+    ├─ turbo prune auth|dispensary|documents|agenda|bank|inventory --docker   → apps + packages nécessaires
     ├─ pnpm install
     ├─ pnpm turbo build --filter=<app>        → next build --webpack + standalone
     └─ entrypoint: prisma migrate deploy + node apps/<app>/server.js
@@ -17,7 +17,7 @@ docker build (context: .)
 
 - Docker + Docker Compose
 - Réseau `proxy` externe (nginx-proxy / letsencrypt-companion), comme avant
-- Quatre bases PostgreSQL (auth + dispensary + documents + agenda)
+- Six bases PostgreSQL (auth + dispensary + documents + agenda + bank + inventory)
 - Discord redirect URI : `https://<AUTH_VIRTUAL_HOST>/api/auth/callback/discord`
 
 ## Démarrage rapide
@@ -55,6 +55,18 @@ docker build \
   --build-arg APP_NAME=agenda \
   --build-arg APP_PORT=3003 \
   -t lawless-agenda .
+
+# Bank (port 3004)
+docker build \
+  --build-arg APP_NAME=bank \
+  --build-arg APP_PORT=3004 \
+  -t lawless-bank .
+
+# Inventory (port 3005)
+docker build \
+  --build-arg APP_NAME=inventory \
+  --build-arg APP_PORT=3005 \
+  -t lawless-inventory .
 ```
 
 ## Variables importantes en prod
@@ -66,16 +78,19 @@ docker build \
 | `DOCUMENTS_PUBLIC_URL` | documents + dispensary | URL service documents (`DOCUMENTS_URL` côté dispensary) |
 | `AGENDA_PUBLIC_URL` | agenda + dispensary | URL service agenda (`AGENDA_URL` côté dispensary) |
 | `BANK_PUBLIC_URL` | bank + dispensary | URL service banque (`BANK_URL` côté dispensary) |
+| `INVENTORY_PUBLIC_URL` | inventory + dispensary | URL service inventaire (`INVENTORY_URL` côté dispensary) |
 | `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`). Cookie name prefix is `lawless-intranet` (not `better-auth`) to avoid collisions with other apps on the same domain. |
 | `AUTH_DATABASE_URL` | auth | DB auth |
 | `DISPENSARY_DATABASE_URL` | dispensary | DB métier |
 | `DOCUMENTS_DATABASE_URL` | documents | DB documents/templates |
 | `AGENDA_DATABASE_URL` | agenda | DB agendas/events/todos |
 | `BANK_DATABASE_URL` | bank | DB ledger bancaire |
+| `INVENTORY_DATABASE_URL` | inventory | DB stock / commandes / ventes / entreprises |
 | `AUTH_INTERNAL_SECRET` | auth + dispensary | API interne service-to-service |
 | `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
 | `BANK_INTERNAL_SECRET` | bank + dispensary | Secret host→bank (from-order, purge-scope) |
 | `BANK_BOT_API_SECRET` | bank + dispensary | Secret bot materialize-planned |
+| `INVENTORY_INTERNAL_SECRET` | inventory + dispensary | Secret host→inventory (purge-scope) |
 | `DOCUMENTS_INTERNAL_SECRET` | documents + dispensary | Secret host→documents (toutes les routes API sauf health) |
 
 ## Migration bank depuis l’ancien stockage dispensary
@@ -108,6 +123,22 @@ AGENDA_DATABASE_URL="$AGENDA_DATABASE_URL" \
 pnpm migrate:agenda-to-service
 
 # 3. Déployer dispensary (migrate deploy droppe les tables agenda locales)
+```
+
+## Migration inventory depuis l’ancien stockage dispensary
+
+**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `remove_inventory_tables` :
+
+```bash
+# 1. Créer la BDD inventory et appliquer les migrations (tables vides)
+#    → déployer le conteneur inventory OU prisma migrate deploy sur INVENTORY_DATABASE_URL
+
+# 2. Copier les données (préserve les UUIDs)
+DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
+INVENTORY_DATABASE_URL="$INVENTORY_DATABASE_URL" \
+pnpm migrate:inventory-to-service
+
+# 3. Déployer dispensary (migrate deploy droppe les tables inventaire locales)
 ```
 
 ## Migration depuis l’ancien déploiement mono-app (users → auth)

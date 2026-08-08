@@ -13,11 +13,13 @@
     "migrate:agenda-to-service": "tsx scripts/migrate-agenda-to-agenda-service.ts",
     "migrate:bank-to-service": "tsx scripts/migrate-bank-to-bank-service.ts",
     "migrate:legacy-bank-account": "tsx scripts/migrate-legacy-bank-account-to-bank-service.ts",
+    "migrate:inventory-to-service": "tsx scripts/migrate-inventory-to-inventory-service.ts",
     "docker:build:auth": "docker build --build-arg APP_NAME=auth --build-arg APP_PORT=3001 -t lawless-auth .",
     "docker:build:dispensary": "docker build --build-arg APP_NAME=dispensary --build-arg APP_PORT=3000 -t lawless-dispensary .",
     "docker:build:documents": "docker build --build-arg APP_NAME=documents --build-arg APP_PORT=3002 -t lawless-documents .",
     "docker:build:agenda": "docker build --build-arg APP_NAME=agenda --build-arg APP_PORT=3003 -t lawless-agenda .",
     "docker:build:bank": "docker build --build-arg APP_NAME=bank --build-arg APP_PORT=3004 -t lawless-bank .",
+    "docker:build:inventory": "docker build --build-arg APP_NAME=inventory --build-arg APP_PORT=3005 -t lawless-inventory .",
       "docker:up": "docker compose --env-file .env.docker up -d --build",
       "docker:down": "docker compose --env-file .env.docker down"
     },

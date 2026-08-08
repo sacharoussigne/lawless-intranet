@@ -1,10 +1,14 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import {
+  getChestStockVisibility as getChestStockVisibilityClient,
+  setChestCategoryHidden as setChestCategoryHiddenClient,
+  setChestItemHidden as setChestItemHiddenClient,
+} from '@lawless-intranet/inventory-client/server';
 import {
   type ChestStockVisibility,
 } from '@/lib/stock/stockVisibility';
@@ -17,13 +21,6 @@ const setHiddenSchema = z.object({
   chestId: chestIdSchema,
   hidden: z.boolean(),
 });
-
-async function assertChestInTenant(chestId: string, dispensaryId: string) {
-  return prisma.chest.findFirst({
-    where: { id: chestId, ...tenantWhere(dispensaryId) },
-    select: { id: true },
-  });
-}
 
 export async function getChestStockVisibility(
   dispensarySlug: string,
@@ -38,31 +35,18 @@ export async function getChestStockVisibility(
     const { dispensaryId } = ctx.tenant;
 
     const parsedChestId = chestIdSchema.parse(chestId);
-
-    const chest = await assertChestInTenant(parsedChestId, dispensaryId);
-    if (!chest) {
-      return { status: 404, error: 'Coffre introuvable' };
-    }
-
-    const [hiddenCategories, hiddenItems] = await Promise.all([
-      prisma.chestHiddenCategory.findMany({
-        where: { chestId: parsedChestId },
-        select: { categoryId: true },
-      }),
-      prisma.chestHiddenItem.findMany({
-        where: { chestId: parsedChestId },
-        select: { itemId: true },
-      }),
-    ]);
-
-    const data: ChestStockVisibility = {
-      hiddenCategoryIds: hiddenCategories.map((row) => row.categoryId),
-      hiddenItemIds: hiddenItems.map((row) => row.itemId),
-    };
+    const data = await getChestStockVisibilityClient(
+      { ...inventoryScope(dispensaryId), chestId: parsedChestId },
+      await inventoryCookie(),
+    ) as ChestStockVisibility;
 
     return { status: 200, data };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement de la visibilité du stock');
+    try {
+      return inventoryActionError(error, 'Erreur lors du chargement de la visibilité du stock');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement de la visibilité du stock');
+    }
   }
 }
 
@@ -83,46 +67,18 @@ export async function setChestCategoryHidden(
     const { dispensaryId } = ctx.tenant;
 
     const validated = setHiddenSchema.extend({ categoryId: categoryIdSchema }).parse(input);
-
-    const chest = await assertChestInTenant(validated.chestId, dispensaryId);
-    if (!chest) {
-      return { status: 404, error: 'Coffre introuvable' };
-    }
-
-    const category = await prisma.categoryItem.findFirst({
-      where: { id: validated.categoryId, ...tenantWhere(dispensaryId) },
-      select: { id: true },
-    });
-    if (!category) {
-      return { status: 404, error: 'Catégorie introuvable' };
-    }
-
-    if (validated.hidden) {
-      await prisma.chestHiddenCategory.upsert({
-        where: {
-          chestId_categoryId: {
-            chestId: validated.chestId,
-            categoryId: validated.categoryId,
-          },
-        },
-        create: {
-          chestId: validated.chestId,
-          categoryId: validated.categoryId,
-        },
-        update: {},
-      });
-    } else {
-      await prisma.chestHiddenCategory.deleteMany({
-        where: {
-          chestId: validated.chestId,
-          categoryId: validated.categoryId,
-        },
-      });
-    }
+    await setChestCategoryHiddenClient(
+      { ...inventoryScope(dispensaryId), ...validated },
+      await inventoryCookie(),
+    );
 
     return { status: 200, data: { ok: true as const } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la mise à jour de la visibilité de la catégorie');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la mise à jour de la visibilité de la catégorie');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la mise à jour de la visibilité de la catégorie');
+    }
   }
 }
 
@@ -143,45 +99,17 @@ export async function setChestItemHidden(
     const { dispensaryId } = ctx.tenant;
 
     const validated = setHiddenSchema.extend({ itemId: itemIdSchema }).parse(input);
-
-    const chest = await assertChestInTenant(validated.chestId, dispensaryId);
-    if (!chest) {
-      return { status: 404, error: 'Coffre introuvable' };
-    }
-
-    const item = await prisma.item.findFirst({
-      where: { id: validated.itemId, ...tenantWhere(dispensaryId) },
-      select: { id: true },
-    });
-    if (!item) {
-      return { status: 404, error: 'Objet introuvable' };
-    }
-
-    if (validated.hidden) {
-      await prisma.chestHiddenItem.upsert({
-        where: {
-          chestId_itemId: {
-            chestId: validated.chestId,
-            itemId: validated.itemId,
-          },
-        },
-        create: {
-          chestId: validated.chestId,
-          itemId: validated.itemId,
-        },
-        update: {},
-      });
-    } else {
-      await prisma.chestHiddenItem.deleteMany({
-        where: {
-          chestId: validated.chestId,
-          itemId: validated.itemId,
-        },
-      });
-    }
+    await setChestItemHiddenClient(
+      { ...inventoryScope(dispensaryId), ...validated },
+      await inventoryCookie(),
+    );
 
     return { status: 200, data: { ok: true as const } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la mise à jour de la visibilité de l\'objet');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la mise à jour de la visibilité de l\'objet');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la mise à jour de la visibilité de l\'objet');
+    }
   }
 }

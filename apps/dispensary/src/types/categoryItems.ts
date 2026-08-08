@@ -1,5 +1,3 @@
-import type { CategoryItem } from '@prisma/client';
+import type { CategoryItemRecord } from '@lawless-intranet/types';
 
-export interface CategoryItemWithCount extends CategoryItem {
-  _count: { items: number };
-}
+export type CategoryItemWithCount = CategoryItemRecord;

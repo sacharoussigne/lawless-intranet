@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useForm } from '@mantine/form';
 import { Modal, Stack, Select, Button, Group } from '@mantine/core';
-import type { OrderType, OrderStatus } from '@prisma/client';
+import type { OrderType, OrderStatus } from '@lawless-intranet/inventory-client';
 import type { MailTemplateListItem } from '@/types/mailTemplates';
 import {
   orderStatusSelectOptions,

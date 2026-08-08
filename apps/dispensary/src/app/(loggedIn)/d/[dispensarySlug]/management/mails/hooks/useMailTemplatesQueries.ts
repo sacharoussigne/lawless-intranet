@@ -26,7 +26,7 @@ import type {
   MailTemplateListItem,
   OrderMailTemplateAssignmentWithTemplate,
 } from '@/types/mailTemplates';
-import type { OrderStatus, OrderType } from '@prisma/client';
+import type { OrderStatus, OrderType } from '@lawless-intranet/inventory-client';
 
 export type OrderLetterTemplateAssignmentWithTemplate =
   OrderMailTemplateAssignmentWithTemplate;

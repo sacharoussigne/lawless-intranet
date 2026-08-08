@@ -1,5 +1,5 @@
 import { Badge } from '@mantine/core';
-import type { OrderStatus } from '@prisma/client';
+import type { OrderStatus } from '@lawless-intranet/inventory-client';
 import { getOrderStatusLabel, getOrderStatusPillStyle } from '@/types/enum/orderStatus';
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {

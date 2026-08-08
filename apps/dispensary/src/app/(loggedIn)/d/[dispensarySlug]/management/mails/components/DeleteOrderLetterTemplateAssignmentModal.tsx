@@ -1,7 +1,7 @@
 'use client';
 
 import { Modal, Text, Button, Group, Stack } from '@mantine/core';
-import type { OrderType, OrderStatus } from '@prisma/client';
+import type { OrderType, OrderStatus } from '@lawless-intranet/inventory-client';
 import { getOrderTypeLabel } from '@/types/enum/orderType';
 import { getOrderStatusLabel } from '@/types/enum/orderStatus';
 import type {

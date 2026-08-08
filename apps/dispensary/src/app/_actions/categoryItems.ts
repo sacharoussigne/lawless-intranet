@@ -1,10 +1,16 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import {
+  createCategory,
+  deleteCategory,
+  listCategories,
+  reorderCategories,
+  updateCategory,
+} from '@lawless-intranet/inventory-client/server';
 
 const createCategoryItemSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
@@ -41,34 +47,18 @@ export async function createCategoryItem(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createCategoryItemSchema.parse(data);
+    const categoryItem = await createCategory(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    const lastCategory = await prisma.categoryItem.findFirst({
-      where: tenantWhere(dispensaryId),
-      orderBy: {
-        order: 'desc',
-      },
-      select: {
-        order: true,
-      },
-    });
-
-    const newOrder = lastCategory ? lastCategory.order + 1 : 0;
-
-    const categoryItem = await prisma.categoryItem.create({
-      data: {
-        dispensaryId,
-        name: validatedData.name,
-        color: validatedData.color || '#ffffff',
-        order: newOrder,
-      },
-    });
-
-    return {
-      status: 201,
-      data: categoryItem,
-    };
+    return { status: 201, data: categoryItem };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création de la catégorie d\'objet');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la création de la catégorie d\'objet');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la création de la catégorie d\'objet');
+    }
   }
 }
 
@@ -78,20 +68,18 @@ export async function getManagementCategoryItems(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const categoryItems = await prisma.categoryItem.findMany({
-      where: tenantWhere(dispensaryId),
-      orderBy: { order: 'asc' },
-      include: {
-        _count: { select: { items: true } },
-      },
-    });
+    const categoryItems = await listCategories(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
+    );
 
-    return {
-      status: 200,
-      data: categoryItems,
-    };
+    return { status: 200, data: categoryItems };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des catégories d\'objets');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des catégories d\'objets');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des catégories d\'objets');
+    }
   }
 }
 
@@ -109,24 +97,18 @@ export async function updateCategoryItem(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = updateCategoryItemSchema.parse(data);
+    const categoryItem = await updateCategory(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    const categoryItem = await prisma.categoryItem.update({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-      data: {
-        name: validatedData.name,
-        color: validatedData.color || '#ffffff',
-      },
-    });
-
-    return {
-      status: 200,
-      data: categoryItem,
-    };
+    return { status: 200, data: categoryItem };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification de la catégorie d\'objet');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la modification de la catégorie d\'objet');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la modification de la catégorie d\'objet');
+    }
   }
 }
 
@@ -137,20 +119,18 @@ export async function deleteCategoryItem(dispensarySlug: string, data: { id: str
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = deleteCategoryItemSchema.parse(data);
+    await deleteCategory(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    await prisma.categoryItem.delete({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    return {
-      status: 200,
-      data: { success: true },
-    };
+    return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression de la catégorie d\'objet');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la suppression de la catégorie d\'objet');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression de la catégorie d\'objet');
+    }
   }
 }
 
@@ -164,21 +144,17 @@ export async function reorderCategoryItems(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = reorderCategoryItemsSchema.parse(data);
-
-    await prisma.$transaction(
-      validatedData.items.map(({ id, order }) =>
-        prisma.categoryItem.update({
-          where: { id, ...tenantWhere(dispensaryId) },
-          data: { order },
-        }),
-      ),
+    await reorderCategories(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
     );
 
-    return {
-      status: 200,
-      data: { success: true },
-    };
+    return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du réordonnancement des catégories d\'objets');
+    try {
+      return inventoryActionError(error, 'Erreur lors du réordonnancement des catégories d\'objets');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du réordonnancement des catégories d\'objets');
+    }
   }
 }

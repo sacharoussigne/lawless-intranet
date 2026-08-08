@@ -1,15 +1,9 @@
 import type { MailTemplate, MailTemplateListItem } from '@/types/mails';
+import type { OrderMailAssignmentRecord } from '@lawless-intranet/types';
 
 export type { MailTemplate, MailTemplateListItem };
 
-export type OrderMailTemplateAssignment = {
-  id: string;
-  dispensaryId: string;
-  orderType: string;
-  orderStatus: string;
-  templateId: string;
-  createdAt: Date;
-  updatedAt: Date;
+export type OrderMailTemplateAssignment = OrderMailAssignmentRecord & {
   mailTemplate?: {
     id: string;
     name: string;

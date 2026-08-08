@@ -1,7 +1,5 @@
-import type { Chest } from '@prisma/client';
+import type { ChestLiteRecord, ChestRecord } from '@lawless-intranet/types';
 
-export type ChestListItem = Pick<Chest, 'id' | 'name' | 'order'>;
+export type ChestListItem = ChestLiteRecord;
 
-export interface ChestWithStockHistory extends Chest {
-  stockHistoryCount: number;
-}
+export type ChestWithStockHistory = ChestRecord;

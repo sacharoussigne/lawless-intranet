@@ -1,5 +1,9 @@
 import { hasRole } from '@lawless-intranet/auth-permissions';
-import prisma from '@/lib/prisma';
+import {
+  listChestsLite,
+  listRoleChestAccesses,
+} from '@lawless-intranet/inventory-client/server';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import { parseRoleList } from '@/types/enum/roles';
 
 export type ChestAccessResult =
@@ -19,25 +23,20 @@ export async function resolveChestAccess(
     return { all: false, chestIds: [] };
   }
 
-  const accesses = await prisma.roleChestAccess.findMany({
-    where: {
-      dispensaryId,
-      role: { in: roles },
-    },
-    select: {
-      allChests: true,
-      chests: {
-        select: { chestId: true },
-      },
-    },
-  });
+  const roleSet = new Set<string>(roles);
+  const accesses = await listRoleChestAccesses(
+    inventoryScope(dispensaryId),
+    await inventoryCookie(),
+  );
 
-  if (accesses.some((access) => access.allChests)) {
+  const matching = accesses.filter((access) => roleSet.has(access.role));
+
+  if (matching.some((access) => access.allChests)) {
     return { all: true };
   }
 
   const chestIds = Array.from(
-    new Set(accesses.flatMap((access) => access.chests.map((c) => c.chestId))),
+    new Set(matching.flatMap((access) => access.chestIds)),
   );
 
   return { all: false, chestIds };
@@ -64,7 +63,9 @@ export function filterChestIdsByAccess(
   return chestIds.filter((id) => allowed.has(id));
 }
 
-export function chestAccessWhereFilter(access: ChestAccessResult): { id?: { in: string[] } } | Record<string, never> {
+export function chestAccessWhereFilter(
+  access: ChestAccessResult,
+): { id?: { in: string[] } } | Record<string, never> {
   if (access.all) return {};
   return { id: { in: access.chestIds } };
 }
@@ -74,21 +75,21 @@ export async function userHasAccessibleChests(
   effectiveRole: string | null | undefined,
 ): Promise<boolean> {
   const access = await resolveChestAccess(dispensaryId, effectiveRole);
+  const chests = await listChestsLite(
+    {
+      ...inventoryScope(dispensaryId),
+      onlyEnabled: true,
+      bypassAccessFilter: true,
+    },
+    await inventoryCookie(),
+  );
+
   if (access.all) {
-    const count = await prisma.chest.count({
-      where: { dispensaryId, isEnabled: true },
-    });
-    return count > 0;
+    return chests.length > 0;
   }
   if (access.chestIds.length === 0) {
     return false;
   }
-  const count = await prisma.chest.count({
-    where: {
-      dispensaryId,
-      isEnabled: true,
-      id: { in: access.chestIds },
-    },
-  });
-  return count > 0;
+  const allowed = new Set(access.chestIds);
+  return chests.some((chest) => allowed.has(chest.id));
 }

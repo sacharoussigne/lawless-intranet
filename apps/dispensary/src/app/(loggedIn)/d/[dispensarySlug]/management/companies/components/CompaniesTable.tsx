@@ -65,12 +65,12 @@ export function CompaniesTable({
             title: "Groupes d'entreprises",
             render: (company: CompanyWithRelations) => (
               <Group gap="xs">
-                {company.companyGroups.length === 0 ? (
+                {(company.companyGroups ?? []).length === 0 ? (
                   <Text c="dimmed" size="sm">
                     -
                   </Text>
                 ) : (
-                  [...company.companyGroups]
+                  [...(company.companyGroups ?? [])]
                     .sort((a, b) =>
                       a.companyGroup.name.localeCompare(b.companyGroup.name, 'fr', {
                         sensitivity: 'base',

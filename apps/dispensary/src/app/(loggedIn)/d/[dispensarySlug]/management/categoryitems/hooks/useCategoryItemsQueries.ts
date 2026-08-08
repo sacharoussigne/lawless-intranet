@@ -16,7 +16,7 @@ import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { categoryItemsKeys } from '@/lib/categoryItems/queryKeys';
 import { sortCategoryItems } from '@/lib/categoryItems/sortCategoryItems';
 import type { CategoryItemWithCount } from '@/types/categoryItems';
-import type { CategoryItem } from '@prisma/client';
+import type { CategoryItemRecord } from '@lawless-intranet/types';
 
 async function fetchManagementCategoryItems(dispensarySlug: string) {
   const result = await getManagementCategoryItems(dispensarySlug);
@@ -59,7 +59,7 @@ export function useCreateCategoryItemMutation() {
   return useMutation({
     mutationFn: async (vars: { name: string; color?: string }) => {
       const result = await createCategoryItem(dispensarySlug, vars);
-      return handleAction(result) as CategoryItem;
+      return handleAction(result) as CategoryItemRecord;
     },
     onSuccess: (created) => {
       updateCache((items) => [
@@ -90,7 +90,7 @@ export function useUpdateCategoryItemMutation() {
   return useMutation({
     mutationFn: async (vars: { id: string; name: string; color?: string }) => {
       const result = await updateCategoryItem(dispensarySlug, vars);
-      return handleAction(result) as CategoryItem;
+      return handleAction(result) as CategoryItemRecord;
     },
     onSuccess: (updated) => {
       updateCache((items) =>

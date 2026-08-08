@@ -6,7 +6,7 @@ import { IconEdit } from '@tabler/icons-react';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import type { StockMovementListItem } from '@/types/stock';
 import { STOCK_MOVEMENT_KIND_OPTIONS } from '@/lib/stock/movements';
-import type { StockMovementKind } from '@prisma/client';
+import type { StockMovementKind } from '@/lib/stock/movements';
 import { useUpdateStockMovementMutation } from '../hooks/useStockMovementsQueries';
 
 interface EditMovementModalProps {

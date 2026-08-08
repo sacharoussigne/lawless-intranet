@@ -3,7 +3,7 @@
 import { DataTable } from 'mantine-datatable';
 import { Paper, ActionIcon, Group } from '@mantine/core';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
-import type { OrderType, OrderStatus } from '@prisma/client';
+import type { OrderType, OrderStatus } from '@lawless-intranet/inventory-client';
 import type { OrderMailTemplateAssignmentWithTemplate } from '@/types/mailTemplates';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';

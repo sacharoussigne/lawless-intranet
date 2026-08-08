@@ -1,5 +1,23 @@
-import { StockMovementKind } from '@prisma/client';
+import type { StockMovementKind as StockMovementKindType } from '@lawless-intranet/inventory-client';
 import { dispTokens } from '@/lib/design-tokens';
+
+export type StockMovementKind = StockMovementKindType;
+
+export const StockMovementKind = {
+  MANUAL_FIRST_COUNT: 'MANUAL_FIRST_COUNT',
+  MANUAL_ADJUST: 'MANUAL_ADJUST',
+  CRAFT_CONSUME: 'CRAFT_CONSUME',
+  CRAFT_PRODUCE: 'CRAFT_PRODUCE',
+  TRANSFER_OUT: 'TRANSFER_OUT',
+  TRANSFER_IN: 'TRANSFER_IN',
+  OVERWRITE: 'OVERWRITE',
+  TAKE_OUT: 'TAKE_OUT',
+  DEPOSIT_IN: 'DEPOSIT_IN',
+  SALE_OUT: 'SALE_OUT',
+  SALE_CANCEL_RESTORE: 'SALE_CANCEL_RESTORE',
+  ORDER_IN: 'ORDER_IN',
+  ORDER_OUT: 'ORDER_OUT',
+} as const satisfies Record<StockMovementKind, StockMovementKind>;
 
 export type ManualStockMovementInput = {
   itemId: string;
@@ -75,7 +93,7 @@ const STOCK_MOVEMENT_KIND_LABELS: Record<StockMovementKind, string> = {
   [StockMovementKind.DEPOSIT_IN]: 'Dépôt (entrée)',
   [StockMovementKind.SALE_OUT]: 'Vente (sortie)',
   [StockMovementKind.SALE_CANCEL_RESTORE]: 'Annulation vente (restauration)',
-  [StockMovementKind.ORDER_IN]: 'Commande d\'achat (entrée)',
+  [StockMovementKind.ORDER_IN]: "Commande d'achat (entrée)",
   [StockMovementKind.ORDER_OUT]: 'Commande de vente (sortie)',
 };
 

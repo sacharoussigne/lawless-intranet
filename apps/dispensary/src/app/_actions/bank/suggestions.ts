@@ -1,12 +1,12 @@
 'use server';
 
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { bankActionAuth } from '@/lib/bank/auth';
 import { bankActionError, bankCookie, bankScope } from '@/lib/bank/client';
 import { formatCompanyBankName } from '@/lib/bank/companyName';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { listCompanies } from '@lawless-intranet/inventory-client/server';
 import {
   addDescriptionSuggestion as addDescriptionSuggestionApi,
   addNameSuggestion as addNameSuggestionApi,
@@ -24,11 +24,7 @@ export async function getNameSuggestions(dispensarySlug: string) {
 
     const [bankSuggestions, companies] = await Promise.all([
       getNameSuggestionsApi(bankScope(dispensaryId), await bankCookie()),
-      prisma.company.findMany({
-        where: tenantWhere(dispensaryId),
-        select: { name: true, bankAccountNumber: true },
-        orderBy: { name: 'asc' },
-      }),
+      listCompanies(inventoryScope(dispensaryId), await inventoryCookie()),
     ]);
 
     const companyNames = companies.map(formatCompanyBankName);

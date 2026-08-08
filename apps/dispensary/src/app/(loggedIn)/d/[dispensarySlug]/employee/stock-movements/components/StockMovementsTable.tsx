@@ -17,7 +17,7 @@ import {
   getStockMovementKindLabel,
   getStockMovementQuantityColor,
 } from '@/lib/stock/movements';
-import type { StockMovementKind } from '@prisma/client';
+import type { StockMovementKind } from '@/lib/stock/movements';
 import type { DataTableColumn } from 'mantine-datatable';
 
 interface StockMovementsTableProps {
