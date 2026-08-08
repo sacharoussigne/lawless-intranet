@@ -1,24 +1,18 @@
 'use server';
 
-import prisma from '@/lib/prisma';
+import {
+  getLastStockDaysByChest as getLastStockDaysByChestApi,
+  queryItemsWithDetailedStock,
+  queryItemsWithStock,
+  queryItemsWithStockForDate,
+} from '@lawless-intranet/inventory-client/server';
 import { actionErrorParser } from '@/lib/action';
+import {
+  inventoryActionError,
+  inventoryCookie,
+  inventoryScope,
+} from '@/lib/inventory/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import {
-  getTodayStart,
-  getTomorrowStart,
-  getStartOfDay,
-} from '@/lib/date';
-import {
-  fetchEnabledItems,
-  fetchStockHistoryRows,
-  fetchLatestStockBeforeDate,
-  fetchLastStockDayByChest,
-  buildStockSnapshotsWithPrevious,
-  mapItemWithStockSnapshot,
-  ITEM_STOCK_SELECT,
-} from '@/app/_actions/stock/queryHelpers';
-import { resolveChestAccess, hasChestAccess, chestAccessWhereFilter } from '@/lib/chests/access';
 
 export async function getLastStockDaysByChest(dispensarySlug: string) {
   try {
@@ -28,34 +22,29 @@ export async function getLastStockDaysByChest(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
 
-    const access = await resolveChestAccess(dispensaryId, effectiveRole);
-    if (!access.all && access.chestIds.length === 0) {
-      return { status: 200, data: {} };
-    }
-
-    const chests = await prisma.chest.findMany({
-      where: {
-        isEnabled: true,
-        ...tenantWhere(dispensaryId),
-        ...chestAccessWhereFilter(access),
-      },
-      select: { id: true },
-    });
-
-    const chestIds = chests.map((chest) => chest.id);
-    const today = getTodayStart();
-    const lastStockDaysByChest = await fetchLastStockDayByChest(
-      dispensaryId,
-      chestIds,
-      today,
+    const data = await getLastStockDaysByChestApi(
+      { ...inventoryScope(dispensaryId), effectiveRole },
+      await inventoryCookie(),
     );
 
-    return {
-      status: 200,
-      data: lastStockDaysByChest,
-    };
+    const converted: Record<string, Date | null> = {};
+    for (const [chestId, value] of Object.entries(data)) {
+      converted[chestId] = value ? new Date(value) : null;
+    }
+
+    return { status: 200, data: converted };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des dates de dernier stock');
+    try {
+      return inventoryActionError(
+        error,
+        'Erreur lors de la récupération des dates de dernier stock',
+      );
+    } catch (e) {
+      return actionErrorParser(
+        e,
+        'Erreur lors de la récupération des dates de dernier stock',
+      );
+    }
   }
 }
 
@@ -70,50 +59,28 @@ export async function getItemsWithStock(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
 
-    const access = await resolveChestAccess(dispensaryId, effectiveRole);
-    if (chestId) {
-      if (!hasChestAccess(access, chestId)) {
-        return { status: 403, error: 'Accès refusé à ce coffre' };
-      }
-    }
-
-    const allowedChestIds = access.all ? null : access.chestIds;
-
-    const today = getTodayStart();
-    const tomorrow = getTomorrowStart();
-
-    const items = await fetchEnabledItems(dispensaryId);
-    const itemIds = items.map((item) => item.id);
-    const [todayRows, previousRows] = await Promise.all([
-      fetchStockHistoryRows(
-        dispensaryId,
-        itemIds,
-        { gte: today, lt: tomorrow },
+    const data = await queryItemsWithStock(
+      {
+        ...inventoryScope(dispensaryId),
         chestId,
-        allowedChestIds,
-      ),
-      fetchLatestStockBeforeDate(
-        prisma,
-        dispensaryId,
-        itemIds,
-        today,
-        chestId,
-        allowedChestIds,
-      ),
-    ]);
-
-    const snapshots = buildStockSnapshotsWithPrevious(todayRows, previousRows, today, chestId);
-
-    const itemsWithStock = items.map((item) =>
-      mapItemWithStockSnapshot(item, snapshots.get(item.id)),
+        effectiveRole,
+      },
+      await inventoryCookie(),
     );
 
-    return {
-      status: 200,
-      data: itemsWithStock,
-    };
+    return { status: 200, data };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des objets avec stock');
+    try {
+      return inventoryActionError(
+        error,
+        'Erreur lors de la récupération des objets avec stock',
+      );
+    } catch (e) {
+      return actionErrorParser(
+        e,
+        'Erreur lors de la récupération des objets avec stock',
+      );
+    }
   }
 }
 
@@ -129,64 +96,29 @@ export async function getItemsWithStockForDate(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
 
-    if (chestId) {
-      const access = await resolveChestAccess(dispensaryId, effectiveRole);
-      if (!hasChestAccess(access, chestId)) {
-        return { status: 403, error: 'Accès refusé à ce coffre' };
-      }
-    }
+    const data = await queryItemsWithStockForDate(
+      {
+        ...inventoryScope(dispensaryId),
+        date: date.toISOString(),
+        chestId,
+        effectiveRole,
+      },
+      await inventoryCookie(),
+    );
 
-    const dayStart = getStartOfDay(date);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-
-    const items = await fetchEnabledItems(dispensaryId);
-    const itemIds = items.map((item) => item.id);
-
-    const stockRows = itemIds.length > 0
-      ? await prisma.stockHistory.findMany({
-          where: {
-            itemId: { in: itemIds },
-            timestamp: { gte: dayStart, lt: dayEnd },
-            ...(chestId ? { chestId } : {}),
-            chest: {
-              isEnabled: true,
-              ...tenantWhere(dispensaryId),
-            },
-          },
-          select: {
-            id: true,
-            itemId: true,
-            quantity: true,
-            timestamp: true,
-          },
-          orderBy: { timestamp: 'desc' },
-        })
-      : [];
-
-    const latestByItem = new Map<string, { id: string; quantity: number }>();
-    for (const row of stockRows) {
-      if (!latestByItem.has(row.itemId)) {
-        latestByItem.set(row.itemId, { id: row.id, quantity: row.quantity });
-      }
-    }
-
-    const itemsWithStock = items.map((item) => {
-      const stockForDate = latestByItem.get(item.id);
-      return {
-        ...item,
-        price: item.price ? Number(item.price) : null,
-        stockForDate: stockForDate?.quantity ?? null,
-        stockHistoryId: stockForDate?.id ?? null,
-      };
-    });
-
-    return {
-      status: 200,
-      data: itemsWithStock,
-    };
+    return { status: 200, data };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des objets avec stock');
+    try {
+      return inventoryActionError(
+        error,
+        'Erreur lors de la récupération des objets avec stock',
+      );
+    } catch (e) {
+      return actionErrorParser(
+        e,
+        'Erreur lors de la récupération des objets avec stock',
+      );
+    }
   }
 }
 
@@ -201,78 +133,27 @@ export async function getItemsWithDetailedStock(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
 
-    const access = await resolveChestAccess(dispensaryId, effectiveRole);
-    const allowedChestIds = access.all ? null : access.chestIds;
-
-    const today = getTodayStart();
-    const tomorrow = getTomorrowStart();
-
-    const items = await prisma.item.findMany({
-      where: {
-        isEnabled: true,
-        ...tenantWhere(dispensaryId),
-        ...(itemIds && itemIds.length > 0 ? { id: { in: itemIds } } : {}),
+    const data = await queryItemsWithDetailedStock(
+      {
+        ...inventoryScope(dispensaryId),
+        itemIds,
+        effectiveRole,
       },
-      orderBy: { name: 'asc' },
-      select: ITEM_STOCK_SELECT,
-    });
+      await inventoryCookie(),
+    );
 
-    const ids = items.map((item) => item.id);
-    const [todayRows, previousRows] = await Promise.all([
-      fetchStockHistoryRows(dispensaryId, ids, { gte: today, lt: tomorrow }, null, allowedChestIds),
-      fetchLatestStockBeforeDate(prisma, dispensaryId, ids, today, null, allowedChestIds),
-    ]);
-
-    const allChests = await prisma.chest.findMany({
-      where: {
-        isEnabled: true,
-        ...tenantWhere(dispensaryId),
-        ...chestAccessWhereFilter(access),
-      },
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true },
-    });
-
-    const itemsWithDetailedStock = items.map((item) => {
-      const itemTodayRows = todayRows.filter((r) => r.itemId === item.id);
-      const itemPreviousRows = previousRows.filter((r) => r.itemId === item.id);
-      const snapshots = buildStockSnapshotsWithPrevious(itemTodayRows, itemPreviousRows, today);
-
-      const stockByChest = allChests.map((chest) => {
-        const chestTodayRows = itemTodayRows.filter((r) => r.chestId === chest.id);
-        const chestPreviousRows = itemPreviousRows.filter((r) => r.chestId === chest.id);
-        const chestSnapshot = buildStockSnapshotsWithPrevious(
-          chestTodayRows,
-          chestPreviousRows,
-          today,
-          chest.id,
-        ).get(item.id);
-        return {
-          chestId: chest.id,
-          chestName: chest.name,
-          stockToday: chestSnapshot?.stockToday ?? null,
-          stockYesterday: chestSnapshot?.stockYesterday ?? null,
-          stockPreviousAt: chestSnapshot?.stockPreviousAt ?? null,
-        };
-      });
-
-      const snapshot = snapshots.get(item.id);
-
-      return {
-        ...item,
-        price: item.price ? Number(item.price) : null,
-        totalStockToday: snapshot?.stockToday ?? null,
-        totalStockYesterday: snapshot?.stockYesterday ?? null,
-        totalStockPreviousAt: snapshot?.stockPreviousAt ?? null,
-        stockByChest,
-      };
-    });
-
-    return {
-      status: 200,
-      data: itemsWithDetailedStock,
-    };
+    return { status: 200, data };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des items avec stocks détaillés');
+    try {
+      return inventoryActionError(
+        error,
+        'Erreur lors de la récupération des items avec stocks détaillés',
+      );
+    } catch (e) {
+      return actionErrorParser(
+        e,
+        'Erreur lors de la récupération des items avec stocks détaillés',
+      );
+    }
   }
 }

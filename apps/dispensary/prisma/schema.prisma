@@ -9,29 +9,18 @@ datasource db {
 }
 
 model Dispensary {
-  id        String   @id @default(uuid())
-  slug      String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   createdById String?
 
-  members     DispensaryMember[]
-  settings    AppSettings?
-  categoryItems CategoryItem[]
-  items       Item[]
-  chests      Chest[]
-  companies   Company[]
-  companyGroups CompanyGroup[]
-  individualCustomers IndividualCustomer[]
-  orders      Order[]
-  orderMailTemplateAssignments OrderMailTemplateAssignment[]
-  payrollWeeklyReports PayrollWeeklyReport[]
-  dispensaryWeeklyActivities DispensaryWeeklyActivity[]
-  craftRecipes CraftRecipe[]
-  cabinets Cabinet[]
-  sales       Sale[]
-  roleChestAccesses RoleChestAccess[]
+  members                      DispensaryMember[]
+  settings                     AppSettings?
+  payrollWeeklyReports         PayrollWeeklyReport[]
+  dispensaryWeeklyActivities   DispensaryWeeklyActivity[]
+  cabinets                     Cabinet[]
 
   @@index([createdById])
   @@map("dispensary")
@@ -53,17 +42,17 @@ model DispensaryMember {
 }
 
 model PayrollWeeklyReport {
-  id              String   @id @default(uuid())
-  dispensaryId    String
-  dispensary      Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  weekStart       DateTime
-  weekEnd         DateTime
-  reportType      String   @default("Employés")
-  resultJson      Json?
-  errorMessage    String?
-  createdById     String
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  id           String     @id @default(uuid())
+  dispensaryId String
+  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  weekStart    DateTime
+  weekEnd      DateTime
+  reportType   String     @default("Employés")
+  resultJson   Json?
+  errorMessage String?
+  createdById  String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@unique([dispensaryId, weekStart, reportType])
   @@index([createdById])
@@ -74,475 +63,47 @@ model PayrollWeeklyReport {
 }
 
 model UserUiPreferences {
-  id                   String   @id @default(uuid())
-  userId               String   @unique
+  id                  String   @id @default(uuid())
+  userId              String   @unique
 
-  lowStockCraftableBg  String   @default("#fff3cd")
-  lowStockNormalBg     String   @default("#f8d7da")
-  okStockBg            String?
-  unknownStockBg       String?
+  lowStockCraftableBg String   @default("#fff3cd")
+  lowStockNormalBg    String   @default("#f8d7da")
+  okStockBg           String?
+  unknownStockBg      String?
 
-  doneTodayBadgeBg     String?
+  doneTodayBadgeBg    String?
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([userId])
   @@map("user_ui_preferences")
 }
 
 model AppSettings {
-  dispensaryId                 String   @id
-  dispensary                   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  dispensaryName               String   @default("Saint-Denis")
-  featureStockEnabled          Boolean  @default(true)
-  featureBankEnabled           Boolean  @default(true)
-  featureOrdersEnabled         Boolean  @default(true)
-  featureSearchEnabled         Boolean  @default(true)
-  featureMailsEnabled          Boolean  @default(true)
-  featurePayrollEnabled        Boolean  @default(true)
-  featureWeeklyDispensaryActivityEnabled Boolean @default(true)
-  featureAgendaEnabled                 Boolean @default(true)
-  featureCabinetEnabled                Boolean @default(true)
-  featureSalesEnabled                  Boolean @default(true)
-  weeklyActivityChestDaysVisible       Boolean @default(true)
-  weeklyActivityPresenceDaysVisible    Boolean @default(true)
-  weeklyActivityPatientsVisible        Boolean @default(true)
-  weeklyActivitySherifsVisible         Boolean @default(true)
-  weeklyActivityInfusionsVisible       Boolean @default(true)
-  weeklyActivityPoppyMilkVisible       Boolean @default(true)
-  createdAt                    DateTime @default(now())
-  updatedAt                    DateTime @updatedAt
+  dispensaryId                             String     @id
+  dispensary                               Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  dispensaryName                           String     @default("Saint-Denis")
+  featureStockEnabled                      Boolean    @default(true)
+  featureBankEnabled                       Boolean    @default(true)
+  featureOrdersEnabled                     Boolean    @default(true)
+  featureSearchEnabled                     Boolean    @default(true)
+  featureMailsEnabled                      Boolean    @default(true)
+  featurePayrollEnabled                    Boolean    @default(true)
+  featureWeeklyDispensaryActivityEnabled   Boolean    @default(true)
+  featureAgendaEnabled                     Boolean    @default(true)
+  featureCabinetEnabled                    Boolean    @default(true)
+  featureSalesEnabled                      Boolean    @default(true)
+  weeklyActivityChestDaysVisible           Boolean    @default(true)
+  weeklyActivityPresenceDaysVisible        Boolean    @default(true)
+  weeklyActivityPatientsVisible            Boolean    @default(true)
+  weeklyActivitySherifsVisible             Boolean    @default(true)
+  weeklyActivityInfusionsVisible           Boolean    @default(true)
+  weeklyActivityPoppyMilkVisible           Boolean    @default(true)
+  createdAt                                DateTime   @default(now())
+  updatedAt                                DateTime   @updatedAt
 
   @@map("app_settings")
-}
-
-model CategoryItem {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name          String
-  color         String     @default("#ffffff")
-  order         Int        @default(0)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  items         Item[]
-  chestStockCheckCategories ChestStockCheckCategory[]
-  chestHiddenCategories ChestHiddenCategory[]
-
-  @@index([dispensaryId])
-  @@map("category_item")
-}
-
-model Item {
-  id             String            @id @default(uuid())
-  dispensaryId   String
-  dispensary     Dispensary        @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name           String
-  description    String?
-  minimalQuantity  Int
-  isCraftable    Boolean           @default(false)
-  isEnabled      Boolean           @default(true)
-  canBeSold      Boolean           @default(false)
-  price          Decimal?           @db.Decimal(10, 2)
-  weight         Float?
-  categoryId     String
-  category       CategoryItem      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  companyGroupId String?
-  companyGroup   CompanyGroup?     @relation(fields: [companyGroupId], references: [id], onDelete: SetNull)
-  order          Int               @default(0)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  stockHistory   StockHistory[]
-  stockItemMovements StockItemMovement[]
-  craftRecipes   CraftRecipe[]     @relation("CraftedItem")
-  usedInRecipes  CraftRecipeItem[] @relation("UsedItem")
-  orderItems     OrderItem[]
-  saleItems      SaleItem[]
-  chestHiddenItems ChestHiddenItem[]
-
-  @@index([categoryId])
-  @@index([companyGroupId])
-  @@index([dispensaryId])
-  @@map("item")
-}
-
-model Chest {
-  id            String         @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary     @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name          String
-  description   String?
-  isEnabled     Boolean        @default(true)
-  order         Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  stockHistory StockHistory[]
-  stockCheckConfig ChestStockCheckConfig?
-  stockItemMovements StockItemMovement[] @relation("MovementChest")
-  stockItemMovementDestinations StockItemMovement[] @relation("MovementDestinationChest")
-  saleItems SaleItem[]
-  hiddenCategories ChestHiddenCategory[]
-  hiddenItems ChestHiddenItem[]
-  roleAccesses RoleChestAccessChest[]
-
-  @@index([dispensaryId])
-  @@map("chest")
-}
-
-model RoleChestAccess {
-  id           String                 @id @default(uuid())
-  dispensaryId String
-  dispensary   Dispensary             @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  role         String
-  allChests    Boolean                @default(false)
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
-  chests       RoleChestAccessChest[]
-
-  @@unique([dispensaryId, role])
-  @@index([dispensaryId])
-  @@map("role_chest_access")
-}
-
-model RoleChestAccessChest {
-  id       String          @id @default(uuid())
-  accessId String
-  access   RoleChestAccess @relation(fields: [accessId], references: [id], onDelete: Cascade)
-  chestId  String
-  chest    Chest           @relation(fields: [chestId], references: [id], onDelete: Cascade)
-
-  @@unique([accessId, chestId])
-  @@index([accessId])
-  @@index([chestId])
-  @@map("role_chest_access_chest")
-}
-
-model ChestHiddenCategory {
-  id         String       @id @default(uuid())
-  chestId    String
-  categoryId String
-  chest      Chest        @relation(fields: [chestId], references: [id], onDelete: Cascade)
-  category   CategoryItem @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@unique([chestId, categoryId])
-  @@index([chestId])
-  @@index([categoryId])
-  @@map("chest_hidden_category")
-}
-
-model ChestHiddenItem {
-  id      String @id @default(uuid())
-  chestId String
-  itemId  String
-  chest   Chest  @relation(fields: [chestId], references: [id], onDelete: Cascade)
-  item    Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
-  @@unique([chestId, itemId])
-  @@index([chestId])
-  @@index([itemId])
-  @@map("chest_hidden_item")
-}
-
-model ChestStockCheckConfig {
-  id        String   @id @default(uuid())
-  chestId   String   @unique
-  isEnabled Boolean  @default(true)
-  chest     Chest    @relation(fields: [chestId], references: [id], onDelete: Cascade)
-  categories ChestStockCheckCategory[]
-
-  @@index([chestId])
-  @@map("chest_stock_check_config")
-}
-
-model ChestStockCheckCategory {
-  id        String   @id @default(uuid())
-  configId  String
-  categoryId String
-  config    ChestStockCheckConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  category  CategoryItem          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@unique([configId, categoryId])
-  @@index([configId])
-  @@index([categoryId])
-  @@map("chest_stock_check_category")
-}
-
-model StockHistory {
-  id        String   @id @default(uuid())
-  itemId    String
-  chestId   String
-  quantity  Int
-  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  chest     Chest    @relation(fields: [chestId], references: [id], onDelete: Cascade)
-  timestamp DateTime @default(now())
-
-  @@index([itemId])
-  @@index([chestId])
-  @@index([timestamp])
-  @@index([itemId, chestId, timestamp])
-  @@map("stock_history")
-}
-
-enum StockMovementKind {
-  MANUAL_FIRST_COUNT
-  MANUAL_ADJUST
-  CRAFT_CONSUME
-  CRAFT_PRODUCE
-  TRANSFER_OUT
-  TRANSFER_IN
-  OVERWRITE
-  TAKE_OUT
-  DEPOSIT_IN
-  SALE_OUT
-  SALE_CANCEL_RESTORE
-  ORDER_IN
-  ORDER_OUT
-}
-
-enum SaleStatus {
-  COMPLETED
-  CANCELLED
-}
-
-enum SaleItemSource {
-  POCKET
-  CHEST
-}
-
-model Sale {
-  id                   String              @id @default(uuid())
-  dispensaryId         String
-  dispensary           Dispensary          @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  userId               String
-  status               SaleStatus          @default(COMPLETED)
-  customerName         String?
-  description          String?
-  individualCustomerId String?
-  individualCustomer   IndividualCustomer? @relation(fields: [individualCustomerId], references: [id], onDelete: SetNull)
-  priceAdjustment      Decimal             @default(0) @db.Decimal(10, 2)
-  createdAt                   DateTime            @default(now())
-  cancelledAt                 DateTime?
-  cancelledByUserId           String?
-  depositedInCashRegister     Boolean             @default(false)
-  depositedInCashRegisterAt   DateTime?
-  depositedByUserId           String?
-  items                       SaleItem[]
-
-  @@index([dispensaryId, createdAt])
-  @@index([dispensaryId, userId, createdAt])
-  @@index([userId])
-  @@index([individualCustomerId])
-  @@map("sale")
-}
-
-model SaleItem {
-  id        String         @id @default(uuid())
-  saleId    String
-  sale      Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  itemId    String
-  item      Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  quantity  Int
-  unitPrice Decimal?       @db.Decimal(10, 2)
-  source    SaleItemSource
-  chestId   String?
-  chest     Chest?         @relation(fields: [chestId], references: [id], onDelete: SetNull)
-
-  @@index([saleId])
-  @@index([itemId])
-  @@index([chestId])
-  @@map("sale_item")
-}
-
-model StockItemMovement {
-  id                 String            @id @default(uuid())
-  itemId             String
-  chestId            String?
-  destinationChestId String?
-  quantity           Int
-  kind               StockMovementKind
-  userId             String?
-  note               String?
-  createdAt          DateTime          @default(now())
-
-  item             Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  chest            Chest? @relation("MovementChest", fields: [chestId], references: [id], onDelete: SetNull)
-  destinationChest Chest? @relation("MovementDestinationChest", fields: [destinationChestId], references: [id], onDelete: SetNull)
-
-  @@index([itemId, createdAt])
-  @@index([createdAt])
-  @@index([chestId, createdAt])
-  @@index([itemId, chestId, createdAt])
-  @@map("stock_item_movement")
-}
-
-model Company {
-  id                 String                @id @default(uuid())
-  dispensaryId       String
-  dispensary         Dispensary            @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name               String
-  bankAccountNumber  String?
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  companyGroups      CompanyGroupCompany[]
-  orders             Order[]
-
-  @@index([dispensaryId])
-  @@map("company")
-}
-
-model CraftRecipe {
-  id                String            @id @default(uuid())
-  dispensaryId      String
-  dispensary        Dispensary        @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name              String
-  description       String?
-  craftedItemId     String
-  craftedItem       Item              @relation("CraftedItem", fields: [craftedItemId], references: [id], onDelete: Cascade)
-  quantity          Int
-  isEnabled         Boolean           @default(true)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  ingredients       CraftRecipeItem[]
-
-  @@index([craftedItemId])
-  @@index([dispensaryId])
-  @@map("craft_recipe")
-}
-
-model CraftRecipeItem {
-  id            String      @id @default(uuid())
-  craftRecipeId String
-  craftRecipe   CraftRecipe @relation(fields: [craftRecipeId], references: [id], onDelete: Cascade)
-  usedItemId    String
-  usedItem      Item        @relation("UsedItem", fields: [usedItemId], references: [id], onDelete: Cascade)
-  quantity      Int
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  @@index([craftRecipeId])
-  @@index([usedItemId])
-  @@map("craft_recipe_item")
-}
-
-model IndividualCustomer {
-  id            String     @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name          String
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  orders        Order[]
-  sales         Sale[]
-
-  @@index([dispensaryId])
-  @@map("individual_customer")
-}
-
-model CompanyGroup {
-  id            String                @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary            @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name          String
-  description   String?
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  items         Item[]
-  companies     CompanyGroupCompany[]
-  orders        Order[]
-
-  @@index([dispensaryId])
-  @@map("company_group")
-}
-
-model CompanyGroupCompany {
-  id             String       @id @default(uuid())
-  companyGroupId String
-  companyGroup   CompanyGroup @relation(fields: [companyGroupId], references: [id], onDelete: Cascade)
-  companyId      String
-  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  @@unique([companyGroupId, companyId])
-  @@index([companyGroupId])
-  @@index([companyId])
-  @@map("company_group_company")
-}
-
-enum OrderStatus {
-  DRAFT
-  LETTER_SENT
-  PROCESSING
-  READY
-  COMPLETED
-  CANCELLED
-}
-
-enum OrderType {
-  INCOMING
-  OUTGOING
-}
-
-model Order {
-  id                     String               @id @default(uuid())
-  dispensaryId           String
-  dispensary             Dispensary           @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name                   String
-  status                 OrderStatus          @default(DRAFT)
-  type                   OrderType            @default(INCOMING)
-  details                String?
-  price                  Decimal?             @db.Decimal(10, 2)
-  companyId              String?
-  company                Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyGroupId         String?
-  companyGroup           CompanyGroup?        @relation(fields: [companyGroupId], references: [id], onDelete: SetNull)
-  individualCustomerId   String?
-  individualCustomer     IndividualCustomer?  @relation(fields: [individualCustomerId], references: [id], onDelete: SetNull)
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  items                  OrderItem[]
-
-  @@index([companyId])
-  @@index([companyGroupId])
-  @@index([individualCustomerId])
-  @@index([status])
-  @@index([type])
-  @@index([dispensaryId])
-  @@index([dispensaryId, createdAt(sort: Desc)])
-  @@map("order")
-}
-
-model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  itemId    String
-  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  quantity  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([orderId, itemId])
-  @@index([orderId])
-  @@index([itemId])
-  @@map("order_item")
-}
-
-model OrderMailTemplateAssignment {
-  id              String         @id @default(uuid())
-  dispensaryId    String
-  dispensary      Dispensary     @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  orderType       OrderType
-  orderStatus     OrderStatus
-  templateId      String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  @@unique([dispensaryId, orderType, orderStatus])
-  @@index([templateId])
-  @@index([orderType, orderStatus])
-  @@map("order_mail_template_assignment")
 }
 
 enum DispensaryWeeklyActivityHistoryAction {
@@ -571,23 +132,23 @@ enum DispensaryWeeklyActivityHistorySource {
 }
 
 model DispensaryWeeklyActivity {
-  id                   String   @id @default(uuid())
-  dispensaryId         String
-  dispensary           Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  periodStart          DateTime
-  periodEnd            DateTime
-  displayName          String
-  discordUserId        String
-  userId               String?
-  chestDays            Json
-  presenceDays         Json
-  sherifCount          Int      @default(0)
-  patientsCount        Int      @default(0)
-  infusionsCount       Int      @default(0)
-  poppyMilkCount       Int      @default(0)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  history              DispensaryWeeklyActivityHistory[]
+  id            String   @id @default(uuid())
+  dispensaryId  String
+  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  periodStart   DateTime
+  periodEnd     DateTime
+  displayName   String
+  discordUserId String
+  userId        String?
+  chestDays     Json
+  presenceDays  Json
+  sherifCount   Int      @default(0)
+  patientsCount Int      @default(0)
+  infusionsCount Int     @default(0)
+  poppyMilkCount Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  history       DispensaryWeeklyActivityHistory[]
 
   @@unique([dispensaryId, discordUserId, periodStart, periodEnd])
   @@index([discordUserId])
@@ -622,17 +183,17 @@ enum CabinetAccessLevel {
 }
 
 model Cabinet {
-  id           String   @id @default(uuid())
-  dispensaryId String
-  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  name         String
-  description  String?
-  formSchemas  Json
-  displaySettings Json @default("{}")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  members      CabinetMember[]
-  patients     CabinetPatient[]
+  id              String   @id @default(uuid())
+  dispensaryId    String
+  dispensary      Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  formSchemas     Json
+  displaySettings Json     @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  members         CabinetMember[]
+  patients        CabinetPatient[]
 
   @@index([dispensaryId])
   @@map("cabinet")

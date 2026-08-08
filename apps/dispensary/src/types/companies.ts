@@ -1,16 +1,7 @@
-import type { Company, CompanyGroup } from '@prisma/client';
+import type { CompanyRecord } from '@lawless-intranet/types';
 
-export type CompanySelect = Pick<Company, 'id' | 'name'>;
+export type CompanySelect = Pick<CompanyRecord, 'id' | 'name'>;
 
-export interface CompanyGroupMembership {
-  companyGroupId: string;
-  companyGroup: Pick<CompanyGroup, 'id' | 'name'>;
-}
+export type CompanyGroupMembership = NonNullable<CompanyRecord['companyGroups']>[number];
 
-export interface CompanyWithRelations extends Company {
-  companyGroups: CompanyGroupMembership[];
-  _count: {
-    companyGroups: number;
-    orders: number;
-  };
-}
+export type CompanyWithRelations = CompanyRecord;

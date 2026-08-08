@@ -1,11 +1,18 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { resolveChestAccess, chestAccessWhereFilter } from '@/lib/chests/access';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import {
+  createChest as createChestClient,
+  deleteChest as deleteChestClient,
+  listChests,
+  listChestsLite,
+  reorderChests as reorderChestsClient,
+  updateChest as updateChestClient,
+} from '@lawless-intranet/inventory-client/server';
+import type { ChestRecord } from '@lawless-intranet/types';
 
 const createChestSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
@@ -35,6 +42,7 @@ const reorderChestsSchema = z.object({
 export type GetChestsListOptions = {
   bypassAccessFilter?: boolean;
 };
+
 export async function createChest(
   dispensarySlug: string,
   data: {
@@ -49,32 +57,18 @@ export async function createChest(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createChestSchema.parse(data);
+    const chest = await createChestClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    const maxOrderResult = await prisma.chest.aggregate({
-      where: tenantWhere(dispensaryId),
-      _max: {
-        order: true,
-      },
-    });
-    const maxOrder = maxOrderResult._max.order ?? -1;
-    const newOrder = maxOrder + 1;
-
-    const chest = await prisma.chest.create({
-      data: {
-        dispensaryId,
-        name: validatedData.name,
-        description: validatedData.description,
-        isEnabled: validatedData.isEnabled ?? true,
-        order: newOrder,
-      },
-    });
-
-    return {
-      status: 201,
-      data: chest,
-    };
+    return { status: 201, data: chest };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création du coffre');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la création du coffre');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la création du coffre');
+    }
   }
 }
 
@@ -84,31 +78,21 @@ export async function getChests(dispensarySlug: string, onlyEnabled: boolean = f
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const chests = await prisma.chest.findMany({
-      where: {
-        ...tenantWhere(dispensaryId),
-        ...(onlyEnabled && { isEnabled: true }),
+    const chests = (await listChests(
+      {
+        ...inventoryScope(dispensaryId),
+        onlyEnabled: onlyEnabled || undefined,
       },
-      orderBy: [
-        { order: 'asc' },
-        { createdAt: 'desc' },
-      ],
-      include: {
-        _count: {
-          select: { stockHistory: true },
-        },
-      },
-    });
+      await inventoryCookie(),
+    )) as ChestRecord[];
 
-    return {
-      status: 200,
-      data: chests.map(({ _count, ...chest }) => ({
-        ...chest,
-        stockHistoryCount: _count.stockHistory,
-      })),
-    };
+    return { status: 200, data: chests };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des coffres');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des coffres');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des coffres');
+    }
   }
 }
 
@@ -122,37 +106,23 @@ export async function getChestsList(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId, effectiveRole } = ctx.tenant;
 
-    const access = options.bypassAccessFilter
-      ? ({ all: true } as const)
-      : await resolveChestAccess(dispensaryId, effectiveRole);
-
-    if (!access.all && access.chestIds.length === 0) {
-      return { status: 200, data: [] };
-    }
-
-    const chests = await prisma.chest.findMany({
-      where: {
-        ...tenantWhere(dispensaryId),
-        ...(onlyEnabled && { isEnabled: true }),
-        ...chestAccessWhereFilter(access),
+    const chests = await listChestsLite(
+      {
+        ...inventoryScope(dispensaryId),
+        onlyEnabled: onlyEnabled || undefined,
+        effectiveRole,
+        bypassAccessFilter: options.bypassAccessFilter || undefined,
       },
-      orderBy: [
-        { order: 'asc' },
-        { createdAt: 'desc' },
-      ],
-      select: {
-        id: true,
-        name: true,
-        order: true,
-      },
-    });
+      await inventoryCookie(),
+    );
 
-    return {
-      status: 200,
-      data: chests,
-    };
+    return { status: 200, data: chests };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des coffres');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des coffres');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des coffres');
+    }
   }
 }
 
@@ -171,25 +141,18 @@ export async function updateChest(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = updateChestSchema.parse(data);
+    const chest = await updateChestClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    const chest = await prisma.chest.update({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-      data: {
-        name: validatedData.name,
-        description: validatedData.description,
-        isEnabled: validatedData.isEnabled,
-      },
-    });
-
-    return {
-      status: 200,
-      data: chest,
-    };
+    return { status: 200, data: chest };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification du coffre');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la modification du coffre');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la modification du coffre');
+    }
   }
 }
 
@@ -203,73 +166,18 @@ export async function deleteChest(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = deleteChestSchema.parse(data);
+    await deleteChestClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    const totalChests = await prisma.chest.count({
-      where: tenantWhere(dispensaryId),
-    });
-    if (totalChests <= 1) {
-      return {
-        status: 400,
-        error: 'Impossible de supprimer le dernier coffre. Il doit y avoir au moins un coffre.',
-      };
-    }
-
-    if (validatedData.id === validatedData.targetChestId) {
-      return {
-        status: 400,
-        error: 'Le coffre de destination doit être différent du coffre à supprimer.',
-      };
-    }
-
-    const chests = await prisma.chest.findMany({
-      where: {
-        id: { in: [validatedData.id, validatedData.targetChestId] },
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    const chestToDelete = chests.find((c) => c.id === validatedData.id);
-    const targetChest = chests.find((c) => c.id === validatedData.targetChestId);
-
-    if (!targetChest) {
-      return {
-        status: 404,
-        error: 'Le coffre de destination n\'existe pas.',
-      };
-    }
-
-    if (!chestToDelete) {
-      return {
-        status: 404,
-        error: 'Le coffre à supprimer n\'existe pas.',
-      };
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.stockHistory.updateMany({
-        where: {
-          chestId: validatedData.id,
-          chest: tenantWhere(dispensaryId),
-        },
-        data: {
-          chestId: validatedData.targetChestId,
-        },
-      });
-
-      await tx.chest.delete({
-        where: {
-          id: validatedData.id,
-          ...tenantWhere(dispensaryId),
-        },
-      });
-    });
-
-    return {
-      status: 200,
-      data: { success: true },
-    };
+    return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du coffre');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la suppression du coffre');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression du coffre');
+    }
   }
 }
 
@@ -283,21 +191,17 @@ export async function reorderChests(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = reorderChestsSchema.parse(data);
-
-    await prisma.$transaction(
-      validatedData.items.map(({ id, order }) =>
-        prisma.chest.update({
-          where: { id, ...tenantWhere(dispensaryId) },
-          data: { order },
-        }),
-      ),
+    await reorderChestsClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
     );
 
-    return {
-      status: 200,
-      data: { success: true },
-    };
+    return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du réordonnancement des coffres');
+    try {
+      return inventoryActionError(error, 'Erreur lors du réordonnancement des coffres');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du réordonnancement des coffres');
+    }
   }
 }

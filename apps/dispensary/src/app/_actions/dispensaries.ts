@@ -22,6 +22,9 @@ import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import { purgeBankScope } from '@lawless-intranet/bank-client/server';
 import { BankClientError } from '@lawless-intranet/bank-client';
 import { bankScope } from '@/lib/bank/client';
+import { purgeInventoryScope } from '@lawless-intranet/inventory-client/server';
+import { InventoryClientError } from '@lawless-intranet/inventory-client';
+import { inventoryScope } from '@/lib/inventory/client';
 
 const createDispensarySchema = z.object({
   name: z.string().min(1).max(120),
@@ -127,6 +130,15 @@ export async function deleteDispensary(data: { id: string }) {
     }
 
     try {
+      await purgeInventoryScope(inventoryScope(dispensary.id), { internal: true });
+    } catch (error) {
+      if (error instanceof InventoryClientError) {
+        return { status: error.status, error: error.message };
+      }
+      console.error('Failed to purge inventory scope', error);
+    }
+
+    try {
       const cookie = await agendaCookie();
       const agendas = await listAllAgendas(agendaScope(dispensary.id), cookie);
       for (const agenda of agendas) {
@@ -147,7 +159,6 @@ export async function deleteDispensary(data: { id: string }) {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.sale.deleteMany({ where: { dispensaryId: dispensary.id } });
       await tx.dispensaryWeeklyActivityHistory.deleteMany({
         where: { activity: { dispensaryId: dispensary.id } },
       });

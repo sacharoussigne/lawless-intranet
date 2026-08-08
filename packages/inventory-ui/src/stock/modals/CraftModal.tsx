@@ -1,0 +1,671 @@
+'use client';
+
+import { useQueries } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  Modal,
+  Stack,
+  Select,
+  NumberInput,
+  Text,
+  Button,
+  Group,
+  Alert,
+  ScrollArea,
+  Divider,
+  SimpleGrid,
+} from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { useInventoryUi } from '../../InventoryUiProvider';
+import { unwrapActionResult } from '../../lib/actionResult';
+import { DEFAULT_STALE_TIME_MS, stockKeys } from '../../lib/queryKeys';
+import type { ChestListItem, CraftRecipeWithIngredients, ItemWithRelations } from '../../types';
+import { useStockItems } from '../hooks/useStockQueries';
+import {
+  type CraftContextV1,
+  loadCraftNavStack,
+  pushCraftNavStack,
+  popCraftNavStack,
+  clearCraftNavStack,
+  getLastRecipeIdForItem,
+  setLastRecipeIdForItem,
+} from './craftNavStorage';
+import { CraftNavigationBar } from './components/CraftNavigationBar';
+import { CraftIngredientsTable, type CraftIngredientRow } from './components/CraftIngredientsTable';
+
+interface CraftModalProps {
+  opened: boolean;
+  onClose: () => void;
+  canCraft?: boolean;
+  onCraft: (
+    itemId: string,
+    recipeId: string,
+    times: number,
+    sourceChestId: string | null,
+    ingredientChests: { ingredientId: string; chestId: string }[],
+    destinationChestId: string | null,
+  ) => Promise<{ ok: true; quantityProduced?: number } | { ok: false }>;
+  initialChestId?: string | null;
+  chests?: ChestListItem[];
+}
+
+export default function CraftModal({
+  opened,
+  onClose,
+  canCraft = true,
+  onCraft,
+  initialChestId = null,
+  chests = [],
+}: CraftModalProps) {
+  const { scopeKey, actions } = useInventoryUi();
+  const [selectedCraftItem, setSelectedCraftItem] = useState<string | null>(null);
+  const [craftQuantity, setCraftQuantity] = useState<number>(1);
+  const [selectedRecipe, setSelectedRecipe] = useState<string | null>(null);
+  const [craftRecipes, setCraftRecipes] = useState<CraftRecipeWithIngredients[]>([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(false);
+  const [sourceChestId, setSourceChestId] = useState<string | null>(initialChestId);
+  const [destinationChestId, setDestinationChestId] = useState<string | null>(initialChestId);
+  const [ingredientChests, setIngredientChests] = useState<Record<string, string>>({});
+  const [navStack, setNavStack] = useState<CraftContextV1[]>([]);
+
+  const { data: sourceChestItems = [], isFetching: loadingSourceItems } = useStockItems(
+    sourceChestId,
+    undefined,
+    { enabled: opened && Boolean(sourceChestId) },
+  );
+
+  const trackedChestIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (sourceChestId) ids.add(sourceChestId);
+    if (destinationChestId) ids.add(destinationChestId);
+    Object.values(ingredientChests).forEach((id) => ids.add(id));
+    return Array.from(ids);
+  }, [sourceChestId, destinationChestId, ingredientChests]);
+
+  const extraChestQueries = useQueries({
+    queries: trackedChestIds
+      .filter((id) => id !== sourceChestId)
+      .map((chestId) => ({
+        queryKey: stockKeys.items(scopeKey, chestId),
+        queryFn: async () =>
+          unwrapActionResult(await actions.getItemsWithStock(chestId)) as ItemWithRelations[],
+        enabled: opened && Boolean(scopeKey && chestId),
+        staleTime: DEFAULT_STALE_TIME_MS,
+      })),
+  });
+
+  const itemsWithStockByChest = useMemo(() => {
+    const map: Record<string, ItemWithRelations[]> = {};
+    if (sourceChestId) {
+      map[sourceChestId] = sourceChestItems;
+    }
+    trackedChestIds
+      .filter((id) => id !== sourceChestId)
+      .forEach((chestId, index) => {
+        const data = extraChestQueries[index]?.data;
+        if (data) map[chestId] = data;
+      });
+    return map;
+  }, [sourceChestId, sourceChestItems, trackedChestIds, extraChestQueries]);
+
+  const loadingItems = loadingSourceItems || extraChestQueries.some((q) => q.isFetching);
+
+  useEffect(() => {
+    if (opened && initialChestId !== null) {
+      setSourceChestId(initialChestId);
+      setDestinationChestId(initialChestId);
+    } else if (opened && initialChestId === null) {
+      setSourceChestId(null);
+      setDestinationChestId(null);
+    }
+  }, [opened, initialChestId]);
+
+  useEffect(() => {
+    if (!opened) return;
+    setNavStack(loadCraftNavStack());
+  }, [opened]);
+
+  useEffect(() => {
+    if (!opened) {
+      setSelectedCraftItem(null);
+      setCraftQuantity(1);
+      setSelectedRecipe(null);
+      setCraftRecipes([]);
+      setDestinationChestId(null);
+      setIngredientChests({});
+      setNavStack([]);
+    }
+  }, [opened]);
+
+  useEffect(() => {
+    if (sourceChestId && (!destinationChestId || destinationChestId === sourceChestId)) {
+      setDestinationChestId(sourceChestId);
+    }
+  }, [sourceChestId, destinationChestId]);
+
+  useEffect(() => {
+    if (selectedRecipe) {
+      setIngredientChests({});
+    }
+  }, [selectedRecipe]);
+
+  const loadRecipesForItem = useCallback(
+    async (itemId: string) => {
+      setLoadingRecipes(true);
+      try {
+        const data = unwrapActionResult(await actions.getCraftRecipesByItemId(itemId, true));
+        return (data ?? []) as CraftRecipeWithIngredients[];
+      } finally {
+        setLoadingRecipes(false);
+      }
+    },
+    [actions],
+  );
+
+  const handleItemChange = async (
+    value: string | null,
+    opts?: { preselectRecipeId?: string | null },
+  ) => {
+    setSelectedCraftItem(value);
+    setSelectedRecipe(null);
+    if (value) {
+      try {
+        const data = await loadRecipesForItem(value);
+        setCraftRecipes(data);
+
+        const preselect = opts?.preselectRecipeId ?? null;
+        if (preselect && data.some((r) => r.id === preselect)) {
+          setSelectedRecipe(preselect);
+          setLastRecipeIdForItem(value, preselect);
+          return;
+        }
+
+        if (data.length === 1) {
+          setSelectedRecipe(data[0].id);
+          setLastRecipeIdForItem(value, data[0].id);
+          return;
+        }
+
+        const last = getLastRecipeIdForItem(value);
+        if (last && data.some((r) => r.id === last)) {
+          setSelectedRecipe(last);
+          return;
+        }
+      } catch (error: unknown) {
+        notifications.show({
+          title: 'Erreur',
+          message:
+            error instanceof Error ? error.message : 'Erreur lors du chargement des recettes',
+          color: 'danger',
+        });
+      }
+    } else {
+      setCraftRecipes([]);
+    }
+  };
+
+  const handleClose = () => {
+    setSelectedCraftItem(null);
+    setCraftQuantity(1);
+    setSelectedRecipe(null);
+    setCraftRecipes([]);
+    setDestinationChestId(null);
+    setIngredientChests({});
+    clearCraftNavStack();
+    setNavStack([]);
+    onClose();
+  };
+
+  const applyContext = useCallback(async (ctx: CraftContextV1) => {
+    setSourceChestId(ctx.sourceChestId);
+    setDestinationChestId(ctx.destinationChestId);
+    setIngredientChests(ctx.ingredientChests || {});
+    setCraftQuantity(ctx.times || 1);
+
+    if (ctx.craftedItemId) {
+      await handleItemChange(ctx.craftedItemId, { preselectRecipeId: ctx.recipeId });
+    } else {
+      await handleItemChange(null);
+    }
+  }, []);
+
+  const handleBack = useCallback(async () => {
+    const { stack, popped } = popCraftNavStack();
+    setNavStack(stack);
+    if (popped) {
+      await applyContext(popped);
+    }
+  }, [applyContext]);
+
+  const handleResetNavigation = useCallback(() => {
+    clearCraftNavStack();
+    setNavStack([]);
+  }, []);
+
+  const handleIngredientChestChange = useCallback(
+    (ingredientId: string, chestId: string | null) => {
+      if (chestId) {
+        setIngredientChests((prev) => ({
+          ...prev,
+          [ingredientId]: chestId,
+        }));
+      } else {
+        setIngredientChests((prev) => {
+          const updated = { ...prev };
+          delete updated[ingredientId];
+          return updated;
+        });
+      }
+    },
+    [],
+  );
+
+  const handleCraft = async () => {
+    if (!selectedCraftItem || !selectedRecipe || !sourceChestId || !destinationChestId) return;
+
+    const recipe = craftRecipes.find((r) => r.id === selectedRecipe);
+    if (!recipe) return;
+
+    const ingredientChestsArray = recipe.ingredients.map((ingredient) => ({
+      ingredientId: ingredient.id,
+      chestId: ingredientChests[ingredient.id] || sourceChestId,
+    }));
+
+    const result = await onCraft(
+      selectedCraftItem,
+      selectedRecipe,
+      craftQuantity,
+      sourceChestId,
+      ingredientChestsArray,
+      destinationChestId,
+    );
+
+    if (!result.ok) {
+      return;
+    }
+
+    if (navStack.length > 0) {
+      await handleBack();
+      return;
+    }
+
+    handleClose();
+  };
+
+  const getItemStockInChest = (
+    itemId: string,
+    chestId: string | null,
+  ): { stock: number | null; isToday: boolean } => {
+    if (!chestId) return { stock: null, isToday: false };
+
+    const itemsInChest = itemsWithStockByChest[chestId] || [];
+    const item = itemsInChest.find((i) => i.id === itemId);
+
+    if (!item) return { stock: null, isToday: false };
+
+    if (item.stockToday !== null && item.stockToday !== undefined) {
+      return { stock: item.stockToday, isToday: true };
+    }
+
+    if (item.stockYesterday !== null && item.stockYesterday !== undefined) {
+      return { stock: item.stockYesterday, isToday: false };
+    }
+
+    return { stock: null, isToday: false };
+  };
+
+  const chestOptions = chests.map((chest) => ({
+    value: chest.id,
+    label: chest.name,
+  }));
+
+  const getCraftValidation = () => {
+    if (!canCraft) {
+      return { canCraft: false, reason: "Vous n'avez pas la permission d'effectuer un craft" };
+    }
+
+    if (!sourceChestId) {
+      return { canCraft: false, reason: 'Veuillez sélectionner un coffre source de base' };
+    }
+
+    if (!destinationChestId) {
+      return { canCraft: false, reason: 'Veuillez sélectionner un coffre de destination' };
+    }
+
+    if (!selectedCraftItem || !selectedRecipe || craftQuantity < 1) {
+      return { canCraft: false, reason: null };
+    }
+
+    const recipe = craftRecipes.find((r) => r.id === selectedRecipe);
+    if (!recipe) {
+      return { canCraft: false, reason: null };
+    }
+
+    const ingredientChecks = recipe.ingredients.map((ingredient) => {
+      const requiredQuantity = ingredient.quantity * craftQuantity;
+      const ingredientChestId = ingredientChests[ingredient.id] || sourceChestId;
+      const stockInfo = getItemStockInChest(ingredient.usedItemId, ingredientChestId);
+
+      return {
+        ingredient,
+        requiredQuantity,
+        stockInfo,
+        hasEnough: stockInfo.stock !== null && stockInfo.stock >= requiredQuantity,
+      };
+    });
+
+    const missingStockItems = ingredientChecks.filter((check) => check.stockInfo.stock === null);
+    if (missingStockItems.length > 0) {
+      return {
+        canCraft: false,
+        reason: `Stock manquant pour : ${missingStockItems.map((c) => c.ingredient.usedItem.name).join(', ')}`,
+      };
+    }
+
+    const insufficientStockItems = ingredientChecks.filter((check) => !check.hasEnough);
+    if (insufficientStockItems.length > 0) {
+      return {
+        canCraft: false,
+        reason: `Stock insuffisant pour : ${insufficientStockItems
+          .map(
+            (c) =>
+              `${c.ingredient.usedItem.name} (${c.requiredQuantity} requis, ${c.stockInfo.stock} disponible)`,
+          )
+          .join(', ')}`,
+      };
+    }
+
+    return { canCraft: true, reason: null };
+  };
+
+  const validation = getCraftValidation();
+  const isCraftButtonDisabled = !validation.canCraft;
+
+  const selectedRecipeData = craftRecipes.find((r) => r.id === selectedRecipe) || craftRecipes[0];
+  const totalQuantityProduced = selectedRecipeData ? selectedRecipeData.quantity * craftQuantity : 0;
+
+  const getCurrentContext = useCallback((): CraftContextV1 => {
+    return {
+      craftedItemId: selectedCraftItem,
+      recipeId: selectedRecipe,
+      times: craftQuantity,
+      sourceChestId,
+      destinationChestId,
+      ingredientChests,
+    };
+  }, [
+    craftQuantity,
+    destinationChestId,
+    ingredientChests,
+    selectedCraftItem,
+    selectedRecipe,
+    sourceChestId,
+  ]);
+
+  const handleDrillDownToIngredient = useCallback(
+    async (
+      ingredient: CraftRecipeWithIngredients['ingredients'][number],
+      requiredQuantity: number,
+      stockInfo: { stock: number | null; isToday: boolean },
+    ) => {
+      const ingredientItemId = ingredient.usedItemId;
+
+      const recipes = await loadRecipesForItem(ingredientItemId);
+      if (!recipes || recipes.length === 0) {
+        notifications.show({
+          title: 'Impossible',
+          message: 'Aucune recette disponible pour cet ingrédient',
+          color: 'amber',
+        });
+        return;
+      }
+
+      const last = getLastRecipeIdForItem(ingredientItemId);
+      const preferred =
+        last && recipes.some((r) => r.id === last) ? last : (recipes[0]?.id ?? null);
+      const recipe = recipes.find((r) => r.id === preferred) ?? recipes[0];
+      if (!recipe) return;
+
+      const available = stockInfo.stock != null ? stockInfo.stock : 0;
+      const missing = Math.max(0, requiredQuantity - available);
+      const yieldPerCraft = Math.max(1, recipe.quantity);
+      const timesNeeded = Math.max(1, Math.ceil(missing / yieldPerCraft));
+
+      const currentCtx = getCurrentContext();
+      const nextStack = pushCraftNavStack(currentCtx);
+      setNavStack(nextStack);
+
+      setCraftRecipes(recipes);
+      setSelectedCraftItem(ingredientItemId);
+      setSelectedRecipe(recipe.id);
+      setLastRecipeIdForItem(ingredientItemId, recipe.id);
+      setCraftQuantity(timesNeeded);
+      setIngredientChests({});
+    },
+    [getCurrentContext, loadRecipesForItem],
+  );
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={handleClose}
+      title="Craft d'objet"
+      size="lg"
+      yOffset={60}
+      scrollAreaComponent={ScrollArea.Autosize}
+    >
+      <Stack gap="lg">
+        <CraftNavigationBar
+          depth={navStack.length}
+          onBack={handleBack}
+          onReset={handleResetNavigation}
+        />
+        <Stack gap="sm">
+          <Text fw={600} size="xs" c="dimmed" tt="uppercase">
+            Coffres
+          </Text>
+          {chests.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              Aucun coffre accessible avec votre rôle.
+            </Text>
+          ) : (
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Select
+                label="Coffre source de base"
+                placeholder="Sélectionner le coffre source"
+                data={chestOptions}
+                value={sourceChestId}
+                onChange={(value) => setSourceChestId(value)}
+                required
+                clearable={false}
+              />
+
+              <Select
+                label="Coffre de destination"
+                placeholder="Sélectionner le coffre destination"
+                data={chestOptions}
+                value={destinationChestId}
+                onChange={(value) => setDestinationChestId(value)}
+                required
+                clearable={false}
+              />
+            </SimpleGrid>
+          )}
+        </Stack>
+
+        <Stack gap="sm">
+          <Text fw={600} size="xs" c="dimmed" tt="uppercase">
+            Objet et recette
+          </Text>
+          <Select
+            label="Objet à craft"
+            placeholder="Sélectionner un objet craftable"
+            data={sourceChestItems
+              .filter((item) => item.isCraftable)
+              .sort((a, b) => {
+                if (a.order !== undefined && b.order !== undefined) {
+                  return a.order - b.order;
+                }
+                if (a.order !== undefined) return -1;
+                if (b.order !== undefined) return 1;
+                return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+              })
+              .map((item) => ({
+                value: item.id,
+                label: item.name,
+              }))}
+            value={selectedCraftItem}
+            onChange={(value) => handleItemChange(value)}
+            searchable
+            required
+            disabled={loadingItems}
+          />
+
+          {selectedCraftItem && craftRecipes.length > 0 && (
+            <>
+              {craftRecipes.length > 1 ? (
+                <Select
+                  label="Recette"
+                  placeholder="Sélectionner une recette"
+                  data={craftRecipes.map((recipe) => ({
+                    value: recipe.id,
+                    label: recipe.name,
+                  }))}
+                  value={selectedRecipe}
+                  onChange={(value) => {
+                    setSelectedRecipe(value);
+                    if (selectedCraftItem && value) {
+                      setLastRecipeIdForItem(selectedCraftItem, value);
+                    }
+                  }}
+                  required
+                  renderOption={({ option }) => {
+                    const recipe = craftRecipes.find((r) => r.id === option.value);
+                    return (
+                      <div>
+                        <div>{option.label}</div>
+                        {recipe?.description && (
+                          <Text size="xs" c="dimmed" mt={2}>
+                            {recipe.description}
+                          </Text>
+                        )}
+                      </div>
+                    );
+                  }}
+                />
+              ) : (
+                <Stack gap="xs">
+                  <Text size="sm" c="dimmed">
+                    Recette : {craftRecipes[0]?.name}
+                  </Text>
+                  {craftRecipes[0]?.description && (
+                    <Text size="xs" c="dimmed">
+                      {craftRecipes[0].description}
+                    </Text>
+                  )}
+                </Stack>
+              )}
+
+              {selectedRecipeData && (
+                <>
+                  <NumberInput
+                    label="Nombre de fois à craft"
+                    placeholder="Nombre de fois"
+                    value={craftQuantity}
+                    onChange={(value) => setCraftQuantity(typeof value === 'number' ? value : 1)}
+                    min={1}
+                    required
+                    description={`Quantité totale produite : ${totalQuantityProduced}`}
+                  />
+
+                  <Divider />
+
+                  <CraftIngredientsTable
+                    rows={selectedRecipeData.ingredients.map((ingredient): CraftIngredientRow => {
+                      const requiredQuantity = ingredient.quantity * craftQuantity;
+                      const ingredientChestId = ingredientChests[ingredient.id] || sourceChestId;
+                      const stockInfo = getItemStockInChest(
+                        ingredient.usedItemId,
+                        ingredientChestId,
+                      );
+                      const hasEnough =
+                        stockInfo.stock !== null && stockInfo.stock >= requiredQuantity;
+                      const isActionableMissing = stockInfo.stock === null || !hasEnough;
+
+                      return {
+                        id: ingredient.id,
+                        usedItemId: ingredient.usedItemId,
+                        usedItemName: ingredient.usedItem.name,
+                        requiredQuantity,
+                        ingredientChestId,
+                        stockInfo,
+                        hasEnough,
+                        isActionableMissing,
+                      };
+                    })}
+                    chestOptions={chestOptions}
+                    disabled={!sourceChestId}
+                    onChangeIngredientChest={handleIngredientChestChange}
+                    onDrillDown={(ingredientId) => {
+                      const ingredient = selectedRecipeData.ingredients.find(
+                        (i) => i.id === ingredientId,
+                      );
+                      if (!ingredient) return;
+
+                      const requiredQuantity = ingredient.quantity * craftQuantity;
+                      const ingredientChestId = ingredientChests[ingredient.id] || sourceChestId;
+                      const stockInfo = getItemStockInChest(
+                        ingredient.usedItemId,
+                        ingredientChestId,
+                      );
+                      handleDrillDownToIngredient(ingredient, requiredQuantity, stockInfo);
+                    }}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </Stack>
+
+        {selectedCraftItem && craftRecipes.length === 0 && !loadingRecipes && (
+          <Text c="dimmed" size="sm">
+            Aucune recette disponible pour cet objet
+          </Text>
+        )}
+
+        {loadingRecipes && (
+          <Text c="dimmed" size="sm">
+            Chargement des recettes...
+          </Text>
+        )}
+
+        {loadingItems && (
+          <Text c="dimmed" size="sm">
+            Chargement des stocks...
+          </Text>
+        )}
+
+        {validation.reason && (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            title="Attention"
+            color="amber"
+            variant="light"
+          >
+            {validation.reason}
+          </Alert>
+        )}
+
+        <Group justify="flex-end" mt="md">
+          <Button variant="subtle" onClick={handleClose}>
+            Annuler
+          </Button>
+          <Button onClick={handleCraft} disabled={isCraftButtonDisabled} color="sage">
+            Craft
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}

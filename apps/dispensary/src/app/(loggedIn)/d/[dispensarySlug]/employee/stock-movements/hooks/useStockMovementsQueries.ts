@@ -21,7 +21,7 @@ import type {
   StockMovementsPageResult,
 } from '@/types/stock';
 import type { StockMovementsSharedFilters } from '../components/StockMovementsFilters';
-import type { StockMovementKind } from '@prisma/client';
+import type { StockMovementKind } from '@/lib/stock/movements';
 
 export const DEFAULT_MOVEMENTS_PAGE_SIZE = 25;
 
@@ -162,7 +162,7 @@ export function useUpdateStockMovementMutation() {
       note?: string | null;
     }) => {
       const result = await updateStockMovement(dispensarySlug, vars);
-      return handleAction(result) as StockMovementListItem;
+      return handleAction(result) as unknown as StockMovementListItem;
     },
     onSuccess: () => {
       invalidate();

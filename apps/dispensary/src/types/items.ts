@@ -1,19 +1,18 @@
-import type { Item, CategoryItem, CompanyGroup, CraftRecipe, CraftRecipeItem } from '@prisma/client';
+import type {
+  CategoryItemRecord,
+  CompanyGroupRecord,
+  CraftRecipeItemRecord,
+  CraftRecipeRecord,
+  ItemRecord,
+} from '@lawless-intranet/types';
 
-export interface ItemWithRelations extends Omit<Item, 'price'> {
-  price: number | null;
-  category: { id: string; name: string; color: string; order?: number } | null;
-  companyGroup: { id: string; name: string } | null;
-}
+export type ItemWithRelations = ItemRecord;
 
-export interface CraftRecipeItemWithItem extends CraftRecipeItem {
-  usedItem: { id: string; name: string };
-}
+export type CraftRecipeItemWithItem = CraftRecipeItemRecord;
 
-export interface CraftRecipeWithIngredients extends CraftRecipe {
+export type CraftRecipeWithIngredients = CraftRecipeRecord & {
   ingredients: CraftRecipeItemWithItem[];
-}
+};
 
-export type { CategoryItem };
-export type CompanyGroupSelect = Pick<CompanyGroup, 'id' | 'name'>;
-
+export type { CategoryItemRecord as CategoryItem };
+export type CompanyGroupSelect = Pick<CompanyGroupRecord, 'id' | 'name'>;

@@ -1,4 +1,4 @@
-import type { Order } from '@prisma/client';
+import type { OrderRecord } from '@lawless-intranet/types';
 
 export interface OrderItem {
   id?: string;
@@ -13,7 +13,11 @@ export interface OrderItem {
   };
 }
 
-export interface OrderWithRelations extends Omit<Order, 'price'> {
+export interface OrderWithRelations
+  extends Omit<
+    OrderRecord,
+    'items' | 'company' | 'individualCustomer' | 'companyGroup' | 'itemCount' | '_count'
+  > {
   price: number | null;
   company: {
     id: string;

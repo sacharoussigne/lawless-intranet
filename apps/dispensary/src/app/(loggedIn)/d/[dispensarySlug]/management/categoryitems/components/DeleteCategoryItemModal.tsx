@@ -39,9 +39,9 @@ export function DeleteCategoryItemModal({
         <Text>
           Êtes-vous sûr de vouloir supprimer la catégorie d&apos;objet{' '}
           <strong>{categoryItemToDelete?.name}</strong> ?
-          {categoryItemToDelete && categoryItemToDelete._count.items > 0 && (
+          {categoryItemToDelete && (categoryItemToDelete._count?.items ?? 0) > 0 && (
             <Text c="danger" size="sm" mt="xs">
-              Attention : Cette catégorie contient {categoryItemToDelete._count.items} objet(s).
+              Attention : Cette catégorie contient {categoryItemToDelete._count?.items ?? 0} objet(s).
             </Text>
           )}
         </Text>

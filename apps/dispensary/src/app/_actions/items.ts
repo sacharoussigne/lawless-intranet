@@ -1,10 +1,16 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import {
+  createItem as createItemClient,
+  deleteItem as deleteItemClient,
+  listItems,
+  reorderItems as reorderItemsClient,
+  updateItem as updateItemClient,
+} from '@lawless-intranet/inventory-client/server';
 
 const createItemSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
@@ -44,30 +50,6 @@ const reorderItemsSchema = z.object({
   })),
 });
 
-async function validateItemRelations(
-  dispensaryId: string,
-  categoryId: string,
-  companyGroupId?: string,
-): Promise<{ ok: true } | { ok: false; response: { status: number; error: string } }> {
-  const category = await prisma.categoryItem.findFirst({
-    where: { id: categoryId, ...tenantWhere(dispensaryId) },
-  });
-  if (!category) {
-    return { ok: false, response: { status: 400, error: 'Catégorie invalide' } };
-  }
-
-  if (companyGroupId) {
-    const companyGroup = await prisma.companyGroup.findFirst({
-      where: { id: companyGroupId, ...tenantWhere(dispensaryId) },
-    });
-    if (!companyGroup) {
-      return { ok: false, response: { status: 400, error: 'Groupe d\'entreprises invalide' } };
-    }
-  }
-
-  return { ok: true };
-}
-
 export async function createItem(
   dispensarySlug: string,
   data: {
@@ -89,71 +71,18 @@ export async function createItem(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = createItemSchema.parse(data);
-
-    const relationsResult = await validateItemRelations(
-      dispensaryId,
-      validatedData.categoryId,
-      validatedData.companyGroupId,
+    const item = await createItemClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
     );
-    if (!relationsResult.ok) return relationsResult.response;
 
-    const lastItem = await prisma.item.findFirst({
-      where: {
-        categoryId: validatedData.categoryId,
-        ...tenantWhere(dispensaryId),
-      },
-      orderBy: {
-        order: 'desc',
-      },
-      select: {
-        order: true,
-      },
-    });
-
-    const newOrder = lastItem ? lastItem.order + 1 : 0;
-
-    const item = await prisma.item.create({
-      data: {
-        dispensaryId,
-        name: validatedData.name,
-        description: validatedData.description,
-        minimalQuantity: validatedData.minimalQuantity,
-        isCraftable: validatedData.isCraftable ?? false,
-        isEnabled: validatedData.isEnabled ?? true,
-        canBeSold: validatedData.canBeSold ?? false,
-        price: validatedData.price !== undefined && validatedData.price !== null ? validatedData.price : null,
-        weight: validatedData.weight !== undefined && validatedData.weight !== null ? validatedData.weight : null,
-        categoryId: validatedData.categoryId,
-        companyGroupId: validatedData.companyGroupId,
-        order: newOrder,
-      },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            order: true,
-          },
-        },
-        companyGroup: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    return {
-      status: 201,
-      data: {
-        ...item,
-        price: item.price ? Number(item.price) : null,
-      },
-    };
+    return { status: 201, data: item };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création de l\'objet');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la création de l\'objet');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la création de l\'objet');
+    }
   }
 }
 
@@ -166,55 +95,21 @@ export async function getItems(
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const items = await prisma.item.findMany({
-      where: {
-        ...tenantWhere(dispensaryId),
-        ...(options?.companyGroupId
-          ? { companyGroupId: options.companyGroupId }
-          : {}),
+    const items = await listItems(
+      {
+        ...inventoryScope(dispensaryId),
+        ...(options?.companyGroupId ? { companyGroupId: options.companyGroupId } : {}),
       },
-      orderBy: [
-        {
-          category: {
-            order: 'asc',
-          },
-        },
-        {
-          order: 'asc',
-        },
-        {
-          name: 'asc',
-        },
-      ],
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            order: true,
-          },
-        },
-        companyGroup: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+      await inventoryCookie(),
+    );
 
-    const serializedItems = items.map((item) => ({
-      ...item,
-      price: item.price ? Number(item.price) : null,
-    }));
-
-    return {
-      status: 200,
-      data: serializedItems,
-    };
+    return { status: 200, data: items };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la récupération des objets');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la récupération des objets');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la récupération des objets');
+    }
   }
 }
 
@@ -240,58 +135,18 @@ export async function updateItem(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = updateItemSchema.parse(data);
-
-    const relationsResult = await validateItemRelations(
-      dispensaryId,
-      validatedData.categoryId,
-      validatedData.companyGroupId,
+    const item = await updateItemClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
     );
-    if (!relationsResult.ok) return relationsResult.response;
 
-    const item = await prisma.item.update({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-      data: {
-        name: validatedData.name,
-        description: validatedData.description,
-        minimalQuantity: validatedData.minimalQuantity,
-        isCraftable: validatedData.isCraftable ?? false,
-        isEnabled: validatedData.isEnabled ?? true,
-        canBeSold: validatedData.canBeSold ?? false,
-        price: validatedData.price !== undefined && validatedData.price !== null ? validatedData.price : null,
-        weight: validatedData.weight !== undefined && validatedData.weight !== null ? validatedData.weight : null,
-        categoryId: validatedData.categoryId,
-        companyGroupId: validatedData.companyGroupId,
-      },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            order: true,
-          },
-        },
-        companyGroup: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    return {
-      status: 200,
-      data: {
-        ...item,
-        price: item.price ? Number(item.price) : null,
-      },
-    };
+    return { status: 200, data: item };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification de l\'objet');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la modification de l\'objet');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la modification de l\'objet');
+    }
   }
 }
 
@@ -302,20 +157,18 @@ export async function deleteItem(dispensarySlug: string, data: { id: string }) {
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = deleteItemSchema.parse(data);
+    await deleteItemClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
+    );
 
-    await prisma.item.delete({
-      where: {
-        id: validatedData.id,
-        ...tenantWhere(dispensaryId),
-      },
-    });
-
-    return {
-      status: 200,
-      data: { success: true },
-    };
+    return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression de l\'objet');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la suppression de l\'objet');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la suppression de l\'objet');
+    }
   }
 }
 
@@ -329,21 +182,17 @@ export async function reorderItems(
     const { dispensaryId } = ctx.tenant;
 
     const validatedData = reorderItemsSchema.parse(data);
-
-    await prisma.$transaction(
-      validatedData.items.map(({ id, order }) =>
-        prisma.item.update({
-          where: { id, ...tenantWhere(dispensaryId) },
-          data: { order },
-        }),
-      ),
+    await reorderItemsClient(
+      { ...inventoryScope(dispensaryId), ...validatedData },
+      await inventoryCookie(),
     );
 
-    return {
-      status: 200,
-      data: { success: true },
-    };
+    return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du réordonnancement des objets');
+    try {
+      return inventoryActionError(error, 'Erreur lors du réordonnancement des objets');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du réordonnancement des objets');
+    }
   }
 }

@@ -35,7 +35,7 @@ import { stockKeys } from '@/lib/stock/queryKeys';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import type { ChestListItem } from '@/types/chests';
 import type { ItemWithRelations } from '@/types/stock';
-import { SaleItemSource } from '@prisma/client';
+import { SaleItemSource } from '@lawless-intranet/inventory-client';
 
 type SaleLine = {
   key: string;

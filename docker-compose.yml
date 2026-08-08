@@ -33,6 +33,7 @@ services:
       DOCUMENTS_VIRTUAL_HOST: "${DOCUMENTS_VIRTUAL_HOST:-}"
       AGENDA_VIRTUAL_HOST: "${AGENDA_VIRTUAL_HOST:-}"
       BANK_VIRTUAL_HOST: "${BANK_VIRTUAL_HOST:-}"
+      INVENTORY_VIRTUAL_HOST: "${INVENTORY_VIRTUAL_HOST:-}"
       EXTRA_TRUSTED_ORIGINS: "${EXTRA_TRUSTED_ORIGINS:-}"
       DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:?err}"
       DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:?err}"
@@ -74,6 +75,8 @@ services:
       BANK_URL: "${BANK_PUBLIC_URL:-http://bank:3004}"
       BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
       BANK_BOT_API_SECRET: "${BANK_BOT_API_SECRET:-}"
+      INVENTORY_URL: "${INVENTORY_PUBLIC_URL:-http://inventory:3005}"
+      INVENTORY_INTERNAL_SECRET: "${INVENTORY_INTERNAL_SECRET:?err}"
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
@@ -164,6 +167,33 @@ services:
       LETSENCRYPT_HOST: "${BANK_VIRTUAL_HOST:?err}"
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${BANK_VIRTUAL_HOST:?err}"
+    networks:
+      - proxy
+      - db
+
+  inventory:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-inventory"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: inventory
+        APP_PORT: "3005"
+        NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+        DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+    environment:
+      NODE_ENV: production
+      PORT: "3005"
+      DATABASE_URL: "${INVENTORY_DATABASE_URL:?err}"
+      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      INVENTORY_INTERNAL_SECRET: "${INVENTORY_INTERNAL_SECRET:?err}"
+      VIRTUAL_HOST: "${INVENTORY_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3005"
+      LETSENCRYPT_HOST: "${INVENTORY_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${INVENTORY_VIRTUAL_HOST:?err}"
     networks:
       - proxy
       - db

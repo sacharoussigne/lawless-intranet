@@ -70,19 +70,19 @@ export function CompanyGroupsTable({
             accessor: '_count.items',
             title: "Nombre d'items",
             render: (companyGroup: CompanyGroupWithRelations) =>
-              companyGroup._count.items,
+              companyGroup._count?.items ?? 0,
           },
           {
             accessor: 'companies',
             title: 'Entreprises',
             render: (companyGroup: CompanyGroupWithRelations) => (
               <Group gap="xs">
-                {companyGroup.companies.length === 0 ? (
+                {(companyGroup.companies ?? []).length === 0 ? (
                   <Text c="dimmed" size="sm">
                     -
                   </Text>
                 ) : (
-                  companyGroup.companies.map((companyRelation) => {
+                  (companyGroup.companies ?? []).map((companyRelation) => {
                     const company = companyRelation.company;
                     if (!company) return null;
                     return (

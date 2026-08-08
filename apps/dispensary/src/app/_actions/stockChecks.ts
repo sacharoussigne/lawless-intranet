@@ -1,10 +1,14 @@
 'use server';
 
 import { z } from 'zod/v3';
-import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import {
+  getChestStockCheckConfigs as getChestStockCheckConfigsClient,
+  getStockChecksSummary as getStockChecksSummaryClient,
+  upsertChestStockCheckConfig as upsertChestStockCheckConfigClient,
+} from '@lawless-intranet/inventory-client/server';
 
 const upsertChestStockCheckConfigSchema = z.object({
   chestId: z.string().uuid('ID de coffre invalide'),
@@ -44,38 +48,23 @@ export async function getChestStockCheckForm(dispensarySlug: string, chestId: st
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const [categories, configRow] = await Promise.all([
-      prisma.categoryItem.findMany({
-        where: tenantWhere(dispensaryId),
-        orderBy: [{ order: 'asc' }, { name: 'asc' }],
-        select: { id: true, name: true, color: true, order: true },
-      }),
-      prisma.chestStockCheckConfig.findFirst({
-        where: {
-          chestId,
-          chest: tenantWhere(dispensaryId),
-        },
-        select: {
-          chestId: true,
-          isEnabled: true,
-          categories: { select: { categoryId: true } },
-        },
-      }),
-    ]);
+    const data = await getChestStockCheckConfigsClient(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
+    );
 
-    const config: ChestStockCheckConfigDTO | null = configRow
-      ? {
-          chestId: configRow.chestId,
-          isEnabled: configRow.isEnabled,
-          categoryIds: configRow.categories.map((x) => x.categoryId),
-        }
-      : null;
-
-    const payload: ChestStockCheckFormResponse = { categories, config };
+    const payload: ChestStockCheckFormResponse = {
+      categories: data.categories,
+      config: data.configsByChestId[chestId] ?? null,
+    };
 
     return { status: 200, data: payload };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement de la configuration');
+    try {
+      return inventoryActionError(error, 'Erreur lors du chargement de la configuration');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement de la configuration');
+    }
   }
 }
 
@@ -87,49 +76,18 @@ export async function getChestStockCheckConfigs(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const [chests, categories, configs] = await Promise.all([
-      prisma.chest.findMany({
-        where: tenantWhere(dispensaryId),
-        orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
-        select: { id: true, name: true, isEnabled: true, order: true },
-      }),
-      prisma.categoryItem.findMany({
-        where: tenantWhere(dispensaryId),
-        orderBy: [{ order: 'asc' }, { name: 'asc' }],
-        select: { id: true, name: true, color: true, order: true },
-      }),
-      prisma.chestStockCheckConfig.findMany({
-        where: {
-          chest: tenantWhere(dispensaryId),
-        },
-        select: {
-          chestId: true,
-          isEnabled: true,
-          categories: { select: { categoryId: true } },
-        },
-      }),
-    ]);
-
-    const configsByChestId: Record<string, ChestStockCheckConfigDTO> = Object.fromEntries(
-      configs.map((c) => [
-        c.chestId,
-        {
-          chestId: c.chestId,
-          isEnabled: c.isEnabled,
-          categoryIds: c.categories.map((x) => x.categoryId),
-        },
-      ]),
+    const payload = await getChestStockCheckConfigsClient(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
     );
-
-    const payload: ChestStockCheckConfigsResponse = {
-      chests,
-      categories,
-      configsByChestId,
-    };
 
     return { status: 200, data: payload };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement des vérifications de stock');
+    try {
+      return inventoryActionError(error, 'Erreur lors du chargement des vérifications de stock');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement des vérifications de stock');
+    }
   }
 }
 
@@ -149,60 +107,18 @@ export async function upsertChestStockCheckConfig(
     const { dispensaryId } = ctx.tenant;
 
     const validated = upsertChestStockCheckConfigSchema.parse(input);
-
-    const chest = await prisma.chest.findFirst({
-      where: { id: validated.chestId, ...tenantWhere(dispensaryId) },
-    });
-    if (!chest) {
-      return { status: 404, error: 'Coffre introuvable' };
-    }
-
-    const uniqueCategoryIds = Array.from(new Set(validated.categoryIds));
-    if (uniqueCategoryIds.length > 0) {
-      const categories = await prisma.categoryItem.findMany({
-        where: {
-          id: { in: uniqueCategoryIds },
-          ...tenantWhere(dispensaryId),
-        },
-        select: { id: true },
-      });
-      if (categories.length !== uniqueCategoryIds.length) {
-        return { status: 400, error: 'Une ou plusieurs catégories sont invalides' };
-      }
-    }
-
-    const config = await prisma.$transaction(async (tx) => {
-      const upserted = await tx.chestStockCheckConfig.upsert({
-        where: { chestId: validated.chestId },
-        create: {
-          chestId: validated.chestId,
-          isEnabled: validated.isEnabled,
-        },
-        update: {
-          isEnabled: validated.isEnabled,
-        },
-        select: { id: true, chestId: true, isEnabled: true },
-      });
-
-      await tx.chestStockCheckCategory.deleteMany({
-        where: { configId: upserted.id },
-      });
-
-      if (uniqueCategoryIds.length > 0) {
-        await tx.chestStockCheckCategory.createMany({
-          data: uniqueCategoryIds.map((categoryId) => ({
-            configId: upserted.id,
-            categoryId,
-          })),
-        });
-      }
-
-      return upserted;
-    });
+    const config = await upsertChestStockCheckConfigClient(
+      { ...inventoryScope(dispensaryId), ...validated },
+      await inventoryCookie(),
+    );
 
     return { status: 200, data: config };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la sauvegarde des vérifications de stock');
+    try {
+      return inventoryActionError(error, 'Erreur lors de la sauvegarde des vérifications de stock');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors de la sauvegarde des vérifications de stock');
+    }
   }
 }
 
@@ -219,44 +135,17 @@ export async function getStockChecksSummary(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    const [enabledChests, configs] = await Promise.all([
-      prisma.chest.findMany({
-        where: {
-          isEnabled: true,
-          ...tenantWhere(dispensaryId),
-        },
-        select: { id: true },
-      }),
-      prisma.chestStockCheckConfig.findMany({
-        where: {
-          chest: tenantWhere(dispensaryId),
-        },
-        select: {
-          chestId: true,
-          isEnabled: true,
-          categories: { select: { categoryId: true } },
-        },
-      }),
-    ]);
-
-    const configsByChestId: Record<string, ChestStockCheckConfigDTO> = Object.fromEntries(
-      configs.map((c) => [
-        c.chestId,
-        {
-          chestId: c.chestId,
-          isEnabled: c.isEnabled,
-          categoryIds: c.categories.map((x) => x.categoryId),
-        },
-      ]),
+    const payload = await getStockChecksSummaryClient(
+      inventoryScope(dispensaryId),
+      await inventoryCookie(),
     );
-
-    const payload: StockChecksSummary = {
-      enabledChestIds: enabledChests.map((c) => c.id),
-      configsByChestId,
-    };
 
     return { status: 200, data: payload };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement des vérifications de stock');
+    try {
+      return inventoryActionError(error, 'Erreur lors du chargement des vérifications de stock');
+    } catch (e) {
+      return actionErrorParser(e, 'Erreur lors du chargement des vérifications de stock');
+    }
   }
 }
