@@ -19,6 +19,7 @@ import { ensureTodayStockForAllActiveChests, ensureTodayStockForPairs } from '@/
 import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { createBankTransactionFromOrder } from '@/lib/bank/fromOrder';
+import { bankCookie } from '@/lib/bank/client';
 import { parseISO } from 'date-fns';
 
 const ORDER_DETAIL_INCLUDE = {
@@ -1003,34 +1004,38 @@ export async function completeOrder(
         });
       }
 
-      if (createBankTransaction && bankTransactionDate) {
-        const amount = updated.price != null ? Number(updated.price) : 0;
-        if (amount <= 0) {
-          throw new Error('Un prix de commande est requis pour créer une transaction bancaire');
-        }
+      return updated;
+    });
 
-        const bankResult = await createBankTransactionFromOrder(tx, {
+    let bankWarning: string | undefined;
+    if (createBankTransaction && bankTransactionDate) {
+      const amount = order.price != null ? Number(order.price) : 0;
+      if (amount <= 0) {
+        bankWarning = 'Un prix de commande est requis pour créer une transaction bancaire';
+      } else {
+        const cookie = await bankCookie();
+        const bankResult = await createBankTransactionFromOrder({
           dispensaryId,
-          orderId: updated.id,
-          orderName: updated.name,
-          orderType: updated.type,
+          orderId: order.id,
+          orderName: order.name,
+          orderType: order.type,
           amount,
           date: bankTransactionDate,
-          company: updated.company,
-          individualCustomer: updated.individualCustomer,
+          company: order.company,
+          individualCustomer: order.individualCustomer,
+          cookieHeader: cookie.cookieHeader,
         });
 
         if (!bankResult.ok) {
-          throw new Error(bankResult.error);
+          bankWarning = bankResult.error;
         }
       }
-
-      return updated;
-    });
+    }
 
     return {
       status: 200,
       data: serializeOrderForClient(order),
+      ...(bankWarning ? { warning: bankWarning } : {}),
     };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la finalisation de la commande');

@@ -19,6 +19,9 @@ import {
 } from '@lawless-intranet/agenda-client/server';
 import { purgeDocumentsByScope } from '@lawless-intranet/documents-client/server';
 import { DocumentsClientError } from '@lawless-intranet/documents-client';
+import { purgeBankScope } from '@lawless-intranet/bank-client/server';
+import { BankClientError } from '@lawless-intranet/bank-client';
+import { bankScope } from '@/lib/bank/client';
 
 const createDispensarySchema = z.object({
   name: z.string().min(1).max(120),
@@ -112,6 +115,15 @@ export async function deleteDispensary(data: { id: string }) {
         return { status: error.status, error: error.message };
       }
       throw error;
+    }
+
+    try {
+      await purgeBankScope(bankScope(dispensary.id), { internal: true });
+    } catch (error) {
+      if (error instanceof BankClientError) {
+        return { status: error.status, error: error.message };
+      }
+      console.error('Failed to purge bank scope', error);
     }
 
     try {

@@ -10,10 +10,12 @@
     "migrate:users-to-auth": "tsx scripts/migrate-users-to-auth.ts",
     "migrate:mails-to-documents": "tsx scripts/migrate-mails-to-documents.ts",
     "migrate:agenda-to-service": "tsx scripts/migrate-agenda-to-agenda-service.ts",
+    "migrate:bank-to-service": "tsx scripts/migrate-bank-to-bank-service.ts",
     "docker:build:auth": "docker build --build-arg APP_NAME=auth --build-arg APP_PORT=3001 -t lawless-auth .",
     "docker:build:dispensary": "docker build --build-arg APP_NAME=dispensary --build-arg APP_PORT=3000 -t lawless-dispensary .",
     "docker:build:documents": "docker build --build-arg APP_NAME=documents --build-arg APP_PORT=3002 -t lawless-documents .",
     "docker:build:agenda": "docker build --build-arg APP_NAME=agenda --build-arg APP_PORT=3003 -t lawless-agenda .",
+    "docker:build:bank": "docker build --build-arg APP_NAME=bank --build-arg APP_PORT=3004 -t lawless-bank .",
       "docker:up": "docker compose --env-file .env.docker up -d --build",
       "docker:down": "docker compose --env-file .env.docker down"
     },

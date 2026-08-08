@@ -5,16 +5,14 @@ import {
 } from '@/lib/dispensaryWeeklyActivityApiAuth';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import prisma from '@/lib/prisma';
-import { materializePlannedOccurrencesForDay, startOfParisDay } from '@/lib/bank/planned';
-import dayjs from '@/lib/dayjs';
-import { parseISO } from 'date-fns';
+import { getBankUrl } from '@lawless-intranet/bank-client';
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
 }
 
 /**
- * Materialize pending bank planned occurrences for a dispensary day (Europe/Paris).
+ * Proxy to bank service materialize-planned.
  * Auth: Bearer DISPENSARY_BOT_API_SECRET + X-Dispensary-Id
  * Optional query: ?date=YYYY-MM-DD
  */
@@ -42,29 +40,54 @@ export async function POST(request: Request) {
     return jsonError(featureBlock.status, featureBlock.error);
   }
 
+  const botSecret = process.env.BANK_BOT_API_SECRET;
+  if (!botSecret) {
+    return jsonError(500, 'BANK_BOT_API_SECRET non configuré');
+  }
+
   const url = new URL(request.url);
-  const dateParam = url.searchParams.get('date')?.trim();
-  let targetDate = new Date();
+  const dateParam = url.searchParams.get('date');
+  const upstream = new URL(`${getBankUrl()}/api/bot/materialize-planned`);
   if (dateParam) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-      return jsonError(400, 'Format de date invalide (attendu YYYY-MM-DD)');
-    }
-    targetDate = startOfParisDay(parseISO(dateParam));
-    if (Number.isNaN(targetDate.getTime())) {
-      return jsonError(400, 'Date invalide');
-    }
+    upstream.searchParams.set('date', dateParam);
   }
 
   try {
-    const result = await materializePlannedOccurrencesForDay(dispensaryId, targetDate);
+    const response = await fetch(upstream, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${botSecret}`,
+        'X-Scope-Type': 'dispensary',
+        'X-Scope-Id': dispensaryId,
+        'X-Dispensary-Id': dispensaryId,
+      },
+      cache: 'no-store',
+    });
+
+    const body = await response.json().catch(() => ({ error: 'Réponse bank invalide' }));
+    if (!response.ok) {
+      return jsonError(
+        response.status,
+        typeof body.error === 'string' ? body.error : 'Erreur bank service',
+      );
+    }
+
+    const data = body as {
+      date?: string;
+      created?: unknown[];
+      alreadyPending?: unknown[];
+      counts?: { created: number; alreadyPending: number };
+    };
+
     return NextResponse.json({
       status: 200,
       data: {
-        date: dayjs(result.date).tz('Europe/Paris').format('YYYY-MM-DD'),
-        created: result.created,
-        alreadyPending: result.alreadyPending,
-        createdCount: result.created.length,
-        alreadyPendingCount: result.alreadyPending.length,
+        date: data.date?.slice(0, 10),
+        created: data.created ?? [],
+        alreadyPending: data.alreadyPending ?? [],
+        createdCount: data.counts?.created ?? (data.created?.length ?? 0),
+        alreadyPendingCount:
+          data.counts?.alreadyPending ?? (data.alreadyPending?.length ?? 0),
       },
     });
   } catch (e) {

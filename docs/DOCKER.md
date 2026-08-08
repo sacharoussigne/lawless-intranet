@@ -65,14 +65,34 @@ docker build \
 | `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL publique RP — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
 | `DOCUMENTS_PUBLIC_URL` | documents + dispensary | URL service documents (`DOCUMENTS_URL` côté dispensary) |
 | `AGENDA_PUBLIC_URL` | agenda + dispensary | URL service agenda (`AGENDA_URL` côté dispensary) |
+| `BANK_PUBLIC_URL` | bank + dispensary | URL service banque (`BANK_URL` côté dispensary) |
 | `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`). Cookie name prefix is `lawless-intranet` (not `better-auth`) to avoid collisions with other apps on the same domain. |
 | `AUTH_DATABASE_URL` | auth | DB auth |
 | `DISPENSARY_DATABASE_URL` | dispensary | DB métier |
 | `DOCUMENTS_DATABASE_URL` | documents | DB documents/templates |
 | `AGENDA_DATABASE_URL` | agenda | DB agendas/events/todos |
+| `BANK_DATABASE_URL` | bank | DB ledger bancaire |
 | `AUTH_INTERNAL_SECRET` | auth + dispensary | API interne service-to-service |
 | `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
+| `BANK_INTERNAL_SECRET` | bank + dispensary | Secret host→bank (from-order, purge-scope) |
+| `BANK_BOT_API_SECRET` | bank + dispensary | Secret bot materialize-planned |
 | `DOCUMENTS_INTERNAL_SECRET` | documents + dispensary | Secret host→documents (toutes les routes API sauf health) |
+
+## Migration bank depuis l’ancien stockage dispensary
+
+**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `extract_bank_to_service` :
+
+```bash
+# 1. Créer la BDD bank et appliquer les migrations (tables vides)
+#    → déployer le conteneur bank OU prisma migrate deploy sur BANK_DATABASE_URL
+
+# 2. Copier les données (préserve les UUIDs)
+DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
+BANK_DATABASE_URL="$BANK_DATABASE_URL" \
+pnpm migrate:bank-to-service
+
+# 3. Déployer dispensary (migrate deploy droppe les tables bank locales)
+```
 
 ## Migration agenda depuis l’ancien stockage dispensary
 

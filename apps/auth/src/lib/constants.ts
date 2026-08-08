@@ -32,10 +32,12 @@ export function getTrustedOrigins(): string[] {
     'http://localhost:3000',
     'http://localhost:3002',
     'http://localhost:3003',
+    'http://localhost:3004',
     'http://auth.localhost:3001',
     'http://dispensary.localhost:3000',
     'http://documents.localhost:3002',
     'http://agenda.localhost:3003',
+    'http://bank.localhost:3004',
   ].filter(Boolean) as string[]);
 
   addOrigin(origins, process.env.BETTER_AUTH_URL);
@@ -44,6 +46,7 @@ export function getTrustedOrigins(): string[] {
   addHostOrigins(origins, process.env.DISPENSARY_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.DOCUMENTS_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.AGENDA_VIRTUAL_HOST);
+  addHostOrigins(origins, process.env.BANK_VIRTUAL_HOST);
 
   for (const extra of process.env.EXTRA_TRUSTED_ORIGINS?.split(',') ?? []) {
     addOrigin(origins, extra.trim());

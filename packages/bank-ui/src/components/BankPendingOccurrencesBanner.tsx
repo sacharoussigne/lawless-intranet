@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Accordion, Badge, Button, Group, Stack, Text } from '@mantine/core';
-import { IconCheck, IconX } from '@tabler/icons-react';
-import { RpDateInput } from '@/app/_components/RpDatePicker/RpDateInput';
-import type { SerializedPlannedOccurrence } from '@/types/bankAccounts';
+import { useState } from "react";
+import { Accordion, Badge, Button, Group, Stack, Text } from "@mantine/core";
+import { DateInput } from "@mantine/dates";
+import { IconCheck, IconX } from "@tabler/icons-react";
+import type { SerializedPlannedOccurrence } from "../types";
 
 const TYPE_LABELS: Record<string, string> = {
-  DEPOSIT: 'Dépôt',
-  WITHDRAWAL: 'Retrait',
-  TRANSFER_IN: 'Transfert entrant',
-  TRANSFER_OUT: 'Transfert sortant',
+  DEPOSIT: "Dépôt",
+  WITHDRAWAL: "Retrait",
+  TRANSFER_IN: "Transfert entrant",
+  TRANSFER_OUT: "Transfert sortant",
 };
 
 type BankPendingOccurrencesBannerProps = {
@@ -27,33 +27,32 @@ export function BankPendingOccurrencesBanner({
   onSkip,
 }: BankPendingOccurrencesBannerProps) {
   const [editedDates, setEditedDates] = useState<Record<string, Date>>({});
-
   if (occurrences.length === 0) return null;
-
-  const count = occurrences.length;
-  const title =
-    count === 1 ? '1 transaction à confirmer' : `${count} transactions à confirmer`;
 
   const getDate = (occurrence: SerializedPlannedOccurrence) =>
     editedDates[occurrence.id] ?? new Date(occurrence.date);
+  const title =
+    occurrences.length === 1
+      ? "1 transaction à confirmer"
+      : `${occurrences.length} transactions à confirmer`;
 
   return (
-    <Accordion variant="contained" radius="md" styles={{ item: { borderColor: 'var(--mantine-color-amber-3)' } }}>
+    <Accordion variant="contained" radius="md">
       <Accordion.Item value="pending">
         <Accordion.Control>
           <Group gap="sm">
-            <Text size="sm" fw={600} style={{ fontFamily: 'var(--disp-font-display)' }}>
+            <Text size="sm" fw={600}>
               {title}
             </Text>
-            <Badge size="sm" variant="outline" color="amber" circle>
-              {count}
+            <Badge size="sm" variant="outline" color="yellow" circle>
+              {occurrences.length}
             </Badge>
           </Group>
         </Accordion.Control>
         <Accordion.Panel>
           <Stack gap="xs">
             {occurrences.map((occurrence) => {
-              const pt = occurrence.plannedTransaction;
+              const planned = occurrence.plannedTransaction;
               return (
                 <Group
                   key={occurrence.id}
@@ -61,38 +60,41 @@ export function BankPendingOccurrencesBanner({
                   wrap="wrap"
                   gap="xs"
                   py={4}
-                  align="center"
                 >
-                  <Group gap="xs" wrap="wrap" style={{ flex: 1, minWidth: 0 }} align="center">
-                    <Text size="sm" fw={600} lineClamp={1}>
-                      {pt.name}
+                  <Group gap="xs" wrap="wrap">
+                    <Text size="sm" fw={600}>
+                      {planned.name}
                     </Text>
-                    <Badge size="xs" variant="outline" color="slate">
-                      {TYPE_LABELS[pt.type] ?? pt.type}
+                    <Badge size="xs" variant="outline">
+                      {TYPE_LABELS[planned.type] ?? planned.type}
                     </Badge>
-                    <RpDateInput
+                    <DateInput
                       size="xs"
-                      value={getDate(occurrence)}
-                      onChange={(date) => {
-                        if (!date) return;
-                        setEditedDates((prev) => ({
-                          ...prev,
-                          [occurrence.id]: date,
-                        }));
-                      }}
+                      value={getDate(occurrence).toISOString().slice(0, 10)}
+                      valueFormat="DD/MM/YYYY"
+                      locale="fr"
+                      onChange={(date) =>
+                        date &&
+                        setEditedDates((current) => ({
+                          ...current,
+                          [occurrence.id]: new Date(date),
+                        }))
+                      }
                       w={130}
-                      aria-label={`Date de ${pt.name}`}
+                      aria-label={`Date de ${planned.name}`}
                     />
                     <Text size="xs" c="dimmed">
-                      {Number(pt.amount).toFixed(2)} $
+                      {Number(planned.amount).toFixed(2)} $
                     </Text>
                   </Group>
                   <Group gap="xs">
                     <Button
                       size="compact-xs"
-                      color="moss"
+                      color="green"
                       leftSection={<IconCheck size={14} />}
-                      onClick={() => onConfirm(occurrence.id, getDate(occurrence))}
+                      onClick={() =>
+                        onConfirm(occurrence.id, getDate(occurrence))
+                      }
                       loading={loading}
                     >
                       Confirmer
@@ -100,7 +102,6 @@ export function BankPendingOccurrencesBanner({
                     <Button
                       size="compact-xs"
                       variant="subtle"
-                      color="slate"
                       leftSection={<IconX size={14} />}
                       onClick={() => onSkip(occurrence.id)}
                       loading={loading}
