@@ -36,7 +36,7 @@ import {
 } from './ordersFiltersStorage';
 import { getOrderStatusLabel } from '@/types/enum/orderStatus';
 import { getOrderTypeLabel } from '@/types/enum/orderType';
-import type { OrderStatus, OrderType } from '@lawless-intranet/inventory-client';
+import type { OrderStatus, OrderType } from '@lawless-intranet/types';
 
 interface OrdersPageClientProps {
   initialOrdersPage: OrdersPageResult;

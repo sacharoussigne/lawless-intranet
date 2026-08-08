@@ -1,7 +1,11 @@
 import prisma from '@/lib/prisma';
 import { scopeWhere } from '@/lib/scope';
 import { ok, err, type DomainResult } from '@/lib/result';
-import type { ChestStockVisibility } from '@/lib/stock/stockVisibility';
+
+export type ChestStockVisibility = {
+  hiddenCategoryIds: string[];
+  hiddenItemIds: string[];
+};
 
 export async function getChestStockVisibility(input: {
   scopeType: string;

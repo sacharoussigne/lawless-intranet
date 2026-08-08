@@ -10,20 +10,6 @@ export function toIso(value: Date | string | null | undefined): string | null {
   return value;
 }
 
-export function serializeDates<T extends Record<string, unknown>>(
-  row: T,
-  keys: (keyof T)[],
-): T {
-  const next = { ...row };
-  for (const key of keys) {
-    const value = next[key];
-    if (value instanceof Date) {
-      (next as Record<string, unknown>)[key as string] = value.toISOString();
-    }
-  }
-  return next;
-}
-
 export function serializeItem<T extends { price?: unknown; createdAt?: Date; updatedAt?: Date }>(
   item: T,
 ) {

@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { scopeWhere } from '@/lib/scope';
 import { ok, err, type DomainResult } from '@/lib/result';
 import { getTodayStart, getTomorrowStart } from '@/lib/date';
-import { getBankWeekBounds } from '@/lib/weekBounds';
+import { getWeekBounds } from '@/lib/weekBounds';
 import {
   ensureTodayStockForAllActiveChests,
   ensureTodayStockForPairs,
@@ -485,7 +485,7 @@ export async function listWeeklySales(input: {
   userId: string;
   canViewAll?: boolean;
 }): Promise<DomainResult<unknown>> {
-  const bounds = getBankWeekBounds(input.weekDate ?? new Date());
+  const bounds = getWeekBounds(input.weekDate ?? new Date());
   const sales = await prisma.sale.findMany({
     where: {
       ...scopeWhere(input.scopeType, input.scopeId),

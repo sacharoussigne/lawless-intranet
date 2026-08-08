@@ -3,7 +3,7 @@
 import type {
   SaleItemSource as SaleItemSourceType,
   SaleStatus as SaleStatusType,
-} from '@lawless-intranet/inventory-client';
+} from '@lawless-intranet/types';
 import {
   cancelSale as cancelSaleApi,
   createSale as createSaleApi,

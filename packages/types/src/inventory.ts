@@ -238,35 +238,6 @@ export type SaleListItemRecord = {
   items: SaleItemListRecord[];
 };
 
-export type SaleItemRecord = {
-  id: string;
-  saleId: string;
-  itemId: string;
-  quantity: number;
-  unitPrice: number | null;
-  source: SaleItemSource;
-  chestId: string | null;
-};
-
-export type SaleRecord = {
-  id: string;
-  scopeType: string;
-  scopeId: string;
-  userId: string;
-  status: SaleStatus;
-  customerName: string | null;
-  description: string | null;
-  individualCustomerId: string | null;
-  priceAdjustment: number;
-  createdAt: string;
-  cancelledAt: string | null;
-  cancelledByUserId: string | null;
-  depositedInCashRegister: boolean;
-  depositedInCashRegisterAt: string | null;
-  depositedByUserId: string | null;
-  items?: SaleItemRecord[];
-};
-
 export type WeeklySalesRecord = {
   periodStart: string;
   periodEnd: string;

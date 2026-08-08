@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { OrderStatus } from '@lawless-intranet/inventory-client';
+import type { OrderStatus } from '@lawless-intranet/types';
 import {
   apothecaryPillStyle,
   type ApothecaryPalette,

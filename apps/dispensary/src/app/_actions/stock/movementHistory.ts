@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import type { StockMovementKind as StockMovementKindType } from '@lawless-intranet/inventory-client';
+import type { StockMovementKind as StockMovementKindType } from '@lawless-intranet/types';
 import {
   deleteStockMovements as deleteStockMovementsApi,
   listStockMovements,

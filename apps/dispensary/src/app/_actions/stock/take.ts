@@ -74,10 +74,3 @@ export async function moveItemsWithChests(
   }
 }
 
-/** @deprecated Prefer moveItemsWithChests({ mode: 'take', ... }) */
-export async function takeItemsFromChests(
-  dispensarySlug: string,
-  data: { items: ChestStockMoveItemInput[] },
-) {
-  return moveItemsWithChests(dispensarySlug, { mode: 'take', items: data.items });
-}

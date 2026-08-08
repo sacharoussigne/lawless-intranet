@@ -46,15 +46,6 @@ type ClientOptions = Pick<InventoryFetchOptions, 'cookieHeader'>;
 type InternalOptions = ClientOptions & { internal?: boolean };
 type SuccessResponse = { success: true };
 
-export async function getInventoryHealth(
-  options: ClientOptions = {},
-): Promise<{ status: 'ok'; service: 'inventory' }> {
-  const response = await inventoryFetch('/api/health', {
-    cookieHeader: options.cookieHeader,
-  });
-  return parseJsonResponse(response);
-}
-
 export async function purgeInventoryScope(
   params: InventoryScopeParams,
   options: InternalOptions = {},

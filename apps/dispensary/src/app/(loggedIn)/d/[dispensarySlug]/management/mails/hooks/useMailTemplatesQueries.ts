@@ -26,7 +26,7 @@ import type {
   MailTemplateListItem,
   OrderMailTemplateAssignmentWithTemplate,
 } from '@/types/mailTemplates';
-import type { OrderStatus, OrderType } from '@lawless-intranet/inventory-client';
+import type { OrderStatus, OrderType } from '@lawless-intranet/types';
 
 export type OrderLetterTemplateAssignmentWithTemplate =
   OrderMailTemplateAssignmentWithTemplate;

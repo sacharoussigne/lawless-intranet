@@ -7,7 +7,7 @@ import {
   getItemsWithStock,
   getLastStockDaysByChest,
 } from '@/app/_actions/stock/queries';
-import { moveItemsWithChests, takeItemsFromChests } from '@/app/_actions/stock/take';
+import { moveItemsWithChests } from '@/app/_actions/stock/take';
 import { transferMultipleStock } from '@/app/_actions/stock/transfer';
 import { getStockChecksSummary } from '@/app/_actions/stockChecks';
 import {
@@ -70,10 +70,6 @@ export function createDispensaryInventoryActions(dispensarySlug: string): Invent
     transferMultipleStock: (input) =>
       asInventoryResult(transferMultipleStock(dispensarySlug, input)) as Promise<
         InventoryActionResult<{ success: true }>
-      >,
-    takeItemsFromChests: (input) =>
-      asInventoryResult(takeItemsFromChests(dispensarySlug, input)) as Promise<
-        InventoryActionResult<{ success: true; count: number; mode: 'take' | 'deposit' }>
       >,
     moveItemsWithChests: (input) =>
       asInventoryResult(moveItemsWithChests(dispensarySlug, input)) as Promise<

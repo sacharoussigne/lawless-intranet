@@ -1,19 +1,11 @@
 import dayjs from '@/lib/dayjs';
 
-export function getNow(): Date {
-  return dayjs.tz().toDate();
-}
-
 export function getStartOfDay(date?: Date): Date {
   return dayjs(date).tz().startOf('day').toDate();
 }
 
 export function getTodayStart(): Date {
   return dayjs.tz().startOf('day').toDate();
-}
-
-export function getYesterdayStart(): Date {
-  return dayjs.tz().subtract(1, 'day').startOf('day').toDate();
 }
 
 export function getTomorrowStart(): Date {

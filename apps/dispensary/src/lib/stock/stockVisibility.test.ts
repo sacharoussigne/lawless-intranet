@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeQuantity } from './expression';
 import {
   EMPTY_CHEST_STOCK_VISIBILITY,
   buildManualStockSavePayload,
@@ -9,6 +8,9 @@ import {
   sumItemsWeightKg,
   type ChestStockVisibility,
 } from './stockVisibility';
+
+const normalizeQuantity = (quantity: number | null | undefined): number =>
+  quantity == null ? 0 : quantity;
 
 const visibility = (partial: Partial<ChestStockVisibility> = {}): ChestStockVisibility => ({
   ...EMPTY_CHEST_STOCK_VISIBILITY,

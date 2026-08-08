@@ -13,11 +13,8 @@ import {
   getOrderById,
   getOrderMailAssignment,
 } from '@lawless-intranet/inventory-client/server';
-import {
-  InventoryClientError,
-  type OrderStatus,
-  type OrderType,
-} from '@lawless-intranet/inventory-client';
+import { InventoryClientError } from '@lawless-intranet/inventory-client';
+import type { OrderStatus, OrderType } from '@lawless-intranet/types';
 import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';

@@ -13,7 +13,7 @@ import {
   listOrderMailAssignments,
   updateOrderMailAssignment,
 } from '@lawless-intranet/inventory-client/server';
-import type { OrderType, OrderStatus } from '@lawless-intranet/inventory-client';
+import type { OrderType, OrderStatus } from '@lawless-intranet/types';
 import { getServerCookieHeader, ORDER_TEMPLATE_TYPE } from '@/lib/documents/mailDocuments';
 
 const createAssignmentSchema = z.object({

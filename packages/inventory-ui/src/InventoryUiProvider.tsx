@@ -53,9 +53,6 @@ export type InventoryUiActions = {
   transferMultipleStock: (
     input: TransferStockInput,
   ) => Promise<InventoryActionResult<{ success: true }>>;
-  takeItemsFromChests: (
-    input: { items: { itemId: string; quantity: number; chestId: string }[] },
-  ) => Promise<InventoryActionResult<{ success: true; count: number; mode: ChestStockMoveMode }>>;
   moveItemsWithChests: (
     input: MoveItemsWithChestsInput,
   ) => Promise<InventoryActionResult<{ success: true; count: number; mode: ChestStockMoveMode }>>;

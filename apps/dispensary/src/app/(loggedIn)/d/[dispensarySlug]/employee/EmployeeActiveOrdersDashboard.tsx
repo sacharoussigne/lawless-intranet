@@ -7,7 +7,7 @@ import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import type { OrderSummary, OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import { getOrderTypeLabel } from '@/types/enum/orderType';
-import type { OrderType } from '@lawless-intranet/inventory-client';
+import type { OrderType } from '@lawless-intranet/types';
 import {
   defaultActiveOrdersPageFilters,
   useOrderLetterAssignments,
