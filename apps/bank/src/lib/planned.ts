@@ -1,13 +1,12 @@
 import dayjs from '@/lib/dayjs';
 import prisma from '@/lib/prisma';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { getWeekBounds, recalculateWeekBalance } from '@/app/_actions/bank/internals';
+import { scopeWhere } from '@/lib/scope';
+import { getWeekBounds, recalculateWeekBalance } from '@/lib/serialize';
 
 const TZ = 'Europe/Paris';
 
-/** Monday=1 … Sunday=7 in Europe/Paris */
 export function getParisWeekday(date: Date): number {
-  const day = dayjs(date).tz(TZ).day(); // 0=Sun … 6=Sat
+  const day = dayjs(date).tz(TZ).day();
   return day === 0 ? 7 : day;
 }
 
@@ -19,22 +18,40 @@ export function isSameParisDay(a: Date, b: Date): boolean {
   return dayjs(a).tz(TZ).format('YYYY-MM-DD') === dayjs(b).tz(TZ).format('YYYY-MM-DD');
 }
 
-export function serializePlanned<
-  T extends { amount: unknown; onceDate?: Date | null },
->(planned: T) {
+export function serializePlanned<T extends { amount: unknown; onceDate?: Date | null; createdAt?: Date; updatedAt?: Date }>(
+  planned: T,
+) {
   return {
     ...planned,
     amount: Number(planned.amount),
+    onceDate:
+      planned.onceDate instanceof Date ? planned.onceDate.toISOString() : planned.onceDate,
+    createdAt:
+      planned.createdAt instanceof Date ? planned.createdAt.toISOString() : planned.createdAt,
+    updatedAt:
+      planned.updatedAt instanceof Date ? planned.updatedAt.toISOString() : planned.updatedAt,
   };
 }
 
 export function serializeOccurrence<
   T extends {
+    date?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
     plannedTransaction?: { amount: unknown } | null;
   },
 >(occurrence: T) {
   return {
     ...occurrence,
+    date: occurrence.date instanceof Date ? occurrence.date.toISOString() : occurrence.date,
+    createdAt:
+      occurrence.createdAt instanceof Date
+        ? occurrence.createdAt.toISOString()
+        : occurrence.createdAt,
+    updatedAt:
+      occurrence.updatedAt instanceof Date
+        ? occurrence.updatedAt.toISOString()
+        : occurrence.updatedAt,
     plannedTransaction: occurrence.plannedTransaction
       ? serializePlanned(occurrence.plannedTransaction)
       : occurrence.plannedTransaction,
@@ -42,7 +59,8 @@ export function serializeOccurrence<
 }
 
 export async function materializePlannedOccurrencesForDay(
-  dispensaryId: string,
+  scopeType: string,
+  scopeId: string,
   targetDate: Date,
 ) {
   const dayStart = startOfParisDay(targetDate);
@@ -50,7 +68,7 @@ export async function materializePlannedOccurrencesForDay(
 
   const plannedList = await prisma.bankPlannedTransaction.findMany({
     where: {
-      ...tenantWhere(dispensaryId),
+      ...scopeWhere(scopeType, scopeId),
       isActive: true,
     },
   });
@@ -85,7 +103,8 @@ export async function materializePlannedOccurrencesForDay(
 
     const occurrence = await prisma.bankPlannedOccurrence.create({
       data: {
-        dispensaryId,
+        scopeType,
+        scopeId,
         plannedTransactionId: planned.id,
         date: dayStart,
         status: 'PENDING',
@@ -95,18 +114,24 @@ export async function materializePlannedOccurrencesForDay(
     created.push(serializeOccurrence(occurrence));
   }
 
-  return { created, alreadyPending, date: dayStart.toISOString() };
+  return {
+    created,
+    alreadyPending,
+    date: dayStart.toISOString(),
+    counts: { created: created.length, alreadyPending: alreadyPending.length },
+  };
 }
 
 export async function confirmPlannedOccurrenceInternal(
-  dispensaryId: string,
+  scopeType: string,
+  scopeId: string,
   occurrenceId: string,
   dateOverride?: Date | null,
 ) {
   const occurrence = await prisma.bankPlannedOccurrence.findFirst({
     where: {
       id: occurrenceId,
-      ...tenantWhere(dispensaryId),
+      ...scopeWhere(scopeType, scopeId),
     },
     include: { plannedTransaction: true },
   });
@@ -116,18 +141,16 @@ export async function confirmPlannedOccurrenceInternal(
   }
 
   if (occurrence.status !== 'PENDING') {
-    return { ok: false as const, status: 400, error: 'Cette occurrence n\'est plus en attente' };
+    return { ok: false as const, status: 400, error: "Cette occurrence n'est plus en attente" };
   }
 
   const planned = occurrence.plannedTransaction;
-  const transactionDate = dateOverride
-    ? startOfParisDay(dateOverride)
-    : occurrence.date;
+  const transactionDate = dateOverride ? startOfParisDay(dateOverride) : occurrence.date;
   const { start, end } = getWeekBounds(transactionDate);
 
   let week = await prisma.bankWeek.findFirst({
     where: {
-      ...tenantWhere(dispensaryId),
+      ...scopeWhere(scopeType, scopeId),
       weekStart: { gte: start, lte: end },
     },
   });
@@ -135,7 +158,7 @@ export async function confirmPlannedOccurrenceInternal(
   if (!week) {
     const previousWeek = await prisma.bankWeek.findFirst({
       where: {
-        ...tenantWhere(dispensaryId),
+        ...scopeWhere(scopeType, scopeId),
         weekStart: { lt: start },
       },
       orderBy: { weekStart: 'desc' },
@@ -143,7 +166,8 @@ export async function confirmPlannedOccurrenceInternal(
 
     week = await prisma.bankWeek.create({
       data: {
-        dispensaryId,
+        scopeType,
+        scopeId,
         weekStart: start,
         weekEnd: end,
         balance: previousWeek ? previousWeek.balance : 0,
@@ -188,10 +212,22 @@ export async function confirmPlannedOccurrenceInternal(
     });
   }
 
-  await recalculateWeekBalance(dispensaryId, week.id);
+  await recalculateWeekBalance(scopeType, scopeId, week.id);
 
   return {
     ok: true as const,
-    transaction: { ...transaction, amount: Number(transaction.amount) },
+    transaction: {
+      id: transaction.id,
+      weekId: transaction.weekId,
+      date: transaction.date.toISOString(),
+      type: transaction.type,
+      name: transaction.name,
+      description: transaction.description,
+      amount: Number(transaction.amount),
+      order: transaction.order,
+      orderId: transaction.orderId,
+      createdAt: transaction.createdAt.toISOString(),
+      updatedAt: transaction.updatedAt.toISOString(),
+    },
   };
 }

@@ -98,3 +98,16 @@ export type {
   AgendaTodoListRecord,
   AgendaTodoTaskRecord,
 } from './agenda';
+
+export type {
+  BankGlobalStatsRecord,
+  BankNameSuggestionsRecord,
+  BankPlannedOccurrenceRecord,
+  BankPlannedOccurrenceStatus,
+  BankPlannedTransactionRecord,
+  BankScheduleKind,
+  BankScopeParams,
+  BankTransactionRecord,
+  BankTransactionType,
+  BankWeekRecord,
+} from './bank';

@@ -1,54 +1,23 @@
-# API HTTP — Banque planifiée (bot / n8n)
-
-Cette API matérialise les occurrences **en attente** des transactions planifiées d’un dispensaire pour un jour donné (Europe/Paris). Destinée à un cron n8n (ex. tous les jours à 2h).
-
-Elle est **distincte** de l’auth utilisateur : clé secrète partagée + `dispensaryId`.
-
-## URL
+# API bot — matérialisation des transactions planifiées
 
 `POST /api/dispensary/bank/bot/materialize-planned`
 
-Base = URL publique de l’app dispensary (`NEXT_PUBLIC_API_URL`).
+Proxy dispensary → service `apps/bank` (`BANK_URL/api/bot/materialize-planned`).
 
-## Authentification
+## Auth
 
-| En-tête / paramètre | Obligatoire | Description |
-|---------------------|-------------|-------------|
-| `Authorization` | Oui | `Bearer <DISPENSARY_BOT_API_SECRET>` |
-| `X-Dispensary-Id` | Oui | UUID du dispensaire (ou `?dispensaryId=`) |
-| `date` (query) | Non | Jour cible `YYYY-MM-DD` (défaut = aujourd’hui Paris) |
+- `Authorization: Bearer <DISPENSARY_BOT_API_SECRET>` (côté dispensary)
+- Header `X-Dispensary-Id: <uuid>`
+- Le proxy envoie ensuite `BANK_BOT_API_SECRET` au service bank
 
-## Comportement
+## Query
 
-Pour chaque `BankPlannedTransaction` **active** du dispensaire :
+- `?date=YYYY-MM-DD` (optionnel, défaut = aujourd’hui Europe/Paris)
 
-- **ONCE** : si `onceDate` = jour cible
-- **WEEKLY** : si le jour de semaine Paris (1=lundi … 7=dimanche) est dans `weekdays`
+## Direct bank (sans proxy)
 
-Si aucune occurrence n’existe encore pour `(plannedId, date)` → crée une occurrence `PENDING`.
+`POST http://localhost:3004/api/bot/materialize-planned`
 
-Ne crée **pas** de transaction dans le livre : confirmation humaine dans l’UI banque.
-
-## Réponse succès
-
-```json
-{
-  "status": 200,
-  "data": {
-    "date": "2026-08-08",
-    "created": [ /* occurrences créées + plannedTransaction */ ],
-    "alreadyPending": [ /* déjà PENDING ce jour */ ],
-    "createdCount": 1,
-    "alreadyPendingCount": 0
-  }
-}
-```
-
-## Erreurs
-
-| Code | Cas |
-|------|-----|
-| 400 | `dispensaryId` / date invalide |
-| 401 | Secret invalide |
-| 403 | Feature banque désactivée |
-| 404 | Dispensaire inconnu |
+- `Authorization: Bearer <BANK_BOT_API_SECRET>`
+- `X-Scope-Id: <dispensaryUuid>` (ou `X-Dispensary-Id`)
+- `X-Scope-Type: dispensary` (défaut)

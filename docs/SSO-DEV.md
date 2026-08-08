@@ -30,17 +30,21 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 2. Copy `apps/dispensary/.env.example` to `apps/dispensary/.env`
 3. Copy `apps/documents/.env.example` to `apps/documents/.env`
 4. Copy `apps/agenda/.env.example` to `apps/agenda/.env`
-5. Set the same `AUTH_INTERNAL_SECRET` in auth + dispensary
-6. Set the same `AGENDA_INTERNAL_SECRET` in agenda + dispensary (required for admin agenda ops)
-7. Set the same `DOCUMENTS_INTERNAL_SECRET` in documents + dispensary (required for all documents API calls)
-8. Configure separate PostgreSQL databases:
+5. Copy `apps/bank/.env.example` to `apps/bank/.env`
+6. Set the same `AUTH_INTERNAL_SECRET` in auth + dispensary
+7. Set the same `AGENDA_INTERNAL_SECRET` in agenda + dispensary (required for admin agenda ops)
+8. Set the same `DOCUMENTS_INTERNAL_SECRET` in documents + dispensary (required for all documents API calls)
+9. Set the same `BANK_INTERNAL_SECRET` / `BANK_BOT_API_SECRET` in bank + dispensary
+10. Configure separate PostgreSQL databases:
    - `DATABASE_URL` in auth → auth DB
    - `DATABASE_URL` in dispensary → dispensary DB (no user/session tables)
    - `DATABASE_URL` in documents → documents DB
    - `DATABASE_URL` in agenda → agenda DB
-9. Point dispensary at the services:
+   - `DATABASE_URL` in bank → bank DB
+11. Point dispensary at the services:
    - `DOCUMENTS_URL=http://localhost:3002`
    - `AGENDA_URL=http://localhost:3003`
+   - `BANK_URL=http://localhost:3004`
 
 Optional root `.env` for one-shot migration scripts:
 
@@ -48,8 +52,9 @@ Optional root `.env` for one-shot migration scripts:
 |----------|------|
 | `OLD_DISPENSARY_DATABASE_URL` | Legacy mono-app DB backup (still has `user` / `account` tables) |
 | `AUTH_DATABASE_URL` | Target auth DB |
-| `DISPENSARY_DATABASE_URL` | Current dispensary DB (orphan check after migration / agenda source) |
+| `DISPENSARY_DATABASE_URL` | Current dispensary DB (orphan check after migration / agenda/bank source) |
 | `AGENDA_DATABASE_URL` | Target agenda DB |
+| `BANK_DATABASE_URL` | Target bank DB |
 
 ## Migration from legacy single-DB setup
 

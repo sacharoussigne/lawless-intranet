@@ -23,6 +23,8 @@
     "@lawless-intranet/agenda-ui": "workspace:*",
     "@lawless-intranet/auth-client": "workspace:*",
     "@lawless-intranet/auth-permissions": "workspace:*",
+    "@lawless-intranet/bank-client": "workspace:*",
+    "@lawless-intranet/bank-ui": "workspace:*",
     "@lawless-intranet/documents-client": "workspace:*",
     "@lawless-intranet/mail-template-engine": "workspace:*",
     "@lawless-intranet/mail-template-ui": "workspace:*",

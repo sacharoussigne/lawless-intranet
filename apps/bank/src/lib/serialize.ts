@@ -1,8 +1,7 @@
 import prisma from '@/lib/prisma';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getBankWeekBounds } from '@/lib/bankWeek';
-import type { SerializedBankWeek } from '@/types/bankAccounts';
-import type { Prisma } from '@prisma/client';
+import { scopeWhere } from '@/lib/scope';
+import type { Prisma } from '@/generated/prisma/client';
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
@@ -12,7 +11,8 @@ export function getWeekBounds(date: Date) {
 
 export function serializeWeek(week: {
   id: string;
-  dispensaryId: string;
+  scopeType: string;
+  scopeId: string;
   weekStart: Date;
   weekEnd: Date;
   balance: unknown;
@@ -22,7 +22,7 @@ export function serializeWeek(week: {
     id: string;
     weekId: string;
     date: Date;
-    type: SerializedBankWeek['transactions'][number]['type'];
+    type: string;
     name: string;
     description: string | null;
     amount: unknown;
@@ -31,40 +31,60 @@ export function serializeWeek(week: {
     createdAt: Date;
     updatedAt: Date;
   }>;
-}): SerializedBankWeek {
+}) {
   return {
     id: week.id,
-    dispensaryId: week.dispensaryId,
-    weekStart: week.weekStart,
-    weekEnd: week.weekEnd,
+    scopeType: week.scopeType,
+    scopeId: week.scopeId,
+    weekStart: week.weekStart.toISOString(),
+    weekEnd: week.weekEnd.toISOString(),
     balance: Number(week.balance),
-    createdAt: week.createdAt,
-    updatedAt: week.updatedAt,
+    createdAt: week.createdAt.toISOString(),
+    updatedAt: week.updatedAt.toISOString(),
     transactions: week.transactions.map((transaction) => ({
       id: transaction.id,
       weekId: transaction.weekId,
-      date: transaction.date,
+      date: transaction.date.toISOString(),
       type: transaction.type,
       name: transaction.name,
       description: transaction.description,
       amount: Number(transaction.amount),
       order: transaction.order,
       orderId: transaction.orderId ?? null,
-      createdAt: transaction.createdAt,
-      updatedAt: transaction.updatedAt,
+      createdAt: transaction.createdAt.toISOString(),
+      updatedAt: transaction.updatedAt.toISOString(),
     })),
   };
 }
 
+export function serializeTransaction<T extends { amount: unknown; date?: Date; createdAt?: Date; updatedAt?: Date }>(
+  transaction: T,
+) {
+  return {
+    ...transaction,
+    amount: Number(transaction.amount),
+    date: transaction.date instanceof Date ? transaction.date.toISOString() : transaction.date,
+    createdAt:
+      transaction.createdAt instanceof Date
+        ? transaction.createdAt.toISOString()
+        : transaction.createdAt,
+    updatedAt:
+      transaction.updatedAt instanceof Date
+        ? transaction.updatedAt.toISOString()
+        : transaction.updatedAt,
+  };
+}
+
 export async function recalculateWeekBalance(
-  dispensaryId: string,
+  scopeType: string,
+  scopeId: string,
   weekId: string,
   db: DbClient = prisma,
 ) {
   const week = await db.bankWeek.findFirst({
     where: {
       id: weekId,
-      ...tenantWhere(dispensaryId),
+      ...scopeWhere(scopeType, scopeId),
     },
     include: {
       transactions: {
@@ -77,7 +97,7 @@ export async function recalculateWeekBalance(
 
   const previousWeek = await db.bankWeek.findFirst({
     where: {
-      ...tenantWhere(dispensaryId),
+      ...scopeWhere(scopeType, scopeId),
       weekStart: { lt: week.weekStart },
     },
     orderBy: { weekStart: 'desc' },
@@ -101,7 +121,7 @@ export async function recalculateWeekBalance(
 
   const followingWeeks = await db.bankWeek.findMany({
     where: {
-      ...tenantWhere(dispensaryId),
+      ...scopeWhere(scopeType, scopeId),
       weekStart: { gt: week.weekStart },
     },
     orderBy: { weekStart: 'asc' },

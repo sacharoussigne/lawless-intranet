@@ -158,6 +158,73 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  apps/bank:
+    dependencies:
+      '@lawless-intranet/auth-client':
+        specifier: workspace:*
+        version: link:../../packages/auth-client
+      '@lawless-intranet/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@prisma/adapter-pg':
+        specifier: ^7.2.0
+        version: 7.8.0
+      '@prisma/client':
+        specifier: ^7.2.0
+        version: 7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
+      '@prisma/client-runtime-utils':
+        specifier: ^7.2.0
+        version: 7.8.0
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.4.0
+      dayjs:
+        specifier: ^1.11.19
+        version: 1.11.21
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.4.2
+      next:
+        specifier: 16.2.9
+        version: 16.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.101.0)
+      pg:
+        specifier: ^8.16.3
+        version: 8.21.0
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      react-dom:
+        specifier: 19.2.4
+        version: 19.2.4(react@19.2.4)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      '@types/pg':
+        specifier: ^8.16.0
+        version: 8.20.0
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.17)
+      eslint:
+        specifier: ^9
+        version: 9.39.4(jiti@2.7.0)
+      eslint-config-next:
+        specifier: 16.2.9
+        version: 16.2.9(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
+      prisma:
+        specifier: ^7.2.0
+        version: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   apps/dispensary:
     dependencies:
       '@dnd-kit/core':
@@ -181,6 +248,12 @@ importers:
       '@lawless-intranet/auth-permissions':
         specifier: workspace:*
         version: link:../../packages/auth-permissions
+      '@lawless-intranet/bank-client':
+        specifier: workspace:*
+        version: link:../../packages/bank-client
+      '@lawless-intranet/bank-ui':
+        specifier: workspace:*
+        version: link:../../packages/bank-ui
       '@lawless-intranet/documents-client':
         specifier: workspace:*
         version: link:../../packages/documents-client
@@ -502,6 +575,64 @@ importers:
       better-auth:
         specifier: ^1.4.12
         version: 1.6.18(@prisma/client@7.8.0(prisma@7.8.0(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))(mysql2@3.15.3)(next@16.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.101.0))(pg@8.21.0)(prisma@7.8.0(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15)))
+
+  packages/bank-client:
+    dependencies:
+      '@lawless-intranet/types':
+        specifier: workspace:*
+        version: link:../types
+
+  packages/bank-ui:
+    dependencies:
+      '@lawless-intranet/types':
+        specifier: workspace:*
+        version: link:../types
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.4.0
+      dayjs:
+        specifier: ^1.11.19
+        version: 1.11.21
+    devDependencies:
+      '@mantine/core':
+        specifier: ^8.3.17
+        version: 8.3.18(@mantine/hooks@8.3.18(react@19.2.3))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@mantine/dates':
+        specifier: ^8.3.17
+        version: 8.3.18(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.3))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@mantine/hooks@8.3.18(react@19.2.3))(dayjs@1.11.21)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@mantine/hooks':
+        specifier: ^8.3.17
+        version: 8.3.18(react@19.2.3)
+      '@mantine/notifications':
+        specifier: ^8.3.17
+        version: 8.3.18(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.3))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@mantine/hooks@8.3.18(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tabler/icons-react':
+        specifier: ^3.36.1
+        version: 3.44.0(react@19.2.3)
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.17)
+      mantine-datatable:
+        specifier: ^8.2.0
+        version: 8.3.13(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.3))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@mantine/hooks@8.3.18(react@19.2.3))(clsx@2.1.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      next:
+        specifier: 16.1.1
+        version: 16.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.101.0)
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: 19.2.3
+        version: 19.2.3(react@19.2.3)
+      sass:
+        specifier: ^1.97.2
+        version: 1.101.0
+      typescript:
+        specifier: ^5
+        version: 5.9.3
 
   packages/documents-client:
     dependencies:
@@ -7351,8 +7482,8 @@ snapshots:
       '@babel/parser': 7.29.7
       eslint: 9.39.4(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 3.25.76
-      zod-validation-error: 4.0.2(zod@3.25.76)
+      zod: 4.4.3
+      zod-validation-error: 4.0.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -9737,9 +9868,9 @@ snapshots:
       grammex: 3.1.12
       graphmatch: 1.1.1
 
-  zod-validation-error@4.0.2(zod@3.25.76):
+  zod-validation-error@4.0.2(zod@4.4.3):
     dependencies:
-      zod: 3.25.76
+      zod: 4.4.3
 
   zod@3.25.76: {}
 

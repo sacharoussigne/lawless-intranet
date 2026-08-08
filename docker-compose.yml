@@ -32,6 +32,7 @@ services:
       DISPENSARY_VIRTUAL_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
       DOCUMENTS_VIRTUAL_HOST: "${DOCUMENTS_VIRTUAL_HOST:-}"
       AGENDA_VIRTUAL_HOST: "${AGENDA_VIRTUAL_HOST:-}"
+      BANK_VIRTUAL_HOST: "${BANK_VIRTUAL_HOST:-}"
       EXTRA_TRUSTED_ORIGINS: "${EXTRA_TRUSTED_ORIGINS:-}"
       DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:?err}"
       DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:?err}"
@@ -70,6 +71,9 @@ services:
       DOCUMENTS_INTERNAL_SECRET: "${DOCUMENTS_INTERNAL_SECRET:?err}"
       AGENDA_URL: "${AGENDA_PUBLIC_URL:-http://agenda:3003}"
       AGENDA_INTERNAL_SECRET: "${AGENDA_INTERNAL_SECRET:?err}"
+      BANK_URL: "${BANK_PUBLIC_URL:-http://bank:3004}"
+      BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
+      BANK_BOT_API_SECRET: "${BANK_BOT_API_SECRET:-}"
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
@@ -132,6 +136,34 @@ services:
       LETSENCRYPT_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
+    networks:
+      - proxy
+      - db
+
+  bank:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-bank"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: bank
+        APP_PORT: "3004"
+        NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+        DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+    environment:
+      NODE_ENV: production
+      PORT: "3004"
+      DATABASE_URL: "${BANK_DATABASE_URL:?err}"
+      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
+      BANK_BOT_API_SECRET: "${BANK_BOT_API_SECRET:-}"
+      VIRTUAL_HOST: "${BANK_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3004"
+      LETSENCRYPT_HOST: "${BANK_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${BANK_VIRTUAL_HOST:?err}"
     networks:
       - proxy
       - db

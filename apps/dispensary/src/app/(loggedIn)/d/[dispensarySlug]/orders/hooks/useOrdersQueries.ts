@@ -281,9 +281,9 @@ export function useCompleteOrderMutation() {
       const { affectedChestIds: _affectedChestIds, ...payload } = vars;
       const result = await completeOrder(dispensarySlug, payload);
       handleAction(result);
-      return vars;
+      return { vars, warning: 'warning' in result ? result.warning : undefined };
     },
-    onSuccess: (vars) => {
+    onSuccess: ({ vars, warning }) => {
       invalidateOrders();
       for (const chestId of vars.affectedChestIds ?? []) {
         void queryClient.invalidateQueries({
@@ -298,6 +298,13 @@ export function useCompleteOrderMutation() {
         message: 'Commande terminée avec succès',
         color: 'moss',
       });
+      if (warning) {
+        notifications.show({
+          title: 'Banque',
+          message: `Commande terminée, mais la transaction bancaire a échoué : ${warning}`,
+          color: 'amber',
+        });
+      }
     },
     onError: (error: Error) => {
       notifications.show({
