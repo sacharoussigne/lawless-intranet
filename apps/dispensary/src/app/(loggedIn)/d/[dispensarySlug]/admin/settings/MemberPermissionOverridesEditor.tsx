@@ -4,14 +4,17 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Group,
+  ScrollArea,
   Select,
   Stack,
   Table,
   Text,
+  TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { IconSearch } from '@tabler/icons-react';
 import {
-  listCatalogPermissionKeys,
+  listCatalogPermissionEntries,
   parsePermissionKey,
   type ApplicationResource,
 } from '@lawless-intranet/auth-permissions';
@@ -19,19 +22,6 @@ import {
   getDispensaryMemberPermissionOverrides,
   setDispensaryMemberPermissionOverrides,
 } from '@/app/_actions/dispensaryPermissions';
-
-const RESOURCE_LABELS: Record<string, string> = {
-  stock: 'Stock',
-  orders: 'Commandes',
-  search: 'Recherche',
-  bank: 'Banque',
-  application: 'Application',
-  mails: 'Courriers',
-  payroll_reports: 'Paie',
-  weekly_dispensary_activity: 'Activité hebdo',
-  sales: 'Ventes',
-  stock_statistics: 'Stats stock',
-};
 
 type OverrideEffect = 'inherit' | 'grant' | 'deny';
 
@@ -46,8 +36,9 @@ export function MemberPermissionOverridesEditor({
   userName: string;
   onClose: () => void;
 }) {
-  const catalogKeys = useMemo(() => listCatalogPermissionKeys(), []);
+  const catalogEntries = useMemo(() => listCatalogPermissionEntries(), []);
   const [effects, setEffects] = useState<Record<string, OverrideEffect>>({});
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -58,8 +49,8 @@ export function MemberPermissionOverridesEditor({
       const result = await getDispensaryMemberPermissionOverrides(dispensarySlug, userId);
       if (cancelled) return;
       const next: Record<string, OverrideEffect> = {};
-      for (const key of catalogKeys) {
-        next[key] = 'inherit';
+      for (const entry of catalogEntries) {
+        next[entry.key] = 'inherit';
       }
       if (result.status === 200 && result.data) {
         for (const row of result.data) {
@@ -72,7 +63,22 @@ export function MemberPermissionOverridesEditor({
     return () => {
       cancelled = true;
     };
-  }, [catalogKeys, dispensarySlug, userId]);
+  }, [catalogEntries, dispensarySlug, userId]);
+
+  const filteredEntries = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) {
+      return catalogEntries;
+    }
+    return catalogEntries.filter((entry) => {
+      return (
+        entry.key.toLowerCase().includes(q) ||
+        entry.resource.toLowerCase().includes(q) ||
+        entry.action.toLowerCase().includes(q) ||
+        entry.description.toLowerCase().includes(q)
+      );
+    });
+  }, [catalogEntries, search]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -124,48 +130,68 @@ export function MemberPermissionOverridesEditor({
         Hérité = droits du/des rôle(s). Accorder / Refuser = exception pour ce membre.
       </Text>
 
-      <Table striped withTableBorder>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Permission</Table.Th>
-            <Table.Th>Effet</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {catalogKeys.map((key) => {
-            const parsed = parsePermissionKey(key);
-            if (!parsed) return null;
-            const label = `${RESOURCE_LABELS[parsed.resource] ?? parsed.resource} · ${parsed.action}`;
-            return (
-              <Table.Tr key={key}>
-                <Table.Td>
-                  <Text size="sm">{label}</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Select
-                    size="xs"
-                    data={[
-                      { value: 'inherit', label: 'Hérité' },
-                      { value: 'grant', label: 'Accorder' },
-                      { value: 'deny', label: 'Refuser' },
-                    ]}
-                    value={effects[key] ?? 'inherit'}
-                    onChange={(value) => {
-                      if (!value) return;
-                      setEffects((prev) => ({
-                        ...prev,
-                        [key]: value as OverrideEffect,
-                      }));
-                    }}
-                    disabled={loading}
-                    allowDeselect={false}
-                  />
+      <TextInput
+        placeholder="Rechercher une permission (ex. stock:view)…"
+        leftSection={<IconSearch size={16} />}
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+      />
+
+      <ScrollArea.Autosize mah="min(60vh, 520px)" type="auto" offsetScrollbars>
+        <Table striped withTableBorder>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Permission</Table.Th>
+              <Table.Th>Description</Table.Th>
+              <Table.Th>Effet</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {filteredEntries.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={3}>
+                  <Text c="dimmed" size="sm" ta="center" py="md">
+                    Aucune permission ne correspond à la recherche.
+                  </Text>
                 </Table.Td>
               </Table.Tr>
-            );
-          })}
-        </Table.Tbody>
-      </Table>
+            ) : (
+              filteredEntries.map((entry) => (
+                <Table.Tr key={entry.key}>
+                  <Table.Td>
+                    <Text ff="monospace" size="sm">
+                      {entry.key}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm">{entry.description}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Select
+                      size="xs"
+                      data={[
+                        { value: 'inherit', label: 'Hérité' },
+                        { value: 'grant', label: 'Accorder' },
+                        { value: 'deny', label: 'Refuser' },
+                      ]}
+                      value={effects[entry.key] ?? 'inherit'}
+                      onChange={(value) => {
+                        if (!value) return;
+                        setEffects((prev) => ({
+                          ...prev,
+                          [entry.key]: value as OverrideEffect,
+                        }));
+                      }}
+                      disabled={loading}
+                      allowDeselect={false}
+                    />
+                  </Table.Td>
+                </Table.Tr>
+              ))
+            )}
+          </Table.Tbody>
+        </Table>
+      </ScrollArea.Autosize>
 
       <Group justify="flex-end">
         <Button variant="subtle" color="slate" onClick={onClose}>

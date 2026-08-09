@@ -373,7 +373,7 @@ export function DispensaryMembersPanel({
             : undefined
         }
         icon={IconKey}
-        size="lg"
+        size="xl"
       >
         {overridesUser && (
           <MemberPermissionOverridesEditor
