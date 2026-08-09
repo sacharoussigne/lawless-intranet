@@ -11,12 +11,12 @@ import {
 } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import { parisWeekdayKey } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   useIncrementOwnWeeklyCounterMutation,
   useMarkOwnWeeklyChestTodayMutation,
   useMarkOwnWeeklyPresenceTodayMutation,
-} from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+} from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import classes from './WeeklyActivityQuickActionsPanel.module.scss';
 

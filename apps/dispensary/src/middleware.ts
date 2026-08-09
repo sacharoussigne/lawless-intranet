@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { routes, legacyPathToTenant, tenantRoutes } from './types/routes';
+import {
+  routes,
+  legacyPathToTenant,
+  oldEmployeeModulePathToCanonical,
+  tenantRoutes,
+} from './types/routes';
 import { getRequestAuthSession } from './lib/authSession';
 import { hasToBeLoggedOutMiddleware } from './middlewares/hasToBeLoggedOutMiddleware';
 import { hasToBeLoggedInMiddleware } from './middlewares/hasToBeLoggedInMiddleware';
@@ -28,7 +33,16 @@ export async function middleware(req: NextRequest) {
 
   const legacyTarget = legacyPathToTenant(pathname, DEFAULT_DISPENSARY_SLUG);
   if (legacyTarget) {
-    return NextResponse.redirect(new URL(legacyTarget, req.url));
+    const url = new URL(legacyTarget, req.url);
+    url.search = req.nextUrl.search;
+    return NextResponse.redirect(url, 308);
+  }
+
+  const employeeModuleTarget = oldEmployeeModulePathToCanonical(pathname);
+  if (employeeModuleTarget) {
+    const url = new URL(employeeModuleTarget, req.url);
+    url.search = req.nextUrl.search;
+    return NextResponse.redirect(url, 308);
   }
 
   const session = await getRequestAuthSession(req);
@@ -192,6 +206,8 @@ export const config = {
     '/search-items/:path*',
     '/bank/:path*',
     '/weekly-activity/:path*',
+    '/agenda/:path*',
+    '/cabinet/:path*',
     '/employee/:path*',
     '/management/:path*',
   ],
