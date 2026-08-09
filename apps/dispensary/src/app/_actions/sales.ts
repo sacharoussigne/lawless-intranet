@@ -15,7 +15,7 @@ import {
 import { z } from 'zod';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
+import { hasRole, can } from '@lawless-intranet/auth-permissions';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import {
@@ -257,9 +257,9 @@ export async function cancelSale(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { dispensaryId, effectivePermissions } = ctx.tenant;
     const userId = ctx.session.user.id;
-    const canViewAll = checkRolePermission(effectiveRole, 'sales', 'view_all');
+    const canViewAll = can(effectivePermissions, 'sales', 'view_all');
     const mutationMeta = parseMutationMeta(meta);
 
     const sale = await cancelSaleApi(
@@ -412,8 +412,8 @@ export async function listWeeklySales(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
-    const canViewAll = checkRolePermission(effectiveRole, 'sales', 'view_all');
+    const { dispensaryId, effectivePermissions } = ctx.tenant;
+    const canViewAll = can(effectivePermissions, 'sales', 'view_all');
 
     const weekly = await listWeeklySalesApi(
       {

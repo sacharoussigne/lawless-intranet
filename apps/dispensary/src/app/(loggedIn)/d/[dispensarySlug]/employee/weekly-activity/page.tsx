@@ -1,7 +1,7 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getAuthSession } from '@/lib/authSession';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { can } from '@lawless-intranet/auth-permissions';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import {
@@ -9,6 +9,7 @@ import {
   resolveDiscordDisplayName,
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 import prisma from '@/lib/prisma';
 import { getDataOrThrow } from '@/lib/response';
 import type { AuthSession } from '@/types/session';
@@ -22,6 +23,11 @@ async function WeeklyActivityContent({ dispensarySlug }: { dispensarySlug: strin
 
   const dispensary = await requireDispensaryFromSlug(dispensarySlug);
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession, dispensary.id);
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    session as AuthSession,
+    dispensary.id,
+    effectiveRole,
+  );
 
   const week = getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate());
   const initialWeekBounds = { periodStart: week.start, periodEnd: week.end };
@@ -32,10 +38,10 @@ async function WeeklyActivityContent({ dispensarySlug }: { dispensarySlug: strin
   ]);
   const rows = getDataOrThrow(result, 'Erreur lors du chargement de l’activité hebdomadaire');
 
-  const canEditAll = checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_all');
+  const canEditAll = can(effectivePermissions, 'weekly_dispensary_activity', 'edit_all');
   const canEdit =
     canEditAll ||
-    checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
+    can(effectivePermissions, 'weekly_dispensary_activity', 'edit_own');
 
   const defaultDisplayName = viewerDiscordId
     ? await resolveDiscordDisplayName(prisma, viewerDiscordId)

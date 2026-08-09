@@ -3,8 +3,9 @@ import { redirect } from 'next/navigation';
 import { listWeeklySales } from '@/app/_actions/sales';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { getAuthSession } from '@/lib/authSession';
-import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
+import { hasRole, can } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import { getDataOrThrow } from '@/lib/response';
 import type { AuthSession } from '@/types/session';
@@ -30,11 +31,16 @@ export default async function SalesPage({
   }
 
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession, dispensary.id);
-  if (!checkRolePermission(effectiveRole, 'sales', 'view_all')) {
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    session as AuthSession,
+    dispensary.id,
+    effectiveRole,
+  );
+  if (!can(effectivePermissions, 'sales', 'view_all')) {
     redirect(routes.auth.noManagementAccess);
   }
 
-  const canCancel = checkRolePermission(effectiveRole, 'sales', 'cancel');
+  const canCancel = can(effectivePermissions, 'sales', 'cancel');
   const canDepositOthers =
     hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
   const canDelete = hasRole(effectiveRole, Role.ADMIN);

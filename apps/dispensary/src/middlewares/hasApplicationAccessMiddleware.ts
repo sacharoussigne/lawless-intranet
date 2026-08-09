@@ -1,26 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { checkRolePermission } from "@lawless-intranet/auth-permissions";
 import { routes } from "@/types/routes";
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
-import { getMiddlewareRole } from '@/types/middlewareSession';
+import { middlewareHasPermission } from '@/types/middlewareSession';
 
 export async function hasApplicationAccessMiddleware(
   request: NextRequest,
   session: AppMiddlewareSession,
 ) {
   if (!session) {
-    // If no session, let login middleware handle it
     return NextResponse.next();
   }
 
-  // Use roles directly to check permissions (more performant)
-  const userRole = getMiddlewareRole(session);
-  const hasAccess = checkRolePermission(userRole, "application", "access");
-
-  if (!hasAccess) {
+  if (!middlewareHasPermission(session, "application", "access")) {
     return routes.redirect(request, routes.auth.noAccess);
   }
 
   return NextResponse.next();
 }
-

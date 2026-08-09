@@ -17,6 +17,7 @@ model Dispensary {
   createdById String?
 
   members                      DispensaryMember[]
+  rolePermissions              DispensaryRolePermission[]
   settings                     AppSettings?
   payrollWeeklyReports         PayrollWeeklyReport[]
   dispensaryWeeklyActivities   DispensaryWeeklyActivity[]
@@ -35,10 +36,46 @@ model DispensaryMember {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  permissions  DispensaryMemberPermission[]
 
   @@unique([dispensaryId, userId])
   @@index([userId])
   @@map("dispensary_member")
+}
+
+model DispensaryRolePermission {
+  id           String     @id @default(uuid())
+  dispensaryId String
+  role         String
+  resource     String
+  action       String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+
+  @@unique([dispensaryId, role, resource, action])
+  @@index([dispensaryId, role])
+  @@map("dispensary_role_permission")
+}
+
+enum MemberPermissionEffect {
+  GRANT
+  DENY
+}
+
+model DispensaryMemberPermission {
+  id        String                  @id @default(uuid())
+  memberId  String
+  resource  String
+  action    String
+  effect    MemberPermissionEffect
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  member    DispensaryMember        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, resource, action])
+  @@index([memberId])
+  @@map("dispensary_member_permission")
 }
 
 model PayrollWeeklyReport {

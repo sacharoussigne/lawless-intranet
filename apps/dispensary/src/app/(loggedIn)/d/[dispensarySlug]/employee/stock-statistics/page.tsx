@@ -1,8 +1,9 @@
 import { Container, Title } from '@mantine/core';
 import { redirect } from 'next/navigation';
 import { getAuthSession } from '@/lib/authSession';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { can } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 import type { AuthSession } from '@/types/session';
 import { getAppSettings } from '@/lib/appSettings';
 import { routes, tenantRoutes } from '@/types/routes';
@@ -22,7 +23,12 @@ export default async function StockStatisticsPage({ params }: { params: Promise<
   }
 
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession, dispensary.id);
-  if (!checkRolePermission(effectiveRole, 'stock_statistics', 'view')) {
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    session as AuthSession,
+    dispensary.id,
+    effectiveRole,
+  );
+  if (!can(effectivePermissions, 'stock_statistics', 'view')) {
     redirect(routes.auth.noManagementAccess);
   }
 

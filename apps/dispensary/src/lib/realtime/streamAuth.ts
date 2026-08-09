@@ -1,4 +1,4 @@
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { can } from '@lawless-intranet/auth-permissions';
 import { getRequestAuthSession } from '@/lib/authSession';
 import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
 import { getAppFeatureActionBlock, getAppSettings } from '@/lib/appSettings';
@@ -29,7 +29,7 @@ export async function requireDispensaryRealtimeStreamAccess(
   }
 
   try {
-    const { dispensary, effectiveRole } = await requireDispensaryAccess(
+    const { dispensary, effectiveRole, effectivePermissions } = await requireDispensaryAccess(
       session,
       dispensarySlug,
     );
@@ -54,9 +54,9 @@ export async function requireDispensaryRealtimeStreamAccess(
         dispensary.id,
         'weeklyDispensaryActivity',
       );
-      if (!featureBlock && canViewWeeklyDispensaryActivity(effectiveRole)) {
+      if (!featureBlock && canViewWeeklyDispensaryActivity(effectivePermissions)) {
         weeklyActivity = {
-          canEditAll: canEditAllWeeklyDispensaryActivity(effectiveRole),
+          canEditAll: canEditAllWeeklyDispensaryActivity(effectivePermissions),
           viewerUserId: session.user.id,
           viewerDiscordUserId: await getDiscordAccountIdForUser(
             prisma,
@@ -69,9 +69,9 @@ export async function requireDispensaryRealtimeStreamAccess(
     let sales: DispensaryRealtimeViewerFilter['sales'] = null;
     if (settings.featureSalesEnabled) {
       const featureBlock = await getAppFeatureActionBlock(dispensary.id, 'sales');
-      if (!featureBlock && checkRolePermission(effectiveRole, 'sales', 'view')) {
+      if (!featureBlock && can(effectivePermissions, 'sales', 'view')) {
         sales = {
-          canViewAll: checkRolePermission(effectiveRole, 'sales', 'view_all'),
+          canViewAll: can(effectivePermissions, 'sales', 'view_all'),
           viewerUserId: session.user.id,
         };
       }
@@ -80,7 +80,7 @@ export async function requireDispensaryRealtimeStreamAccess(
     let orders = false;
     if (settings.featureOrdersEnabled) {
       const featureBlock = await getAppFeatureActionBlock(dispensary.id, 'orders');
-      if (!featureBlock && checkRolePermission(effectiveRole, 'orders', 'view')) {
+      if (!featureBlock && can(effectivePermissions, 'orders', 'view')) {
         orders = true;
       }
     }

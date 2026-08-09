@@ -2,7 +2,7 @@ import Header from '@/app/(loggedIn)/_components/Header/Header';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
-import { calculatePermissions } from '@/lib/auth/calculatePermissions';
+import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
 import { getAppSettings } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
@@ -13,6 +13,7 @@ import {
   userCanAccessDispensary,
   resolveDispensaryAccessDeniedRedirect,
 } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 import { notFound, redirect } from 'next/navigation';
 import { userHasAnyAgendaAccess, listAccessibleAgendaIds } from '@/lib/agenda/access';
 import { userHasAnyCabinetAccess, listAccessibleCabinetIds } from '@/lib/cabinet/access';
@@ -60,7 +61,12 @@ export default async function DispensaryLayout({
     listAccessibleDispensaries(authSession),
   ]);
 
-  const permissions = calculatePermissions(effectiveRole);
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    authSession,
+    dispensary.id,
+    effectiveRole,
+  );
+  const permissions = calculatePermissionsFromEffective(effectivePermissions);
   const userId = session?.user?.id;
   const agendaModuleAccess = userId
     ? await userHasAnyAgendaAccess(

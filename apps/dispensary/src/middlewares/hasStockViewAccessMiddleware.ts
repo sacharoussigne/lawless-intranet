@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { checkRolePermission } from "@lawless-intranet/auth-permissions";
 import { routes } from "@/types/routes";
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
-import { getMiddlewareRole } from '@/types/middlewareSession';
+import { getMiddlewareRole, middlewareHasPermission } from '@/types/middlewareSession';
 import { userHasAccessibleChests } from '@/lib/chests/access';
 
 export async function hasStockViewAccessMiddleware(
@@ -13,13 +12,11 @@ export async function hasStockViewAccessMiddleware(
     return NextResponse.next();
   }
 
-  const userRole = getMiddlewareRole(session);
-  const hasAccess = checkRolePermission(userRole, "stock", "view");
-
-  if (!hasAccess) {
+  if (!middlewareHasPermission(session, "stock", "view")) {
     return routes.redirect(request, routes.auth.noAccess);
   }
 
+  const userRole = getMiddlewareRole(session);
   const dispensaryId = session.tenant?.dispensaryId;
   if (dispensaryId) {
     const hasChests = await userHasAccessibleChests(dispensaryId, userRole);

@@ -1,3 +1,7 @@
+import type { AppSettingsDTO } from '@/lib/appSettingsShared';
+import { isAppFeatureEnabled } from '@/lib/appSettingsShared';
+import type { Permissions } from '@/types/permissions';
+import type { tenantRoutes } from '@/types/routes';
 import type { Icon } from '@tabler/icons-react';
 import {
   IconAbacus,
@@ -12,11 +16,6 @@ import {
   IconSearch,
   IconStethoscope,
 } from '@tabler/icons-react';
-import type { AppSettingsDTO } from '@/lib/appSettingsShared';
-import { isAppFeatureEnabled } from '@/lib/appSettingsShared';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
-import type { Permissions } from '@/types/permissions';
-import type { tenantRoutes } from '@/types/routes';
 
 export type EmployeeNavId =
   | 'stock'
@@ -54,7 +53,7 @@ export type EmployeeNavContext = {
 const PRIMARY_SLOT_COUNT = 4;
 
 function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean {
-  const { appSettings, permissions, userRole } = ctx;
+  const { appSettings, permissions } = ctx;
 
   switch (item.id) {
     case 'stock':
@@ -64,15 +63,9 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
         (ctx.hasAccessibleChests ?? false)
       );
     case 'orders':
-      return (
-        appSettings.featureOrdersEnabled &&
-        checkRolePermission(userRole, 'orders', 'view')
-      );
+      return appSettings.featureOrdersEnabled && (permissions?.orders.view ?? false);
     case 'bank':
-      return (
-        appSettings.featureBankEnabled &&
-        checkRolePermission(userRole, 'bank', 'access')
-      );
+      return appSettings.featureBankEnabled && (permissions?.bank.access ?? false);
     case 'cabinet':
       return (
         isAppFeatureEnabled(appSettings, 'cabinet') && (ctx.cabinetModuleAccess ?? false)
@@ -96,15 +89,9 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
         appSettings.featureStockEnabled && (permissions?.stockStatistics.view ?? false)
       );
     case 'mails':
-      return (
-        appSettings.featureMailsEnabled &&
-        checkRolePermission(userRole, 'mails', 'access')
-      );
+      return appSettings.featureMailsEnabled && (permissions?.mails.access ?? false);
     case 'search':
-      return (
-        appSettings.featureSearchEnabled &&
-        checkRolePermission(userRole, 'search', 'access')
-      );
+      return appSettings.featureSearchEnabled && (permissions?.search.access ?? false);
     default:
       return false;
   }

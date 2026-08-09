@@ -1,54 +1,34 @@
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
-import type { Permissions } from '@/types/permissions';
+import {
+  can,
+  resolvePermissions,
+  toPermissionsObject,
+  type PermissionsObject,
+} from '@lawless-intranet/auth-permissions';
 
 /**
- * Calcule toutes les permissions pour un rôle donné
- * @param role Le rôle de l'utilisateur
- * @returns Les permissions calculées ou null si pas de rôle
+ * Builds the UI permissions object from already-resolved effective permission keys.
  */
-export function calculatePermissions(role: string | null | undefined): Permissions | null {
+export function calculatePermissionsFromEffective(
+  effectivePermissions: Iterable<string> | null | undefined,
+): PermissionsObject | null {
+  return toPermissionsObject(effectivePermissions);
+}
+
+/**
+ * Falls back to code DEFAULT_ROLE_MATRIX when only a role string is available.
+ * Prefer calculatePermissionsFromEffective with tenant-resolved keys.
+ */
+export function calculatePermissions(role: string | null | undefined): PermissionsObject | null {
   if (!role) {
     return null;
   }
-
-  return {
-    stock: {
-      view: checkRolePermission(role, 'stock', 'view'),
-      create: checkRolePermission(role, 'stock', 'create'),
-      update: checkRolePermission(role, 'stock', 'update'),
-      delete: checkRolePermission(role, 'stock', 'delete'),
-      craftRead: checkRolePermission(role, 'stock', 'craft-read'),
-      craftWrite: checkRolePermission(role, 'stock', 'craft-write'),
-      hide: checkRolePermission(role, 'stock', 'hide'),
-    },
-    orders: {
-      view: checkRolePermission(role, 'orders', 'view'),
-      create: checkRolePermission(role, 'orders', 'create'),
-      update: checkRolePermission(role, 'orders', 'update'),
-      delete: checkRolePermission(role, 'orders', 'delete'),
-    },
-    application: {
-      access: checkRolePermission(role, 'application', 'access'),
-      management: checkRolePermission(role, 'application', 'management'),
-    },
-    payrollReports: {
-      view: checkRolePermission(role, 'payroll_reports', 'view'),
-      create: checkRolePermission(role, 'payroll_reports', 'create'),
-    },
-    weeklyDispensaryActivity: {
-      view: checkRolePermission(role, 'weekly_dispensary_activity', 'view'),
-      editOwn: checkRolePermission(role, 'weekly_dispensary_activity', 'edit_own'),
-      editAll: checkRolePermission(role, 'weekly_dispensary_activity', 'edit_all'),
-    },
-    stockStatistics: {
-      view: checkRolePermission(role, 'stock_statistics', 'view'),
-    },
-    sales: {
-      create: checkRolePermission(role, 'sales', 'create'),
-      cancel: checkRolePermission(role, 'sales', 'cancel'),
-      view: checkRolePermission(role, 'sales', 'view'),
-      viewAll: checkRolePermission(role, 'sales', 'view_all'),
-    },
-  };
+  return toPermissionsObject(resolvePermissions({ roles: role }));
 }
 
+export function hasPermission(
+  effectivePermissions: Iterable<string> | null | undefined,
+  resource: string,
+  action: string,
+): boolean {
+  return can(effectivePermissions, resource, action);
+}
