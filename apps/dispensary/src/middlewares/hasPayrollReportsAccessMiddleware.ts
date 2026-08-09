@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { checkRolePermission } from "@lawless-intranet/auth-permissions";
 import { routes } from "@/types/routes";
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
-import { getMiddlewareRole } from '@/types/middlewareSession';
+import { middlewareHasPermission } from '@/types/middlewareSession';
 
 export async function hasPayrollReportsAccessMiddleware(
   request: NextRequest,
@@ -12,10 +11,7 @@ export async function hasPayrollReportsAccessMiddleware(
     return NextResponse.next();
   }
 
-  const userRole = getMiddlewareRole(session);
-  const allowed = checkRolePermission(userRole, "payroll_reports", "view");
-
-  if (!allowed) {
+  if (!middlewareHasPermission(session, "payroll_reports", "view")) {
     return routes.redirect(request, routes.auth.noManagementAccess);
   }
 

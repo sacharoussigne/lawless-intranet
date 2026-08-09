@@ -25,6 +25,7 @@ import { bankScope } from '@/lib/bank/client';
 import { purgeInventoryScope } from '@lawless-intranet/inventory-client/server';
 import { InventoryClientError } from '@lawless-intranet/inventory-client';
 import { inventoryScope } from '@/lib/inventory/client';
+import { ensureDispensaryRolePermissions } from '@/lib/dispensary/permissionsSeed';
 
 const createDispensarySchema = z.object({
   name: z.string().min(1).max(120),
@@ -84,6 +85,8 @@ export async function createDispensary(data: { name: string; slug?: string }) {
         },
       },
     });
+
+    await ensureDispensaryRolePermissions(dispensary.id);
 
     revalidatePath('/platform/dispensaries');
     return { status: 201, data: dispensary };

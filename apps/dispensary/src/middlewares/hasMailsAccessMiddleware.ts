@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { checkRolePermission } from "@lawless-intranet/auth-permissions";
 import { routes } from "@/types/routes";
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
-import { getMiddlewareRole } from '@/types/middlewareSession';
+import { middlewareHasPermission } from '@/types/middlewareSession';
 
 export async function hasMailsAccessMiddleware(
   request: NextRequest,
@@ -12,10 +11,7 @@ export async function hasMailsAccessMiddleware(
     return NextResponse.next();
   }
 
-  const userRole = getMiddlewareRole(session);
-  const hasAccess = checkRolePermission(userRole, "mails", "access");
-
-  if (!hasAccess) {
+  if (!middlewareHasPermission(session, "mails", "access")) {
     return routes.redirect(request, routes.auth.noAccess);
   }
 

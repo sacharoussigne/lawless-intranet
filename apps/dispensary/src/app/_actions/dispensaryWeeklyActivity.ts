@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { can } from '@lawless-intranet/auth-permissions';
 import {
   canEditAllWeeklyDispensaryActivity,
   canEditWeeklyActivity,
@@ -75,7 +75,7 @@ async function requireWeeklyActivityView(dispensarySlug: string) {
   if (!ctx.ok) {
     return { ok: false as const, response: ctx.response };
   }
-  if (!canViewWeeklyDispensaryActivity(ctx.tenant.effectiveRole)) {
+  if (!canViewWeeklyDispensaryActivity(ctx.tenant.effectivePermissions)) {
     return { ok: false as const, response: { status: 403 as const, error: 'Permission refusée' } };
   }
   return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
@@ -88,11 +88,11 @@ async function requireWeeklyActivityEdit(dispensarySlug: string) {
   if (!ctx.ok) {
     return { ok: false as const, response: ctx.response };
   }
-  const role = ctx.tenant.effectiveRole;
-  const can =
-    checkRolePermission(role, 'weekly_dispensary_activity', 'edit_all') ||
-    checkRolePermission(role, 'weekly_dispensary_activity', 'edit_own');
-  if (!can) {
+  const perms = ctx.tenant.effectivePermissions;
+  const allowed =
+    can(perms, 'weekly_dispensary_activity', 'edit_all') ||
+    can(perms, 'weekly_dispensary_activity', 'edit_own');
+  if (!allowed) {
     return { ok: false as const, response: { status: 403 as const, error: 'Permission refusée' } };
   }
   return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
@@ -101,10 +101,10 @@ async function requireWeeklyActivityEdit(dispensarySlug: string) {
 async function listWhereForSession(
   dispensaryId: string,
   sessionUserId: string,
-  role: string | null | undefined,
+  effectivePermissions: Iterable<string> | null | undefined,
 ) {
   const tenantFilter = tenantWhere(dispensaryId);
-  if (canEditAllWeeklyDispensaryActivity(role)) {
+  if (canEditAllWeeklyDispensaryActivity(effectivePermissions)) {
     return tenantFilter;
   }
   const discordId = await getDiscordAccountIdForUser(prisma, sessionUserId);
@@ -158,7 +158,7 @@ export async function listDispensaryWeeklyActivities(
     const { session, tenant } = gate;
     const { dispensaryId } = tenant;
 
-    const where = await listWhereForSession(dispensaryId, session.user.id, tenant.effectiveRole);
+    const where = await listWhereForSession(dispensaryId, session.user.id, tenant.effectivePermissions);
     const viewerDiscordId = await getDiscordAccountIdForUser(prisma, session.user.id);
 
     if (options) {
@@ -214,8 +214,8 @@ export async function getDispensaryWeeklyActivityHistory(
       return { status: 404 as const, error: 'Activité introuvable' };
     }
 
-    const role = gate.tenant.effectiveRole;
-    const isAll = canEditAllWeeklyDispensaryActivity(role);
+    const perms = gate.tenant.effectivePermissions;
+    const isAll = canEditAllWeeklyDispensaryActivity(perms);
     const own = await isWeeklyActivityOwner(prisma, gate.session.user.id, activity);
     if (!isAll && !own) {
       return { status: 403 as const, error: 'Permission refusée' };
@@ -307,7 +307,7 @@ export async function listDispensaryWeeklyActivityTargets(dispensarySlug: string
     if (!gate.ok) {
       return gate.response;
     }
-    if (!canEditAllWeeklyDispensaryActivity(gate.tenant.effectiveRole)) {
+    if (!canEditAllWeeklyDispensaryActivity(gate.tenant.effectivePermissions)) {
       return { status: 403 as const, error: 'Permission refusée' };
     }
 
@@ -358,8 +358,8 @@ export async function createDispensaryWeeklyActivity(
 
     const { session, tenant } = gate;
     const { dispensaryId } = tenant;
-    const role = tenant.effectiveRole;
-    const editAll = canEditAllWeeklyDispensaryActivity(role);
+    const perms = tenant.effectivePermissions;
+    const editAll = canEditAllWeeklyDispensaryActivity(perms);
 
     let discordUserId: string;
     let displayName: string;
@@ -490,7 +490,7 @@ export async function updateDispensaryWeeklyActivity(
     const allowed = await canEditWeeklyActivity(
       prisma,
       gate.session.user.id,
-      gate.tenant.effectiveRole,
+      gate.tenant.effectivePermissions,
       existing,
     );
     if (!allowed) {
@@ -500,7 +500,7 @@ export async function updateDispensaryWeeklyActivity(
     const settings = await getAppSettings(dispensaryId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
     const updateInput = applyVisibilityToUpdateInput(parsedBody.data, visibility);
-    const canEditAll = canEditAllWeeklyDispensaryActivity(gate.tenant.effectiveRole);
+    const canEditAll = canEditAllWeeklyDispensaryActivity(gate.tenant.effectivePermissions);
     const existingChest = parseWeekdayFlagsJson(existing.chestDays);
     const existingPresence = parseWeekdayFlagsJson(existing.presenceDays);
 
@@ -568,7 +568,7 @@ export async function deleteDispensaryWeeklyActivity(
     const allowed = await canEditWeeklyActivity(
       prisma,
       gate.session.user.id,
-      gate.tenant.effectiveRole,
+      gate.tenant.effectivePermissions,
       existing,
     );
     if (!allowed) {

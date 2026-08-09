@@ -1,6 +1,6 @@
 import { getAuthSession } from '@/lib/authSession';
 import { getAppFeatureActionBlock, type AppFeatureKey } from '@/lib/appSettings';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { can, checkRolePermission } from '@lawless-intranet/auth-permissions';
 import { requireTenantActionContext, type TenantActionContext } from '@/lib/dispensary/serverActionContext';
 
 export type AuthSession = NonNullable<Awaited<ReturnType<typeof getAuthSession>>>;
@@ -34,12 +34,24 @@ export async function requireFeature(
 type PermissionResource = Parameters<typeof checkRolePermission>[1];
 
 export function requirePermission(
-  userRole: string | null | undefined,
+  role: string | null | undefined,
   resource: PermissionResource,
   action: string,
   message = 'Permission refusée',
 ): { ok: true } | { ok: false; response: ActionFailure } {
-  if (!checkRolePermission(userRole, resource, action)) {
+  if (!checkRolePermission(role, resource, action)) {
+    return { ok: false, response: { status: 403, error: message } };
+  }
+  return { ok: true };
+}
+
+export function requireEffectivePermission(
+  effectivePermissions: Iterable<string> | null | undefined,
+  resource: string,
+  action: string,
+  message = 'Permission refusée',
+): { ok: true } | { ok: false; response: ActionFailure } {
+  if (!can(effectivePermissions, resource, action)) {
     return { ok: false, response: { status: 403, error: message } };
   }
   return { ok: true };
@@ -103,8 +115,8 @@ export async function requireTenantServerActionContext(
   }
 
   if (options.permission) {
-    const permResult = requirePermission(
-      tenantResult.ctx.effectiveRole,
+    const permResult = requireEffectivePermission(
+      tenantResult.ctx.effectivePermissions,
       options.permission.resource,
       options.permission.action,
       options.permission.message,

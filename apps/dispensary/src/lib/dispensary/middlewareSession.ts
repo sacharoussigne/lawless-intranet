@@ -4,6 +4,7 @@ import {
   getEffectiveRoleForDispensary,
   userCanAccessDispensary,
 } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensaryUncached } from '@/lib/dispensary/permissionsResolve';
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
 
 export async function enrichSessionWithTenant(
@@ -26,9 +27,15 @@ export async function enrichSessionWithTenant(
     return session;
   }
 
-  const effectiveRole = await getEffectiveRoleForDispensary(
-    { user: session.user } as Parameters<typeof getEffectiveRoleForDispensary>[0],
+  const sessionLike = {
+    user: session.user,
+  } as Parameters<typeof getEffectiveRoleForDispensary>[0];
+
+  const effectiveRole = await getEffectiveRoleForDispensary(sessionLike, dispensary.id);
+  const effectivePermissions = await resolveEffectivePermissionsForDispensaryUncached(
+    sessionLike,
     dispensary.id,
+    effectiveRole,
   );
 
   return {
@@ -37,6 +44,7 @@ export async function enrichSessionWithTenant(
       dispensaryId: dispensary.id,
       dispensarySlug: dispensary.slug,
       effectiveRole,
+      effectivePermissions,
     },
   };
 }

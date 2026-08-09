@@ -14,7 +14,7 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconUsers } from '@tabler/icons-react';
+import { IconKey, IconTrash, IconUsers } from '@tabler/icons-react';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import {
@@ -30,7 +30,8 @@ import {
   parseRoleList,
   rolesAsString,
 } from '@/types/enum/roles';
-
+import { MemberPermissionOverridesEditor } from './MemberPermissionOverridesEditor';
+import { AppModal } from '@/app/_components/AppModal/AppModal';
 const ROLE_OPTIONS = DISPENSARY_MEMBER_ROLES.map((role) => ({
   value: role,
   label: rolesAsString(role),
@@ -63,6 +64,9 @@ export function DispensaryMembersPanel({
   );
   const [descriptionEdits, setDescriptionEdits] = useState<Record<string, string>>(() =>
     Object.fromEntries(initialMembers.map((m) => [m.user.id, m.description ?? ''])),
+  );
+  const [overridesUser, setOverridesUser] = useState<{ id: string; name: string } | null>(
+    null,
   );
 
   const memberUserIds = useMemo(
@@ -286,21 +290,33 @@ export function DispensaryMembersPanel({
                 <Stack gap="md">
                   <Group justify="space-between" align="center" wrap="nowrap">
                     <Text fw={600}>{m.user.name}</Text>
-                    <DeleteConfirmPopover
-                      title="Retirer ce membre ?"
-                      message={`« ${m.user.name} » perdra l’accès à ce dispensaire.`}
-                      confirmLabel="Retirer"
-                      position="left"
-                      onConfirm={() => handleRemove(m.user.id)}
-                    >
+                    <Group gap="xs" wrap="nowrap">
                       <ActionIcon
                         variant="light"
-                        color="danger"
-                        aria-label={`Retirer ${m.user.name}`}
+                        color="slate"
+                        aria-label={`Permissions de ${m.user.name}`}
+                        onClick={() =>
+                          setOverridesUser({ id: m.user.id, name: m.user.name })
+                        }
                       >
-                        <IconTrash size={16} />
+                        <IconKey size={16} />
                       </ActionIcon>
-                    </DeleteConfirmPopover>
+                      <DeleteConfirmPopover
+                        title="Retirer ce membre ?"
+                        message={`« ${m.user.name} » perdra l’accès à ce dispensaire.`}
+                        confirmLabel="Retirer"
+                        position="left"
+                        onConfirm={() => handleRemove(m.user.id)}
+                      >
+                        <ActionIcon
+                          variant="light"
+                          color="danger"
+                          aria-label={`Retirer ${m.user.name}`}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </DeleteConfirmPopover>
+                    </Group>
                   </Group>
 
                   <MultiSelect
@@ -346,6 +362,28 @@ export function DispensaryMembersPanel({
           })}
         </Stack>
       )}
+
+      <AppModal
+        opened={overridesUser != null}
+        onClose={() => setOverridesUser(null)}
+        title="Overrides de permissions"
+        description={
+          overridesUser
+            ? `Exceptions pour ${overridesUser.name} (en plus des rôles).`
+            : undefined
+        }
+        icon={IconKey}
+        size="xl"
+      >
+        {overridesUser && (
+          <MemberPermissionOverridesEditor
+            dispensarySlug={dispensarySlug}
+            userId={overridesUser.id}
+            userName={overridesUser.name}
+            onClose={() => setOverridesUser(null)}
+          />
+        )}
+      </AppModal>
     </Stack>
   );
 }

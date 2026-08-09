@@ -8,6 +8,7 @@ import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { rewritePathWithDispensarySlug } from '@/lib/dispensary/slug';
 import { routes } from '@/types/routes';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 
 export type DispensaryContext = {
   id: string;
@@ -79,14 +80,23 @@ export async function requireDispensaryFromSlug(slug: string): Promise<Dispensar
 export async function requireDispensaryAccess(
   session: SessionLike,
   slug: string,
-): Promise<{ dispensary: DispensaryContext; effectiveRole: string | null }> {
+): Promise<{
+  dispensary: DispensaryContext;
+  effectiveRole: string | null;
+  effectivePermissions: string[];
+}> {
   const dispensary = await requireDispensaryFromSlug(slug);
   const allowed = await userCanAccessDispensary(session, dispensary.id);
   if (!allowed) {
     throw new Error('DISPENSARY_ACCESS_DENIED');
   }
   const effectiveRole = await getEffectiveRoleForDispensary(session, dispensary.id);
-  return { dispensary, effectiveRole };
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    session,
+    dispensary.id,
+    effectiveRole,
+  );
+  return { dispensary, effectiveRole, effectivePermissions };
 }
 
 export async function listAccessibleDispensaries(session: SessionLike) {
