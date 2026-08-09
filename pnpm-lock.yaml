@@ -32,6 +32,9 @@ importers:
       '@lawless-intranet/auth-client':
         specifier: workspace:*
         version: link:../../packages/auth-client
+      '@lawless-intranet/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -269,6 +272,9 @@ importers:
       '@lawless-intranet/mail-template-ui':
         specifier: workspace:*
         version: link:../../packages/mail-template-ui
+      '@lawless-intranet/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -493,6 +499,9 @@ importers:
       '@lawless-intranet/auth-client':
         specifier: workspace:*
         version: link:../../packages/auth-client
+      '@lawless-intranet/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -563,6 +572,9 @@ importers:
 
   packages/agenda-ui:
     dependencies:
+      '@lawless-intranet/realtime':
+        specifier: workspace:*
+        version: link:../realtime
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types
@@ -816,6 +828,27 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/realtime:
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.16.0
+        version: 8.20.0
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      pg:
+        specifier: ^8.16.3
+        version: 8.21.0
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
 
   packages/types: {}
 

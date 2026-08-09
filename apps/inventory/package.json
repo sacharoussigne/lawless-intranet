@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@lawless-intranet/auth-client": "workspace:*",
+    "@lawless-intranet/realtime": "workspace:*",
     "@lawless-intranet/types": "workspace:*",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",

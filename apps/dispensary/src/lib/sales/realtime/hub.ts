@@ -1,74 +1,22 @@
-import { isWeeklySalesRealtimeVisibleToViewer } from '@/lib/sales/realtime/visibility';
-import type {
-  WeeklySalesRealtimeEvent,
-  WeeklySalesRealtimeViewerFilter,
-} from '@/lib/sales/realtime/types';
-
-type WeeklySalesRealtimeSubscriber = {
-  send: (chunk: string) => void;
-  filter: WeeklySalesRealtimeViewerFilter;
-};
-
-type WeeklySalesRealtimeHubGlobal = typeof globalThis & {
-  __weeklySalesRealtimeChannels?: Map<string, Set<WeeklySalesRealtimeSubscriber>>;
-};
-
-function getChannels(): Map<string, Set<WeeklySalesRealtimeSubscriber>> {
-  const globalStore = globalThis as WeeklySalesRealtimeHubGlobal;
-  if (!globalStore.__weeklySalesRealtimeChannels) {
-    globalStore.__weeklySalesRealtimeChannels = new Map();
-  }
-  return globalStore.__weeklySalesRealtimeChannels;
-}
+import type { RealtimeEnvelope } from '@lawless-intranet/realtime';
+import {
+  broadcastDispensaryRealtime,
+  dispensaryRealtimeChannelKey,
+} from '@/lib/realtime/hub';
+import { toWeeklySalesRealtimeEnvelope } from '@/lib/sales/realtime/envelope';
+import type { WeeklySalesRealtimeEvent } from '@/lib/sales/realtime/types';
 
 export function weeklySalesRealtimeChannelKey(dispensaryId: string): string {
-  return `weeklySales:${dispensaryId}`;
-}
-
-export function formatWeeklySalesSseMessage(event: string, data: string): string {
-  return `event: ${event}\ndata: ${data}\n\n`;
-}
-
-export function subscribeWeeklySalesRealtime(
-  channelKey: string,
-  filter: WeeklySalesRealtimeViewerFilter,
-  send: (chunk: string) => void,
-): () => void {
-  const channels = getChannels();
-  const subscriber: WeeklySalesRealtimeSubscriber = { send, filter };
-  let subscribers = channels.get(channelKey);
-  if (!subscribers) {
-    subscribers = new Set();
-    channels.set(channelKey, subscribers);
-  }
-  subscribers.add(subscriber);
-
-  return () => {
-    subscribers.delete(subscriber);
-    if (subscribers.size === 0) {
-      channels.delete(channelKey);
-    }
-  };
+  return dispensaryRealtimeChannelKey(dispensaryId);
 }
 
 export function broadcastWeeklySalesRealtime(
   channelKey: string,
-  event: WeeklySalesRealtimeEvent,
+  event: WeeklySalesRealtimeEvent | RealtimeEnvelope,
 ): void {
-  const subscribers = getChannels().get(channelKey);
-  if (!subscribers || subscribers.size === 0) {
-    return;
-  }
-
-  const chunk = formatWeeklySalesSseMessage('change', JSON.stringify(event));
-  for (const subscriber of subscribers) {
-    if (!isWeeklySalesRealtimeVisibleToViewer(event, subscriber.filter)) {
-      continue;
-    }
-    try {
-      subscriber.send(chunk);
-    } catch {
-      // Connection may already be closed.
-    }
-  }
+  const envelope =
+    'payload' in event && 'domain' in event
+      ? (event as RealtimeEnvelope)
+      : toWeeklySalesRealtimeEnvelope(event as WeeklySalesRealtimeEvent);
+  broadcastDispensaryRealtime(channelKey, envelope);
 }
