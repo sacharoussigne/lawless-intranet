@@ -15,7 +15,7 @@ import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { listCabinetsForAdmin } from '@/app/_actions/cabinet/cabinets';
 import { handleAction } from '@/lib/action';
-import { CabinetMembersModal } from '../../cabinet/components/CabinetMembersModal';
+import { CabinetMembersModal } from '../../employee/cabinet/components/CabinetMembersModal';
 import { CabinetFormModal } from './components/CabinetFormModal';
 import { DeleteCabinetModal } from './components/DeleteCabinetModal';
 

@@ -5,11 +5,12 @@ import { getOrdersPage } from '@/app/_actions/orders';
 import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
 import { Container } from '@mantine/core';
 import { getAuthSession } from '@/lib/authSession';
-import { calculatePermissions } from '@/lib/auth/calculatePermissions';
-import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
+import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
+import { hasRole, can } from '@lawless-intranet/auth-permissions';
 import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 import { userHasAccessibleChests } from '@/lib/chests/access';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { getBankWeekBounds } from '@/lib/bankWeek';
@@ -20,7 +21,7 @@ import {
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import prisma from '@/lib/prisma';
 import { getDataOrThrow } from '@/lib/response';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import type { ChestListItem } from '@/types/chests';
 import type { OrdersPageResult } from '@/types/orders';
@@ -39,16 +40,21 @@ export default async function EmployeePage({
   const dispensary = await requireDispensaryFromSlug(dispensarySlug);
   const session = await getAuthSession();
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession | null, dispensary.id);
-  const permissions = calculatePermissions(effectiveRole);
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    session as AuthSession | null,
+    dispensary.id,
+    effectiveRole,
+  );
+  const permissions = calculatePermissionsFromEffective(effectivePermissions);
   const appSettings = await getAppSettings(dispensary.id);
   const userId = session?.user?.id ?? '';
   const hasAccessibleChests = await userHasAccessibleChests(dispensary.id, effectiveRole);
 
   const weeklyFeatureEnabled = appSettings.featureWeeklyDispensaryActivityEnabled;
   const canViewWeekly = permissions?.weeklyDispensaryActivity.view ?? false;
-  const canEditAll = checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_all');
+  const canEditAll = can(effectivePermissions, 'weekly_dispensary_activity', 'edit_all');
   const canEdit =
-    canEditAll || checkRolePermission(effectiveRole, 'weekly_dispensary_activity', 'edit_own');
+    canEditAll || can(effectivePermissions, 'weekly_dispensary_activity', 'edit_own');
 
   const salesFeatureEnabled = isAppFeatureEnabled(appSettings, 'sales');
   const canCreateSale = salesFeatureEnabled && (permissions?.sales.create ?? false);

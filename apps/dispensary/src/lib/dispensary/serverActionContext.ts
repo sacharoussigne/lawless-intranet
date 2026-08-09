@@ -14,6 +14,7 @@ export type TenantActionContext = {
   dispensary: DispensaryContext;
   dispensaryId: string;
   effectiveRole: string | null;
+  effectivePermissions: string[];
   userId: string;
 };
 
@@ -29,13 +30,17 @@ export async function requireTenantActionContext(
   }
 
   try {
-    const { dispensary, effectiveRole } = await requireDispensaryAccess(session, dispensarySlug);
+    const { dispensary, effectiveRole, effectivePermissions } = await requireDispensaryAccess(
+      session,
+      dispensarySlug,
+    );
     return {
       ok: true,
       ctx: {
         dispensary,
         dispensaryId: dispensary.id,
         effectiveRole,
+        effectivePermissions,
         userId: session.user.id,
       },
     };

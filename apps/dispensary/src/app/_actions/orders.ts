@@ -20,6 +20,7 @@ import {
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
+import { emitOrdersChange } from '@/lib/orders/realtime/broadcast';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import type {
   ActiveOrderSummary,
@@ -104,6 +105,8 @@ export async function createOrder(
       },
       await inventoryCookie(),
     );
+
+    await emitOrdersChange(dispensaryId, { orderId: order.id });
 
     return {
       status: 201,
@@ -400,6 +403,8 @@ export async function updateOrder(
       await inventoryCookie(),
     );
 
+    await emitOrdersChange(dispensaryId, { orderId: order.id });
+
     return {
       status: 200,
       data: order as unknown as OrderWithRelations,
@@ -520,6 +525,8 @@ export async function completeOrder(
       }
     }
 
+    await emitOrdersChange(dispensaryId, { orderId: order.id });
+
     return {
       status: 200,
       data: order as unknown as OrderWithRelations,
@@ -557,6 +564,8 @@ export async function deleteOrder(dispensarySlug: string, data: { id: string }) 
       { ...inventoryScope(dispensaryId), id: validatedData.id },
       await inventoryCookie(),
     );
+
+    await emitOrdersChange(dispensaryId, { orderId: validatedData.id });
 
     return {
       status: 200,

@@ -15,7 +15,7 @@ import {
 import { z } from 'zod';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { checkRolePermission, hasRole } from '@lawless-intranet/auth-permissions';
+import { hasRole, can } from '@lawless-intranet/auth-permissions';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import {
@@ -23,12 +23,12 @@ import {
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
-import { Role } from '@/types/enum/roles';
 import {
   emitWeeklySalesChange,
   saleToWeeklySalesRealtimePayload,
 } from '@/lib/sales/realtime/broadcast';
 import type { SalesMutationMeta } from '@/lib/sales/realtime/types';
+import { Role } from '@/types/enum/roles';
 
 const saleItemSchema = z.object({
   itemId: z.string().uuid(),
@@ -211,6 +211,7 @@ export async function createSale(
           chestId: item.chestId,
         })),
         effectiveRole,
+        originClientId: mutationMeta?.originClientId,
       },
       await inventoryCookie(),
     );
@@ -256,9 +257,9 @@ export async function cancelSale(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { dispensaryId, effectivePermissions } = ctx.tenant;
     const userId = ctx.session.user.id;
-    const canViewAll = checkRolePermission(effectiveRole, 'sales', 'view_all');
+    const canViewAll = can(effectivePermissions, 'sales', 'view_all');
     const mutationMeta = parseMutationMeta(meta);
 
     const sale = await cancelSaleApi(
@@ -267,6 +268,7 @@ export async function cancelSale(
         id: saleId,
         userId,
         canViewAll,
+        originClientId: mutationMeta?.originClientId,
       },
       await inventoryCookie(),
     );
@@ -319,6 +321,7 @@ export async function depositSaleInCashRegister(
         id: saleId,
         userId,
         canDepositOthers,
+        originClientId: mutationMeta?.originClientId,
       },
       await inventoryCookie(),
     );
@@ -373,6 +376,7 @@ export async function deleteSale(
         id: saleId,
         userId,
         isAdmin: true,
+        originClientId: mutationMeta?.originClientId,
       },
       await inventoryCookie(),
     );
@@ -408,8 +412,8 @@ export async function listWeeklySales(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
-    const canViewAll = checkRolePermission(effectiveRole, 'sales', 'view_all');
+    const { dispensaryId, effectivePermissions } = ctx.tenant;
+    const canViewAll = can(effectivePermissions, 'sales', 'view_all');
 
     const weekly = await listWeeklySalesApi(
       {

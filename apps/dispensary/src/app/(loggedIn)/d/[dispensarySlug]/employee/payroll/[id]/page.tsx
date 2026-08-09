@@ -1,8 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import { getPayrollReportById } from '@/app/_actions/payrollReports';
 import { getAuthSession } from '@/lib/authSession';
-import { checkRolePermission } from '@lawless-intranet/auth-permissions';
+import { can } from '@lawless-intranet/auth-permissions';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 import type { AuthSession } from '@/types/session';
 import { routes } from '@/types/routes';
 import PayrollReportDetailPageClient from './PayrollReportDetailPageClient';
@@ -18,11 +19,16 @@ export default async function PayrollReportByIdPage({ params }: PageProps) {
   }
 
   const effectiveRole = await getEffectiveRoleForDispensary(session as AuthSession, dispensary.id);
-  if (!checkRolePermission(effectiveRole, 'payroll_reports', 'view')) {
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    session as AuthSession,
+    dispensary.id,
+    effectiveRole,
+  );
+  if (!can(effectivePermissions, 'payroll_reports', 'view')) {
     redirect(routes.auth.noManagementAccess);
   }
 
-  const canDelete = checkRolePermission(effectiveRole, 'payroll_reports', 'create');
+  const canDelete = can(effectivePermissions, 'payroll_reports', 'create');
 
   const result = await getPayrollReportById(dispensarySlug, id);
   if (result.status === 404) {

@@ -1,3 +1,5 @@
+import { realtimeMutationMeta } from '@lawless-intranet/realtime';
+
 export type AgendaMutationMeta = {
   originClientId?: string;
 };
@@ -5,8 +7,5 @@ export type AgendaMutationMeta = {
 export function agendaMutationMeta(
   clientId: string | null | undefined,
 ): AgendaMutationMeta | undefined {
-  if (!clientId) {
-    return undefined;
-  }
-  return { originClientId: clientId };
+  return realtimeMutationMeta(clientId);
 }

@@ -44,7 +44,7 @@ export function BankPendingOccurrencesBanner({
             <Text size="sm" fw={600}>
               {title}
             </Text>
-            <Badge size="sm" variant="outline" color="yellow" circle>
+            <Badge size="sm" variant="outline" color="amber" circle>
               {occurrences.length}
             </Badge>
           </Group>
@@ -90,7 +90,7 @@ export function BankPendingOccurrencesBanner({
                   <Group gap="xs">
                     <Button
                       size="compact-xs"
-                      color="green"
+                      color="moss"
                       leftSection={<IconCheck size={14} />}
                       onClick={() =>
                         onConfirm(occurrence.id, getDate(occurrence))

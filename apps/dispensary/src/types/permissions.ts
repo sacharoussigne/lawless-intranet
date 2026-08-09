@@ -1,44 +1,7 @@
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
+import type { PermissionsObject } from '@lawless-intranet/auth-permissions';
 
-export interface Permissions {
-  stock: {
-    view: boolean;
-    create: boolean;
-    update: boolean;
-    delete: boolean;
-    craftRead: boolean;
-    craftWrite: boolean;
-    hide: boolean;
-  };
-  orders: {
-    view: boolean;
-    create: boolean;
-    update: boolean;
-    delete: boolean;
-  };
-  application: {
-    access: boolean;
-    management: boolean;
-  };
-  payrollReports: {
-    view: boolean;
-    create: boolean;
-  };
-  weeklyDispensaryActivity: {
-    view: boolean;
-    editOwn: boolean;
-    editAll: boolean;
-  };
-  stockStatistics: {
-    view: boolean;
-  };
-  sales: {
-    create: boolean;
-    cancel: boolean;
-    view: boolean;
-    viewAll: boolean;
-  };
-}
+export type Permissions = PermissionsObject;
 
 export type AccessibleDispensary = {
   id: string;

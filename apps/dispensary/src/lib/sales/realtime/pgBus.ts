@@ -5,12 +5,11 @@ import {
 import type { WeeklySalesRealtimeEvent } from '@/lib/sales/realtime/types';
 
 /**
- * Sales data now lives in the inventory service; PostgreSQL NOTIFY on the
- * dispensary DB is no longer available for cross-instance fan-out.
- * Keep in-process hub broadcast only until inventory emits sales events.
+ * Sales live in the inventory service. Local broadcast remains for
+ * same-process emits; cross-service fan-out uses /api/internal/realtime/publish.
  */
 export async function ensureWeeklySalesRealtimePgListener(): Promise<void> {
-  // TODO: Wire sales realtime to inventory service events (pg_notify removed).
+  // No-op: inventory publishes into the dispensary multiplex hub.
 }
 
 export async function publishWeeklySalesRealtime(

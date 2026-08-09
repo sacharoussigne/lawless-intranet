@@ -1,5 +1,8 @@
-import { Client } from 'pg';
-import { broadcastWeeklyActivityRealtime, weeklyActivityRealtimeChannelKey } from '@/lib/dispensaryWeeklyActivity/realtime/hub';
+import { createPgNotifyListener } from '@lawless-intranet/realtime/server';
+import {
+  broadcastWeeklyActivityRealtime,
+  weeklyActivityRealtimeChannelKey,
+} from '@/lib/dispensaryWeeklyActivity/realtime/hub';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 import prisma from '@/lib/prisma';
 
@@ -10,47 +13,20 @@ type WeeklyActivityRealtimePgPayload = {
   event: WeeklyActivityRealtimeEvent;
 };
 
-type WeeklyActivityRealtimePgGlobal = typeof globalThis & {
-  __weeklyActivityRealtimePgListener?: Promise<void>;
-};
+const listener = createPgNotifyListener<WeeklyActivityRealtimePgPayload>({
+  globalKey: '__weeklyActivityRealtimePgListener',
+  channel: CHANNEL,
+  logLabel: 'weekly-activity-realtime',
+  onPayload: (payload) => {
+    broadcastWeeklyActivityRealtime(
+      weeklyActivityRealtimeChannelKey(payload.dispensaryId),
+      payload.event,
+    );
+  },
+});
 
 export async function ensureWeeklyActivityRealtimePgListener(): Promise<void> {
-  const globalStore = globalThis as WeeklyActivityRealtimePgGlobal;
-  if (globalStore.__weeklyActivityRealtimePgListener) {
-    return globalStore.__weeklyActivityRealtimePgListener;
-  }
-
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    return;
-  }
-
-  globalStore.__weeklyActivityRealtimePgListener = (async () => {
-    const client = new Client({ connectionString });
-    await client.connect();
-    await client.query(`LISTEN ${CHANNEL}`);
-
-    client.on('notification', (message) => {
-      if (!message.payload) return;
-
-      try {
-        const payload = JSON.parse(message.payload) as WeeklyActivityRealtimePgPayload;
-        broadcastWeeklyActivityRealtime(
-          weeklyActivityRealtimeChannelKey(payload.dispensaryId),
-          payload.event,
-        );
-      } catch {
-        // Ignore malformed payloads.
-      }
-    });
-
-    client.on('error', (error) => {
-      console.error('[weekly-activity-realtime] PostgreSQL listener error', error);
-      globalStore.__weeklyActivityRealtimePgListener = undefined;
-    });
-  })();
-
-  return globalStore.__weeklyActivityRealtimePgListener;
+  await listener.ensureListener();
 }
 
 export async function publishWeeklyActivityRealtime(

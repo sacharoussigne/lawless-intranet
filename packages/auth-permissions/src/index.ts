@@ -1,22 +1,15 @@
 import { createAccessControl } from "better-auth/plugins";
 import { defaultStatements, adminAc, userAc } from "better-auth/plugins/admin/access";
+import { applicationPermissionCatalog } from "./catalog";
+import { checkRolePermissionAgainstMatrix } from "./resolve";
 
-const defaultApplicationPermissions = {
-  stock: ["view", "create", "update", "delete", "craft-read", "craft-write", "hide"],
-  orders: ["view", "create", "update", "delete"],
-  search: ["access"],
-  bank: ["access"],
-  application: ["access", "management"],
-  mails: ["access"],
-  payroll_reports: ["view", "create"],
-  weekly_dispensary_activity: ["view", "edit_own", "edit_all"],
-  sales: ["create", "cancel", "view", "view_all"],
-};
+export * from "./catalog";
+export * from "./resolve";
+export * from "./meta";
 
 export const statement = {
   ...defaultStatements,
-  ...defaultApplicationPermissions,
-  stock_statistics: ["view"],
+  ...applicationPermissionCatalog,
 } as const;
 
 const ac = createAccessControl(statement);
@@ -37,8 +30,16 @@ const user = ac.newRole({
 
 const admin = ac.newRole({
   ...adminAc.statements,
-  ...defaultApplicationPermissions,
+  stock: ["view", "create", "update", "delete", "craft-read", "craft-write", "hide"],
+  orders: ["view", "create", "update", "delete"],
+  search: ["access"],
+  bank: ["access"],
+  application: ["access", "management"],
+  mails: ["access"],
+  payroll_reports: ["view", "create"],
+  weekly_dispensary_activity: ["view", "edit_own", "edit_all"],
   stock_statistics: ["view"],
+  sales: ["create", "cancel", "view", "view_all"],
 });
 
 const employee = ac.newRole({
@@ -105,11 +106,16 @@ const rolesMap = {
   direction,
 } as const;
 
+/** Resolves against DEFAULT_ROLE_MATRIX (code defaults). Prefer `can(effectivePermissions, …)` in tenant context. */
 export function checkRolePermission(
   roleName: string | null | undefined,
   resource: keyof typeof statement,
   action: string,
 ): boolean {
+  if (resource in applicationPermissionCatalog) {
+    return checkRolePermissionAgainstMatrix(roleName, resource, action);
+  }
+
   if (!roleName) {
     return false;
   }

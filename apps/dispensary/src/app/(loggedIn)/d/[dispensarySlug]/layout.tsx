@@ -2,7 +2,7 @@ import Header from '@/app/(loggedIn)/_components/Header/Header';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
-import { calculatePermissions } from '@/lib/auth/calculatePermissions';
+import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
 import { getAppSettings } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
 import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
@@ -13,11 +13,13 @@ import {
   userCanAccessDispensary,
   resolveDispensaryAccessDeniedRedirect,
 } from '@/lib/dispensary/context';
+import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
 import { notFound, redirect } from 'next/navigation';
 import { userHasAnyAgendaAccess, listAccessibleAgendaIds } from '@/lib/agenda/access';
 import { userHasAnyCabinetAccess, listAccessibleCabinetIds } from '@/lib/cabinet/access';
 import { userHasAccessibleChests } from '@/lib/chests/access';
 import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
+import { OrdersRealtimeBridge } from './OrdersRealtimeBridge';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
 import { MailTemplateProvider } from '@lawless-intranet/mail-template-ui';
@@ -59,7 +61,12 @@ export default async function DispensaryLayout({
     listAccessibleDispensaries(authSession),
   ]);
 
-  const permissions = calculatePermissions(effectiveRole);
+  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
+    authSession,
+    dispensary.id,
+    effectiveRole,
+  );
+  const permissions = calculatePermissionsFromEffective(effectivePermissions);
   const userId = session?.user?.id;
   const agendaModuleAccess = userId
     ? await userHasAnyAgendaAccess(
@@ -106,6 +113,7 @@ export default async function DispensaryLayout({
     >
       <DispensaryRealtimeShell>
         <QueryProvider>
+          <OrdersRealtimeBridge />
           <MailTemplateProvider
             username={session?.user.name ?? 'Utilisateur'}
             userDescription={memberDescription}

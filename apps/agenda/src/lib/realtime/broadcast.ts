@@ -1,3 +1,4 @@
+import { fanInAgendaRealtimeToDispensary } from '@/lib/realtime/fanIn';
 import { publishAgendaRealtime } from '@/lib/realtime/pgBus';
 import type { AgendaMutationMeta, AgendaRealtimeEvent } from '@/lib/realtime/types';
 
@@ -7,10 +8,12 @@ export async function broadcastAgendaChange(
   event: Omit<AgendaRealtimeEvent, 'originClientId'>,
   meta?: AgendaMutationMeta,
 ): Promise<void> {
-  await publishAgendaRealtime(scopeType, scopeId, {
+  const fullEvent: AgendaRealtimeEvent = {
     ...event,
     originClientId: meta?.originClientId,
-  });
+  };
+  await publishAgendaRealtime(scopeType, scopeId, fullEvent);
+  await fanInAgendaRealtimeToDispensary(scopeType, scopeId, fullEvent);
 }
 
 export async function emitAgendaEventsChange(

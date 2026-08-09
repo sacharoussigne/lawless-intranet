@@ -1,65 +1,32 @@
+import {
+  createRealtimeHub,
+  type RealtimeEnvelope,
+} from '@lawless-intranet/realtime/server';
+import { toAgendaRealtimeEnvelope } from '@/lib/realtime/envelope';
 import type { AgendaRealtimeEvent } from '@/lib/realtime/types';
 
-type AgendaRealtimeSubscriber = {
-  send: (chunk: string) => void;
-};
-
-type AgendaRealtimeHubGlobal = typeof globalThis & {
-  __agendaRealtimeChannels?: Map<string, Set<AgendaRealtimeSubscriber>>;
-};
-
-function getChannels(): Map<string, Set<AgendaRealtimeSubscriber>> {
-  const globalStore = globalThis as AgendaRealtimeHubGlobal;
-  if (!globalStore.__agendaRealtimeChannels) {
-    globalStore.__agendaRealtimeChannels = new Map();
-  }
-  return globalStore.__agendaRealtimeChannels;
-}
-
-export function formatSseMessage(event: string, data: string): string {
-  return `event: ${event}\ndata: ${data}\n\n`;
-}
+const hub = createRealtimeHub<RealtimeEnvelope>({
+  globalKey: '__agendaRealtimeChannels',
+});
 
 export function subscribeAgendaRealtime(
   channelKey: string,
   send: (chunk: string) => void,
 ): () => void {
-  const channels = getChannels();
-  const subscriber: AgendaRealtimeSubscriber = { send };
-  let subscribers = channels.get(channelKey);
-  if (!subscribers) {
-    subscribers = new Set();
-    channels.set(channelKey, subscribers);
-  }
-  subscribers.add(subscriber);
-
-  return () => {
-    subscribers.delete(subscriber);
-    if (subscribers.size === 0) {
-      channels.delete(channelKey);
-    }
-  };
+  return hub.subscribe(channelKey, send);
 }
 
 export function broadcastAgendaRealtime(
   channelKey: string,
-  event: AgendaRealtimeEvent,
+  event: AgendaRealtimeEvent | RealtimeEnvelope,
 ): void {
-  const subscribers = getChannels().get(channelKey);
-  if (!subscribers || subscribers.size === 0) {
-    return;
-  }
-
-  const chunk = formatSseMessage('change', JSON.stringify(event));
-  for (const subscriber of subscribers) {
-    try {
-      subscriber.send(chunk);
-    } catch {
-      // Connection may already be closed.
-    }
-  }
+  const envelope =
+    'payload' in event && 'domain' in event
+      ? (event as RealtimeEnvelope)
+      : toAgendaRealtimeEnvelope(event as AgendaRealtimeEvent);
+  hub.broadcast(channelKey, envelope);
 }
 
 export function getAgendaRealtimeSubscriberCount(channelKey: string): number {
-  return getChannels().get(channelKey)?.size ?? 0;
+  return hub.subscriberCount(channelKey);
 }

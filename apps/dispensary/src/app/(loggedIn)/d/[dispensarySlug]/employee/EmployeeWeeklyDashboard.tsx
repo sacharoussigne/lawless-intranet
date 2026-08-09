@@ -7,13 +7,13 @@ import { WeeklyActivityCompactPanel } from '@/app/_components/weeklyActivity/Wee
 import { WeeklyActivityCompactTeamList } from '@/app/_components/weeklyActivity/WeeklyActivityCompactTeamList';
 import { WeeklyActivityQuickActionsPanel } from '@/app/_components/weeklyActivity/WeeklyActivityQuickActionsPanel';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { EditWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/EditWeeklyActivityModal';
-import { HistoryWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/HistoryWeeklyActivityModal';
+import { EditWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/EditWeeklyActivityModal';
+import { HistoryWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/HistoryWeeklyActivityModal';
 import {
   invalidateWeeklyActivityFromRealtimeEvent,
   useWeeklyActivities,
   type WeeklyActivityListItem,
-} from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+} from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import { findOwnWeeklyActivityRow } from '@/lib/dispensaryWeeklyActivity/findOwnRow';
 import { weeklyActivityFieldVisibilityFromSettings } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';

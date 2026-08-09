@@ -42,6 +42,13 @@ import { addParisWeeks } from "./bankWeek";
 import { BankPlannedPanel } from "./components/BankPlannedPanel";
 import { BankPendingOccurrencesBanner } from "./components/BankPendingOccurrencesBanner";
 import { DataTableEmptyState } from "./components/DataTableEmptyState";
+import {
+  apothecaryPillStyle,
+  clayPalette,
+  dangerPalette,
+  denimPalette,
+  mossPalette,
+} from "./lib/apothecaryPill";
 import type {
   BankActionResult,
   SerializedBankWeek,
@@ -64,19 +71,29 @@ type TableTransaction = SerializedBankWeek["transactions"][number] & {
 };
 
 const TRANSACTION_TYPES = [
-  { value: "DEPOSIT", label: "Dépôt", icon: IconArrowUp, color: "green" },
-  { value: "WITHDRAWAL", label: "Retrait", icon: IconArrowDown, color: "red" },
+  {
+    value: "DEPOSIT",
+    label: "Dépôt",
+    icon: IconArrowUp,
+    palette: mossPalette,
+  },
+  {
+    value: "WITHDRAWAL",
+    label: "Retrait",
+    icon: IconArrowDown,
+    palette: dangerPalette,
+  },
   {
     value: "TRANSFER_IN",
     label: "Transfert entrant",
     icon: IconTransfer,
-    color: "blue",
+    palette: denimPalette,
   },
   {
     value: "TRANSFER_OUT",
     label: "Transfert sortant",
     icon: IconTransfer,
-    color: "orange",
+    palette: clayPalette,
   },
 ] as const;
 
@@ -125,9 +142,9 @@ export default function BankPage({ initialWeek }: BankPageProps) {
     SerializedPlannedOccurrence[]
   >([]);
   const showError = (message: string) =>
-    notifications.show({ title: "Erreur", message, color: "red" });
+    notifications.show({ title: "Erreur", message, color: "danger" });
   const showSuccess = (message: string) =>
-    notifications.show({ title: "Succès", message, color: "green" });
+    notifications.show({ title: "Succès", message, color: "moss" });
 
   const loadSuggestions = useCallback(async () => {
     const [names, descriptions] = await Promise.all([
@@ -415,7 +432,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
               leftSection={<IconBook size={16} />}
               rightSection={
                 pendingOccurrences.length ? (
-                  <Badge size="xs" color="yellow" circle>
+                  <Badge size="xs" color="amber" circle>
                     {pendingOccurrences.length}
                   </Badge>
                 ) : undefined
@@ -497,7 +514,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       <Text
                         fw={700}
                         size="lg"
-                        c={weekFlow.in - weekFlow.out >= 0 ? "green" : "red"}
+                        c={weekFlow.in - weekFlow.out >= 0 ? "moss" : "danger"}
                       >
                         {weekFlow.in - weekFlow.out >= 0 ? "+" : ""}
                         {(weekFlow.in - weekFlow.out).toFixed(2)} $
@@ -643,8 +660,9 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             return (
                               <Badge
                                 leftSection={<Icon size={14} />}
-                                color={info.color}
-                                variant="light"
+                                variant="outline"
+                                radius="sm"
+                                style={apothecaryPillStyle(info.palette)}
                               >
                                 {info.label}
                               </Badge>
@@ -722,7 +740,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                           <Text
                             size="sm"
                             fw={600}
-                            c={isIncome(transaction.type) ? "green" : "red"}
+                            c={isIncome(transaction.type) ? "moss" : "danger"}
                           >
                             {isIncome(transaction.type) ? "+" : "-"}
                             {transaction.amount.toFixed(2)} $
@@ -738,7 +756,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                           return (
                             <Group gap="xs" justify="center">
                               <ActionIcon
-                                color="green"
+                                variant="light"
+                                color="moss"
                                 onClick={() =>
                                   newTransaction &&
                                   void saveTransaction(newTransaction)
@@ -751,6 +770,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 <IconCheck size={16} />
                               </ActionIcon>
                               <ActionIcon
+                                variant="light"
+                                color="slate"
                                 onClick={() => setNewTransaction(null)}
                               >
                                 <IconX size={16} />
@@ -761,7 +782,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                           return (
                             <Group gap="xs" justify="center">
                               <ActionIcon
-                                color="green"
+                                variant="light"
+                                color="moss"
                                 onClick={() =>
                                   editingTransactionData &&
                                   void saveTransaction({
@@ -788,6 +810,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 <IconCheck size={16} />
                               </ActionIcon>
                               <ActionIcon
+                                variant="light"
+                                color="slate"
                                 onClick={() => {
                                   setEditingTransaction(null);
                                   setEditingTransactionData(null);
@@ -846,8 +870,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                               </>
                             )}
                             <ActionIcon
-                              variant="subtle"
-                              color="blue"
+                              variant="light"
+                              color="slate"
                               onClick={() => {
                                 setEditingTransaction(transaction.id);
                                 setEditingTransactionData({ ...transaction });
@@ -865,8 +889,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             >
                               <Popover.Target>
                                 <ActionIcon
-                                  variant="subtle"
-                                  color="red"
+                                  variant="light"
+                                  color="danger"
                                   onClick={() =>
                                     setDeletePopoverOpened(transaction.id)
                                   }
@@ -883,6 +907,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                     <Button
                                       size="xs"
                                       variant="subtle"
+                                      color="slate"
                                       onClick={() =>
                                         setDeletePopoverOpened(null)
                                       }
@@ -891,7 +916,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                     </Button>
                                     <Button
                                       size="xs"
-                                      color="red"
+                                      color="danger"
                                       onClick={() => {
                                         void deleteTransaction(transaction.id);
                                         setDeletePopoverOpened(null);

@@ -3,13 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Container, Tabs } from '@mantine/core';
-import { IconAdjustments, IconUsers } from '@tabler/icons-react';
+import { IconAdjustments, IconLock, IconUsers } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import type { DispensarySettingsAdminDTO } from '@/app/_actions/appSettings';
 import { AppSettingsGeneralPanel } from './AppSettingsGeneralPanel';
 import { DispensaryMembersPanel, type DispensaryMemberRow } from './DispensaryMembersPanel';
+import {
+  DispensaryPermissionsPanel,
+  type RolePermissionsMatrixData,
+} from './DispensaryPermissionsPanel';
 
-const validTabs = ['general', 'members'] as const;
+const validTabs = ['general', 'members', 'permissions'] as const;
 export type DispensarySettingsTab = (typeof validTabs)[number];
 
 type DispensarySettingsPageClientProps = {
@@ -17,7 +21,9 @@ type DispensarySettingsPageClientProps = {
   initialTab: DispensarySettingsTab;
   initialSettings: DispensarySettingsAdminDTO;
   initialMembers: DispensaryMemberRow[];
+  initialPermissions: RolePermissionsMatrixData;
   membersError?: string;
+  permissionsError?: string;
 };
 
 export default function DispensarySettingsPageClient({
@@ -25,7 +31,9 @@ export default function DispensarySettingsPageClient({
   initialTab,
   initialSettings,
   initialMembers,
+  initialPermissions,
   membersError,
+  permissionsError,
 }: DispensarySettingsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,7 +72,7 @@ export default function DispensarySettingsPageClient({
     <Container size="xl" py="xl" w="100%">
       <PageHeader
         title="Paramètres du dispensaire"
-        description="Identité, modules employés et gestion de l’équipe."
+        description="Identité, modules employés, permissions et gestion de l’équipe."
       />
 
       <Tabs value={activeTab} onChange={handleTabChange}>
@@ -74,6 +82,9 @@ export default function DispensarySettingsPageClient({
           </Tabs.Tab>
           <Tabs.Tab value="members" leftSection={<IconUsers size={16} />}>
             Membres
+          </Tabs.Tab>
+          <Tabs.Tab value="permissions" leftSection={<IconLock size={16} />}>
+            Permissions
           </Tabs.Tab>
         </Tabs.List>
 
@@ -87,6 +98,17 @@ export default function DispensarySettingsPageClient({
             initialMembers={initialMembers}
             error={membersError}
           />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="permissions" pt="xl">
+          {permissionsError ? (
+            <p style={{ color: 'var(--mantine-color-danger-6)' }}>{permissionsError}</p>
+          ) : (
+            <DispensaryPermissionsPanel
+              dispensarySlug={dispensarySlug}
+              initial={initialPermissions}
+            />
+          )}
         </Tabs.Panel>
       </Tabs>
     </Container>
