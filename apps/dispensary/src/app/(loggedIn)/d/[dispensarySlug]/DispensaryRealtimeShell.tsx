@@ -18,11 +18,17 @@ export function DispensaryRealtimeShell({ children }: { children: ReactNode }) {
     appSettings.featureSalesEnabled &&
     Boolean(permissions?.sales.view);
 
+  const ordersRealtimeEnabled =
+    Boolean(dispensarySlug) &&
+    appSettings.featureOrdersEnabled &&
+    Boolean(permissions?.orders.view);
+
   const streamEnabled =
     Boolean(dispensarySlug) &&
     (Boolean(agendaModuleAccess) ||
       weeklyActivityRealtimeEnabled ||
-      salesRealtimeEnabled);
+      salesRealtimeEnabled ||
+      ordersRealtimeEnabled);
 
   if (!streamEnabled || !dispensarySlug) {
     return children;

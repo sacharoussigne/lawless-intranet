@@ -5,6 +5,7 @@ export type DispensaryRealtimeViewerFilter = {
   agenda: boolean;
   weeklyActivity: WeeklyActivityRealtimeViewerFilter | null;
   sales: WeeklySalesRealtimeViewerFilter | null;
+  orders: boolean;
 };
 
 export type DispensaryRealtimePublishBody = {

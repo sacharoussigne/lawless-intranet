@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
@@ -22,6 +23,7 @@ import {
   defaultActiveOrdersPageFilters,
   type OrdersPageFilters,
 } from '@/lib/orders/queryKeys';
+import { useOrdersRealtime } from '@/lib/orders/realtime/client/useOrdersRealtime';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import { normalizeItemPrice } from '@/lib/orders/calculateOrderPriceFromItems';
 import type { OrdersPageResult, OrderWithRelations } from '@/types/orders';
@@ -109,12 +111,15 @@ export function useOrdersPage(
   seedFilters: OrdersPageFilters = defaultOrdersPageFilters,
 ) {
   const dispensarySlug = useRequiredDispensarySlug();
+  const seededInitialData =
+    initialData && filtersMatchSeed(filters, seedFilters) ? initialData : undefined;
 
   return useQuery({
     queryKey: ordersKeys.page(dispensarySlug, filters),
     queryFn: () => fetchOrdersPage(dispensarySlug, filters),
-    initialData:
-      initialData && filtersMatchSeed(filters, seedFilters) ? initialData : undefined,
+    initialData: seededInitialData,
+    // RSC payload can be router-cached; never treat it as fresh after mount.
+    initialDataUpdatedAt: seededInitialData ? 0 : undefined,
     placeholderData: (previous) => previous,
     enabled: Boolean(dispensarySlug),
     staleTime: DEFAULT_STALE_TIME_MS,
@@ -174,15 +179,37 @@ export function useOrderFormItems(companyGroupId: string | null, enabled: boolea
   });
 }
 
+function invalidateAllOrdersQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  dispensarySlug: string,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: ordersKeys.all(dispensarySlug),
+    refetchType: 'all',
+  });
+}
+
 export function useInvalidateOrders() {
   const queryClient = useQueryClient();
   const dispensarySlug = useRequiredDispensarySlug();
 
   return () => {
-    void queryClient.invalidateQueries({
-      queryKey: ordersKeys.all(dispensarySlug),
-    });
+    invalidateAllOrdersQueries(queryClient, dispensarySlug);
   };
+}
+
+export function useOrdersRealtimeInvalidation(enabled = true) {
+  const queryClient = useQueryClient();
+  const dispensarySlug = useRequiredDispensarySlug();
+
+  const handleRealtimeChange = useCallback(() => {
+    invalidateAllOrdersQueries(queryClient, dispensarySlug);
+  }, [dispensarySlug, queryClient]);
+
+  useOrdersRealtime({
+    enabled: enabled && Boolean(dispensarySlug),
+    onChange: handleRealtimeChange,
+  });
 }
 
 export function useCreateOrderMutation() {

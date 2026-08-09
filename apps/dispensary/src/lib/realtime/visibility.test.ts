@@ -11,7 +11,7 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
           type: 'todos',
           payload: { agendaId: 'a1' },
         },
-        { agenda: true, weeklyActivity: null, sales: null },
+        { agenda: true, weeklyActivity: null, sales: null, orders: false },
       ),
     ).toBe(true);
   });
@@ -29,9 +29,22 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
             periodEnd: '2026-01-07',
           },
         },
-        { agenda: true, weeklyActivity: null, sales: null },
+        { agenda: true, weeklyActivity: null, sales: null, orders: false },
       ),
     ).toBe(false);
+  });
+
+  it('allows orders when enabled', () => {
+    expect(
+      isDispensaryRealtimeVisibleToViewer(
+        {
+          domain: REALTIME_DOMAIN.orders,
+          type: 'orders',
+          payload: { orderId: 'o1' },
+        },
+        { agenda: false, weeklyActivity: null, sales: null, orders: true },
+      ),
+    ).toBe(true);
   });
 
   it('applies weekly activity ownership filter', () => {
@@ -56,6 +69,7 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
             viewerDiscordUserId: 'd2',
           },
           sales: null,
+          orders: false,
         },
       ),
     ).toBe(false);

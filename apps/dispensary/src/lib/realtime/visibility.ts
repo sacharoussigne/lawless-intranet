@@ -27,5 +27,9 @@ export function isDispensaryRealtimeVisibleToViewer(
     return isWeeklySalesRealtimeVisibleToViewer(payload, filter.sales);
   }
 
+  if (event.domain === REALTIME_DOMAIN.orders) {
+    return filter.orders;
+  }
+
   return false;
 }

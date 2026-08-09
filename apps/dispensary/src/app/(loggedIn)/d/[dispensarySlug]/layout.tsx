@@ -18,6 +18,7 @@ import { userHasAnyAgendaAccess, listAccessibleAgendaIds } from '@/lib/agenda/ac
 import { userHasAnyCabinetAccess, listAccessibleCabinetIds } from '@/lib/cabinet/access';
 import { userHasAccessibleChests } from '@/lib/chests/access';
 import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
+import { OrdersRealtimeBridge } from './OrdersRealtimeBridge';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
 import { MailTemplateProvider } from '@lawless-intranet/mail-template-ui';
@@ -106,6 +107,7 @@ export default async function DispensaryLayout({
     >
       <DispensaryRealtimeShell>
         <QueryProvider>
+          <OrdersRealtimeBridge />
           <MailTemplateProvider
             username={session?.user.name ?? 'Utilisateur'}
             userDescription={memberDescription}
