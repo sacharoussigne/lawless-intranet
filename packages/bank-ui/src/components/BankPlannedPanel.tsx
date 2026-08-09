@@ -21,6 +21,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useBankUi } from "../BankUiProvider";
+import { apothecaryBooleanPills } from "../lib/apothecaryPill";
 import type {
   BankActionResult,
   SerializedPlannedTransaction,
@@ -76,9 +77,9 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const isEditing = editingId !== null;
 
   const error = (message: string) =>
-    notifications.show({ title: "Erreur", message, color: "red" });
+    notifications.show({ title: "Erreur", message, color: "danger" });
   const success = (message: string) =>
-    notifications.show({ title: "Succès", message, color: "green" });
+    notifications.show({ title: "Succès", message, color: "moss" });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -275,7 +276,12 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                         <Badge
                           size="xs"
                           variant="outline"
-                          color={item.isActive ? "green" : "gray"}
+                          radius="sm"
+                          style={
+                            item.isActive
+                              ? apothecaryBooleanPills.yes
+                              : apothecaryBooleanPills.no
+                          }
                         >
                           {item.isActive ? "Active" : "Inactive"}
                         </Badge>
@@ -298,6 +304,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                       />
                       <ActionIcon
                         variant="light"
+                        color="slate"
                         onClick={() => openEdit(item)}
                         disabled={loading}
                       >
@@ -305,7 +312,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                       </ActionIcon>
                       <ActionIcon
                         variant="light"
-                        color="red"
+                        color="danger"
                         onClick={() => setDeleteId(item.id)}
                         disabled={loading}
                       >
@@ -414,7 +421,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
             <Button variant="subtle" onClick={() => setDeleteId(null)}>
               Annuler
             </Button>
-            <Button color="red" loading={loading} onClick={() => void remove()}>
+            <Button color="danger" loading={loading} onClick={() => void remove()}>
               Supprimer
             </Button>
           </Group>
