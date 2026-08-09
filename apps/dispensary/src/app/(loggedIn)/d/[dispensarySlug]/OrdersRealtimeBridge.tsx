@@ -1,7 +1,7 @@
 'use client';
 
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { useOrdersRealtimeInvalidation } from './orders/hooks/useOrdersQueries';
+import { useOrdersRealtimeInvalidation } from './employee/orders/hooks/useOrdersQueries';
 
 export function OrdersRealtimeBridge() {
   const { appSettings, permissions } = usePermissions();

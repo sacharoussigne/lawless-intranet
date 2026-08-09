@@ -4,7 +4,7 @@ import { ActionIcon, Group, Stack, Text } from '@mantine/core';
 import { IconHistory, IconPencil } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import { emptyWeekdayFlags } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   buildCompactCounterStats,
   buildCompactDayCells,

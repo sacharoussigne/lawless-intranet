@@ -6,42 +6,57 @@ export function dispensaryBase(slug: string): string {
   return `/d/${encodeURIComponent(slug)}`;
 }
 
+/** Employee module segments that used to live at /d/:slug/<seg> and now live under /employee. */
+export const EMPLOYEE_MODULE_SEGMENTS = [
+  'stock',
+  'orders',
+  'search-items',
+  'bank',
+  'weekly-activity',
+  'agenda',
+  'cabinet',
+] as const;
+
+export type EmployeeModuleSegment = (typeof EMPLOYEE_MODULE_SEGMENTS)[number];
+
 export function tenantRoutes(slug: string) {
   const base = dispensaryBase(slug);
+  const employeeBase = `${base}/employee`;
   return {
     employee: {
-      index: `${base}/employee`,
-      payroll: `${base}/employee/payroll`,
-      payrollNew: `${base}/employee/payroll/new`,
-      payrollDetail: (id: string) => `${base}/employee/payroll/${id}`,
-      stockStatistics: `${base}/employee/stock-statistics`,
-      stockMovements: `${base}/employee/stock-movements`,
-      sales: `${base}/employee/sales`,
-      mails: `${base}/employee/mails`,
-      newMail: `${base}/employee/mails/new`,
-      editMail: (id: string) => `${base}/employee/mails/${id}/edit`,
-      newTemplate: `${base}/employee/mails/templates/new`,
-      editTemplate: (id: string) => `${base}/employee/mails/templates/${id}/edit`,
-      testTemplate: (id: string) => `${base}/employee/mails/templates/${id}/test`,
+      index: employeeBase,
+      payroll: `${employeeBase}/payroll`,
+      payrollNew: `${employeeBase}/payroll/new`,
+      payrollDetail: (id: string) => `${employeeBase}/payroll/${id}`,
+      stockStatistics: `${employeeBase}/stock-statistics`,
+      stockMovements: `${employeeBase}/stock-movements`,
+      sales: `${employeeBase}/sales`,
+      mails: `${employeeBase}/mails`,
+      newMail: `${employeeBase}/mails/new`,
+      editMail: (id: string) => `${employeeBase}/mails/${id}/edit`,
+      newTemplate: `${employeeBase}/mails/templates/new`,
+      editTemplate: (id: string) => `${employeeBase}/mails/templates/${id}/edit`,
+      testTemplate: (id: string) => `${employeeBase}/mails/templates/${id}/test`,
     },
-    stock: { index: `${base}/stock` },
-    orders: { index: `${base}/orders` },
-    searchItems: { index: `${base}/search-items` },
-    bank: { index: `${base}/bank` },
-    weeklyActivity: { index: `${base}/weekly-activity` },
-    agenda: { index: `${base}/agenda` },
+    stock: { index: `${employeeBase}/stock` },
+    orders: { index: `${employeeBase}/orders` },
+    searchItems: { index: `${employeeBase}/search-items` },
+    bank: { index: `${employeeBase}/bank` },
+    weeklyActivity: { index: `${employeeBase}/weekly-activity` },
+    agenda: { index: `${employeeBase}/agenda` },
     cabinet: {
-      index: `${base}/cabinet`,
+      index: `${employeeBase}/cabinet`,
       forms: (cabinetId: string, tab?: FormEntityType) => {
         const params = new URLSearchParams({ cabinetId });
         if (tab) params.set('tab', tab);
-        return `${base}/cabinet/forms?${params.toString()}`;
+        return `${employeeBase}/cabinet/forms?${params.toString()}`;
       },
-      templates: (cabinetId: string) => `${base}/cabinet/templates?cabinetId=${encodeURIComponent(cabinetId)}`,
+      templates: (cabinetId: string) =>
+        `${employeeBase}/cabinet/templates?cabinetId=${encodeURIComponent(cabinetId)}`,
       newTemplate: (cabinetId: string) =>
-        `${base}/cabinet/templates/new?cabinetId=${encodeURIComponent(cabinetId)}`,
+        `${employeeBase}/cabinet/templates/new?cabinetId=${encodeURIComponent(cabinetId)}`,
       editTemplate: (cabinetId: string, id: string) =>
-        `${base}/cabinet/templates/${encodeURIComponent(id)}/edit?cabinetId=${encodeURIComponent(cabinetId)}`,
+        `${employeeBase}/cabinet/templates/${encodeURIComponent(id)}/edit?cabinetId=${encodeURIComponent(cabinetId)}`,
     },
     management: {
       index: `${base}/management`,
@@ -100,12 +115,16 @@ export const routes = {
   },
 };
 
+const LEGACY_TO_EMPLOYEE_PREFIX = new Set<string>(EMPLOYEE_MODULE_SEGMENTS);
+
 export const LEGACY_TENANT_PATHS = [
   '/stock',
   '/orders',
   '/search-items',
   '/bank',
   '/weekly-activity',
+  '/agenda',
+  '/cabinet',
   '/employee',
   '/management',
   '/admin/settings',
@@ -113,12 +132,24 @@ export const LEGACY_TENANT_PATHS = [
   '/admin/payroll',
 ] as const;
 
+function tenantPathForLegacy(legacyPath: string, slug: string): string {
+  const segment = legacyPath.slice(1); // without leading /
+  if (LEGACY_TO_EMPLOYEE_PREFIX.has(segment)) {
+    return `/d/${slug}/employee${legacyPath}`;
+  }
+  return `/d/${slug}${legacyPath}`;
+}
+
 export function legacyPathToTenant(pathname: string, slug: string = DEFAULT_DISPENSARY_SLUG): string | null {
   for (const legacy of LEGACY_TENANT_PATHS) {
     if (pathname === legacy) {
-      return `/d/${slug}${legacy === '/employee' ? '/employee' : legacy}`;
+      return tenantPathForLegacy(legacy, slug);
     }
     if (pathname.startsWith(`${legacy}/`)) {
+      const segment = legacy.slice(1);
+      if (LEGACY_TO_EMPLOYEE_PREFIX.has(segment)) {
+        return `/d/${slug}/employee${pathname}`;
+      }
       return `/d/${slug}${pathname}`;
     }
   }
@@ -132,4 +163,18 @@ export function legacyPathToTenant(pathname: string, slug: string = DEFAULT_DISP
     return `/d/${slug}${pathname}`;
   }
   return null;
+}
+
+/**
+ * Redirect /d/:slug/(stock|orders|...)[/...] → /d/:slug/employee/(stock|orders|...)[/...]
+ * Returns null if the path is already canonical or unrelated.
+ */
+export function oldEmployeeModulePathToCanonical(pathname: string): string | null {
+  const match = pathname.match(/^\/d\/([^/]+)\/([^/]+)(\/.*)?$/);
+  if (!match) return null;
+  const [, slug, segment, rest = ''] = match;
+  if (!(EMPLOYEE_MODULE_SEGMENTS as readonly string[]).includes(segment)) {
+    return null;
+  }
+  return `/d/${slug}/employee/${segment}${rest}`;
 }

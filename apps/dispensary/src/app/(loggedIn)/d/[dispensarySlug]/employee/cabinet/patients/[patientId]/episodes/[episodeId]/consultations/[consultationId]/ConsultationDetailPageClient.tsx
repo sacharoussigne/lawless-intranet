@@ -35,9 +35,9 @@ import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 import { getMantineLabelStyles } from '@/lib/cabinet/displaySettings';
 import { formatRpDate } from '@/lib/rpCalendar';
 import { tenantRoutes } from '@/types/routes';
-import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFormRenderer';
-import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFormErrorBanner';
-import { useCabinetEntityEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/hooks/useCabinetEntityEditing';
+import { DynamicFormRenderer } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/cabinet/components/DynamicFormRenderer';
+import { CabinetFormErrorBanner } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/cabinet/components/CabinetFormErrorBanner';
+import { useCabinetEntityEditing } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/cabinet/hooks/useCabinetEntityEditing';
 import {
   buildConsultationTemplateVariables,
 } from '@/lib/cabinet/documents';
@@ -46,8 +46,8 @@ import type {
   ConsultationDocumentTemplateListItem,
 } from '@/types/cabinetDocuments';
 import { ConsultationDocumentModal } from './ConsultationDocumentModal';
-import { CabinetDisplaySettingsProvider } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetDisplaySettingsContext';
-import { SystemFieldValue } from '@/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/CabinetFieldLabel';
+import { CabinetDisplaySettingsProvider } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/cabinet/components/CabinetDisplaySettingsContext';
+import { SystemFieldValue } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/cabinet/components/CabinetFieldLabel';
 
 type ConsultationData = {
   id: string;

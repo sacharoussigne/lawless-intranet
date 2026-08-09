@@ -19,7 +19,7 @@ import { tenantRoutes } from '@/types/routes';
 import {
   defaultActiveOrdersPageFilters,
   useOrdersPage,
-} from '../orders/hooks/useOrdersQueries';
+} from './orders/hooks/useOrdersQueries';
 import { EmployeeActiveOrdersDashboard } from './EmployeeActiveOrdersDashboard';
 
 const ORDERS_VISIBLE_STORAGE_KEY = 'employee-home-orders-visible';

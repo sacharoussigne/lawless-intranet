@@ -2,7 +2,7 @@
 
 import { Group, Paper, Stack, Text } from '@mantine/core';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
 import { COMPACT_DAY_LABELS } from './compactDisplay';
 import { WeeklyActivityCompactRow } from './WeeklyActivityCompactRow';
 import classes from './WeeklyActivityCompact.module.scss';

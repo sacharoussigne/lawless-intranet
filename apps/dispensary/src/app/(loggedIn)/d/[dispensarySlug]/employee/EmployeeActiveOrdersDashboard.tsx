@@ -12,13 +12,13 @@ import {
   defaultActiveOrdersPageFilters,
   useOrderLetterAssignments,
   useOrdersPage,
-} from '../orders/hooks/useOrdersQueries';
+} from './orders/hooks/useOrdersQueries';
 import type { OrdersPageFilters } from '@/lib/orders/queryKeys';
-import { OrdersTable } from '../orders/components/OrdersTable';
-import { EditOrderModal } from '../orders/components/EditOrderModal';
-import { DeleteOrderModal } from '../orders/components/DeleteOrderModal';
-import { OrderDetailsModal } from '../orders/components/OrderDetailsModal';
-import { OrderLetterPreviewModal } from '../orders/components/OrderLetterPreviewModal';
+import { OrdersTable } from './orders/components/OrdersTable';
+import { EditOrderModal } from './orders/components/EditOrderModal';
+import { DeleteOrderModal } from './orders/components/DeleteOrderModal';
+import { OrderDetailsModal } from './orders/components/OrderDetailsModal';
+import { OrderLetterPreviewModal } from './orders/components/OrderLetterPreviewModal';
 
 function formatDateRangeChip(from: string | null, to: string | null): string {
   const format = (iso: string) =>

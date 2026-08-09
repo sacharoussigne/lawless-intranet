@@ -12,7 +12,7 @@ import {
 } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import { tenantRoutes } from '@/types/routes';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
