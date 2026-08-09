@@ -5,6 +5,7 @@ import { checkRolePermissionAgainstMatrix } from "./resolve";
 
 export * from "./catalog";
 export * from "./resolve";
+export * from "./meta";
 
 export const statement = {
   ...defaultStatements,

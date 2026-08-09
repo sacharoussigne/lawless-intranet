@@ -9,13 +9,14 @@ import {
   Stack,
   Table,
   Text,
+  TextInput,
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { IconSearch } from '@tabler/icons-react';
 import {
-  listCatalogPermissionKeys,
+  listCatalogPermissionEntries,
   parsePermissionKey,
-  type ApplicationResource,
 } from '@lawless-intranet/auth-permissions';
 import {
   resetDispensaryRolePermissions,
@@ -26,19 +27,6 @@ import {
   type DispensaryMemberRole,
   rolesAsString,
 } from '@/types/enum/roles';
-
-const RESOURCE_LABELS: Record<ApplicationResource, string> = {
-  stock: 'Stock',
-  orders: 'Commandes',
-  search: 'Recherche',
-  bank: 'Banque',
-  application: 'Application',
-  mails: 'Courriers',
-  payroll_reports: 'Paie',
-  weekly_dispensary_activity: 'Activité hebdo',
-  sales: 'Ventes',
-  stock_statistics: 'Stats stock',
-};
 
 export type RolePermissionsMatrixData = {
   catalog: Record<string, readonly string[]>;
@@ -52,7 +40,7 @@ export function DispensaryPermissionsPanel({
   dispensarySlug: string;
   initial: RolePermissionsMatrixData;
 }) {
-  const catalogKeys = useMemo(() => listCatalogPermissionKeys(), []);
+  const catalogEntries = useMemo(() => listCatalogPermissionEntries(), []);
   const [byRole, setByRole] = useState<Record<string, Set<string>>>(() => {
     const next: Record<string, Set<string>> = {};
     for (const role of DISPENSARY_MEMBER_ROLES) {
@@ -63,8 +51,24 @@ export function DispensaryPermissionsPanel({
   const [selectedRole, setSelectedRole] = useState<DispensaryMemberRole>(
     DISPENSARY_MEMBER_ROLES[1] ?? DISPENSARY_MEMBER_ROLES[0],
   );
+  const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  const filteredEntries = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) {
+      return catalogEntries;
+    }
+    return catalogEntries.filter((entry) => {
+      return (
+        entry.key.toLowerCase().includes(q) ||
+        entry.resource.toLowerCase().includes(q) ||
+        entry.action.toLowerCase().includes(q) ||
+        entry.description.toLowerCase().includes(q)
+      );
+    });
+  }, [catalogEntries, search]);
 
   const toggle = (key: string) => {
     setByRole((prev) => {
@@ -180,39 +184,52 @@ export function DispensaryPermissionsPanel({
         </Group>
       </Group>
 
+      <TextInput
+        placeholder="Rechercher une permission (ex. stock:view)…"
+        leftSection={<IconSearch size={16} />}
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+      />
+
       <ScrollArea>
         <Table striped highlightOnHover withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Ressource</Table.Th>
-              <Table.Th>Action</Table.Th>
+              <Table.Th>Permission</Table.Th>
+              <Table.Th>Description</Table.Th>
               <Table.Th>Autorisé</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {catalogKeys.map((key) => {
-              const parsed = parsePermissionKey(key);
-              if (!parsed) return null;
-              const resourceLabel =
-                RESOURCE_LABELS[parsed.resource as ApplicationResource] ?? parsed.resource;
-              return (
-                <Table.Tr key={key}>
-                  <Table.Td>{resourceLabel}</Table.Td>
+            {filteredEntries.length === 0 ? (
+              <Table.Tr>
+                <Table.Td colSpan={3}>
+                  <Text c="dimmed" size="sm" ta="center" py="md">
+                    Aucune permission ne correspond à la recherche.
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            ) : (
+              filteredEntries.map((entry) => (
+                <Table.Tr key={entry.key}>
                   <Table.Td>
                     <Text ff="monospace" size="sm">
-                      {parsed.action}
+                      {entry.key}
                     </Text>
                   </Table.Td>
                   <Table.Td>
+                    <Text size="sm">{entry.description}</Text>
+                  </Table.Td>
+                  <Table.Td>
                     <Checkbox
-                      checked={selectedKeys.has(key)}
-                      onChange={() => toggle(key)}
-                      aria-label={`${resourceLabel} ${parsed.action}`}
+                      checked={selectedKeys.has(entry.key)}
+                      onChange={() => toggle(entry.key)}
+                      aria-label={entry.key}
                     />
                   </Table.Td>
                 </Table.Tr>
-              );
-            })}
+              ))
+            )}
           </Table.Tbody>
         </Table>
       </ScrollArea>
