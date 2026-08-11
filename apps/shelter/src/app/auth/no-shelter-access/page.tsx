@@ -3,7 +3,8 @@ import { Container, Title, Text } from '@mantine/core';
 import { redirect } from 'next/navigation';
 import { getAuthSession } from '@/lib/authSession';
 import { listAccessibleShelters } from '@/lib/shelter/context';
-import { tenantRoutes } from '@/types/routes';
+import { isPlatformAdmin } from '@/lib/shelter/platformAdmin';
+import { routes, tenantRoutes } from '@/types/routes';
 import LogoutButton from '../no-access/LogoutButton';
 
 export const metadata: Metadata = {
@@ -16,6 +17,9 @@ export default async function NoShelterAccessPage() {
     const accessible = await listAccessibleShelters(session);
     if (accessible.length > 0) {
       redirect(tenantRoutes(accessible[0].slug).employee.index);
+    }
+    if (isPlatformAdmin(session.user.role)) {
+      redirect(routes.platform.shelters);
     }
   }
 

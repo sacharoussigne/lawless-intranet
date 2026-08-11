@@ -136,6 +136,9 @@ export async function resolveShelterAccessDeniedRedirect(
 ): Promise<string> {
   const accessible = await listAccessibleShelters(session);
   if (accessible.length === 0) {
+    if (isPlatformAdmin(session?.user?.role)) {
+      return routes.platform.shelters;
+    }
     return routes.auth.noShelterAccess;
   }
   return rewritePathWithShelterSlug(pathname, accessible[0].slug);
