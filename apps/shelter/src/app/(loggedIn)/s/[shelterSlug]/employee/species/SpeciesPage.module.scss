@@ -36,6 +36,49 @@
   overflow: auto;
 }
 
+.speciesItemWrap {
+  display: flex;
+  align-items: stretch;
+  gap: 0.15rem;
+  border-radius: 0.75rem;
+}
+
+.speciesItemWrap .speciesItem {
+  flex: 1;
+  min-width: 0;
+}
+
+.dragHandle,
+.dragHandleInline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--shelter-muted);
+  cursor: grab;
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.dragHandle:hover,
+.dragHandleInline:hover {
+  color: var(--shelter-ink);
+  background: color-mix(in srgb, var(--shelter-forest) 12%, transparent);
+}
+
+.dragHandle:active,
+.dragHandleInline:active {
+  cursor: grabbing;
+}
+
+.isDragging {
+  opacity: 0.9;
+  z-index: 2;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shelter-ink) 12%, transparent);
+}
+
 .speciesItem {
   display: flex;
   flex-direction: column;
@@ -102,7 +145,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.35rem 0.55rem 0.35rem 0.75rem;
+  padding: 0.35rem 0.55rem 0.35rem 0.35rem;
   border-radius: 999px;
   border: 1px solid var(--shelter-border);
   background: var(--shelter-bg);

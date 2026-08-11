@@ -14,6 +14,21 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
   IconCheck,
   IconPencil,
   IconPlus,
@@ -28,34 +43,19 @@ import {
   deleteSpecies,
   deleteSubspecies,
   deleteVariant,
+  reorderSpecies,
+  reorderSubspecies,
+  reorderVariants,
   updateSpecies,
   updateSubspecies,
   updateVariant,
 } from '@/app/_actions/species';
+import { SortableSpeciesItem } from './SortableSpeciesItem';
+import { SortableSubspeciesCard } from './SortableSubspeciesCard';
+import type { SpeciesDTO, SubspeciesDTO } from './types';
 import classes from './SpeciesPage.module.scss';
 
-export type SpeciesVariantDTO = {
-  id: string;
-  subspeciesId: string;
-  label: string;
-  sortOrder: number;
-};
-
-export type SubspeciesDTO = {
-  id: string;
-  speciesId: string;
-  name: string;
-  sortOrder: number;
-  variants: SpeciesVariantDTO[];
-};
-
-export type SpeciesDTO = {
-  id: string;
-  shelterId: string;
-  name: string;
-  sortOrder: number;
-  subspecies: SubspeciesDTO[];
-};
+export type { SpeciesDTO, SubspeciesDTO, SpeciesVariantDTO } from './types';
 
 function actionErrorMessage(
   result: { status: number; error?: string | Array<{ message: string }> },
@@ -66,8 +66,8 @@ function actionErrorMessage(
   return fallback;
 }
 
-function countVariants(species: SpeciesDTO): number {
-  return species.subspecies.reduce((sum, sub) => sum + sub.variants.length, 0);
+function withSortOrders<T extends { id: string; sortOrder: number }>(items: T[]): T[] {
+  return items.map((item, index) => ({ ...item, sortOrder: index }));
 }
 
 export function SpeciesPageClient({
@@ -100,16 +100,23 @@ export function SpeciesPageClient({
     label: string;
   } | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const selected = useMemo(
     () => species.find((s) => s.id === selectedId) ?? null,
     [species, selectedId],
   );
 
+  const searchQuery = search.trim().toLowerCase();
+  const canReorderSpecies = searchQuery.length === 0;
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return species;
-    return species.filter((s) => s.name.toLowerCase().includes(q));
-  }, [species, search]);
+    if (!searchQuery) return species;
+    return species.filter((s) => s.name.toLowerCase().includes(searchQuery));
+  }, [species, searchQuery]);
 
   const replaceSpecies = (next: SpeciesDTO) => {
     setSpecies((prev) => prev.map((s) => (s.id === next.id ? next : s)));
@@ -125,6 +132,106 @@ export function SpeciesPageClient({
       subspecies: selected.subspecies.map((sub) =>
         sub.id === subspeciesId ? updater(sub) : sub,
       ),
+    });
+  };
+
+  const persistSpeciesOrder = (next: SpeciesDTO[], previous: SpeciesDTO[]) => {
+    setSpecies(next);
+    startTransition(async () => {
+      const result = await reorderSpecies(shelterSlug, {
+        items: next.map((item, index) => ({ id: item.id, sortOrder: index })),
+      });
+      if (result.status !== 200) {
+        setSpecies(previous);
+        notifications.show({
+          title: 'Erreur',
+          message: actionErrorMessage(result, 'Réordonnancement impossible'),
+          color: 'red',
+        });
+      }
+    });
+  };
+
+  const handleSpeciesDragEnd = (event: DragEndEvent) => {
+    if (!canReorderSpecies) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = species.findIndex((item) => item.id === active.id);
+    const newIndex = species.findIndex((item) => item.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const previous = species;
+    const next = withSortOrders(arrayMove(species, oldIndex, newIndex));
+    persistSpeciesOrder(next, previous);
+  };
+
+  const handleSubspeciesDragEnd = (event: DragEndEvent) => {
+    if (!selected) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = selected.subspecies.findIndex((item) => item.id === active.id);
+    const newIndex = selected.subspecies.findIndex((item) => item.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const previous = selected;
+    const nextSubs = withSortOrders(arrayMove(selected.subspecies, oldIndex, newIndex));
+    const nextSpecies: SpeciesDTO = { ...selected, subspecies: nextSubs };
+    replaceSpecies(nextSpecies);
+
+    startTransition(async () => {
+      const result = await reorderSubspecies(shelterSlug, {
+        speciesId: selected.id,
+        items: nextSubs.map((item, index) => ({ id: item.id, sortOrder: index })),
+      });
+      if (result.status !== 200) {
+        replaceSpecies(previous);
+        notifications.show({
+          title: 'Erreur',
+          message: actionErrorMessage(result, 'Réordonnancement impossible'),
+          color: 'red',
+        });
+      }
+    });
+  };
+
+  const handleVariantsReorder = (
+    subspeciesId: string,
+    activeId: string,
+    overId: string,
+  ) => {
+    if (!selected) return;
+    const sub = selected.subspecies.find((s) => s.id === subspeciesId);
+    if (!sub) return;
+
+    const oldIndex = sub.variants.findIndex((item) => item.id === activeId);
+    const newIndex = sub.variants.findIndex((item) => item.id === overId);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const previous = selected;
+    const nextVariants = withSortOrders(arrayMove(sub.variants, oldIndex, newIndex));
+    const nextSpecies: SpeciesDTO = {
+      ...selected,
+      subspecies: selected.subspecies.map((s) =>
+        s.id === subspeciesId ? { ...s, variants: nextVariants } : s,
+      ),
+    };
+    replaceSpecies(nextSpecies);
+
+    startTransition(async () => {
+      const result = await reorderVariants(shelterSlug, {
+        subspeciesId,
+        items: nextVariants.map((item, index) => ({ id: item.id, sortOrder: index })),
+      });
+      if (result.status !== 200) {
+        replaceSpecies(previous);
+        notifications.show({
+          title: 'Erreur',
+          message: actionErrorMessage(result, 'Réordonnancement impossible'),
+          color: 'red',
+        });
+      }
     });
   };
 
@@ -334,6 +441,25 @@ export function SpeciesPageClient({
     });
   };
 
+  const speciesList = (
+    <>
+      {filtered.map((item) => (
+        <SortableSpeciesItem
+          key={item.id}
+          item={item}
+          active={item.id === selectedId}
+          sortable={canReorderSpecies}
+          onSelect={() => {
+            setSelectedId(item.id);
+            setEditingName(false);
+            setEditingSubId(null);
+            setEditingVariantId(null);
+          }}
+        />
+      ))}
+    </>
+  );
+
   return (
     <Container size="xl">
       <PageHeader
@@ -370,30 +496,21 @@ export function SpeciesPageClient({
                     : 'Aucun résultat pour cette recherche.'}
                 </Text>
               </div>
+            ) : canReorderSpecies ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleSpeciesDragEnd}
+              >
+                <SortableContext
+                  items={filtered.map((item) => item.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {speciesList}
+                </SortableContext>
+              </DndContext>
             ) : (
-              filtered.map((item) => {
-                const variantsCount = countVariants(item);
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`${classes.speciesItem} ${item.id === selectedId ? classes.speciesItemActive : ''}`}
-                    onClick={() => {
-                      setSelectedId(item.id);
-                      setEditingName(false);
-                      setEditingSubId(null);
-                      setEditingVariantId(null);
-                    }}
-                  >
-                    <span className={classes.speciesName}>{item.name}</span>
-                    <span className={classes.speciesMeta}>
-                      {item.subspecies.length} sous-espèce
-                      {item.subspecies.length === 1 ? '' : 's'} · {variantsCount} variante
-                      {variantsCount === 1 ? '' : 's'}
-                    </span>
-                  </button>
-                );
-              })
+              speciesList
             )}
           </div>
         </aside>
@@ -510,164 +627,71 @@ export function SpeciesPageClient({
                       Aucune sous-espèce. Ajoutez-en une pour définir des variantes.
                     </Text>
                   ) : (
-                    <Stack gap="md">
-                      {selected.subspecies.map((sub) => (
-                        <div key={sub.id} className={classes.subspeciesCard}>
-                          <Group justify="space-between" wrap="wrap" mb="xs">
-                            {editingSubId === sub.id ? (
-                              <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
-                                <TextInput
-                                  size="sm"
-                                  value={subDraft}
-                                  onChange={(e) => setSubDraft(e.currentTarget.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveSubspecies(sub.id);
-                                    if (e.key === 'Escape') setEditingSubId(null);
-                                  }}
-                                  style={{ flex: 1 }}
-                                  autoFocus
-                                />
-                                <ActionIcon
-                                  size="sm"
-                                  color="teal"
-                                  variant="filled"
-                                  onClick={() => handleSaveSubspecies(sub.id)}
-                                >
-                                  <IconCheck size={14} />
-                                </ActionIcon>
-                              </Group>
-                            ) : (
-                              <Group gap="xs">
-                                <Text fw={700}>{sub.name}</Text>
-                                <ActionIcon
-                                  size="sm"
-                                  variant="subtle"
-                                  color="teal"
-                                  aria-label={`Renommer ${sub.name}`}
-                                  onClick={() => {
-                                    setEditingSubId(sub.id);
-                                    setSubDraft(sub.name);
-                                  }}
-                                >
-                                  <IconPencil size={14} />
-                                </ActionIcon>
-                                <ActionIcon
-                                  size="sm"
-                                  variant="subtle"
-                                  color="red"
-                                  aria-label={`Supprimer ${sub.name}`}
-                                  onClick={() =>
-                                    setDeleteTarget({
-                                      kind: 'subspecies',
-                                      id: sub.id,
-                                      label: sub.name,
-                                    })
-                                  }
-                                >
-                                  <IconTrash size={14} />
-                                </ActionIcon>
-                              </Group>
-                            )}
-                          </Group>
-
-                          <Text size="xs" c="dimmed" mb={6}>
-                            Variantes
-                          </Text>
-                          <div className={classes.chipRow}>
-                            {sub.variants.length === 0 ? (
-                              <Text size="sm" c="dimmed">
-                                Aucune variante.
-                              </Text>
-                            ) : (
-                              sub.variants.map((variant) =>
-                                editingVariantId === variant.id ? (
-                                  <Group key={variant.id} gap={4} wrap="nowrap">
-                                    <TextInput
-                                      size="xs"
-                                      value={variantDraft}
-                                      onChange={(e) => setVariantDraft(e.currentTarget.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          handleSaveVariant(sub.id, variant.id);
-                                        }
-                                        if (e.key === 'Escape') setEditingVariantId(null);
-                                      }}
-                                      autoFocus
-                                    />
-                                    <ActionIcon
-                                      size="sm"
-                                      color="teal"
-                                      variant="filled"
-                                      onClick={() => handleSaveVariant(sub.id, variant.id)}
-                                    >
-                                      <IconCheck size={14} />
-                                    </ActionIcon>
-                                  </Group>
-                                ) : (
-                                  <span key={variant.id} className={classes.chip}>
-                                    {variant.label}
-                                    <button
-                                      type="button"
-                                      className={classes.chipButton}
-                                      aria-label={`Renommer ${variant.label}`}
-                                      onClick={() => {
-                                        setEditingVariantId(variant.id);
-                                        setVariantDraft(variant.label);
-                                      }}
-                                    >
-                                      <IconPencil size={14} />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={classes.chipButton}
-                                      aria-label={`Supprimer ${variant.label}`}
-                                      onClick={() =>
-                                        setDeleteTarget({
-                                          kind: 'variant',
-                                          id: variant.id,
-                                          label: variant.label,
-                                        })
-                                      }
-                                    >
-                                      <IconTrash size={14} />
-                                    </button>
-                                  </span>
-                                ),
-                              )
-                            )}
-                          </div>
-                          <div className={classes.quickAdd} style={{ marginTop: '0.65rem' }}>
-                            <TextInput
-                              size="sm"
-                              placeholder="Ajouter une variante (ex. Long poils)"
-                              value={variantInputs[sub.id] ?? ''}
-                              onChange={(e) => {
-                                const value = e.currentTarget.value;
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleSubspeciesDragEnd}
+                    >
+                      <SortableContext
+                        items={selected.subspecies.map((sub) => sub.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <Stack gap="md">
+                          {selected.subspecies.map((sub) => (
+                            <SortableSubspeciesCard
+                              key={sub.id}
+                              sub={sub}
+                              pending={pending}
+                              editingSubId={editingSubId}
+                              subDraft={subDraft}
+                              editingVariantId={editingVariantId}
+                              variantDraft={variantDraft}
+                              variantInput={variantInputs[sub.id] ?? ''}
+                              onSubDraftChange={setSubDraft}
+                              onSaveSubspecies={() => handleSaveSubspecies(sub.id)}
+                              onCancelEditSub={() => setEditingSubId(null)}
+                              onStartEditSub={() => {
+                                setEditingSubId(sub.id);
+                                setSubDraft(sub.name);
+                              }}
+                              onDeleteSub={() =>
+                                setDeleteTarget({
+                                  kind: 'subspecies',
+                                  id: sub.id,
+                                  label: sub.name,
+                                })
+                              }
+                              onVariantDraftChange={setVariantDraft}
+                              onSaveVariant={(variantId) =>
+                                handleSaveVariant(sub.id, variantId)
+                              }
+                              onCancelEditVariant={() => setEditingVariantId(null)}
+                              onStartEditVariant={(variantId, label) => {
+                                setEditingVariantId(variantId);
+                                setVariantDraft(label);
+                              }}
+                              onDeleteVariant={(variantId, label) =>
+                                setDeleteTarget({
+                                  kind: 'variant',
+                                  id: variantId,
+                                  label,
+                                })
+                              }
+                              onVariantInputChange={(value) =>
                                 setVariantInputs((prev) => ({
                                   ...prev,
                                   [sub.id]: value,
-                                }));
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleAddVariant(sub.id);
-                              }}
-                              style={{ flex: 1 }}
-                              maxLength={255}
+                                }))
+                              }
+                              onAddVariant={() => handleAddVariant(sub.id)}
+                              onVariantsReorder={(activeId, overId) =>
+                                handleVariantsReorder(sub.id, activeId, overId)
+                              }
                             />
-                            <Button
-                              size="sm"
-                              color="teal"
-                              variant="light"
-                              leftSection={<IconPlus size={14} />}
-                              onClick={() => handleAddVariant(sub.id)}
-                              loading={pending}
-                            >
-                              Ajouter
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </Stack>
+                          ))}
+                        </Stack>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
               </div>

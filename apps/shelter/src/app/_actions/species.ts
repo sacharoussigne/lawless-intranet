@@ -21,6 +21,15 @@ const variantLabelSchema = z
   .min(1, 'Le libellé est requis')
   .max(255, 'Le libellé est trop long');
 
+const reorderItemSchema = z.object({
+  id: z.string().uuid(),
+  sortOrder: z.number().int().min(0),
+});
+
+const reorderItemsSchema = z.object({
+  items: z.array(reorderItemSchema).min(1),
+});
+
 const speciesInclude = {
   subspecies: {
     orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
@@ -363,5 +372,122 @@ export async function deleteVariant(shelterSlug: string, data: { id: string }) {
     return { status: 200, data: { id } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression de la variante');
+  }
+}
+
+export async function reorderSpecies(
+  shelterSlug: string,
+  data: { items: { id: string; sortOrder: number }[] },
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
+    if (!ctx.ok) return ctx.response;
+    const { shelterId } = ctx.tenant;
+    const { items } = reorderItemsSchema.parse(data);
+    const ids = items.map((item) => item.id);
+
+    const owned = await prisma.animalSpecies.findMany({
+      where: { shelterId, id: { in: ids } },
+      select: { id: true },
+    });
+    if (owned.length !== ids.length) {
+      return { status: 404, error: 'Une ou plusieurs espèces sont introuvables' };
+    }
+
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.animalSpecies.update({
+          where: { id: item.id },
+          data: { sortOrder: item.sortOrder },
+        }),
+      ),
+    );
+
+    revalidateSpecies(shelterSlug);
+    return { status: 200, data: { success: true } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du réordonnancement des espèces');
+  }
+}
+
+export async function reorderSubspecies(
+  shelterSlug: string,
+  data: { speciesId: string; items: { id: string; sortOrder: number }[] },
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
+    if (!ctx.ok) return ctx.response;
+    const { shelterId } = ctx.tenant;
+    const speciesId = z.string().uuid().parse(data.speciesId);
+    const { items } = reorderItemsSchema.parse({ items: data.items });
+    const ids = items.map((item) => item.id);
+
+    const species = await requireSpeciesInShelter(shelterId, speciesId);
+    if (!species) {
+      return { status: 404, error: 'Espèce introuvable' };
+    }
+
+    const owned = await prisma.animalSubspecies.findMany({
+      where: { speciesId, id: { in: ids } },
+      select: { id: true },
+    });
+    if (owned.length !== ids.length) {
+      return { status: 404, error: 'Une ou plusieurs sous-espèces sont introuvables' };
+    }
+
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.animalSubspecies.update({
+          where: { id: item.id },
+          data: { sortOrder: item.sortOrder },
+        }),
+      ),
+    );
+
+    revalidateSpecies(shelterSlug);
+    return { status: 200, data: { success: true } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du réordonnancement des sous-espèces');
+  }
+}
+
+export async function reorderVariants(
+  shelterSlug: string,
+  data: { subspeciesId: string; items: { id: string; sortOrder: number }[] },
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
+    if (!ctx.ok) return ctx.response;
+    const { shelterId } = ctx.tenant;
+    const subspeciesId = z.string().uuid().parse(data.subspeciesId);
+    const { items } = reorderItemsSchema.parse({ items: data.items });
+    const ids = items.map((item) => item.id);
+
+    const subspecies = await requireSubspeciesInShelter(shelterId, subspeciesId);
+    if (!subspecies) {
+      return { status: 404, error: 'Sous-espèce introuvable' };
+    }
+
+    const owned = await prisma.animalSpeciesVariant.findMany({
+      where: { subspeciesId, id: { in: ids } },
+      select: { id: true },
+    });
+    if (owned.length !== ids.length) {
+      return { status: 404, error: 'Une ou plusieurs variantes sont introuvables' };
+    }
+
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.animalSpeciesVariant.update({
+          where: { id: item.id },
+          data: { sortOrder: item.sortOrder },
+        }),
+      ),
+    );
+
+    revalidateSpecies(shelterSlug);
+    return { status: 200, data: { success: true } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du réordonnancement des variantes');
   }
 }
