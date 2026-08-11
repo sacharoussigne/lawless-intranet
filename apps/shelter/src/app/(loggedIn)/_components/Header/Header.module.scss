@@ -1,0 +1,48 @@
+.header {
+  border-bottom: 1px solid var(--shelter-border);
+  background: color-mix(in srgb, var(--shelter-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  padding: 0.75rem 0;
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-family: var(--shelter-font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--shelter-forest);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.navLink {
+  color: var(--shelter-muted);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.navLink:hover {
+  background: var(--shelter-bg-accent);
+  color: var(--shelter-ink);
+}
+
+.navLinkActive {
+  background: color-mix(in srgb, var(--shelter-forest) 12%, transparent);
+  color: var(--shelter-forest);
+}

@@ -1,0 +1,58 @@
+import type { Metadata } from 'next';
+import { Fraunces, Source_Sans_3 } from 'next/font/google';
+import { ColorSchemeScript, mantineHtmlProps } from '@mantine/core';
+
+import './globals.scss';
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
+import 'mantine-datatable/styles.css';
+
+import { MantineAppProvider } from './MantineAppProvider';
+
+const fontUi = Source_Sans_3({
+  variable: '--font-ui',
+  subsets: ['latin'],
+  weight: ['400', '600', '700'],
+});
+
+const fontDisplay = Fraunces({
+  variable: '--font-display',
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+});
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | Refuge',
+    default: 'Refuge',
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="fr"
+      className={`${fontDisplay.variable} ${fontUi.variable} ${fontUi.className}`}
+      style={
+        {
+          '--shelter-font-ui': 'var(--font-ui)',
+          '--shelter-font-display': 'var(--font-display)',
+        } as React.CSSProperties
+      }
+      {...mantineHtmlProps}
+    >
+      <head>
+        <ColorSchemeScript />
+      </head>
+      <body className="min-h-dvh flex flex-col">
+        <MantineAppProvider>
+          <div className="flex min-h-dvh flex-1 flex-col">{children}</div>
+        </MantineAppProvider>
+      </body>
+    </html>
+  );
+}

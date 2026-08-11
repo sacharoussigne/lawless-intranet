@@ -16,8 +16,10 @@ services:
         APP_PORT: "3001"
         NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
         NEXT_PUBLIC_DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+        NEXT_PUBLIC_SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
         BETTER_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
         DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+        SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
     environment:
       NODE_ENV: production
       PORT: "3001"
@@ -27,9 +29,12 @@ services:
       NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       NEXT_PUBLIC_DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
+      NEXT_PUBLIC_SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
       AUTH_COOKIE_DOMAIN: "${AUTH_COOKIE_DOMAIN:?err}"
       AUTH_VIRTUAL_HOST: "${AUTH_VIRTUAL_HOST:?err}"
       DISPENSARY_VIRTUAL_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
+      SHELTER_VIRTUAL_HOST: "${SHELTER_VIRTUAL_HOST:-}"
       DOCUMENTS_VIRTUAL_HOST: "${DOCUMENTS_VIRTUAL_HOST:-}"
       AGENDA_VIRTUAL_HOST: "${AGENDA_VIRTUAL_HOST:-}"
       BANK_VIRTUAL_HOST: "${BANK_VIRTUAL_HOST:-}"
@@ -160,6 +165,7 @@ services:
       DATABASE_URL: "${BANK_DATABASE_URL:?err}"
       AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
       BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
       BANK_BOT_API_SECRET: "${BANK_BOT_API_SECRET:-}"
       VIRTUAL_HOST: "${BANK_VIRTUAL_HOST:?err}"
@@ -194,6 +200,38 @@ services:
       LETSENCRYPT_HOST: "${INVENTORY_VIRTUAL_HOST:?err}"
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${INVENTORY_VIRTUAL_HOST:?err}"
+    networks:
+      - proxy
+      - db
+
+  shelter:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-shelter"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: shelter
+        APP_PORT: "3006"
+        NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+        NEXT_PUBLIC_APP_URL: "${SHELTER_PUBLIC_URL:?err}"
+    environment:
+      NODE_ENV: production
+      PORT: "3006"
+      DATABASE_URL: "${SHELTER_DATABASE_URL:?err}"
+      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      NEXT_PUBLIC_APP_URL: "${SHELTER_PUBLIC_URL:?err}"
+      AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
+      BANK_URL: "${BANK_PUBLIC_URL:-http://bank:3004}"
+      BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
+      NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
+      TZ: "${TZ:-UTC}"
+      VIRTUAL_HOST: "${SHELTER_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3006"
+      LETSENCRYPT_HOST: "${SHELTER_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${SHELTER_VIRTUAL_HOST:?err}"
     networks:
       - proxy
       - db

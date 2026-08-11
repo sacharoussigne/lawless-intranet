@@ -1,0 +1,42 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--shelter-surface);
+  border-color: var(--shelter-border);
+}
+
+.body {
+  flex: 1;
+}
+
+.iconMedallion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--shelter-forest) 12%, transparent);
+  color: var(--shelter-forest);
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: var(--shelter-font-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--shelter-ink);
+}
+
+.description {
+  color: var(--shelter-muted);
+}
+
+.footer {
+  margin-top: 1.25rem;
+}
+
+.accessLink {
+  text-decoration: none;
+}

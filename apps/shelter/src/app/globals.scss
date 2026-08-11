@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --shelter-bg: #f3f7f4;
+  --shelter-bg-accent: #e5efe8;
+  --shelter-ink: #1a2e24;
+  --shelter-muted: #5a6f63;
+  --shelter-forest: #2d6a4f;
+  --shelter-forest-soft: #40916c;
+  --shelter-border: #c5d5cb;
+  --shelter-surface: #ffffff;
+  --shelter-font-ui: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+  --shelter-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+}
+
+html,
+body {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse at top left, rgba(45, 106, 79, 0.08), transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(64, 145, 108, 0.06), transparent 45%),
+    var(--shelter-bg);
+  color: var(--shelter-ink);
+}
+
+.shelter-shell {
+  background: transparent;
+  min-height: 100%;
+}
+
+.shelter-display-title {
+  font-family: var(--shelter-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}

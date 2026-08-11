@@ -28,22 +28,29 @@ export function getTrustedOrigins(): string[] {
   const origins = new Set<string>([
     process.env.BETTER_AUTH_URL,
     process.env.DISPENSARY_URL,
+    process.env.SHELTER_URL,
     'http://localhost:3001',
     'http://localhost:3000',
     'http://localhost:3002',
     'http://localhost:3003',
     'http://localhost:3004',
+    'http://localhost:3005',
+    'http://localhost:3006',
     'http://auth.localhost:3001',
     'http://dispensary.localhost:3000',
     'http://documents.localhost:3002',
     'http://agenda.localhost:3003',
     'http://bank.localhost:3004',
+    'http://inventory.localhost:3005',
+    'http://shelter.localhost:3006',
   ].filter(Boolean) as string[]);
 
   addOrigin(origins, process.env.BETTER_AUTH_URL);
   addOrigin(origins, process.env.DISPENSARY_URL);
+  addOrigin(origins, process.env.SHELTER_URL);
   addHostOrigins(origins, process.env.AUTH_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.DISPENSARY_VIRTUAL_HOST);
+  addHostOrigins(origins, process.env.SHELTER_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.DOCUMENTS_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.AGENDA_VIRTUAL_HOST);
   addHostOrigins(origins, process.env.BANK_VIRTUAL_HOST);

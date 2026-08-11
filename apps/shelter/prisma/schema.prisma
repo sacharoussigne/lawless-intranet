@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Shelter {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+
+  members         ShelterMember[]
+  rolePermissions ShelterRolePermission[]
+  settings        AppSettings?
+
+  @@index([createdById])
+  @@map("shelter")
+}
+
+model ShelterMember {
+  id          String   @id @default(uuid())
+  shelterId   String
+  userId      String
+  role        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  shelter     Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  permissions ShelterMemberPermission[]
+
+  @@unique([shelterId, userId])
+  @@index([userId])
+  @@map("shelter_member")
+}
+
+model ShelterRolePermission {
+  id        String   @id @default(uuid())
+  shelterId String
+  role      String
+  resource  String
+  action    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shelter   Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+
+  @@unique([shelterId, role, resource, action])
+  @@index([shelterId, role])
+  @@map("shelter_role_permission")
+}
+
+enum MemberPermissionEffect {
+  GRANT
+  DENY
+}
+
+model ShelterMemberPermission {
+  id        String                  @id @default(uuid())
+  memberId  String
+  resource  String
+  action    String
+  effect    MemberPermissionEffect
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  member    ShelterMember           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, resource, action])
+  @@index([memberId])
+  @@map("shelter_member_permission")
+}
+
+model AppSettings {
+  shelterId           String   @id
+  shelter             Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  shelterName         String   @default("Refuge")
+  featureBankEnabled  Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("app_settings")
+}

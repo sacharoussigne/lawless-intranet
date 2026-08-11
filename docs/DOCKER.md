@@ -1,13 +1,13 @@
 # Déploiement Docker (monorepo)
 
-Une image par app (`auth`, `dispensary`, `documents`, `agenda`, `bank`, `inventory`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
+Une image par app (`auth`, `dispensary`, `shelter`, `documents`, `agenda`, `bank`, `inventory`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
 
 ## Principe
 
 ```
 docker build (context: .)
     │
-    ├─ turbo prune auth|dispensary|documents|agenda|bank|inventory --docker   → apps + packages nécessaires
+    ├─ turbo prune auth|dispensary|shelter|documents|agenda|bank|inventory --docker   → apps + packages nécessaires
     ├─ pnpm install
     ├─ pnpm turbo build --filter=<app>        → next build --webpack + standalone
     └─ entrypoint: prisma migrate deploy + node apps/<app>/server.js
@@ -17,7 +17,7 @@ docker build (context: .)
 
 - Docker + Docker Compose
 - Réseau `proxy` externe (nginx-proxy / letsencrypt-companion), comme avant
-- Six bases PostgreSQL (auth + dispensary + documents + agenda + bank + inventory)
+- Sept bases PostgreSQL (auth + dispensary + shelter + documents + agenda + bank + inventory)
 - Discord redirect URI : `https://<AUTH_VIRTUAL_HOST>/api/auth/callback/discord`
 
 ## Démarrage rapide
@@ -67,28 +67,36 @@ docker build \
   --build-arg APP_NAME=inventory \
   --build-arg APP_PORT=3005 \
   -t lawless-inventory .
+
+# Shelter (port 3006)
+docker build \
+  --build-arg APP_NAME=shelter \
+  --build-arg APP_PORT=3006 \
+  -t lawless-shelter .
 ```
 
 ## Variables importantes en prod
 
 | Variable | App | Rôle |
 |----------|-----|------|
-| `AUTH_PUBLIC_URL` | auth + dispensary | URL publique IdP — **build + runtime** (`NEXT_PUBLIC_AUTH_URL`) |
+| `AUTH_PUBLIC_URL` | auth + hosts | URL publique IdP — **build + runtime** (`NEXT_PUBLIC_AUTH_URL`) |
 | `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL publique RP — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
+| `SHELTER_PUBLIC_URL` | auth + shelter | URL publique refuge — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
 | `DOCUMENTS_PUBLIC_URL` | documents + dispensary | URL service documents (`DOCUMENTS_URL` côté dispensary) |
 | `AGENDA_PUBLIC_URL` | agenda + dispensary | URL service agenda (`AGENDA_URL` côté dispensary) |
-| `BANK_PUBLIC_URL` | bank + dispensary | URL service banque (`BANK_URL` côté dispensary) |
+| `BANK_PUBLIC_URL` | bank + dispensary + shelter | URL service banque (`BANK_URL`) |
 | `INVENTORY_PUBLIC_URL` | inventory + dispensary | URL service inventaire (`INVENTORY_URL` côté dispensary) |
 | `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`). Cookie name prefix is `lawless-intranet` (not `better-auth`) to avoid collisions with other apps on the same domain. |
 | `AUTH_DATABASE_URL` | auth | DB auth |
 | `DISPENSARY_DATABASE_URL` | dispensary | DB métier |
+| `SHELTER_DATABASE_URL` | shelter | DB refuge |
 | `DOCUMENTS_DATABASE_URL` | documents | DB documents/templates |
 | `AGENDA_DATABASE_URL` | agenda | DB agendas/events/todos |
 | `BANK_DATABASE_URL` | bank | DB ledger bancaire |
 | `INVENTORY_DATABASE_URL` | inventory | DB stock / commandes / ventes / entreprises |
-| `AUTH_INTERNAL_SECRET` | auth + dispensary | API interne service-to-service |
+| `AUTH_INTERNAL_SECRET` | auth + hosts | API interne service-to-service |
 | `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
-| `BANK_INTERNAL_SECRET` | bank + dispensary | Secret host→bank (from-order, purge-scope) |
+| `BANK_INTERNAL_SECRET` | bank + dispensary + shelter | Secret host→bank (from-order, purge-scope) |
 | `BANK_BOT_API_SECRET` | bank + dispensary | Secret bot materialize-planned |
 | `INVENTORY_INTERNAL_SECRET` | inventory + dispensary | Secret host→inventory (purge-scope) |
 | `DOCUMENTS_INTERNAL_SECRET` | documents + dispensary | Secret host→documents (toutes les routes API sauf health) |
