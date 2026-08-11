@@ -46,3 +46,7 @@
   background: color-mix(in srgb, var(--shelter-forest) 12%, transparent);
   color: var(--shelter-forest);
 }
+
+.userActive {
+  opacity: 0.85;
+}

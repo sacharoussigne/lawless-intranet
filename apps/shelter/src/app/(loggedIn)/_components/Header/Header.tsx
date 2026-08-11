@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Avatar, Button, Container, Group, Menu, Select, UnstyledButton } from '@mantine/core';
 import classes from './Header.module.scss';
 import { authClient } from '@lawless-intranet/auth-client/browser';
@@ -24,6 +25,7 @@ export default function Header({
 }>) {
   const router = useRouter();
   const pathname = usePathname();
+  const [userMenuOpened, setUserMenuOpened] = useState(false);
   const { permissions, userRole, appSettings, accessibleShelters, shelterSlug: ctxSlug } =
     usePermissions();
   const shelterSlug = shelterSlugProp ?? ctxSlug;
@@ -74,12 +76,6 @@ export default function Header({
 
           {session && t && (
             <nav className={classes.nav} aria-label="Navigation principale">
-              <Link
-                href={t.employee.index}
-                className={`${classes.navLink} ${isActive(t.employee.index) && !isActive(t.employee.bank) && !isActive(t.admin.settings) ? classes.navLinkActive : ''}`}
-              >
-                Accueil
-              </Link>
               {permissions?.bank.access && appSettings.featureBankEnabled && (
                 <Link
                   href={t.employee.bank}
@@ -88,25 +84,16 @@ export default function Header({
                   Banque
                 </Link>
               )}
-              {hasRole(userRole, Role.ADMIN) && (
-                <Link
-                  href={t.admin.settings}
-                  className={`${classes.navLink} ${isActive(t.admin.settings) ? classes.navLinkActive : ''}`}
-                >
-                  Admin
-                </Link>
-              )}
-              {isPlatformAdminUser && (
-                <Link
-                  href={routes.platform.shelters}
-                  className={`${classes.navLink} ${isActive(routes.platform.shelters) ? classes.navLinkActive : ''}`}
-                >
-                  Plateforme
-                </Link>
-              )}
-              <Menu withinPortal position="bottom-end">
+              <Menu
+                width={260}
+                position="bottom-end"
+                transitionProps={{ transition: 'pop-top-right' }}
+                onClose={() => setUserMenuOpened(false)}
+                onOpen={() => setUserMenuOpened(true)}
+                withinPortal
+              >
                 <Menu.Target>
-                  <UnstyledButton>
+                  <UnstyledButton className={userMenuOpened ? classes.userActive : undefined}>
                     <Avatar
                       alt={session.user.name}
                       radius="xl"
@@ -116,7 +103,28 @@ export default function Header({
                   </UnstyledButton>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item leftSection={<IconLogout size={16} />} onClick={handleLogout}>
+                  {isPlatformAdminUser && (
+                    <>
+                      <Menu.Label>Plateforme</Menu.Label>
+                      <Menu.Item component={Link} href={routes.platform.shelters}>
+                        Refuges
+                      </Menu.Item>
+                      <Menu.Divider />
+                    </>
+                  )}
+                  {hasRole(userRole, Role.ADMIN) && (
+                    <>
+                      <Menu.Label>Admin refuge</Menu.Label>
+                      <Menu.Item component={Link} href={t.admin.settings}>
+                        Paramètres du refuge
+                      </Menu.Item>
+                      <Menu.Divider />
+                    </>
+                  )}
+                  <Menu.Item
+                    leftSection={<IconLogout size={16} stroke={1.5} />}
+                    onClick={handleLogout}
+                  >
                     Déconnexion
                   </Menu.Item>
                 </Menu.Dropdown>
@@ -125,15 +133,48 @@ export default function Header({
           )}
 
           {session && !t && (
-            <Group>
+            <Group gap="sm" wrap="nowrap">
               {isPlatformAdminUser && (
                 <Button component={Link} href={routes.platform.shelters} variant="light">
                   Refuges
                 </Button>
               )}
-              <Button variant="subtle" onClick={handleLogout}>
-                Déconnexion
-              </Button>
+              <Menu
+                width={260}
+                position="bottom-end"
+                transitionProps={{ transition: 'pop-top-right' }}
+                onClose={() => setUserMenuOpened(false)}
+                onOpen={() => setUserMenuOpened(true)}
+                withinPortal
+              >
+                <Menu.Target>
+                  <UnstyledButton className={userMenuOpened ? classes.userActive : undefined}>
+                    <Avatar
+                      alt={session.user.name}
+                      radius="xl"
+                      size={36}
+                      src={session.user.image ?? null}
+                    />
+                  </UnstyledButton>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {isPlatformAdminUser && (
+                    <>
+                      <Menu.Label>Plateforme</Menu.Label>
+                      <Menu.Item component={Link} href={routes.platform.shelters}>
+                        Refuges
+                      </Menu.Item>
+                      <Menu.Divider />
+                    </>
+                  )}
+                  <Menu.Item
+                    leftSection={<IconLogout size={16} stroke={1.5} />}
+                    onClick={handleLogout}
+                  >
+                    Déconnexion
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           )}
         </div>
