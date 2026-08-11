@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { type NextRequest } from 'next/server';
 import { routes, tenantRoutes } from './types/routes';
 import { getRequestAuthSession } from './lib/authSession';
 import { hasToBeLoggedOutMiddleware } from './middlewares/hasToBeLoggedOutMiddleware';
@@ -7,6 +7,7 @@ import { hasApplicationAccessMiddleware } from './middlewares/hasApplicationAcce
 import { hasPlatformAdminMiddleware } from './middlewares/hasPlatformAdminMiddleware';
 import { hasAdminRoleMiddleware } from './middlewares/hasAdminRoleMiddleware';
 import { hasBankAccessMiddleware } from './middlewares/hasBankAccessMiddleware';
+import { hasSpeciesManageMiddleware } from './middlewares/hasSpeciesManageMiddleware';
 import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatureEnabledMiddleware';
 import { hasTenantAccessMiddleware } from './middlewares/hasTenantAccessMiddleware';
 import { chain } from './middlewares/chain';
@@ -65,6 +66,8 @@ export async function middleware(req: NextRequest) {
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
         assertAppFeatureEnabledMiddleware(request, s, 'bank'),
       );
+    } else if (pathname.startsWith(t.species.index)) {
+      middlewares.push(hasSpeciesManageMiddleware);
     }
   } else if (pathname === '/') {
     middlewares.push(hasToBeLoggedInMiddleware);

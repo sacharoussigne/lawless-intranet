@@ -2,9 +2,10 @@ export enum Role {
   USER = 'user',
   ADMIN = 'admin',
   EMPLOYEE = 'employee',
+  DIRECTION = 'direction',
 }
 
-export const SHELTER_MEMBER_ROLES = [Role.ADMIN, Role.EMPLOYEE] as const;
+export const SHELTER_MEMBER_ROLES = [Role.ADMIN, Role.DIRECTION, Role.EMPLOYEE] as const;
 
 export type ShelterMemberRole = (typeof SHELTER_MEMBER_ROLES)[number];
 
@@ -37,5 +38,7 @@ export const rolesAsString = (role: Role): string => {
       return 'Administrateur';
     case Role.EMPLOYEE:
       return 'Employé';
+    case Role.DIRECTION:
+      return 'Direction';
   }
 };

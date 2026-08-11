@@ -1,16 +1,14 @@
 'use client';
 
 import { Container, SimpleGrid, Text } from '@mantine/core';
-import { IconBuildingBank, IconSettings } from '@tabler/icons-react';
+import { IconBuildingBank, IconPaw } from '@tabler/icons-react';
 import { ModuleCard } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
-import { hasRole } from '@lawless-intranet/auth-permissions';
-import { Role } from '@/types/enum/roles';
 
 export default function EmployeeHubPage() {
   const t = useTenantRoutes();
-  const { permissions, userRole, appSettings } = usePermissions();
+  const { permissions, appSettings } = usePermissions();
 
   const cards = [];
   if (permissions?.bank.access && appSettings.featureBankEnabled) {
@@ -21,12 +19,12 @@ export default function EmployeeHubPage() {
       icon: IconBuildingBank,
     });
   }
-  if (hasRole(userRole, Role.ADMIN)) {
+  if (permissions?.species.manage) {
     cards.push({
-      title: 'Administration',
-      description: 'Paramètres, membres et permissions.',
-      href: t.admin.settings,
-      icon: IconSettings,
+      title: 'Espèces',
+      description: 'Espèces, sous-espèces et variantes pour les animaux.',
+      href: t.employee.species,
+      icon: IconPaw,
     });
   }
 

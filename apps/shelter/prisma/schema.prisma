@@ -18,6 +18,7 @@ model Shelter {
   members         ShelterMember[]
   rolePermissions ShelterRolePermission[]
   settings        AppSettings?
+  animalSpecies   AnimalSpecies[]
 
   @@index([createdById])
   @@map("shelter")
@@ -83,4 +84,48 @@ model AppSettings {
   updatedAt           DateTime @updatedAt
 
   @@map("app_settings")
+}
+
+model AnimalSpecies {
+  id          String   @id @default(uuid())
+  shelterId   String
+  name        String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  shelter     Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  subspecies  AnimalSubspecies[]
+
+  @@unique([shelterId, name])
+  @@index([shelterId, sortOrder])
+  @@map("animal_species")
+}
+
+model AnimalSubspecies {
+  id        String                 @id @default(uuid())
+  speciesId String
+  name      String
+  sortOrder Int                    @default(0)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  species   AnimalSpecies          @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  variants  AnimalSpeciesVariant[]
+
+  @@unique([speciesId, name])
+  @@index([speciesId, sortOrder])
+  @@map("animal_subspecies")
+}
+
+model AnimalSpeciesVariant {
+  id           String           @id @default(uuid())
+  subspeciesId String
+  label        String           @db.VarChar(255)
+  sortOrder    Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  subspecies   AnimalSubspecies @relation(fields: [subspeciesId], references: [id], onDelete: Cascade)
+
+  @@unique([subspeciesId, label])
+  @@index([subspeciesId, sortOrder])
+  @@map("animal_species_variant")
 }

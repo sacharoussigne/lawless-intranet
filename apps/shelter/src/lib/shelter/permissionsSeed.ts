@@ -6,7 +6,6 @@ import prisma from '@/lib/prisma';
 
 type PrismaClientLike = {
   shelterRolePermission: {
-    count: (args: { where: { shelterId: string } }) => Promise<number>;
     createMany: (args: {
       data: Array<{
         shelterId: string;
@@ -29,16 +28,11 @@ export function buildDefaultRolePermissionRows(shelterId: string) {
   }));
 }
 
+/** Upsert missing default role permissions (safe for existing customized matrices). */
 export async function ensureShelterRolePermissions(
   shelterId: string,
   client: PrismaClientLike = prisma,
 ): Promise<void> {
-  const count = await client.shelterRolePermission.count({
-    where: { shelterId },
-  });
-  if (count > 0) {
-    return;
-  }
   await client.shelterRolePermission.createMany({
     data: buildDefaultRolePermissionRows(shelterId),
     skipDuplicates: true,

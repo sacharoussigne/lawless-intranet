@@ -3,6 +3,7 @@
 export const applicationPermissionCatalog = {
   application: ['access', 'management'],
   bank: ['access'],
+  species: ['manage'],
 } as const;
 
 export type ApplicationResource = keyof typeof applicationPermissionCatalog;
@@ -25,7 +26,7 @@ export type RolePermissionRow = {
   action: string;
 };
 
-export const SHELTER_MEMBER_ROLES = ['admin', 'employee'] as const;
+export const SHELTER_MEMBER_ROLES = ['admin', 'direction', 'employee'] as const;
 export type ShelterMemberRole = (typeof SHELTER_MEMBER_ROLES)[number];
 
 export function permissionKey(resource: string, action: string): PermissionKey {
@@ -62,6 +63,12 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
   admin: {
     application: [...applicationPermissionCatalog.application],
     bank: [...applicationPermissionCatalog.bank],
+    species: [...applicationPermissionCatalog.species],
+  },
+  direction: {
+    application: ['access'],
+    bank: ['access'],
+    species: [...applicationPermissionCatalog.species],
   },
   employee: {
     application: ['access'],
@@ -186,6 +193,9 @@ export type ShelterPermissionsObject = {
   bank: {
     access: boolean;
   };
+  species: {
+    manage: boolean;
+  };
 };
 
 export function toPermissionsObject(
@@ -202,6 +212,9 @@ export function toPermissionsObject(
     },
     bank: {
       access: has('bank', 'access'),
+    },
+    species: {
+      manage: has('species', 'manage'),
     },
   };
 }

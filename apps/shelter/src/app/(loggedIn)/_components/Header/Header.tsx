@@ -84,6 +84,14 @@ export default function Header({
                   Banque
                 </Link>
               )}
+              {permissions?.species.manage && (
+                <Link
+                  href={t.employee.species}
+                  className={`${classes.navLink} ${isActive(t.employee.species) ? classes.navLinkActive : ''}`}
+                >
+                  Espèces
+                </Link>
+              )}
               <Menu
                 width={260}
                 position="bottom-end"
