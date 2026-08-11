@@ -54,7 +54,7 @@ export function SortableVariantChip({
             }}
             autoFocus
           />
-          <ActionIcon size="sm" color="teal" variant="filled" onClick={onSave}>
+          <ActionIcon size="sm" color="terracotta" variant="filled" onClick={onSave}>
             <IconCheck size={14} />
           </ActionIcon>
         </Group>

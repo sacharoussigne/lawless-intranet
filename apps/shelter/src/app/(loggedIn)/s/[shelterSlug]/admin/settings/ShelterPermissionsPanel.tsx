@@ -98,14 +98,14 @@ export function ShelterPermissionsPanel({
         notifications.show({
           title: 'Erreur',
           message,
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
       notifications.show({
         title: 'Permissions enregistrées',
         message: rolesAsString(selectedRole),
-        color: 'teal',
+        color: 'terracotta',
       });
     } finally {
       setSaving(false);
@@ -122,14 +122,14 @@ export function ShelterPermissionsPanel({
         notifications.show({
           title: 'Erreur',
           message,
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
       notifications.show({
         title: 'Réinitialisé',
         message: 'Matrice par défaut restaurée',
-        color: 'teal',
+        color: 'terracotta',
       });
       window.location.reload();
     } finally {
@@ -151,7 +151,7 @@ export function ShelterPermissionsPanel({
           <Button
             key={role}
             variant={selectedRole === role ? 'filled' : 'light'}
-            color="teal"
+            color="terracotta"
             onClick={() => setSelectedRole(role)}
           >
             {rolesAsString(role)}
@@ -191,7 +191,7 @@ export function ShelterPermissionsPanel({
         </Table>
       </ScrollArea>
 
-      <Button color="teal" loading={saving} onClick={() => void handleSave()}>
+      <Button color="terracotta" loading={saving} onClick={() => void handleSave()}>
         Enregistrer le rôle {rolesAsString(selectedRole)}
       </Button>
     </Stack>

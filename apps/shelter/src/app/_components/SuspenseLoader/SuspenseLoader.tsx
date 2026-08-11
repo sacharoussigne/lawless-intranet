@@ -10,7 +10,7 @@ export function SuspenseLoader({ children, fallback }: SuspenseLoaderProps) {
   const defaultFallback = (
     <Container size="xl" py="xl">
       <Center h={400}>
-        <Loader size="lg" color="teal" />
+        <Loader size="lg" color="terracotta" />
       </Center>
     </Container>
   );

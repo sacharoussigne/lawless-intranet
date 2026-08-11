@@ -32,11 +32,11 @@ export function ShelterSettingsGeneralPanel({
         notifications.show({
           title: 'Erreur',
           message: 'error' in result && typeof result.error === 'string' ? result.error : 'Échec',
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
-      notifications.show({ title: 'Paramètres enregistrés', message: '', color: 'teal' });
+      notifications.show({ title: 'Paramètres enregistrés', message: '', color: 'terracotta' });
       if (result.data.slug !== shelterSlug) {
         router.push(tenantRoutes(result.data.slug).admin.settings);
       } else {
@@ -58,7 +58,7 @@ export function ShelterSettingsGeneralPanel({
           checked={bankEnabled}
           onChange={(e) => setBankEnabled(e.currentTarget.checked)}
         />
-        <Button color="teal" loading={saving} onClick={() => void handleSave()}>
+        <Button color="terracotta" loading={saving} onClick={() => void handleSave()}>
           Enregistrer
         </Button>
       </Stack>

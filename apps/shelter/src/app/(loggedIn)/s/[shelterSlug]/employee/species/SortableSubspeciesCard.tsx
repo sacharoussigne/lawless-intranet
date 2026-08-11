@@ -122,7 +122,7 @@ export function SortableSubspeciesCard({
             />
             <ActionIcon
               size="sm"
-              color="teal"
+              color="terracotta"
               variant="filled"
               onClick={onSaveSubspecies}
             >
@@ -144,7 +144,7 @@ export function SortableSubspeciesCard({
             <ActionIcon
               size="sm"
               variant="subtle"
-              color="teal"
+              color="terracotta"
               aria-label={`Renommer ${sub.name}`}
               onClick={onStartEditSub}
             >
@@ -153,7 +153,7 @@ export function SortableSubspeciesCard({
             <ActionIcon
               size="sm"
               variant="subtle"
-              color="red"
+              color="danger"
               aria-label={`Supprimer ${sub.name}`}
               onClick={onDeleteSub}
             >
@@ -212,7 +212,7 @@ export function SortableSubspeciesCard({
         />
         <Button
           size="sm"
-          color="teal"
+          color="terracotta"
           variant="light"
           leftSection={<IconPlus size={14} />}
           onClick={onAddVariant}

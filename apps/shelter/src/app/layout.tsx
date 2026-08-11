@@ -1,24 +1,25 @@
 import type { Metadata } from 'next';
-import { Fraunces, Source_Sans_3 } from 'next/font/google';
+import { Courier_Prime, Special_Elite } from 'next/font/google';
 import { ColorSchemeScript, mantineHtmlProps } from '@mantine/core';
 
 import './globals.scss';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import 'mantine-datatable/styles.css';
+import './mantine-overrides.scss';
 
 import { MantineAppProvider } from './MantineAppProvider';
 
-const fontUi = Source_Sans_3({
+const fontUi = Courier_Prime({
   variable: '--font-ui',
   subsets: ['latin'],
-  weight: ['400', '600', '700'],
+  weight: ['400', '700'],
 });
 
-const fontDisplay = Fraunces({
+const fontDisplay = Special_Elite({
   variable: '--font-display',
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
+  weight: '400',
 });
 
 export const metadata: Metadata = {
@@ -37,12 +38,6 @@ export default function RootLayout({
     <html
       lang="fr"
       className={`${fontDisplay.variable} ${fontUi.variable} ${fontUi.className}`}
-      style={
-        {
-          '--shelter-font-ui': 'var(--font-ui)',
-          '--shelter-font-display': 'var(--font-display)',
-        } as React.CSSProperties
-      }
       {...mantineHtmlProps}
     >
       <head>

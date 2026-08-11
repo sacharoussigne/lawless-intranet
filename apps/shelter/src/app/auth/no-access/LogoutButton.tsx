@@ -19,7 +19,7 @@ export default function LogoutButton() {
   };
 
   return (
-    <Button onClick={handleLogout} variant="light" color="teal">
+    <Button onClick={handleLogout} variant="light" color="terracotta">
       Se déconnecter
     </Button>
   );

@@ -29,7 +29,7 @@ export function ModuleCard({ title, description, href, icon: IconComponent }: Mo
 
       <Group justify="flex-end" className={classes.footer}>
         <Link href={href} className={classes.accessLink}>
-          <Button variant="filled" color="teal">
+          <Button variant="filled" color="terracotta">
             Accéder
           </Button>
         </Link>

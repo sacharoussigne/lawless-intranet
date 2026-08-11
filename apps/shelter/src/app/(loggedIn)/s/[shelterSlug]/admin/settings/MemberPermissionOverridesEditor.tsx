@@ -74,11 +74,11 @@ export function MemberPermissionOverridesEditor({
         notifications.show({
           title: 'Erreur',
           message,
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
-      notifications.show({ title: 'Overrides enregistrés', message: '', color: 'teal' });
+      notifications.show({ title: 'Overrides enregistrés', message: '', color: 'terracotta' });
     } finally {
       setSaving(false);
     }
@@ -135,7 +135,7 @@ export function MemberPermissionOverridesEditor({
           </Stack>
         </div>
       ))}
-      <Button color="teal" loading={saving} onClick={() => void handleSave()}>
+      <Button color="terracotta" loading={saving} onClick={() => void handleSave()}>
         Enregistrer les overrides
       </Button>
     </Stack>

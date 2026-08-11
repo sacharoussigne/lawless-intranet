@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
 :root {
-  --shelter-bg: #f3f7f4;
-  --shelter-bg-accent: #e5efe8;
-  --shelter-ink: #1a2e24;
-  --shelter-muted: #5a6f63;
-  --shelter-forest: #2d6a4f;
-  --shelter-forest-soft: #40916c;
-  --shelter-border: #c5d5cb;
-  --shelter-surface: #ffffff;
-  --shelter-font-ui: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
-  --shelter-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --shelter-bg: #F0E6D6;
+  --shelter-bg-accent: #E8DCC8;
+  --shelter-surface: #FBF6EE;
+  --shelter-border: #DCCBB3;
+  --shelter-ink: #3E3B39;
+  --shelter-muted: #6A635C;
+  --shelter-terracotta: #8B4532;
+  --shelter-sage-dust: #A4AC86;
+  --shelter-leather: #8B5E3C;
+  --shelter-danger: #8B2323;
+  --shelter-table-header: #E8DCC8;
+  --shelter-table-zebra: #F5EDE0;
+  --shelter-shadow-card: 0 1px 2px rgba(62, 59, 57, 0.05), 0 2px 6px rgba(62, 59, 57, 0.04);
+  --shelter-shadow-header: 0 1px 0 rgba(220, 203, 179, 0.9), 0 2px 6px rgba(62, 59, 57, 0.04);
+  --shelter-font-ui: var(--font-ui), "Courier New", Courier, monospace;
+  --shelter-font-display: var(--font-display), var(--font-ui), "Courier New", Courier, monospace;
+
+  --mantine-datatable-background-color-light: var(--shelter-surface);
+  --mantine-datatable-border-color-light: var(--shelter-border);
+  --mantine-datatable-row-border-color-light: var(--shelter-border);
+  --mantine-datatable-striped-color-light: var(--shelter-table-zebra);
+  --mantine-datatable-highlight-on-hover-color-light: var(--mantine-color-terracotta-0);
+  --mantine-datatable-color-light: var(--shelter-ink);
+
+  --mantine-color-dimmed: var(--shelter-muted);
+  --mantine-color-default-hover: var(--shelter-table-header);
 }
 
-html,
+html {
+  background-color: var(--shelter-bg);
+}
+
 body {
-  min-height: 100%;
-  background:
-    radial-gradient(ellipse at top left, rgba(45, 106, 79, 0.08), transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(64, 145, 108, 0.06), transparent 45%),
-    var(--shelter-bg);
+  background-color: var(--shelter-bg);
   color: var(--shelter-ink);
+  font-family: var(--shelter-font-ui);
+  min-height: 100dvh;
+  letter-spacing: 0.01em;
+}
+
+.shelter-paper-bg {
+  background-color: var(--shelter-bg);
+  background-image:
+    radial-gradient(ellipse at 18% 0%, rgba(139, 69, 50, 0.07) 0%, transparent 48%),
+    radial-gradient(ellipse at 82% 100%, rgba(164, 172, 134, 0.08) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 40%, rgba(62, 59, 57, 0.03) 0%, transparent 55%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(62, 59, 57, 0.012) 2px,
+      rgba(62, 59, 57, 0.012) 3px
+    );
+  min-height: 100dvh;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .shelter-shell {
@@ -30,6 +68,13 @@ body {
 
 .shelter-display-title {
   font-family: var(--shelter-font-display);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--shelter-terracotta);
+}
+
+.shelter-section-divider {
+  border: none;
+  border-top: 1px dashed var(--shelter-border);
+  margin: 0;
 }

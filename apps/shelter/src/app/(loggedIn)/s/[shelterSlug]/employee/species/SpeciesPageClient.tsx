@@ -146,7 +146,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Réordonnancement impossible'),
-          color: 'red',
+          color: 'danger',
         });
       }
     });
@@ -190,7 +190,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Réordonnancement impossible'),
-          color: 'red',
+          color: 'danger',
         });
       }
     });
@@ -229,7 +229,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Réordonnancement impossible'),
-          color: 'red',
+          color: 'danger',
         });
       }
     });
@@ -244,7 +244,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Création impossible'),
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
@@ -255,7 +255,7 @@ export function SpeciesPageClient({
       notifications.show({
         title: 'Espèce créée',
         message: result.data.name,
-        color: 'teal',
+        color: 'terracotta',
       });
     });
   };
@@ -273,13 +273,13 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Modification impossible'),
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
       replaceSpecies(result.data);
       setEditingName(false);
-      notifications.show({ title: 'Nom mis à jour', message: result.data.name, color: 'teal' });
+      notifications.show({ title: 'Nom mis à jour', message: result.data.name, color: 'terracotta' });
     });
   };
 
@@ -296,7 +296,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Ajout impossible'),
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
@@ -322,7 +322,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Modification impossible'),
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
@@ -345,7 +345,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Ajout impossible'),
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
@@ -367,7 +367,7 @@ export function SpeciesPageClient({
         notifications.show({
           title: 'Erreur',
           message: actionErrorMessage(result, 'Modification impossible'),
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
@@ -389,7 +389,7 @@ export function SpeciesPageClient({
           notifications.show({
             title: 'Erreur',
             message: actionErrorMessage(result, 'Suppression impossible'),
-            color: 'red',
+            color: 'danger',
           });
           return;
         }
@@ -406,7 +406,7 @@ export function SpeciesPageClient({
           notifications.show({
             title: 'Erreur',
             message: actionErrorMessage(result, 'Suppression impossible'),
-            color: 'red',
+            color: 'danger',
           });
           return;
         }
@@ -420,7 +420,7 @@ export function SpeciesPageClient({
           notifications.show({
             title: 'Erreur',
             message: actionErrorMessage(result, 'Suppression impossible'),
-            color: 'red',
+            color: 'danger',
           });
           return;
         }
@@ -436,7 +436,7 @@ export function SpeciesPageClient({
       notifications.show({
         title: 'Supprimé',
         message: target.label,
-        color: 'teal',
+        color: 'terracotta',
       });
     });
   };
@@ -480,7 +480,7 @@ export function SpeciesPageClient({
               />
               <Button
                 leftSection={<IconPlus size={16} />}
-                color="teal"
+                color="terracotta"
                 onClick={() => setCreateOpen(true)}
               >
                 Nouvelle
@@ -542,7 +542,7 @@ export function SpeciesPageClient({
                         autoFocus
                       />
                       <ActionIcon
-                        color="teal"
+                        color="terracotta"
                         variant="filled"
                         onClick={handleSaveSpeciesName}
                         loading={pending}
@@ -566,7 +566,7 @@ export function SpeciesPageClient({
                       </Title>
                       <ActionIcon
                         variant="subtle"
-                        color="teal"
+                        color="terracotta"
                         aria-label="Renommer"
                         onClick={() => {
                           setNameDraft(selected.name);
@@ -578,7 +578,7 @@ export function SpeciesPageClient({
                     </Group>
                   )}
                   <Button
-                    color="red"
+                    color="danger"
                     variant="light"
                     leftSection={<IconTrash size={16} />}
                     onClick={() =>
@@ -612,7 +612,7 @@ export function SpeciesPageClient({
                       style={{ flex: 1 }}
                     />
                     <Button
-                      color="teal"
+                      color="terracotta"
                       variant="light"
                       leftSection={<IconPlus size={16} />}
                       onClick={handleAddSubspecies}
@@ -721,7 +721,7 @@ export function SpeciesPageClient({
             <Button variant="subtle" onClick={() => setCreateOpen(false)}>
               Annuler
             </Button>
-            <Button color="teal" loading={pending} onClick={handleCreateSpecies}>
+            <Button color="terracotta" loading={pending} onClick={handleCreateSpecies}>
               Créer
             </Button>
           </Group>
@@ -746,7 +746,7 @@ export function SpeciesPageClient({
             <Button variant="subtle" onClick={() => setDeleteTarget(null)}>
               Annuler
             </Button>
-            <Button color="red" loading={pending} onClick={confirmDelete}>
+            <Button color="danger" loading={pending} onClick={confirmDelete}>
               Supprimer
             </Button>
           </Group>

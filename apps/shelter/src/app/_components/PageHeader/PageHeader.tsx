@@ -13,10 +13,11 @@ export function PageHeader({
         {title}
       </Title>
       {description ? (
-        <Text c="dimmed" mt="xs">
+        <Text c="dimmed" mt="xs" size="sm">
           {description}
         </Text>
       ) : null}
+      <hr className="shelter-section-divider mt-4" />
     </div>
   );
 }

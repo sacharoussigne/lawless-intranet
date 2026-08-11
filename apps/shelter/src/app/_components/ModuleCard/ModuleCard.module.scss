@@ -4,6 +4,7 @@
   height: 100%;
   background: var(--shelter-surface);
   border-color: var(--shelter-border);
+  box-shadow: var(--shelter-shadow-card);
 }
 
 .body {
@@ -16,16 +17,18 @@
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--shelter-forest) 12%, transparent);
-  color: var(--shelter-forest);
+  border-radius: 6px;
+  border: 1px dashed color-mix(in srgb, var(--shelter-terracotta) 35%, var(--shelter-border));
+  background: color-mix(in srgb, var(--shelter-terracotta) 10%, transparent);
+  color: var(--shelter-terracotta);
   flex-shrink: 0;
 }
 
 .title {
   font-family: var(--shelter-font-display);
-  font-weight: 600;
-  font-size: 1.15rem;
+  font-weight: 400;
+  font-size: 1.2rem;
+  letter-spacing: 0.02em;
   color: var(--shelter-ink);
 }
 

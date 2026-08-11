@@ -181,7 +181,7 @@ export function ShelterMembersPanel({
       notifications.show({
         title: 'Erreur',
         message: 'Sélectionnez au moins un rôle.',
-        color: 'red',
+        color: 'danger',
       });
       return false;
     }
@@ -198,14 +198,14 @@ export function ShelterMembersPanel({
         notifications.show({
           title: 'Erreur',
           message,
-          color: 'red',
+          color: 'danger',
         });
         return false;
       }
       notifications.show({
         title: 'OK',
         message: options?.successMessage ?? 'Membre mis à jour',
-        color: 'teal',
+        color: 'terracotta',
       });
       await refresh();
       return true;
@@ -242,11 +242,11 @@ export function ShelterMembersPanel({
       notifications.show({
         title: 'Erreur',
         message,
-        color: 'red',
+        color: 'danger',
       });
       return;
     }
-    notifications.show({ title: 'Membre retiré', message: '', color: 'teal' });
+    notifications.show({ title: 'Membre retiré', message: '', color: 'terracotta' });
     await refresh();
   };
 
@@ -284,7 +284,7 @@ export function ShelterMembersPanel({
             onChange={(e) => setNewMemberGrade(e.currentTarget.value)}
           />
           <Button
-            color="teal"
+            color="terracotta"
             loading={loading}
             disabled={!selectedUser}
             onClick={handleAdd}
@@ -302,7 +302,7 @@ export function ShelterMembersPanel({
               <Group gap={4}>
                 <ActionIcon
                   variant="light"
-                  color="teal"
+                  color="terracotta"
                   aria-label="Permissions"
                   onClick={() => setOverridesUser(member.user)}
                 >
@@ -310,7 +310,7 @@ export function ShelterMembersPanel({
                 </ActionIcon>
                 <ActionIcon
                   variant="light"
-                  color="red"
+                  color="danger"
                   aria-label="Retirer"
                   onClick={() => void handleRemove(member.user.id)}
                 >
@@ -341,7 +341,7 @@ export function ShelterMembersPanel({
             <Button
               size="xs"
               variant="light"
-              color="teal"
+              color="terracotta"
               loading={savingUserId === member.user.id}
               onClick={() =>
                 void saveMemberRoles(

@@ -53,13 +53,13 @@ export function SheltersPlatformClient({
           'error' in result && typeof result.error === 'string'
             ? result.error
             : 'Création impossible';
-        notifications.show({ title: 'Erreur', message: errMsg, color: 'red' });
+        notifications.show({ title: 'Erreur', message: errMsg, color: 'danger' });
         return;
       }
       notifications.show({
         title: 'Refuge créé',
         message: result.data.name,
-        color: 'teal',
+        color: 'terracotta',
       });
       setName('');
       setSlug('');
@@ -79,13 +79,13 @@ export function SheltersPlatformClient({
           'error' in result && typeof result.error === 'string'
             ? result.error
             : 'Suppression impossible';
-        notifications.show({ title: 'Erreur', message: errMsg, color: 'red' });
+        notifications.show({ title: 'Erreur', message: errMsg, color: 'danger' });
         return;
       }
       notifications.show({
         title: 'Refuge supprimé',
         message: result.data.name,
-        color: 'teal',
+        color: 'terracotta',
       });
       setDeleteTarget(null);
       router.refresh();
@@ -113,7 +113,7 @@ export function SheltersPlatformClient({
             onChange={(e) => setSlug(e.currentTarget.value)}
           />
           <Button
-            color="teal"
+            color="terracotta"
             loading={loading}
             disabled={!name.trim()}
             onClick={() => void handleCreate()}
@@ -140,11 +140,11 @@ export function SheltersPlatformClient({
                   component={Link}
                   href={tenantRoutes(shelter.slug).employee.index}
                   variant="light"
-                  color="teal"
+                  color="terracotta"
                 >
                   Ouvrir
                 </Button>
-                <Button color="red" variant="light" onClick={() => setDeleteTarget(shelter)}>
+                <Button color="danger" variant="light" onClick={() => setDeleteTarget(shelter)}>
                   Supprimer
                 </Button>
               </Group>
@@ -167,7 +167,7 @@ export function SheltersPlatformClient({
             Annuler
           </Button>
           <Button
-            color="red"
+            color="danger"
             loading={deleting}
             onClick={() => deleteTarget && void handleDelete(deleteTarget.id)}
           >
