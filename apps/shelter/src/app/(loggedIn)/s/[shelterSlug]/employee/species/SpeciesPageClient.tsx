@@ -641,12 +641,13 @@ export function SpeciesPageClient({
                               size="sm"
                               placeholder="Ajouter une variante (ex. Long poils)"
                               value={variantInputs[sub.id] ?? ''}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const value = e.currentTarget.value;
                                 setVariantInputs((prev) => ({
                                   ...prev,
-                                  [sub.id]: e.currentTarget.value,
-                                }))
-                              }
+                                  [sub.id]: value,
+                                }));
+                              }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleAddVariant(sub.id);
                               }}
