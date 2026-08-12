@@ -82,8 +82,6 @@ export function SpeciesPageClient({
     initialSpecies[0]?.id ?? null,
   );
   const [search, setSearch] = useState('');
-  const [newSpeciesName, setNewSpeciesName] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const [editingName, setEditingName] = useState(false);
@@ -236,7 +234,7 @@ export function SpeciesPageClient({
   };
 
   const handleCreateSpecies = () => {
-    const name = newSpeciesName.trim();
+    const name = search.trim();
     if (!name) return;
     startTransition(async () => {
       const result = await createSpecies(shelterSlug, { name });
@@ -250,8 +248,10 @@ export function SpeciesPageClient({
       }
       setSpecies((prev) => [...prev, result.data!]);
       setSelectedId(result.data.id);
-      setNewSpeciesName('');
-      setCreateOpen(false);
+      setSearch('');
+      setEditingName(false);
+      setEditingSubId(null);
+      setEditingVariantId(null);
       notifications.show({
         title: 'Espèce créée',
         message: result.data.name,
@@ -470,32 +470,43 @@ export function SpeciesPageClient({
       <div className={classes.layout}>
         <aside className={classes.listPanel}>
           <div className={classes.listHeader}>
-            <Group justify="space-between" align="flex-end" wrap="nowrap" gap="sm">
+            <div className={classes.searchCreateRow}>
               <TextInput
-                label="Rechercher"
-                placeholder="Chien, chat…"
+                placeholder="Rechercher ou créer…"
                 value={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateSpecies();
+                }}
                 style={{ flex: 1 }}
               />
-              <Button
-                leftSection={<IconPlus size={16} />}
+              <ActionIcon
                 color="terracotta"
-                onClick={() => setCreateOpen(true)}
+                variant="filled"
+                size="input-sm"
+                aria-label="Créer une espèce"
+                onClick={handleCreateSpecies}
+                loading={pending}
+                disabled={search.trim().length === 0}
               >
-                Nouvelle
-              </Button>
-            </Group>
+                <IconPlus size={16} />
+              </ActionIcon>
+            </div>
+            {filtered.length === 0 && search.trim().length > 0 ? (
+              <Text size="xs" c="dimmed" mt={6}>
+                Aucun résultat — Entrée pour créer « {search.trim()} »
+              </Text>
+            ) : null}
           </div>
           <div className={classes.listBody}>
             {filtered.length === 0 ? (
-              <div className={classes.emptyState}>
-                <Text size="sm">
-                  {species.length === 0
-                    ? 'Aucune espèce pour l’instant. Créez la première.'
-                    : 'Aucun résultat pour cette recherche.'}
-                </Text>
-              </div>
+              species.length === 0 ? (
+                <div className={classes.emptyState}>
+                  <Text size="sm">
+                    Aucune espèce pour l’instant. Tapez un nom puis + pour créer.
+                  </Text>
+                </div>
+              ) : null
             ) : canReorderSpecies ? (
               <DndContext
                 sensors={sensors}
@@ -699,34 +710,6 @@ export function SpeciesPageClient({
           )}
         </section>
       </div>
-
-      <Modal
-        opened={createOpen}
-        onClose={() => setCreateOpen(false)}
-        title="Nouvelle espèce"
-        centered
-      >
-        <Stack>
-          <TextInput
-            label="Nom"
-            placeholder="Chien, Chat…"
-            value={newSpeciesName}
-            onChange={(e) => setNewSpeciesName(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreateSpecies();
-            }}
-            data-autofocus
-          />
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={() => setCreateOpen(false)}>
-              Annuler
-            </Button>
-            <Button color="terracotta" loading={pending} onClick={handleCreateSpecies}>
-              Créer
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
 
       <Modal
         opened={deleteTarget != null}
