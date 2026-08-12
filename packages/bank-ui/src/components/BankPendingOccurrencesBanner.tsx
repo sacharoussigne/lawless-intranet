@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Accordion, Badge, Button, Group, Stack, Text } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import type { SerializedPlannedOccurrence } from "../types";
+import { RpDateInput } from "./RpDateInput";
 
 const TYPE_LABELS: Record<string, string> = {
   DEPOSIT: "Dépôt",
@@ -68,16 +68,14 @@ export function BankPendingOccurrencesBanner({
                     <Badge size="xs" variant="outline">
                       {TYPE_LABELS[planned.type] ?? planned.type}
                     </Badge>
-                    <DateInput
+                    <RpDateInput
                       size="xs"
-                      value={getDate(occurrence).toISOString().slice(0, 10)}
-                      valueFormat="DD/MM/YYYY"
-                      locale="fr"
+                      value={getDate(occurrence)}
                       onChange={(date) =>
                         date &&
                         setEditedDates((current) => ({
                           ...current,
-                          [occurrence.id]: new Date(date),
+                          [occurrence.id]: date,
                         }))
                       }
                       w={130}

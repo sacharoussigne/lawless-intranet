@@ -16,17 +16,18 @@ import {
   Switch,
   Text,
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useBankUi } from "../BankUiProvider";
 import { apothecaryBooleanPills } from "../lib/apothecaryPill";
+import { toRpDisplayDate } from "../rpCalendar";
 import type {
   BankActionResult,
   SerializedPlannedTransaction,
   TransactionType,
 } from "../types";
+import { RpDateInput } from "./RpDateInput";
 
 const WEEKDAY_OPTIONS = [
   { value: "1", label: "Lundi" },
@@ -52,6 +53,14 @@ function isSuccess<T>(
   return result.data !== undefined;
 }
 
+const parseAmount = (
+  value: number | string | null | undefined,
+): number | undefined => {
+  if (value == null || value === "") return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 type BankPlannedPanelProps = { onChanged?: () => void };
 
 export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
@@ -68,7 +77,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const [formType, setFormType] = useState<TransactionType>("DEPOSIT");
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formAmount, setFormAmount] = useState<number | undefined>();
+  const [formAmount, setFormAmount] = useState<number | string | undefined>();
   const [formScheduleKind, setFormScheduleKind] = useState<"ONCE" | "WEEKLY">(
     "WEEKLY",
   );
@@ -169,7 +178,8 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   };
 
   const submit = async () => {
-    if (!formName.trim() || !formAmount || formAmount <= 0)
+    const amount = parseAmount(formAmount);
+    if (!formName.trim() || amount == null || amount <= 0)
       return error("Veuillez remplir les champs requis");
     if (formScheduleKind === "ONCE" && !formOnceDate)
       return error("La date est requise pour une transaction unique");
@@ -179,7 +189,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
       type: formType,
       name: formName.trim(),
       description: formDescription.trim() || null,
-      amount: formAmount,
+      amount,
       scheduleKind: formScheduleKind,
       onceDate: formScheduleKind === "ONCE" ? formOnceDate : null,
       weekdays:
@@ -289,7 +299,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                       <Text size="xs" c="dimmed">
                         {item.amount.toFixed(2)} $ ·{" "}
                         {item.scheduleKind === "ONCE"
-                          ? `Une fois le ${item.onceDate ? dayjs(item.onceDate).format("DD/MM/YYYY") : ""}`
+                          ? `Une fois le ${item.onceDate ? dayjs(toRpDisplayDate(new Date(item.onceDate))).format("DD/MM/YYYY") : ""}`
                           : `Hebdo · ${item.weekdays.map((day) => WEEKDAY_OPTIONS.find((option) => option.value === String(day))?.label).join(", ")}`}
                         {item.description ? ` · ${item.description}` : ""}
                       </Text>
@@ -358,11 +368,10 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
           <NumberInput
             label="Montant"
             value={formAmount}
-            onChange={(value) =>
-              setFormAmount(typeof value === "number" ? value : undefined)
-            }
+            onChange={setFormAmount}
             min={0}
             decimalScale={2}
+            allowDecimal
             required
           />
           <Select
@@ -378,14 +387,10 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
             required
           />
           {formScheduleKind === "ONCE" ? (
-            <DateInput
+            <RpDateInput
               label="Date"
-              value={formOnceDate?.toISOString().slice(0, 10) ?? null}
-              onChange={(value) =>
-                setFormOnceDate(value ? new Date(value) : null)
-              }
-              valueFormat="DD/MM/YYYY"
-              locale="fr"
+              value={formOnceDate}
+              onChange={setFormOnceDate}
               required
             />
           ) : (
