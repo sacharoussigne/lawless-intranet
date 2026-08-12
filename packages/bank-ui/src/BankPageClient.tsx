@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
-  Autocomplete,
   Badge,
   Button,
   Container,
@@ -42,6 +41,7 @@ import { BankPlannedPanel } from "./components/BankPlannedPanel";
 import { BankPendingOccurrencesBanner } from "./components/BankPendingOccurrencesBanner";
 import { DataTableEmptyState } from "./components/DataTableEmptyState";
 import { RpDateInput } from "./components/RpDateInput";
+import { SuggestionAutocomplete } from "./components/SuggestionAutocomplete";
 import {
   apothecaryPillStyle,
   clayPalette,
@@ -308,40 +308,76 @@ export default function BankPage({ initialWeek }: BankPageProps) {
     return sortOrder === "desc" ? [draft, ...data] : [...data, draft];
   }, [filteredTransactions, newTransaction, sortOrder, week.id]);
 
-  const persistSuggestions = async (
-    name?: string,
-    description?: string | null,
-  ) => {
-    if (
-      name?.trim() &&
-      !companyNames.some(
-        (value) => value.toLowerCase() === name.trim().toLowerCase(),
-      )
-    ) {
-      const result = await actions.addNameSuggestion({ value: name.trim() });
-      if (isSuccess(result))
-        setNameSuggestions((values) =>
-          values.some(
-            (value) => value.toLowerCase() === result.data.toLowerCase(),
-          )
-            ? values
-            : [...values, result.data],
-        );
+  const handleAddNameSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
     }
-    if (description?.trim()) {
-      const result = await actions.addDescriptionSuggestion({
-        value: description.trim(),
-      });
-      if (isSuccess(result))
-        setDescriptionSuggestions((values) =>
-          values.some(
-            (value) => value.toLowerCase() === result.data.toLowerCase(),
-          )
-            ? values
-            : [...values, result.data],
-        );
-    }
+    setNameSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    showSuccess("Suggestion ajoutée");
   };
+
+  const handleDeleteNameSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
+    }
+    setNameSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    showSuccess("Suggestion supprimée");
+  };
+
+  const handleAddDescriptionSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    showSuccess("Suggestion ajoutée");
+  };
+
+  const handleDeleteDescriptionSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    showSuccess("Suggestion supprimée");
+  };
+
   const saveTransaction = async (transaction: TransactionDraft) => {
     const amount = parseAmount(transaction.amount);
     if (
@@ -373,7 +409,6 @@ export default function BankPage({ initialWeek }: BankPageProps) {
             order: transaction.order,
           });
       if (!isSuccess(result)) return showError(result.error);
-      await persistSuggestions(transaction.name, transaction.description);
       showSuccess(
         transaction.id ? "Transaction mise à jour" : "Transaction créée",
       );
@@ -425,9 +460,6 @@ export default function BankPage({ initialWeek }: BankPageProps) {
     }
   };
 
-  const autocompleteData = (suggestions: string[], extra: string[] = []) => [
-    ...new Set([...suggestions, ...extra]),
-  ];
   const editable = (transaction: TableTransaction) =>
     transaction.isNew || editingTransaction === transaction.id;
   const draftFor = (transaction: TableTransaction) =>
@@ -701,16 +733,16 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       title: "Nom",
                       render: (transaction) =>
                         editable(transaction) ? (
-                          <Autocomplete
+                          <SuggestionAutocomplete
                             size="xs"
-                            data={autocompleteData(
-                              nameSuggestions,
-                              companyNames,
-                            )}
+                            suggestions={nameSuggestions}
+                            extraOptions={companyNames}
                             value={
                               draftFor(transaction)?.name ?? transaction.name
                             }
                             onChange={(name) => setDraft(transaction, { name })}
+                            onAddSuggestion={handleAddNameSuggestion}
+                            onDeleteSuggestion={handleDeleteNameSuggestion}
                           />
                         ) : (
                           <Text size="sm" lineClamp={1} title={transaction.name}>
@@ -723,9 +755,9 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       title: "Description",
                       render: (transaction) =>
                         editable(transaction) ? (
-                          <Autocomplete
+                          <SuggestionAutocomplete
                             size="xs"
-                            data={descriptionSuggestions}
+                            suggestions={descriptionSuggestions}
                             value={
                               draftFor(transaction)?.description ??
                               transaction.description ??
@@ -733,6 +765,10 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             }
                             onChange={(description) =>
                               setDraft(transaction, { description })
+                            }
+                            onAddSuggestion={handleAddDescriptionSuggestion}
+                            onDeleteSuggestion={
+                              handleDeleteDescriptionSuggestion
                             }
                           />
                         ) : (

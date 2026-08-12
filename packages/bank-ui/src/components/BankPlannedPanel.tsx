@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActionIcon,
-  Autocomplete,
   Badge,
   Button,
   Group,
@@ -28,6 +27,7 @@ import type {
   TransactionType,
 } from "../types";
 import { RpDateInput } from "./RpDateInput";
+import { SuggestionAutocomplete } from "./SuggestionAutocomplete";
 
 const WEEKDAY_OPTIONS = [
   { value: "1", label: "Lundi" },
@@ -71,6 +71,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [companyNames, setCompanyNames] = useState<string[]>([]);
   const [descriptionSuggestions, setDescriptionSuggestions] = useState<
     string[]
   >([]);
@@ -106,11 +107,10 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
       actions.getNameSuggestions(),
       actions.getDescriptionSuggestions(),
     ]);
-    if (isSuccess(names))
-      setNameSuggestions([
-        ...names.data.suggestions,
-        ...(names.data.companyNames ?? []),
-      ]);
+    if (isSuccess(names)) {
+      setNameSuggestions(names.data.suggestions);
+      setCompanyNames(names.data.companyNames ?? []);
+    }
     if (isSuccess(descriptions)) setDescriptionSuggestions(descriptions.data);
   }, [actions]);
 
@@ -150,31 +150,74 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
     setFormOpened(true);
   };
 
-  const saveFreeTextSuggestions = async () => {
-    if (
-      formName.trim() &&
-      !nameSuggestions.some(
-        (value) => value.toLowerCase() === formName.trim().toLowerCase(),
-      )
-    ) {
-      const result = await actions.addNameSuggestion({
-        value: formName.trim(),
-      });
-      if (isSuccess(result))
-        setNameSuggestions((values) => [...values, result.data]);
+  const handleAddNameSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
     }
-    if (
-      formDescription.trim() &&
-      !descriptionSuggestions.some(
-        (value) => value.toLowerCase() === formDescription.trim().toLowerCase(),
-      )
-    ) {
-      const result = await actions.addDescriptionSuggestion({
-        value: formDescription.trim(),
-      });
-      if (isSuccess(result))
-        setDescriptionSuggestions((values) => [...values, result.data]);
+    setNameSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    success("Suggestion ajoutée");
+  };
+
+  const handleDeleteNameSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
     }
+    setNameSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    success("Suggestion supprimée");
+  };
+
+  const handleAddDescriptionSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    success("Suggestion ajoutée");
+  };
+
+  const handleDeleteDescriptionSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    success("Suggestion supprimée");
   };
 
   const submit = async () => {
@@ -201,7 +244,6 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
         ? await actions.updatePlannedTransaction({ id: editingId, ...input })
         : await actions.createPlannedTransaction(input);
       if (!isSuccess(result)) return error(result.error);
-      await saveFreeTextSuggestions();
       success(
         editingId ? "Planification mise à jour" : "Transaction planifiée créée",
       );
@@ -352,18 +394,23 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
             onChange={(value) => value && setFormType(value as TransactionType)}
             required
           />
-          <Autocomplete
+          <SuggestionAutocomplete
             label="Nom"
-            data={nameSuggestions}
+            suggestions={nameSuggestions}
+            extraOptions={companyNames}
             value={formName}
             onChange={setFormName}
+            onAddSuggestion={handleAddNameSuggestion}
+            onDeleteSuggestion={handleDeleteNameSuggestion}
             required
           />
-          <Autocomplete
+          <SuggestionAutocomplete
             label="Description"
-            data={descriptionSuggestions}
+            suggestions={descriptionSuggestions}
             value={formDescription}
             onChange={setFormDescription}
+            onAddSuggestion={handleAddDescriptionSuggestion}
+            onDeleteSuggestion={handleDeleteDescriptionSuggestion}
           />
           <NumberInput
             label="Montant"
