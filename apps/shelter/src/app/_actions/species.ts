@@ -30,6 +30,15 @@ const reorderItemsSchema = z.object({
   items: z.array(reorderItemSchema).min(1),
 });
 
+const moneySchema = z
+  .number({ invalid_type_error: 'Prix invalide' })
+  .finite('Prix invalide')
+  .min(0, 'Le prix doit être positif ou nul')
+  .refine(
+    (n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-8,
+    'Deux décimales maximum',
+  );
+
 const speciesInclude = {
   subspecies: {
     orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
@@ -38,6 +47,45 @@ const speciesInclude = {
     },
   },
 };
+
+function decimalToNumber(value: Prisma.Decimal | null): number | null {
+  if (value == null) return null;
+  return Number(value.toString());
+}
+
+type WithPurchasePrices = {
+  shelterPurchasePrice: Prisma.Decimal | null;
+  animalierPurchasePrice: Prisma.Decimal | null;
+};
+
+type SerializedPurchasePrices = {
+  shelterPurchasePrice: number | null;
+  animalierPurchasePrice: number | null;
+};
+
+function serializeSubspecies<T extends WithPurchasePrices>(
+  row: T,
+): Omit<T, 'shelterPurchasePrice' | 'animalierPurchasePrice'> & SerializedPurchasePrices {
+  return {
+    ...row,
+    shelterPurchasePrice: decimalToNumber(row.shelterPurchasePrice),
+    animalierPurchasePrice: decimalToNumber(row.animalierPurchasePrice),
+  };
+}
+
+function serializeSpecies<T extends { subspecies: WithPurchasePrices[] }>(
+  row: T,
+): Omit<T, 'subspecies'> & {
+  subspecies: Array<
+    Omit<T['subspecies'][number], 'shelterPurchasePrice' | 'animalierPurchasePrice'> &
+      SerializedPurchasePrices
+  >;
+} {
+  return {
+    ...row,
+    subspecies: row.subspecies.map(serializeSubspecies),
+  };
+}
 
 function uniqueConflictMessage(fallback: string, error: unknown): string {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -76,7 +124,7 @@ export async function listSpecies(shelterSlug: string) {
       include: speciesInclude,
     });
 
-    return { status: 200, data: rows };
+    return { status: 200, data: rows.map(serializeSpecies) };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement des espèces');
   }
@@ -104,7 +152,7 @@ export async function createSpecies(shelterSlug: string, data: { name: string })
         include: speciesInclude,
       });
       revalidateSpecies(shelterSlug);
-      return { status: 201, data: row };
+      return { status: 201, data: serializeSpecies(row) };
     } catch (error) {
       return {
         status: 409,
@@ -139,7 +187,7 @@ export async function updateSpecies(
         include: speciesInclude,
       });
       revalidateSpecies(shelterSlug);
-      return { status: 200, data: row };
+      return { status: 200, data: serializeSpecies(row) };
     } catch (error) {
       return {
         status: 409,
@@ -204,7 +252,7 @@ export async function createSubspecies(
         },
       });
       revalidateSpecies(shelterSlug);
-      return { status: 201, data: row };
+      return { status: 201, data: serializeSubspecies(row) };
     } catch (error) {
       return {
         status: 409,
@@ -218,7 +266,12 @@ export async function createSubspecies(
 
 export async function updateSubspecies(
   shelterSlug: string,
-  data: { id: string; name: string },
+  data: {
+    id: string;
+    name: string;
+    shelterPurchasePrice?: number;
+    animalierPurchasePrice?: number | null;
+  },
 ) {
   try {
     const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
@@ -226,6 +279,23 @@ export async function updateSubspecies(
     const { shelterId } = ctx.tenant;
     const id = z.string().uuid().parse(data.id);
     const name = speciesNameSchema.parse(data.name);
+
+    const updatingPrices =
+      data.shelterPurchasePrice !== undefined || data.animalierPurchasePrice !== undefined;
+
+    let shelterPurchasePrice: number | undefined;
+    let animalierPurchasePrice: number | null | undefined;
+
+    if (updatingPrices) {
+      shelterPurchasePrice = moneySchema.parse(data.shelterPurchasePrice);
+      if (data.animalierPurchasePrice === undefined) {
+        animalierPurchasePrice = null;
+      } else if (data.animalierPurchasePrice === null) {
+        animalierPurchasePrice = null;
+      } else {
+        animalierPurchasePrice = moneySchema.parse(data.animalierPurchasePrice);
+      }
+    }
 
     const existing = await requireSubspeciesInShelter(shelterId, id);
     if (!existing) {
@@ -235,13 +305,21 @@ export async function updateSubspecies(
     try {
       const row = await prisma.animalSubspecies.update({
         where: { id },
-        data: { name },
+        data: {
+          name,
+          ...(updatingPrices
+            ? {
+                shelterPurchasePrice,
+                animalierPurchasePrice,
+              }
+            : {}),
+        },
         include: {
           variants: { orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }] },
         },
       });
       revalidateSpecies(shelterSlug);
-      return { status: 200, data: row };
+      return { status: 200, data: serializeSubspecies(row) };
     } catch (error) {
       return {
         status: 409,

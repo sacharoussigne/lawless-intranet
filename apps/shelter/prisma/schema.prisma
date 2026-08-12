@@ -102,14 +102,16 @@ model AnimalSpecies {
 }
 
 model AnimalSubspecies {
-  id        String                 @id @default(uuid())
-  speciesId String
-  name      String
-  sortOrder Int                    @default(0)
-  createdAt DateTime               @default(now())
-  updatedAt DateTime               @updatedAt
-  species   AnimalSpecies          @relation(fields: [speciesId], references: [id], onDelete: Cascade)
-  variants  AnimalSpeciesVariant[]
+  id                      String                 @id @default(uuid())
+  speciesId               String
+  name                    String
+  sortOrder               Int                    @default(0)
+  shelterPurchasePrice    Decimal?               @db.Decimal(10, 2)
+  animalierPurchasePrice  Decimal?               @db.Decimal(10, 2)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  species                 AnimalSpecies          @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  variants                AnimalSpeciesVariant[]
 
   @@unique([speciesId, name])
   @@index([speciesId, sortOrder])

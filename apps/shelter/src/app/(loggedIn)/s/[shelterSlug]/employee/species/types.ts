@@ -10,6 +10,8 @@ export type SubspeciesDTO = {
   speciesId: string;
   name: string;
   sortOrder: number;
+  shelterPurchasePrice: number | null;
+  animalierPurchasePrice: number | null;
   variants: SpeciesVariantDTO[];
 };
 
