@@ -302,6 +302,8 @@ export function SpeciesPageClient({
       }
       const created = {
         ...result.data,
+        shelterPurchasePrice: result.data.shelterPurchasePrice ?? null,
+        animalierPurchasePrice: result.data.animalierPurchasePrice ?? null,
         variants: result.data.variants ?? [],
       };
       replaceSpecies({
@@ -332,6 +334,44 @@ export function SpeciesPageClient({
         variants: result.data!.variants ?? sub.variants,
       }));
       setEditingSubId(null);
+    });
+  };
+
+  const handleSaveSubspeciesPrices = (
+    id: string,
+    prices: {
+      shelterPurchasePrice: number;
+      animalierPurchasePrice: number | null;
+    },
+  ) => {
+    if (!selected) return;
+    const current = selected.subspecies.find((s) => s.id === id);
+    if (!current) return;
+    startTransition(async () => {
+      const result = await updateSubspecies(shelterSlug, {
+        id,
+        name: current.name,
+        shelterPurchasePrice: prices.shelterPurchasePrice,
+        animalierPurchasePrice: prices.animalierPurchasePrice,
+      });
+      if (result.status !== 200 || !('data' in result) || !result.data) {
+        notifications.show({
+          title: 'Erreur',
+          message: actionErrorMessage(result, 'Enregistrement des prix impossible'),
+          color: 'danger',
+        });
+        return;
+      }
+      patchSubspecies(id, (sub) => ({
+        ...sub,
+        ...result.data!,
+        variants: result.data!.variants ?? sub.variants,
+      }));
+      notifications.show({
+        title: 'Prix enregistrés',
+        message: current.name,
+        color: 'terracotta',
+      });
     });
   };
 
@@ -671,6 +711,9 @@ export function SpeciesPageClient({
                                   id: sub.id,
                                   label: sub.name,
                                 })
+                              }
+                              onSavePrices={(prices) =>
+                                handleSaveSubspeciesPrices(sub.id, prices)
                               }
                               onVariantDraftChange={setVariantDraft}
                               onSaveVariant={(variantId) =>

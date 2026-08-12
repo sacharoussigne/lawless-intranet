@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   ActionIcon,
   Button,
   Group,
+  NumberInput,
   Text,
   TextInput,
 } from '@mantine/core';
@@ -47,6 +49,7 @@ export function SortableSubspeciesCard({
   onCancelEditSub,
   onStartEditSub,
   onDeleteSub,
+  onSavePrices,
   onVariantDraftChange,
   onSaveVariant,
   onCancelEditVariant,
@@ -68,6 +71,10 @@ export function SortableSubspeciesCard({
   onCancelEditSub: () => void;
   onStartEditSub: () => void;
   onDeleteSub: () => void;
+  onSavePrices: (prices: {
+    shelterPurchasePrice: number;
+    animalierPurchasePrice: number | null;
+  }) => void;
   onVariantDraftChange: (value: string) => void;
   onSaveVariant: (variantId: string) => void;
   onCancelEditVariant: () => void;
@@ -85,6 +92,54 @@ export function SortableSubspeciesCard({
     transition,
     isDragging,
   } = useSortable({ id: sub.id });
+
+  const [shelterPrice, setShelterPrice] = useState<number | string>(
+    sub.shelterPurchasePrice ?? '',
+  );
+  const [animalierPrice, setAnimalierPrice] = useState<number | string>(
+    sub.animalierPurchasePrice ?? '',
+  );
+
+  useEffect(() => {
+    setShelterPrice(sub.shelterPurchasePrice ?? '');
+    setAnimalierPrice(sub.animalierPurchasePrice ?? '');
+  }, [sub.id, sub.shelterPurchasePrice, sub.animalierPurchasePrice]);
+
+  const shelterValue =
+    typeof shelterPrice === 'number'
+      ? shelterPrice
+      : shelterPrice === ''
+        ? null
+        : Number(shelterPrice);
+  const animalierValue =
+    typeof animalierPrice === 'number'
+      ? animalierPrice
+      : animalierPrice === ''
+        ? null
+        : Number(animalierPrice);
+
+  const pricesDirty =
+    shelterValue !== sub.shelterPurchasePrice ||
+    animalierValue !== sub.animalierPurchasePrice;
+
+  const canSavePrices =
+    pricesDirty &&
+    shelterValue !== null &&
+    Number.isFinite(shelterValue) &&
+    shelterValue >= 0 &&
+    (animalierValue === null ||
+      (Number.isFinite(animalierValue) && animalierValue >= 0));
+
+  const handleSavePrices = () => {
+    if (shelterValue === null || !Number.isFinite(shelterValue)) return;
+    onSavePrices({
+      shelterPurchasePrice: shelterValue,
+      animalierPurchasePrice:
+        animalierValue === null || !Number.isFinite(animalierValue)
+          ? null
+          : animalierValue,
+    });
+  };
 
   const variantSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -162,6 +217,44 @@ export function SortableSubspeciesCard({
           </Group>
         )}
       </Group>
+
+      <div className={classes.priceRow}>
+        <NumberInput
+          size="sm"
+          label="Prix d’achat refuge"
+          placeholder="0.00"
+          value={shelterPrice}
+          onChange={setShelterPrice}
+          min={0}
+          decimalScale={2}
+          fixedDecimalScale
+          step={0.01}
+          required
+        />
+        <NumberInput
+          size="sm"
+          label="Prix d’achat animalier"
+          placeholder="Optionnel"
+          value={animalierPrice}
+          onChange={setAnimalierPrice}
+          min={0}
+          decimalScale={2}
+          fixedDecimalScale
+          step={0.01}
+          allowNegative={false}
+        />
+        <Button
+          size="sm"
+          color="terracotta"
+          variant="light"
+          className={classes.priceSave}
+          onClick={handleSavePrices}
+          disabled={!canSavePrices}
+          loading={pending}
+        >
+          Enregistrer les prix
+        </Button>
+      </div>
 
       <Text size="xs" c="dimmed" mb={6}>
         Variantes
