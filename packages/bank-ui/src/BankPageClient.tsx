@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
-  Autocomplete,
   Badge,
   Button,
   Container,
@@ -18,7 +17,6 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { DataTable } from "mantine-datatable";
 import dayjs from "dayjs";
@@ -42,6 +40,8 @@ import { addParisWeeks } from "./bankWeek";
 import { BankPlannedPanel } from "./components/BankPlannedPanel";
 import { BankPendingOccurrencesBanner } from "./components/BankPendingOccurrencesBanner";
 import { DataTableEmptyState } from "./components/DataTableEmptyState";
+import { RpDateInput } from "./components/RpDateInput";
+import { SuggestionAutocomplete } from "./components/SuggestionAutocomplete";
 import {
   apothecaryPillStyle,
   clayPalette,
@@ -49,6 +49,9 @@ import {
   denimPalette,
   mossPalette,
 } from "./lib/apothecaryPill";
+import { toRpDisplayDate } from "./rpCalendar";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import type {
   BankActionResult,
   SerializedBankWeek,
@@ -63,11 +66,19 @@ type TransactionDraft = {
   type?: TransactionType;
   name?: string;
   description?: string | null;
-  amount?: number;
+  amount?: number | string;
   order?: number;
 };
 type TableTransaction = SerializedBankWeek["transactions"][number] & {
   isNew?: boolean;
+};
+
+const parseAmount = (
+  value: number | string | null | undefined,
+): number | undefined => {
+  if (value == null || value === "") return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 };
 
 const TRANSACTION_TYPES = [
@@ -107,8 +118,15 @@ function isSuccess<T>(
 ): result is { status: number; data: T } {
   return result.data !== undefined;
 }
-const toDateInput = (value: Date | string | null | undefined) =>
-  value ? new Date(value).toISOString().slice(0, 10) : null;
+
+const formatRpDay = (value: Date | string) =>
+  dayjs(toRpDisplayDate(new Date(value))).format("DD/MM/YYYY");
+
+const formatRpLongDay = (value: Date | string) =>
+  format(toRpDisplayDate(new Date(value)), "d MMMM yyyy", { locale: fr });
+
+const formatRpWeekRange = (start: Date | string, end: Date | string) =>
+  `${formatRpLongDay(start)} au ${formatRpLongDay(end)}`;
 
 export default function BankPage({ initialWeek }: BankPageProps) {
   const { actions } = useBankUi();
@@ -280,7 +298,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
       type: newTransaction.type ?? "DEPOSIT",
       name: newTransaction.name ?? "",
       description: newTransaction.description ?? null,
-      amount: newTransaction.amount ?? 0,
+      amount: parseAmount(newTransaction.amount) ?? 0,
       order: newTransaction.order ?? 0,
       orderId: null,
       createdAt: "",
@@ -290,55 +308,96 @@ export default function BankPage({ initialWeek }: BankPageProps) {
     return sortOrder === "desc" ? [draft, ...data] : [...data, draft];
   }, [filteredTransactions, newTransaction, sortOrder, week.id]);
 
-  const persistSuggestions = async (
-    name?: string,
-    description?: string | null,
-  ) => {
-    if (
-      name?.trim() &&
-      !companyNames.some(
-        (value) => value.toLowerCase() === name.trim().toLowerCase(),
-      )
-    ) {
-      const result = await actions.addNameSuggestion({ value: name.trim() });
-      if (isSuccess(result))
-        setNameSuggestions((values) =>
-          values.some(
-            (value) => value.toLowerCase() === result.data.toLowerCase(),
-          )
-            ? values
-            : [...values, result.data],
-        );
+  const handleAddNameSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
     }
-    if (description?.trim()) {
-      const result = await actions.addDescriptionSuggestion({
-        value: description.trim(),
-      });
-      if (isSuccess(result))
-        setDescriptionSuggestions((values) =>
-          values.some(
-            (value) => value.toLowerCase() === result.data.toLowerCase(),
-          )
-            ? values
-            : [...values, result.data],
-        );
-    }
+    setNameSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    showSuccess("Suggestion ajoutée");
   };
+
+  const handleDeleteNameSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
+    }
+    setNameSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    showSuccess("Suggestion supprimée");
+  };
+
+  const handleAddDescriptionSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    showSuccess("Suggestion ajoutée");
+  };
+
+  const handleDeleteDescriptionSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      showError(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    showSuccess("Suggestion supprimée");
+  };
+
   const saveTransaction = async (transaction: TransactionDraft) => {
+    const amount = parseAmount(transaction.amount);
     if (
       !transaction.id &&
       (!transaction.date ||
         !transaction.type ||
         !transaction.name ||
-        transaction.amount == null)
+        amount == null ||
+        amount <= 0)
     )
       return showError("Veuillez remplir tous les champs requis");
+    if (amount != null && amount <= 0)
+      return showError("Le montant doit être positif");
     setLoading(true);
     try {
       const result = transaction.id
         ? await actions.updateTransaction({
             ...transaction,
             id: transaction.id,
+            amount,
           })
         : await actions.createTransaction({
             weekId: week.id,
@@ -346,11 +405,10 @@ export default function BankPage({ initialWeek }: BankPageProps) {
             type: transaction.type!,
             name: transaction.name!,
             description: transaction.description,
-            amount: transaction.amount!,
+            amount: amount!,
             order: transaction.order,
           });
       if (!isSuccess(result)) return showError(result.error);
-      await persistSuggestions(transaction.name, transaction.description);
       showSuccess(
         transaction.id ? "Transaction mise à jour" : "Transaction créée",
       );
@@ -402,9 +460,6 @@ export default function BankPage({ initialWeek }: BankPageProps) {
     }
   };
 
-  const autocompleteData = (suggestions: string[], extra: string[] = []) => [
-    ...new Set([...suggestions, ...extra]),
-  ];
   const editable = (transaction: TableTransaction) =>
     transaction.isNew || editingTransaction === transaction.id;
   const draftFor = (transaction: TableTransaction) =>
@@ -419,7 +474,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
   };
 
   return (
-    <Container size="xl" py="xl">
+    <Container size={1600} py="xl">
       <Stack gap="lg">
         <div>
           <Title order={1}>Banque</Title>
@@ -457,7 +512,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
               />
               <Paper shadow="sm" p="lg" withBorder>
                 <Stack gap="lg">
-                  <Group justify="space-between" wrap="wrap">
+                  <Group justify="space-between" wrap="wrap" align="center">
                     <Group>
                       <ActionIcon
                         variant="light"
@@ -468,10 +523,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       >
                         <IconArrowLeft size={18} />
                       </ActionIcon>
-                      <Text fw={600}>
-                        {dayjs(week.weekStart).format("DD/MM/YYYY")} —{" "}
-                        {dayjs(week.weekEnd).format("DD/MM/YYYY")}
-                      </Text>
+                      <RpDateInput
+                        value={weekDateValue}
+                        onChange={(date) => date && void loadWeek(date)}
+                        w={160}
+                      />
                       <ActionIcon
                         variant="light"
                         onClick={() =>
@@ -482,13 +538,14 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                         <IconArrowRight size={18} />
                       </ActionIcon>
                     </Group>
-                    <DateInput
-                      value={toDateInput(weekDateValue)}
-                      valueFormat="DD/MM/YYYY"
-                      locale="fr"
-                      onChange={(date) => date && void loadWeek(new Date(date))}
-                      w={160}
-                    />
+                    <div style={{ textAlign: "right" }}>
+                      <Text size="xs" c="dimmed" mb={2}>
+                        Période
+                      </Text>
+                      <Text size="sm" fw={600}>
+                        {formatRpWeekRange(week.weekStart, week.weekEnd)}
+                      </Text>
+                    </div>
                   </Group>
                   <Group grow align="stretch">
                     <Paper withBorder p="md">
@@ -599,29 +656,30 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       accessor: "date",
                       title: "Date",
                       sortable: true,
+                      width: 110,
+                      noWrap: true,
                       render: (transaction) =>
                         editable(transaction) ? (
-                          <DateInput
+                          <RpDateInput
                             size="xs"
-                            value={toDateInput(
-                              draftFor(transaction)?.date ?? transaction.date,
-                            )}
-                            valueFormat="DD/MM/YYYY"
-                            locale="fr"
+                            value={
+                              draftFor(transaction)?.date ?? transaction.date
+                            }
                             onChange={(date) =>
-                              date &&
-                              setDraft(transaction, { date: new Date(date) })
+                              date && setDraft(transaction, { date })
                             }
                           />
                         ) : (
                           <Text size="sm">
-                            {dayjs(transaction.date).format("DD/MM/YYYY")}
+                            {formatRpDay(transaction.date)}
                           </Text>
                         ),
                     },
                     {
                       accessor: "type",
                       title: "Type",
+                      width: 210,
+                      noWrap: true,
                       filter: (
                         <MultiSelect
                           placeholder="Filtrer par type"
@@ -675,19 +733,21 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       title: "Nom",
                       render: (transaction) =>
                         editable(transaction) ? (
-                          <Autocomplete
+                          <SuggestionAutocomplete
                             size="xs"
-                            data={autocompleteData(
-                              nameSuggestions,
-                              companyNames,
-                            )}
+                            suggestions={nameSuggestions}
+                            extraOptions={companyNames}
                             value={
                               draftFor(transaction)?.name ?? transaction.name
                             }
                             onChange={(name) => setDraft(transaction, { name })}
+                            onAddSuggestion={handleAddNameSuggestion}
+                            onDeleteSuggestion={handleDeleteNameSuggestion}
                           />
                         ) : (
-                          <Text size="sm">{transaction.name}</Text>
+                          <Text size="sm" lineClamp={1} title={transaction.name}>
+                            {transaction.name}
+                          </Text>
                         ),
                     },
                     {
@@ -695,9 +755,9 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       title: "Description",
                       render: (transaction) =>
                         editable(transaction) ? (
-                          <Autocomplete
+                          <SuggestionAutocomplete
                             size="xs"
-                            data={descriptionSuggestions}
+                            suggestions={descriptionSuggestions}
                             value={
                               draftFor(transaction)?.description ??
                               transaction.description ??
@@ -706,9 +766,17 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             onChange={(description) =>
                               setDraft(transaction, { description })
                             }
+                            onAddSuggestion={handleAddDescriptionSuggestion}
+                            onDeleteSuggestion={
+                              handleDeleteDescriptionSuggestion
+                            }
                           />
                         ) : (
-                          <Text size="sm">
+                          <Text
+                            size="sm"
+                            lineClamp={1}
+                            title={transaction.description || undefined}
+                          >
                             {transaction.description || "-"}
                           </Text>
                         ),
@@ -717,23 +785,22 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       accessor: "amount",
                       title: "Montant",
                       textAlign: "right",
+                      width: 110,
+                      noWrap: true,
                       render: (transaction) =>
                         editable(transaction) ? (
                           <NumberInput
                             size="xs"
+                            w={100}
                             min={0}
                             decimalScale={2}
+                            allowDecimal
                             value={
                               draftFor(transaction)?.amount ??
                               transaction.amount
                             }
                             onChange={(amount) =>
-                              setDraft(transaction, {
-                                amount:
-                                  typeof amount === "number"
-                                    ? amount
-                                    : undefined,
-                              })
+                              setDraft(transaction, { amount })
                             }
                           />
                         ) : (
@@ -741,6 +808,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             size="sm"
                             fw={600}
                             c={isIncome(transaction.type) ? "moss" : "danger"}
+                            style={{ whiteSpace: "nowrap" }}
                           >
                             {isIncome(transaction.type) ? "+" : "-"}
                             {transaction.amount.toFixed(2)} $
@@ -751,11 +819,14 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       accessor: "actions",
                       title: "Actions",
                       textAlign: "center",
+                      width: 180,
+                      noWrap: true,
                       render: (transaction) => {
                         if (transaction.isNew)
                           return (
-                            <Group gap="xs" justify="center">
+                            <Group gap={4} justify="center" wrap="nowrap">
                               <ActionIcon
+                                size="sm"
                                 variant="light"
                                 color="moss"
                                 onClick={() =>
@@ -764,12 +835,13 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 }
                                 disabled={
                                   !newTransaction?.name ||
-                                  newTransaction.amount == null
+                                  parseAmount(newTransaction.amount) == null
                                 }
                               >
                                 <IconCheck size={16} />
                               </ActionIcon>
                               <ActionIcon
+                                size="sm"
                                 variant="light"
                                 color="slate"
                                 onClick={() => setNewTransaction(null)}
@@ -780,8 +852,9 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                           );
                         if (editingTransaction === transaction.id)
                           return (
-                            <Group gap="xs" justify="center">
+                            <Group gap={4} justify="center" wrap="nowrap">
                               <ActionIcon
+                                size="sm"
                                 variant="light"
                                 color="moss"
                                 onClick={() =>
@@ -810,6 +883,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 <IconCheck size={16} />
                               </ActionIcon>
                               <ActionIcon
+                                size="sm"
                                 variant="light"
                                 color="slate"
                                 onClick={() => {
@@ -840,10 +914,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             ? index > 0
                             : index < sameDay.length - 1;
                         return (
-                          <Group gap="xs" justify="center">
+                          <Group gap={4} justify="center" wrap="nowrap">
                             {sameDay.length > 1 && (
                               <>
                                 <ActionIcon
+                                  size="sm"
                                   variant="subtle"
                                   onClick={() =>
                                     void reorderTransaction(
@@ -856,6 +931,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                   <IconArrowUp size={16} />
                                 </ActionIcon>
                                 <ActionIcon
+                                  size="sm"
                                   variant="subtle"
                                   onClick={() =>
                                     void reorderTransaction(
@@ -870,6 +946,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                               </>
                             )}
                             <ActionIcon
+                              size="sm"
                               variant="light"
                               color="slate"
                               onClick={() => {
@@ -889,6 +966,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             >
                               <Popover.Target>
                                 <ActionIcon
+                                  size="sm"
                                   variant="light"
                                   color="danger"
                                   onClick={() =>
