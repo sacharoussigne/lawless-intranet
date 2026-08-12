@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActionIcon,
-  Autocomplete,
   Badge,
   Button,
   Group,
@@ -16,17 +15,19 @@ import {
   Switch,
   Text,
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useBankUi } from "../BankUiProvider";
 import { apothecaryBooleanPills } from "../lib/apothecaryPill";
+import { toRpDisplayDate } from "../rpCalendar";
 import type {
   BankActionResult,
   SerializedPlannedTransaction,
   TransactionType,
 } from "../types";
+import { RpDateInput } from "./RpDateInput";
+import { SuggestionAutocomplete } from "./SuggestionAutocomplete";
 
 const WEEKDAY_OPTIONS = [
   { value: "1", label: "Lundi" },
@@ -52,6 +53,14 @@ function isSuccess<T>(
   return result.data !== undefined;
 }
 
+const parseAmount = (
+  value: number | string | null | undefined,
+): number | undefined => {
+  if (value == null || value === "") return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 type BankPlannedPanelProps = { onChanged?: () => void };
 
 export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
@@ -62,13 +71,14 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [companyNames, setCompanyNames] = useState<string[]>([]);
   const [descriptionSuggestions, setDescriptionSuggestions] = useState<
     string[]
   >([]);
   const [formType, setFormType] = useState<TransactionType>("DEPOSIT");
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formAmount, setFormAmount] = useState<number | undefined>();
+  const [formAmount, setFormAmount] = useState<number | string | undefined>();
   const [formScheduleKind, setFormScheduleKind] = useState<"ONCE" | "WEEKLY">(
     "WEEKLY",
   );
@@ -97,11 +107,10 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
       actions.getNameSuggestions(),
       actions.getDescriptionSuggestions(),
     ]);
-    if (isSuccess(names))
-      setNameSuggestions([
-        ...names.data.suggestions,
-        ...(names.data.companyNames ?? []),
-      ]);
+    if (isSuccess(names)) {
+      setNameSuggestions(names.data.suggestions);
+      setCompanyNames(names.data.companyNames ?? []);
+    }
     if (isSuccess(descriptions)) setDescriptionSuggestions(descriptions.data);
   }, [actions]);
 
@@ -141,35 +150,79 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
     setFormOpened(true);
   };
 
-  const saveFreeTextSuggestions = async () => {
-    if (
-      formName.trim() &&
-      !nameSuggestions.some(
-        (value) => value.toLowerCase() === formName.trim().toLowerCase(),
-      )
-    ) {
-      const result = await actions.addNameSuggestion({
-        value: formName.trim(),
-      });
-      if (isSuccess(result))
-        setNameSuggestions((values) => [...values, result.data]);
+  const handleAddNameSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
     }
-    if (
-      formDescription.trim() &&
-      !descriptionSuggestions.some(
-        (value) => value.toLowerCase() === formDescription.trim().toLowerCase(),
-      )
-    ) {
-      const result = await actions.addDescriptionSuggestion({
-        value: formDescription.trim(),
-      });
-      if (isSuccess(result))
-        setDescriptionSuggestions((values) => [...values, result.data]);
+    setNameSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    success("Suggestion ajoutée");
+  };
+
+  const handleDeleteNameSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteNameSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
     }
+    setNameSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    success("Suggestion supprimée");
+  };
+
+  const handleAddDescriptionSuggestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.addDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.some((item) => item.toLowerCase() === result.data.toLowerCase())
+        ? values
+        : [...values, result.data],
+    );
+    success("Suggestion ajoutée");
+  };
+
+  const handleDeleteDescriptionSuggestion = async (
+    value: string,
+    e?: React.MouseEvent,
+  ) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const result = await actions.deleteDescriptionSuggestion({ value: trimmed });
+    if (!isSuccess(result)) {
+      error(result.error);
+      return;
+    }
+    setDescriptionSuggestions((values) =>
+      values.filter((item) => item.toLowerCase() !== trimmed.toLowerCase()),
+    );
+    success("Suggestion supprimée");
   };
 
   const submit = async () => {
-    if (!formName.trim() || !formAmount || formAmount <= 0)
+    const amount = parseAmount(formAmount);
+    if (!formName.trim() || amount == null || amount <= 0)
       return error("Veuillez remplir les champs requis");
     if (formScheduleKind === "ONCE" && !formOnceDate)
       return error("La date est requise pour une transaction unique");
@@ -179,7 +232,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
       type: formType,
       name: formName.trim(),
       description: formDescription.trim() || null,
-      amount: formAmount,
+      amount,
       scheduleKind: formScheduleKind,
       onceDate: formScheduleKind === "ONCE" ? formOnceDate : null,
       weekdays:
@@ -191,7 +244,6 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
         ? await actions.updatePlannedTransaction({ id: editingId, ...input })
         : await actions.createPlannedTransaction(input);
       if (!isSuccess(result)) return error(result.error);
-      await saveFreeTextSuggestions();
       success(
         editingId ? "Planification mise à jour" : "Transaction planifiée créée",
       );
@@ -289,7 +341,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                       <Text size="xs" c="dimmed">
                         {item.amount.toFixed(2)} $ ·{" "}
                         {item.scheduleKind === "ONCE"
-                          ? `Une fois le ${item.onceDate ? dayjs(item.onceDate).format("DD/MM/YYYY") : ""}`
+                          ? `Une fois le ${item.onceDate ? dayjs(toRpDisplayDate(new Date(item.onceDate))).format("DD/MM/YYYY") : ""}`
                           : `Hebdo · ${item.weekdays.map((day) => WEEKDAY_OPTIONS.find((option) => option.value === String(day))?.label).join(", ")}`}
                         {item.description ? ` · ${item.description}` : ""}
                       </Text>
@@ -342,27 +394,31 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
             onChange={(value) => value && setFormType(value as TransactionType)}
             required
           />
-          <Autocomplete
+          <SuggestionAutocomplete
             label="Nom"
-            data={nameSuggestions}
+            suggestions={nameSuggestions}
+            extraOptions={companyNames}
             value={formName}
             onChange={setFormName}
+            onAddSuggestion={handleAddNameSuggestion}
+            onDeleteSuggestion={handleDeleteNameSuggestion}
             required
           />
-          <Autocomplete
+          <SuggestionAutocomplete
             label="Description"
-            data={descriptionSuggestions}
+            suggestions={descriptionSuggestions}
             value={formDescription}
             onChange={setFormDescription}
+            onAddSuggestion={handleAddDescriptionSuggestion}
+            onDeleteSuggestion={handleDeleteDescriptionSuggestion}
           />
           <NumberInput
             label="Montant"
             value={formAmount}
-            onChange={(value) =>
-              setFormAmount(typeof value === "number" ? value : undefined)
-            }
+            onChange={setFormAmount}
             min={0}
             decimalScale={2}
+            allowDecimal
             required
           />
           <Select
@@ -378,14 +434,10 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
             required
           />
           {formScheduleKind === "ONCE" ? (
-            <DateInput
+            <RpDateInput
               label="Date"
-              value={formOnceDate?.toISOString().slice(0, 10) ?? null}
-              onChange={(value) =>
-                setFormOnceDate(value ? new Date(value) : null)
-              }
-              valueFormat="DD/MM/YYYY"
-              locale="fr"
+              value={formOnceDate}
+              onChange={setFormOnceDate}
               required
             />
           ) : (
