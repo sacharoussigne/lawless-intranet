@@ -49,6 +49,8 @@ export async function middleware(req: NextRequest) {
   } else if (pathname.startsWith('/platform')) {
     middlewares.push(hasToBeLoggedInMiddleware);
     middlewares.push(hasPlatformAdminMiddleware);
+  } else if (pathname.startsWith(routes.settings.index)) {
+    middlewares.push(hasToBeLoggedInMiddleware);
   } else if (slug && t) {
     middlewares.push(hasToBeLoggedInMiddleware);
     middlewares.push(hasTenantAccessMiddleware);
@@ -84,6 +86,7 @@ export const config = {
     '/',
     '/auth/:path*',
     '/platform/:path*',
+    '/settings/:path*',
     '/s/:shelterSlug/:path*',
   ],
 };

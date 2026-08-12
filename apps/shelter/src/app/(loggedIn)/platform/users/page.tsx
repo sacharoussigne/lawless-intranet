@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 
-import { listSheltersForPlatform } from '@/app/_actions/shelters';
-import { SheltersPlatformClient } from './SheltersPlatformClient';
+import { listUsers } from '@/app/_actions/users';
+import UsersPageClient from './UsersPageClient';
+import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
+import { getDataOrThrow } from '@/lib/response';
+import type { User } from '@/types/users';
 import Header from '@/app/(loggedIn)/_components/Header/Header';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
@@ -11,9 +14,31 @@ import type { AuthSession } from '@/types/session';
 import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
 import { listAccessibleShelters } from '@/lib/shelter/context';
 
-export default async function PlatformSheltersPage() {
+async function UsersContent() {
+  const result = await listUsers({
+    limit: 10,
+    offset: 0,
+    sortBy: 'createdAt',
+    sortDirection: 'desc',
+  });
+
+  const data = getDataOrThrow(result, 'Erreur lors du chargement des utilisateurs');
+
+  const users: User[] = ((data as { users?: User[] }).users || []).map((user) => ({
+    ...(user as User),
+    role: (user as { role?: string | null }).role ?? null,
+  }));
+
+  return (
+    <UsersPageClient
+      initialUsers={users}
+      initialTotalRecords={(data as { total?: number }).total || 0}
+    />
+  );
+}
+
+export default async function PlatformUsersPage() {
   const session = await getAuthSession();
-  const result = await listSheltersForPlatform();
   const impersonatorDisplayName = await getImpersonatorDisplayName(
     session?.session?.impersonatedBy,
   );
@@ -31,10 +56,9 @@ export default async function PlatformSheltersPage() {
           session={session as AuthSession | null}
           impersonatorDisplayName={impersonatorDisplayName}
         />
-        <SheltersPlatformClient
-          initialShelters={result.status === 200 ? result.data ?? [] : []}
-          error={result.status !== 200 ? result.error : undefined}
-        />
+        <SuspenseLoader>
+          <UsersContent />
+        </SuspenseLoader>
       </LoggedInShell>
     </PermissionsProvider>
   );

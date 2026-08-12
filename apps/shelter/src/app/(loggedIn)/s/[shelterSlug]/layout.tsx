@@ -13,6 +13,7 @@ import {
   resolveShelterAccessDeniedRedirect,
 } from '@/lib/shelter/context';
 import { resolveEffectivePermissionsForShelter } from '@/lib/shelter/permissionsResolve';
+import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
 import { notFound, redirect } from 'next/navigation';
 
 export default async function ShelterLayout({
@@ -40,11 +41,13 @@ export default async function ShelterLayout({
     redirect(target);
   }
 
-  const [effectiveRole, appSettings, accessibleShelters] = await Promise.all([
-    getEffectiveRoleForShelter(authSession, shelter.id),
-    getAppSettings(shelter.id),
-    listAccessibleShelters(authSession),
-  ]);
+  const [effectiveRole, appSettings, accessibleShelters, impersonatorDisplayName] =
+    await Promise.all([
+      getEffectiveRoleForShelter(authSession, shelter.id),
+      getAppSettings(shelter.id),
+      listAccessibleShelters(authSession),
+      getImpersonatorDisplayName(session?.session?.impersonatedBy),
+    ]);
 
   const effectivePermissions = await resolveEffectivePermissionsForShelter(
     authSession,
@@ -63,7 +66,11 @@ export default async function ShelterLayout({
       accessibleShelters={accessibleShelters}
     >
       <LoggedInShell>
-        <Header session={authSession} shelterSlug={shelterSlug} />
+        <Header
+          session={authSession}
+          shelterSlug={shelterSlug}
+          impersonatorDisplayName={impersonatorDisplayName}
+        />
         <div className="flex-1 w-full min-w-0 pb-8 min-h-0">{children}</div>
       </LoggedInShell>
     </PermissionsProvider>

@@ -1,19 +1,14 @@
-export const dynamic = 'force-dynamic';
-
-import { listSheltersForPlatform } from '@/app/_actions/shelters';
-import { SheltersPlatformClient } from './SheltersPlatformClient';
 import Header from '@/app/(loggedIn)/_components/Header/Header';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
-import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
-import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
 import type { AuthSession } from '@/types/session';
 import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
+import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
+import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
 import { listAccessibleShelters } from '@/lib/shelter/context';
 
-export default async function PlatformSheltersPage() {
+export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const session = await getAuthSession();
-  const result = await listSheltersForPlatform();
   const impersonatorDisplayName = await getImpersonatorDisplayName(
     session?.session?.impersonatedBy,
   );
@@ -31,10 +26,7 @@ export default async function PlatformSheltersPage() {
           session={session as AuthSession | null}
           impersonatorDisplayName={impersonatorDisplayName}
         />
-        <SheltersPlatformClient
-          initialShelters={result.status === 200 ? result.data ?? [] : []}
-          error={result.status !== 200 ? result.error : undefined}
-        />
+        <div className="flex-1 w-full min-w-0 pb-8">{children}</div>
       </LoggedInShell>
     </PermissionsProvider>
   );
