@@ -2,8 +2,7 @@
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 1.25rem;
-  align-items: start;
-  min-height: 420px;
+  align-items: stretch;
 }
 
 @media (max-width: 48em) {
@@ -14,6 +13,9 @@
 
 .listPanel,
 .detailPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   background: var(--shelter-surface);
   border: 1.5px solid var(--shelter-border);
   border-radius: 8px;
@@ -35,11 +37,12 @@
 }
 
 .listBody {
+  flex: 1;
+  min-height: 0;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  max-height: min(70vh, 640px);
   overflow: auto;
 }
 
@@ -122,6 +125,8 @@
 }
 
 .detailBody {
+  flex: 1;
+  min-height: 0;
   padding: 1.1rem;
   display: flex;
   flex-direction: column;
