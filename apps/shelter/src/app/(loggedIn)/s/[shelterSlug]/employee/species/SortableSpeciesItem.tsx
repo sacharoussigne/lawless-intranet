@@ -6,10 +6,6 @@ import { IconGripVertical } from '@tabler/icons-react';
 import classes from './SpeciesPage.module.scss';
 import type { SpeciesDTO } from './types';
 
-function countVariants(species: SpeciesDTO): number {
-  return species.subspecies.reduce((sum, sub) => sum + sub.variants.length, 0);
-}
-
 export function SortableSpeciesItem({
   item,
   active,
@@ -29,8 +25,6 @@ export function SortableSpeciesItem({
     transition,
     isDragging,
   } = useSortable({ id: item.id, disabled: !sortable });
-
-  const variantsCount = countVariants(item);
 
   return (
     <div
@@ -58,11 +52,6 @@ export function SortableSpeciesItem({
         onClick={onSelect}
       >
         <span className={classes.speciesName}>{item.name}</span>
-        <span className={classes.speciesMeta}>
-          {item.subspecies.length} sous-espèce
-          {item.subspecies.length === 1 ? '' : 's'} · {variantsCount} variante
-          {variantsCount === 1 ? '' : 's'}
-        </span>
       </button>
     </div>
   );
