@@ -25,6 +25,10 @@ export function tenantRoutes(slug: string) {
 export const routes = {
   platform: {
     shelters: '/platform/shelters',
+    users: '/platform/users',
+  },
+  settings: {
+    index: '/settings',
   },
   auth: {
     index: '/auth',
