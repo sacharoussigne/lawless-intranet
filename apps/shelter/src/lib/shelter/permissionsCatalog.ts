@@ -4,6 +4,7 @@ export const applicationPermissionCatalog = {
   application: ['access', 'management'],
   bank: ['access'],
   species: ['manage'],
+  animals: ['access', 'update', 'create', 'updateCore', 'delete'],
 } as const;
 
 export type ApplicationResource = keyof typeof applicationPermissionCatalog;
@@ -64,14 +65,17 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
     application: [...applicationPermissionCatalog.application],
     bank: [...applicationPermissionCatalog.bank],
     species: [...applicationPermissionCatalog.species],
+    animals: [...applicationPermissionCatalog.animals],
   },
   direction: {
     application: ['access'],
     bank: ['access'],
     species: [...applicationPermissionCatalog.species],
+    animals: [...applicationPermissionCatalog.animals],
   },
   employee: {
     application: ['access'],
+    animals: ['access', 'update'],
   },
 };
 
@@ -196,6 +200,13 @@ export type ShelterPermissionsObject = {
   species: {
     manage: boolean;
   };
+  animals: {
+    access: boolean;
+    update: boolean;
+    create: boolean;
+    updateCore: boolean;
+    delete: boolean;
+  };
 };
 
 export function toPermissionsObject(
@@ -215,6 +226,13 @@ export function toPermissionsObject(
     },
     species: {
       manage: has('species', 'manage'),
+    },
+    animals: {
+      access: has('animals', 'access'),
+      update: has('animals', 'update'),
+      create: has('animals', 'create'),
+      updateCore: has('animals', 'updateCore'),
+      delete: has('animals', 'delete'),
     },
   };
 }

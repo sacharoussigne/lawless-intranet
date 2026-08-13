@@ -1,11 +1,11 @@
 export type SpeciesVariantDTO = {
   id: string;
-  subspeciesId: string;
+  breedId: string;
   label: string;
   sortOrder: number;
 };
 
-export type SubspeciesDTO = {
+export type BreedDTO = {
   id: string;
   speciesId: string;
   name: string;
@@ -20,5 +20,5 @@ export type SpeciesDTO = {
   shelterId: string;
   name: string;
   sortOrder: number;
-  subspecies: SubspeciesDTO[];
+  breeds: BreedDTO[];
 };

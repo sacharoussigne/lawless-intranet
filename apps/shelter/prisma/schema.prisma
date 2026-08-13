@@ -19,6 +19,8 @@ model Shelter {
   rolePermissions ShelterRolePermission[]
   settings        AppSettings?
   animalSpecies   AnimalSpecies[]
+  animals         Animal[]
+  animalHistory   AnimalHistory[]
 
   @@index([createdById])
   @@map("shelter")
@@ -87,47 +89,109 @@ model AppSettings {
 }
 
 model AnimalSpecies {
-  id          String   @id @default(uuid())
-  shelterId   String
-  name        String
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  shelter     Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
-  subspecies  AnimalSubspecies[]
+  id        String        @id @default(uuid())
+  shelterId String
+  name      String
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  shelter   Shelter       @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  breeds    AnimalBreed[]
+  animals   Animal[]
 
   @@unique([shelterId, name])
   @@index([shelterId, sortOrder])
   @@map("animal_species")
 }
 
-model AnimalSubspecies {
-  id                      String                 @id @default(uuid())
-  speciesId               String
-  name                    String
-  sortOrder               Int                    @default(0)
-  shelterPurchasePrice    Decimal?               @db.Decimal(10, 2)
-  animalierPurchasePrice  Decimal?               @db.Decimal(10, 2)
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
-  species                 AnimalSpecies          @relation(fields: [speciesId], references: [id], onDelete: Cascade)
-  variants                AnimalSpeciesVariant[]
+model AnimalBreed {
+  id                     String                 @id @default(uuid())
+  speciesId              String
+  name                   String
+  sortOrder              Int                    @default(0)
+  shelterPurchasePrice   Decimal?               @db.Decimal(10, 2)
+  animalierPurchasePrice Decimal?               @db.Decimal(10, 2)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  species                AnimalSpecies          @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  variants               AnimalSpeciesVariant[]
+  animals                Animal[]
 
   @@unique([speciesId, name])
   @@index([speciesId, sortOrder])
-  @@map("animal_subspecies")
+  @@map("animal_breed")
 }
 
 model AnimalSpeciesVariant {
-  id           String           @id @default(uuid())
-  subspeciesId String
-  label        String           @db.VarChar(255)
-  sortOrder    Int              @default(0)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  subspecies   AnimalSubspecies @relation(fields: [subspeciesId], references: [id], onDelete: Cascade)
+  id        String      @id @default(uuid())
+  breedId   String
+  label     String      @db.VarChar(255)
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  breed     AnimalBreed @relation(fields: [breedId], references: [id], onDelete: Cascade)
+  animals   Animal[]
 
-  @@unique([subspeciesId, label])
-  @@index([subspeciesId, sortOrder])
+  @@unique([breedId, label])
+  @@index([breedId, sortOrder])
   @@map("animal_species_variant")
+}
+
+enum AnimalStatus {
+  in_care
+  awaiting_adoption
+  adopted
+  deceased
+}
+
+model Animal {
+  id                String        @id @default(uuid())
+  shelterId         String
+  name              String
+  speciesId         String
+  breedId           String
+  variantId         String?
+  arrivalDate       DateTime      @db.Date
+  adoptionPrice     Decimal       @db.Decimal(10, 2)
+  caseManagerUserId String
+  status            AnimalStatus  @default(awaiting_adoption)
+  biography         String?       @db.Text
+  careProvided      String?       @db.Text
+  notes             String?       @db.Text
+  adopterName       String?
+  departureDate     DateTime?     @db.Date
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  shelter           Shelter       @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  species           AnimalSpecies @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  breed             AnimalBreed   @relation(fields: [breedId], references: [id], onDelete: Restrict)
+  variant           AnimalSpeciesVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  history           AnimalHistory[]
+
+  @@index([shelterId, status])
+  @@index([shelterId, name])
+  @@map("animal")
+}
+
+enum AnimalHistoryAction {
+  create
+  update
+  delete
+}
+
+model AnimalHistory {
+  id             String              @id @default(uuid())
+  animalId       String?
+  shelterId      String
+  action         AnimalHistoryAction
+  actorUserId    String?
+  previousValues Json?
+  nextValues     Json?
+  createdAt      DateTime            @default(now())
+  animal         Animal?             @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  shelter        Shelter             @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+
+  @@index([shelterId, createdAt])
+  @@index([animalId, createdAt])
+  @@map("animal_history")
 }

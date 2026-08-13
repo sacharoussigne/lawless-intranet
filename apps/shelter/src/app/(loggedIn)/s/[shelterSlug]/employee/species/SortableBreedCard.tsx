@@ -34,21 +34,21 @@ import {
 } from '@tabler/icons-react';
 import classes from './SpeciesPage.module.scss';
 import { SortableVariantChip } from './SortableVariantChip';
-import type { SubspeciesDTO } from './types';
+import type { BreedDTO } from './types';
 
-export function SortableSubspeciesCard({
-  sub,
+export function SortableBreedCard({
+  breed,
   pending,
-  editingSubId,
-  subDraft,
+  editingBreedId,
+  breedDraft,
   editingVariantId,
   variantDraft,
   variantInput,
-  onSubDraftChange,
-  onSaveSubspecies,
-  onCancelEditSub,
-  onStartEditSub,
-  onDeleteSub,
+  onBreedDraftChange,
+  onSaveBreed,
+  onCancelEditBreed,
+  onStartEditBreed,
+  onDeleteBreed,
   onSavePrices,
   onVariantDraftChange,
   onSaveVariant,
@@ -59,18 +59,18 @@ export function SortableSubspeciesCard({
   onAddVariant,
   onVariantsReorder,
 }: {
-  sub: SubspeciesDTO;
+  breed: BreedDTO;
   pending: boolean;
-  editingSubId: string | null;
-  subDraft: string;
+  editingBreedId: string | null;
+  breedDraft: string;
   editingVariantId: string | null;
   variantDraft: string;
   variantInput: string;
-  onSubDraftChange: (value: string) => void;
-  onSaveSubspecies: () => void;
-  onCancelEditSub: () => void;
-  onStartEditSub: () => void;
-  onDeleteSub: () => void;
+  onBreedDraftChange: (value: string) => void;
+  onSaveBreed: () => void;
+  onCancelEditBreed: () => void;
+  onStartEditBreed: () => void;
+  onDeleteBreed: () => void;
   onSavePrices: (prices: {
     shelterPurchasePrice: number;
     animalierPurchasePrice: number | null;
@@ -91,19 +91,19 @@ export function SortableSubspeciesCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: sub.id });
+  } = useSortable({ id: breed.id });
 
   const [shelterPrice, setShelterPrice] = useState<number | string>(
-    sub.shelterPurchasePrice ?? '',
+    breed.shelterPurchasePrice ?? '',
   );
   const [animalierPrice, setAnimalierPrice] = useState<number | string>(
-    sub.animalierPurchasePrice ?? '',
+    breed.animalierPurchasePrice ?? '',
   );
 
   useEffect(() => {
-    setShelterPrice(sub.shelterPurchasePrice ?? '');
-    setAnimalierPrice(sub.animalierPurchasePrice ?? '');
-  }, [sub.id, sub.shelterPurchasePrice, sub.animalierPurchasePrice]);
+    setShelterPrice(breed.shelterPurchasePrice ?? '');
+    setAnimalierPrice(breed.animalierPurchasePrice ?? '');
+  }, [breed.id, breed.shelterPurchasePrice, breed.animalierPurchasePrice]);
 
   const shelterValue =
     typeof shelterPrice === 'number'
@@ -119,8 +119,8 @@ export function SortableSubspeciesCard({
         : Number(animalierPrice);
 
   const pricesDirty =
-    shelterValue !== sub.shelterPurchasePrice ||
-    animalierValue !== sub.animalierPurchasePrice;
+    shelterValue !== breed.shelterPurchasePrice ||
+    animalierValue !== breed.animalierPurchasePrice;
 
   const canSavePrices =
     pricesDirty &&
@@ -155,22 +155,22 @@ export function SortableSubspeciesCard({
   return (
     <div
       ref={setNodeRef}
-      className={`${classes.subspeciesCard} ${isDragging ? classes.isDragging : ''}`}
+      className={`${classes.breedCard} ${isDragging ? classes.isDragging : ''}`}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
       }}
     >
       <Group justify="space-between" wrap="wrap" mb="xs" align="flex-start">
-        {editingSubId === sub.id ? (
+        {editingBreedId === breed.id ? (
           <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
             <TextInput
               size="sm"
-              value={subDraft}
-              onChange={(e) => onSubDraftChange(e.currentTarget.value)}
+              value={breedDraft}
+              onChange={(e) => onBreedDraftChange(e.currentTarget.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') onSaveSubspecies();
-                if (e.key === 'Escape') onCancelEditSub();
+                if (e.key === 'Enter') onSaveBreed();
+                if (e.key === 'Escape') onCancelEditBreed();
               }}
               style={{ flex: 1 }}
               autoFocus
@@ -179,7 +179,7 @@ export function SortableSubspeciesCard({
               size="sm"
               color="terracotta"
               variant="filled"
-              onClick={onSaveSubspecies}
+              onClick={onSaveBreed}
             >
               <IconCheck size={14} />
             </ActionIcon>
@@ -189,19 +189,19 @@ export function SortableSubspeciesCard({
             <button
               type="button"
               className={classes.dragHandle}
-              aria-label={`Réordonner ${sub.name}`}
+              aria-label={`Réordonner ${breed.name}`}
               {...attributes}
               {...listeners}
             >
               <IconGripVertical size={16} stroke={1.5} />
             </button>
-            <Text fw={700}>{sub.name}</Text>
+            <Text fw={700}>{breed.name}</Text>
             <ActionIcon
               size="sm"
               variant="subtle"
               color="terracotta"
-              aria-label={`Renommer ${sub.name}`}
-              onClick={onStartEditSub}
+              aria-label={`Renommer ${breed.name}`}
+              onClick={onStartEditBreed}
             >
               <IconPencil size={14} />
             </ActionIcon>
@@ -209,8 +209,8 @@ export function SortableSubspeciesCard({
               size="sm"
               variant="subtle"
               color="danger"
-              aria-label={`Supprimer ${sub.name}`}
-              onClick={onDeleteSub}
+              aria-label={`Supprimer ${breed.name}`}
+              onClick={onDeleteBreed}
             >
               <IconTrash size={14} />
             </ActionIcon>
@@ -259,7 +259,7 @@ export function SortableSubspeciesCard({
       <Text size="xs" c="dimmed" mb={6}>
         Variantes
       </Text>
-      {sub.variants.length === 0 ? (
+      {breed.variants.length === 0 ? (
         <Text size="sm" c="dimmed">
           Aucune variante.
         </Text>
@@ -270,11 +270,11 @@ export function SortableSubspeciesCard({
           onDragEnd={handleVariantDragEnd}
         >
           <SortableContext
-            items={sub.variants.map((v) => v.id)}
+            items={breed.variants.map((v) => v.id)}
             strategy={horizontalListSortingStrategy}
           >
             <div className={classes.chipRow}>
-              {sub.variants.map((variant) => (
+              {breed.variants.map((variant) => (
                 <SortableVariantChip
                   key={variant.id}
                   variant={variant}

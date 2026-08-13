@@ -1,7 +1,7 @@
 'use client';
 
 import { Container, SimpleGrid, Text } from '@mantine/core';
-import { IconBuildingBank, IconPaw } from '@tabler/icons-react';
+import { IconBuildingBank, IconDog, IconPaw } from '@tabler/icons-react';
 import { ModuleCard } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
@@ -19,10 +19,18 @@ export default function EmployeeHubPage() {
       icon: IconBuildingBank,
     });
   }
+  if (permissions?.animals.access) {
+    cards.push({
+      title: 'Animaux',
+      description: 'Fiches, adoption et suivi des animaux du refuge.',
+      href: t.employee.animals,
+      icon: IconDog,
+    });
+  }
   if (permissions?.species.manage) {
     cards.push({
       title: 'Espèces',
-      description: 'Espèces, sous-espèces et variantes pour les animaux.',
+      description: 'Espèces, races et variantes pour les animaux.',
       href: t.employee.species,
       icon: IconPaw,
     });

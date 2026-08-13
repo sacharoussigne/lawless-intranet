@@ -26,6 +26,7 @@ import { rewritePathWithShelterSlug } from '@/lib/shelter/slug';
 import {
   IconArrowBackUp,
   IconCashRegister,
+  IconDog,
   IconLogout,
   IconPaw,
   IconSettings,
@@ -210,6 +211,17 @@ export default function Header({
                       <Group gap={6} wrap="nowrap" className={classes.linkInner}>
                         <IconCashRegister size={18} stroke={1.6} />
                         <span>Banque</span>
+                      </Group>
+                    </Link>
+                  )}
+                  {permissions?.animals.access && (
+                    <Link
+                      href={t.employee.animals}
+                      className={`${classes.navLink} ${isActive(t.employee.animals) ? classes.navLinkActive : ''}`}
+                    >
+                      <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                        <IconDog size={18} stroke={1.6} />
+                        <span>Animaux</span>
                       </Group>
                     </Link>
                   )}
