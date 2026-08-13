@@ -23,7 +23,13 @@ import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/shelter/platformAdmin';
 import { rewritePathWithShelterSlug } from '@/lib/shelter/slug';
-import { IconArrowBackUp, IconLogout, IconSettings } from '@tabler/icons-react';
+import {
+  IconArrowBackUp,
+  IconCashRegister,
+  IconLogout,
+  IconPaw,
+  IconSettings,
+} from '@tabler/icons-react';
 
 export default function Header({
   session,
@@ -151,11 +157,28 @@ export default function Header({
     </Menu>
   ) : null;
 
+  const actions = session ? (
+    <Group gap="sm" wrap="nowrap" className={classes.headerSide}>
+      {isImpersonating && (
+        <Button
+          color="leather"
+          variant="light"
+          leftSection={<IconArrowBackUp size={18} />}
+          loading={stoppingImpersonation}
+          onClick={handleStopImpersonating}
+        >
+          {impersonatorDisplayName?.trim() || 'Compte'}
+        </Button>
+      )}
+      {avatarMenu}
+    </Group>
+  ) : null;
+
   return (
     <header className={`${classes.header} mb-8`}>
       <Container size="xl">
         <div className={classes.headerInner}>
-          <Group gap="md" wrap="nowrap">
+          <Group gap="md" wrap="nowrap" className={classes.headerSide}>
             <Link href={t?.employee.index ?? '/'} className={classes.brand}>
               {shelterSiteTitle(appSettings)}
             </Link>
@@ -175,54 +198,38 @@ export default function Header({
             )}
           </Group>
 
-          {session && t && (
-            <nav className={classes.nav} aria-label="Navigation principale">
-              {permissions?.bank.access && appSettings.featureBankEnabled && (
-                <Link
-                  href={t.employee.bank}
-                  className={`${classes.navLink} ${isActive(t.employee.bank) ? classes.navLinkActive : ''}`}
-                >
-                  Banque
-                </Link>
-              )}
-              {permissions?.species.manage && (
-                <Link
-                  href={t.employee.species}
-                  className={`${classes.navLink} ${isActive(t.employee.species) ? classes.navLinkActive : ''}`}
-                >
-                  Espèces
-                </Link>
-              )}
-              {isImpersonating && (
-                <Button
-                  color="leather"
-                  variant="light"
-                  leftSection={<IconArrowBackUp size={18} />}
-                  loading={stoppingImpersonation}
-                  onClick={handleStopImpersonating}
-                >
-                  {impersonatorDisplayName?.trim() || 'Compte'}
-                </Button>
-              )}
-              {avatarMenu}
-            </nav>
-          )}
-
-          {session && !t && (
-            <Group gap="sm" wrap="nowrap">
-              {isImpersonating && (
-                <Button
-                  color="leather"
-                  variant="light"
-                  leftSection={<IconArrowBackUp size={18} />}
-                  loading={stoppingImpersonation}
-                  onClick={handleStopImpersonating}
-                >
-                  {impersonatorDisplayName?.trim() || 'Compte'}
-                </Button>
-              )}
-              {avatarMenu}
-            </Group>
+          {session && t ? (
+            <>
+              <div className={classes.headerNavSlot}>
+                <nav className={classes.nav} aria-label="Navigation principale">
+                  {permissions?.bank.access && appSettings.featureBankEnabled && (
+                    <Link
+                      href={t.employee.bank}
+                      className={`${classes.navLink} ${isActive(t.employee.bank) ? classes.navLinkActive : ''}`}
+                    >
+                      <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                        <IconCashRegister size={18} stroke={1.6} />
+                        <span>Banque</span>
+                      </Group>
+                    </Link>
+                  )}
+                  {permissions?.species.manage && (
+                    <Link
+                      href={t.employee.species}
+                      className={`${classes.navLink} ${isActive(t.employee.species) ? classes.navLinkActive : ''}`}
+                    >
+                      <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                        <IconPaw size={18} stroke={1.6} />
+                        <span>Espèces</span>
+                      </Group>
+                    </Link>
+                  )}
+                </nav>
+              </div>
+              {actions}
+            </>
+          ) : (
+            actions
           )}
         </div>
       </Container>
