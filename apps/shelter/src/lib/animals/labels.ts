@@ -9,7 +9,9 @@ export const ANIMAL_STATUS_LABELS: Record<AnimalStatus, string> = {
 
 export const ANIMAL_STATUS_OPTIONS = (
   Object.entries(ANIMAL_STATUS_LABELS) as [AnimalStatus, string][]
-).map(([value, label]) => ({ value, label }));
+)
+  .map(([value, label]) => ({ value, label }))
+  .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
 
 export const ANIMAL_CORE_FIELDS = [
   'name',
