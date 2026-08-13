@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  Badge,
   Button,
   Container,
   Group,
@@ -20,13 +21,16 @@ import {
   Text,
   Textarea,
   TextInput,
+  Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconArrowLeft,
+  IconCheck,
   IconHistory,
   IconPencil,
   IconTrash,
+  IconX,
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -36,7 +40,6 @@ import {
   listSpeciesOptions,
   updateAnimal,
 } from '@/app/_actions/animals';
-import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { ANIMAL_STATUS_LABELS, ANIMAL_STATUS_OPTIONS } from '@/lib/animals/labels';
@@ -75,6 +78,16 @@ const FIELD_LABELS: Record<string, string> = {
   notes: 'Notes',
   adopterName: 'Adoptant',
   departureDate: 'Date de départ',
+};
+
+const STATUS_BADGE_COLORS: Record<
+  AnimalStatus,
+  { color: string; variant: 'light' | 'outline' | 'filled' }
+> = {
+  awaiting_adoption: { color: 'terracotta', variant: 'filled' },
+  in_care: { color: 'leather', variant: 'filled' },
+  adopted: { color: 'teal', variant: 'filled' },
+  deceased: { color: 'gray', variant: 'filled' },
 };
 
 type FormState = {
@@ -424,6 +437,8 @@ export function AnimalDetailPageClient({
       ? selectedBreed.animalierPurchasePrice
       : animal.breed.animalierPurchasePrice;
 
+  const displayStatus = editing ? form.status : animal.status;
+
   return (
     <Container size="xl">
       <Group mb="md">
@@ -437,62 +452,108 @@ export function AnimalDetailPageClient({
         </Button>
       </Group>
 
-      <PageHeader title={animal.name} description="Fiche animal" />
-
-      <Group gap="sm" mb="xl" wrap="wrap">
-        <Button
-          variant="light"
-          color="terracotta"
-          leftSection={<IconHistory size={16} />}
-          onClick={openHistory}
-        >
-          Historique
-        </Button>
-        {!editing && canEdit ? (
-          <Button
-            color="terracotta"
-            leftSection={<IconPencil size={16} />}
-            onClick={startEditing}
-          >
-            Modifier
-          </Button>
-        ) : null}
-        {editing ? (
-          <>
-            <Button variant="default" onClick={cancelEditing} disabled={pending}>
-              Annuler
-            </Button>
-            <Button color="terracotta" loading={pending} onClick={handleSave}>
-              Enregistrer
-            </Button>
-          </>
-        ) : null}
-        {canDelete && !editing ? (
-          <Button
-            color="danger"
-            variant="light"
-            leftSection={<IconTrash size={16} />}
-            onClick={() => setDeleteOpen(true)}
-          >
-            Supprimer
-          </Button>
-        ) : null}
-      </Group>
-
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
-        <Stack gap="xs">
-          <Text fw={600} mb="xs">
-            Informations principales
-          </Text>
-          {editing && canUpdateCore ? (
-            <>
+      <div className={classes.detailHeader}>
+        <div className={classes.titleBlock}>
+          <div className={classes.titleRow}>
+            {editing && canUpdateCore ? (
               <TextInput
-                label="Nom"
+                aria-label="Nom"
                 required
                 value={form.name}
                 onChange={(e) => patchForm('name', e.currentTarget.value)}
                 disabled={pending}
+                size="lg"
+                className={classes.titleInput}
               />
+            ) : (
+              <Title order={1} className="shelter-display-title">
+                {animal.name}
+              </Title>
+            )}
+            {editing && canUpdate ? (
+              <Select
+                aria-label="Statut"
+                data={ANIMAL_STATUS_OPTIONS}
+                value={form.status}
+                onChange={(v) => v && patchForm('status', v as AnimalStatus)}
+                disabled={pending}
+                size="sm"
+                w={220}
+                allowDeselect={false}
+              />
+            ) : (
+              <Badge
+                size="lg"
+                radius="sm"
+                className={classes.statusBadge}
+                color={STATUS_BADGE_COLORS[displayStatus].color}
+                variant={STATUS_BADGE_COLORS[displayStatus].variant}
+              >
+                {ANIMAL_STATUS_LABELS[displayStatus]}
+              </Badge>
+            )}
+          </div>
+          <Text c="dimmed" size="sm" mt={4}>
+            Fiche animal
+          </Text>
+        </div>
+
+        <Group gap="sm" wrap="wrap" className={classes.headerActions}>
+          <Button
+            variant="light"
+            color="terracotta"
+            leftSection={<IconHistory size={16} />}
+            onClick={openHistory}
+          >
+            Historique
+          </Button>
+          {!editing && canEdit ? (
+            <Button
+              color="terracotta"
+              leftSection={<IconPencil size={16} />}
+              onClick={startEditing}
+            >
+              Modifier
+            </Button>
+          ) : null}
+          {editing ? (
+            <>
+              <Button
+                variant="default"
+                leftSection={<IconX size={16} />}
+                onClick={cancelEditing}
+                disabled={pending}
+              >
+                Annuler
+              </Button>
+              <Button
+                color="terracotta"
+                leftSection={<IconCheck size={16} />}
+                loading={pending}
+                onClick={handleSave}
+              >
+                Enregistrer
+              </Button>
+            </>
+          ) : null}
+          {canDelete && !editing ? (
+            <Button
+              color="danger"
+              variant="light"
+              leftSection={<IconTrash size={16} />}
+              onClick={() => setDeleteOpen(true)}
+            >
+              Supprimer
+            </Button>
+          ) : null}
+        </Group>
+      </div>
+
+      <Stack gap="xl" mt="xl">
+        <section>
+          <Text className={classes.sectionTitle}>Informations principales</Text>
+          {editing && canUpdateCore ? (
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
               <Select
                 label="Espèce"
                 required
@@ -552,10 +613,9 @@ export function AnimalDetailPageClient({
                 searchable
                 disabled={pending || !optionsLoaded}
               />
-            </>
+            </SimpleGrid>
           ) : (
-            <>
-              <FieldReadout label="Nom" value={animal.name} />
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
               <FieldReadout label="Espèce" value={animal.species.name} />
               <FieldReadout label="Race" value={animal.breed.name} />
               <FieldReadout label="Variante" value={animal.variant?.label} />
@@ -576,29 +636,21 @@ export function AnimalDetailPageClient({
                 }
               />
               <FieldReadout label="Responsable" value={animal.caseManagerName} />
-            </>
+            </SimpleGrid>
           )}
-        </Stack>
+        </section>
 
-        <Stack gap="xs">
-          <Text fw={600} mb="xs">
-            Suivi
-          </Text>
+        <section>
+          <Text className={classes.sectionTitle}>Informations complémentaires</Text>
           {editing && canUpdate ? (
-            <>
-              <Select
-                label="Statut"
-                data={ANIMAL_STATUS_OPTIONS}
-                value={form.status}
-                onChange={(v) => v && patchForm('status', v as AnimalStatus)}
-                disabled={pending}
-              />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <Textarea
                 label="Biographie"
                 minRows={3}
                 value={form.biography}
                 onChange={(e) => patchForm('biography', e.currentTarget.value)}
                 disabled={pending}
+                className={classes.spanFull}
               />
               <Textarea
                 label="Soins prodigués"
@@ -606,6 +658,7 @@ export function AnimalDetailPageClient({
                 value={form.careProvided}
                 onChange={(e) => patchForm('careProvided', e.currentTarget.value)}
                 disabled={pending}
+                className={classes.spanFull}
               />
               <Textarea
                 label="Notes"
@@ -613,6 +666,7 @@ export function AnimalDetailPageClient({
                 value={form.notes}
                 onChange={(e) => patchForm('notes', e.currentTarget.value)}
                 disabled={pending}
+                className={classes.spanFull}
               />
               <TextInput
                 label="Adoptant"
@@ -627,10 +681,9 @@ export function AnimalDetailPageClient({
                 onChange={(d) => patchForm('departureDate', d)}
                 disabled={pending}
               />
-            </>
+            </SimpleGrid>
           ) : (
-            <>
-              <FieldReadout label="Statut" value={ANIMAL_STATUS_LABELS[animal.status]} />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <FieldReadout label="Biographie" value={animal.biography} />
               <FieldReadout label="Soins prodigués" value={animal.careProvided} />
               <FieldReadout label="Notes" value={animal.notes} />
@@ -643,10 +696,10 @@ export function AnimalDetailPageClient({
                     : null
                 }
               />
-            </>
+            </SimpleGrid>
           )}
-        </Stack>
-      </SimpleGrid>
+        </section>
+      </Stack>
 
       {editing && canUpdateCore && !canUpdate ? (
         <Text size="sm" c="dimmed" mt="lg">
