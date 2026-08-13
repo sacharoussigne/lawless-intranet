@@ -37,3 +37,30 @@
   border: 1.5px solid var(--shelter-border);
   box-shadow: var(--shelter-shadow-card);
 }
+
+/* mantine-datatable — subtle filter icons in header */
+.mantine-datatable-table thead tr th {
+  .mantine-datatable-header-cell-filter-action-icon,
+  .mantine-ActionIcon-root {
+    --ai-bg: transparent;
+    --ai-hover: var(--mantine-color-terracotta-0);
+    --ai-color: var(--shelter-muted);
+    --ai-hover-color: var(--shelter-terracotta);
+    background-color: transparent !important;
+    color: var(--shelter-muted) !important;
+    border: none;
+    box-shadow: none;
+
+    &:hover {
+      background-color: var(--mantine-color-terracotta-0) !important;
+      color: var(--shelter-terracotta) !important;
+    }
+  }
+
+  .mantine-datatable-header-cell-filter-action-icon[data-active] {
+    --ai-bg: var(--mantine-color-terracotta-0);
+    --ai-color: var(--shelter-terracotta);
+    background-color: var(--mantine-color-terracotta-0) !important;
+    color: var(--shelter-terracotta) !important;
+  }
+}
