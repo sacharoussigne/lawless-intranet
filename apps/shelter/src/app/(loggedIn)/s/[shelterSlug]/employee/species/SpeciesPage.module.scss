@@ -214,6 +214,44 @@
   align-items: flex-end;
 }
 
+.titleActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+
+  :global(.mantine-ActionIcon-root),
+  .dragHandle {
+    flex-shrink: 0;
+  }
+}
+
+.headerRow,
+.breedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.breedHeader {
+  margin-bottom: 0.65rem;
+}
+
+.breedName {
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.speciesTitle {
+  margin: 0 !important;
+  line-height: 1 !important;
+  display: flex;
+  align-items: center;
+}
+
 .breedCard {
   padding: 0.9rem 1rem;
   border-radius: 6px;

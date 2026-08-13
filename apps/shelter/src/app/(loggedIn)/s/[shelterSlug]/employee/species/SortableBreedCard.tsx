@@ -32,13 +32,14 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import classes from './SpeciesPage.module.scss';
 import { SortableVariantChip } from './SortableVariantChip';
 import type { BreedDTO } from './types';
 
 export function SortableBreedCard({
   breed,
-  pending,
+  busyKey,
   editingBreedId,
   breedDraft,
   editingVariantId,
@@ -60,7 +61,7 @@ export function SortableBreedCard({
   onVariantsReorder,
 }: {
   breed: BreedDTO;
-  pending: boolean;
+  busyKey: string | null;
   editingBreedId: string | null;
   breedDraft: string;
   editingVariantId: string | null;
@@ -70,7 +71,7 @@ export function SortableBreedCard({
   onSaveBreed: () => void;
   onCancelEditBreed: () => void;
   onStartEditBreed: () => void;
-  onDeleteBreed: () => void;
+  onDeleteBreed: () => void | Promise<void>;
   onSavePrices: (prices: {
     shelterPurchasePrice: number;
     animalierPurchasePrice: number | null;
@@ -79,7 +80,7 @@ export function SortableBreedCard({
   onSaveVariant: (variantId: string) => void;
   onCancelEditVariant: () => void;
   onStartEditVariant: (variantId: string, label: string) => void;
-  onDeleteVariant: (variantId: string, label: string) => void;
+  onDeleteVariant: (variantId: string) => void | Promise<void>;
   onVariantInputChange: (value: string) => void;
   onAddVariant: () => void;
   onVariantsReorder: (activeId: string, overId: string) => void;
@@ -152,6 +153,10 @@ export function SortableBreedCard({
     onVariantsReorder(String(active.id), String(over.id));
   };
 
+  const savingBreed = busyKey === `save-breed:${breed.id}`;
+  const savingPrices = busyKey === `save-prices:${breed.id}`;
+  const addingVariant = busyKey === `add-variant:${breed.id}`;
+
   return (
     <div
       ref={setNodeRef}
@@ -161,9 +166,9 @@ export function SortableBreedCard({
         transition,
       }}
     >
-      <Group justify="space-between" wrap="wrap" mb="xs" align="flex-start">
+      <div className={classes.breedHeader}>
         {editingBreedId === breed.id ? (
-          <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
+          <Group gap="xs" wrap="nowrap" align="center" style={{ flex: 1 }}>
             <TextInput
               size="sm"
               value={breedDraft}
@@ -180,43 +185,53 @@ export function SortableBreedCard({
               color="terracotta"
               variant="filled"
               onClick={onSaveBreed}
+              loading={savingBreed}
             >
               <IconCheck size={14} />
             </ActionIcon>
           </Group>
         ) : (
-          <Group gap="xs" wrap="nowrap">
-            <button
-              type="button"
-              className={classes.dragHandle}
-              aria-label={`Réordonner ${breed.name}`}
-              {...attributes}
-              {...listeners}
+          <>
+            <div className={classes.titleActions}>
+              <button
+                type="button"
+                className={classes.dragHandle}
+                aria-label={`Réordonner ${breed.name}`}
+                {...attributes}
+                {...listeners}
+              >
+                <IconGripVertical size={16} stroke={1.5} />
+              </button>
+              <Text fw={700} className={classes.breedName}>
+                {breed.name}
+              </Text>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="terracotta"
+                aria-label={`Renommer ${breed.name}`}
+                onClick={onStartEditBreed}
+              >
+                <IconPencil size={14} />
+              </ActionIcon>
+            </div>
+            <DeleteConfirmPopover
+              title="Supprimer la race"
+              message={`Supprimer la race « ${breed.name} » et ses variantes ?`}
+              onConfirm={onDeleteBreed}
             >
-              <IconGripVertical size={16} stroke={1.5} />
-            </button>
-            <Text fw={700}>{breed.name}</Text>
-            <ActionIcon
-              size="sm"
-              variant="subtle"
-              color="terracotta"
-              aria-label={`Renommer ${breed.name}`}
-              onClick={onStartEditBreed}
-            >
-              <IconPencil size={14} />
-            </ActionIcon>
-            <ActionIcon
-              size="sm"
-              variant="subtle"
-              color="danger"
-              aria-label={`Supprimer ${breed.name}`}
-              onClick={onDeleteBreed}
-            >
-              <IconTrash size={14} />
-            </ActionIcon>
-          </Group>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="danger"
+                aria-label={`Supprimer ${breed.name}`}
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            </DeleteConfirmPopover>
+          </>
         )}
-      </Group>
+      </div>
 
       <div className={classes.priceRow}>
         <NumberInput
@@ -250,7 +265,7 @@ export function SortableBreedCard({
           className={classes.priceSave}
           onClick={handleSavePrices}
           disabled={!canSavePrices}
-          loading={pending}
+          loading={savingPrices}
         >
           Enregistrer les prix
         </Button>
@@ -280,11 +295,12 @@ export function SortableBreedCard({
                   variant={variant}
                   editing={editingVariantId === variant.id}
                   draft={variantDraft}
+                  saving={busyKey === `save-variant:${variant.id}`}
                   onDraftChange={onVariantDraftChange}
                   onSave={() => onSaveVariant(variant.id)}
                   onCancelEdit={onCancelEditVariant}
                   onStartEdit={() => onStartEditVariant(variant.id, variant.label)}
-                  onDelete={() => onDeleteVariant(variant.id, variant.label)}
+                  onDelete={() => onDeleteVariant(variant.id)}
                 />
               ))}
             </div>
@@ -309,7 +325,7 @@ export function SortableBreedCard({
           variant="light"
           leftSection={<IconPlus size={14} />}
           onClick={onAddVariant}
-          loading={pending}
+          loading={addingVariant}
         >
           Ajouter
         </Button>
