@@ -1,12 +1,11 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Button,
   Container,
   Group,
-  Modal,
   Stack,
   Text,
   TextInput,
@@ -35,6 +34,7 @@ import {
   IconTrash,
   IconX,
 } from '@tabler/icons-react';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import {
   createSpecies,
@@ -82,7 +82,7 @@ export function SpeciesPageClient({
     initialSpecies[0]?.id ?? null,
   );
   const [search, setSearch] = useState('');
-  const [pending, startTransition] = useTransition();
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -92,11 +92,15 @@ export function SpeciesPageClient({
   const [breedDraft, setBreedDraft] = useState('');
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [variantDraft, setVariantDraft] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<{
-    kind: 'species' | 'breed' | 'variant';
-    id: string;
-    label: string;
-  } | null>(null);
+
+  const runBusy = useCallback(async (key: string, fn: () => Promise<void>) => {
+    setBusyKey(key);
+    try {
+      await fn();
+    } finally {
+      setBusyKey(null);
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -120,10 +124,7 @@ export function SpeciesPageClient({
     setSpecies((prev) => prev.map((s) => (s.id === next.id ? next : s)));
   };
 
-  const patchBreed = (
-    breedId: string,
-    updater: (breed: BreedDTO) => BreedDTO,
-  ) => {
+  const patchBreed = (breedId: string, updater: (breed: BreedDTO) => BreedDTO) => {
     if (!selected) return;
     replaceSpecies({
       ...selected,
@@ -135,7 +136,7 @@ export function SpeciesPageClient({
 
   const persistSpeciesOrder = (next: SpeciesDTO[], previous: SpeciesDTO[]) => {
     setSpecies(next);
-    startTransition(async () => {
+    void (async () => {
       const result = await reorderSpecies(shelterSlug, {
         items: next.map((item, index) => ({ id: item.id, sortOrder: index })),
       });
@@ -147,7 +148,7 @@ export function SpeciesPageClient({
           color: 'danger',
         });
       }
-    });
+    })();
   };
 
   const handleSpeciesDragEnd = (event: DragEndEvent) => {
@@ -178,7 +179,7 @@ export function SpeciesPageClient({
     const nextSpecies: SpeciesDTO = { ...selected, breeds: nextBreeds };
     replaceSpecies(nextSpecies);
 
-    startTransition(async () => {
+    void (async () => {
       const result = await reorderBreeds(shelterSlug, {
         speciesId: selected.id,
         items: nextBreeds.map((item, index) => ({ id: item.id, sortOrder: index })),
@@ -191,7 +192,7 @@ export function SpeciesPageClient({
           color: 'danger',
         });
       }
-    });
+    })();
   };
 
   const handleVariantsReorder = (
@@ -217,7 +218,7 @@ export function SpeciesPageClient({
     };
     replaceSpecies(nextSpecies);
 
-    startTransition(async () => {
+    void (async () => {
       const result = await reorderVariants(shelterSlug, {
         breedId,
         items: nextVariants.map((item, index) => ({ id: item.id, sortOrder: index })),
@@ -230,13 +231,13 @@ export function SpeciesPageClient({
           color: 'danger',
         });
       }
-    });
+    })();
   };
 
   const handleCreateSpecies = () => {
     const name = search.trim();
     if (!name) return;
-    startTransition(async () => {
+    void runBusy('create-species', async () => {
       const result = await createSpecies(shelterSlug, { name });
       if (result.status !== 201 || !('data' in result) || !result.data) {
         notifications.show({
@@ -267,7 +268,7 @@ export function SpeciesPageClient({
       setEditingName(false);
       return;
     }
-    startTransition(async () => {
+    void runBusy('save-species-name', async () => {
       const result = await updateSpecies(shelterSlug, { id: selected.id, name });
       if (result.status !== 200 || !('data' in result) || !result.data) {
         notifications.show({
@@ -283,11 +284,39 @@ export function SpeciesPageClient({
     });
   };
 
+  const handleDeleteSpecies = async () => {
+    if (!selected) return;
+    const target = { id: selected.id, label: selected.name };
+    await runBusy(`delete:species:${target.id}`, async () => {
+      const result = await deleteSpecies(shelterSlug, { id: target.id });
+      if (result.status !== 200) {
+        notifications.show({
+          title: 'Erreur',
+          message: actionErrorMessage(result, 'Suppression impossible'),
+          color: 'danger',
+        });
+        return;
+      }
+      setSpecies((prev) => {
+        const next = prev.filter((s) => s.id !== target.id);
+        setSelectedId((current) =>
+          current === target.id ? (next[0]?.id ?? null) : current,
+        );
+        return next;
+      });
+      notifications.show({
+        title: 'Supprimé',
+        message: target.label,
+        color: 'terracotta',
+      });
+    });
+  };
+
   const handleAddBreed = () => {
     if (!selected) return;
     const name = breedInput.trim();
     if (!name) return;
-    startTransition(async () => {
+    void runBusy('add-breed', async () => {
       const result = await createBreed(shelterSlug, {
         speciesId: selected.id,
         name,
@@ -318,7 +347,7 @@ export function SpeciesPageClient({
     if (!selected) return;
     const name = breedDraft.trim();
     if (!name) return;
-    startTransition(async () => {
+    void runBusy(`save-breed:${id}`, async () => {
       const result = await updateBreed(shelterSlug, { id, name });
       if (result.status !== 200 || !('data' in result) || !result.data) {
         notifications.show({
@@ -347,7 +376,7 @@ export function SpeciesPageClient({
     if (!selected) return;
     const current = selected.breeds.find((b) => b.id === id);
     if (!current) return;
-    startTransition(async () => {
+    void runBusy(`save-prices:${id}`, async () => {
       const result = await updateBreed(shelterSlug, {
         id,
         name: current.name,
@@ -375,11 +404,35 @@ export function SpeciesPageClient({
     });
   };
 
+  const handleDeleteBreed = async (id: string, label: string) => {
+    if (!selected) return;
+    await runBusy(`delete:breed:${id}`, async () => {
+      const result = await deleteBreed(shelterSlug, { id });
+      if (result.status !== 200) {
+        notifications.show({
+          title: 'Erreur',
+          message: actionErrorMessage(result, 'Suppression impossible'),
+          color: 'danger',
+        });
+        return;
+      }
+      replaceSpecies({
+        ...selected,
+        breeds: selected.breeds.filter((b) => b.id !== id),
+      });
+      notifications.show({
+        title: 'Supprimé',
+        message: label,
+        color: 'terracotta',
+      });
+    });
+  };
+
   const handleAddVariant = (breedId: string) => {
     if (!selected) return;
     const label = (variantInputs[breedId] ?? '').trim();
     if (!label) return;
-    startTransition(async () => {
+    void runBusy(`add-variant:${breedId}`, async () => {
       const result = await createVariant(shelterSlug, { breedId, label });
       if (result.status !== 201 || !('data' in result) || !result.data) {
         notifications.show({
@@ -401,7 +454,7 @@ export function SpeciesPageClient({
     if (!selected) return;
     const label = variantDraft.trim();
     if (!label) return;
-    startTransition(async () => {
+    void runBusy(`save-variant:${id}`, async () => {
       const result = await updateVariant(shelterSlug, { id, label });
       if (result.status !== 200 || !('data' in result) || !result.data) {
         notifications.show({
@@ -419,63 +472,28 @@ export function SpeciesPageClient({
     });
   };
 
-  const confirmDelete = () => {
-    if (!deleteTarget) return;
-    const target = deleteTarget;
-    startTransition(async () => {
-      if (target.kind === 'species') {
-        const result = await deleteSpecies(shelterSlug, { id: target.id });
-        if (result.status !== 200) {
-          notifications.show({
-            title: 'Erreur',
-            message: actionErrorMessage(result, 'Suppression impossible'),
-            color: 'danger',
-          });
-          return;
-        }
-        setSpecies((prev) => {
-          const next = prev.filter((s) => s.id !== target.id);
-          setSelectedId((current) =>
-            current === target.id ? (next[0]?.id ?? null) : current,
-          );
-          return next;
+  const handleDeleteVariant = async (id: string, label: string) => {
+    if (!selected) return;
+    await runBusy(`delete:variant:${id}`, async () => {
+      const result = await deleteVariant(shelterSlug, { id });
+      if (result.status !== 200) {
+        notifications.show({
+          title: 'Erreur',
+          message: actionErrorMessage(result, 'Suppression impossible'),
+          color: 'danger',
         });
-      } else if (target.kind === 'breed' && selected) {
-        const result = await deleteBreed(shelterSlug, { id: target.id });
-        if (result.status !== 200) {
-          notifications.show({
-            title: 'Erreur',
-            message: actionErrorMessage(result, 'Suppression impossible'),
-            color: 'danger',
-          });
-          return;
-        }
-        replaceSpecies({
-          ...selected,
-          breeds: selected.breeds.filter((b) => b.id !== target.id),
-        });
-      } else if (target.kind === 'variant' && selected) {
-        const result = await deleteVariant(shelterSlug, { id: target.id });
-        if (result.status !== 200) {
-          notifications.show({
-            title: 'Erreur',
-            message: actionErrorMessage(result, 'Suppression impossible'),
-            color: 'danger',
-          });
-          return;
-        }
-        replaceSpecies({
-          ...selected,
-          breeds: selected.breeds.map((breed) => ({
-            ...breed,
-            variants: breed.variants.filter((v) => v.id !== target.id),
-          })),
-        });
+        return;
       }
-      setDeleteTarget(null);
+      replaceSpecies({
+        ...selected,
+        breeds: selected.breeds.map((breed) => ({
+          ...breed,
+          variants: breed.variants.filter((v) => v.id !== id),
+        })),
+      });
       notifications.show({
         title: 'Supprimé',
-        message: target.label,
+        message: label,
         color: 'terracotta',
       });
     });
@@ -526,7 +544,7 @@ export function SpeciesPageClient({
                 size="input-sm"
                 aria-label="Créer une espèce"
                 onClick={handleCreateSpecies}
-                loading={pending}
+                loading={busyKey === 'create-species'}
                 disabled={search.trim().length === 0}
               >
                 <IconPlus size={16} />
@@ -579,43 +597,47 @@ export function SpeciesPageClient({
           ) : (
             <>
               <div className={classes.detailHeader}>
-                <Group justify="space-between" align="flex-start" wrap="wrap">
-                  {editingName ? (
-                    <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
-                      <TextInput
-                        value={nameDraft}
-                        onChange={(e) => setNameDraft(e.currentTarget.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveSpeciesName();
-                          if (e.key === 'Escape') setEditingName(false);
-                        }}
-                        style={{ flex: 1 }}
-                        autoFocus
-                      />
-                      <ActionIcon
-                        color="terracotta"
-                        variant="filled"
-                        onClick={handleSaveSpeciesName}
-                        loading={pending}
-                        aria-label="Enregistrer"
+                {editingName ? (
+                  <Group gap="xs" wrap="nowrap" align="center">
+                    <TextInput
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.currentTarget.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveSpeciesName();
+                        if (e.key === 'Escape') setEditingName(false);
+                      }}
+                      style={{ flex: 1 }}
+                      autoFocus
+                    />
+                    <ActionIcon
+                      color="terracotta"
+                      variant="filled"
+                      onClick={handleSaveSpeciesName}
+                      loading={busyKey === 'save-species-name'}
+                      aria-label="Enregistrer"
+                    >
+                      <IconCheck size={16} />
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setEditingName(false)}
+                      aria-label="Annuler"
+                    >
+                      <IconX size={16} />
+                    </ActionIcon>
+                  </Group>
+                ) : (
+                  <div className={classes.headerRow}>
+                    <div className={classes.titleActions}>
+                      <Title
+                        order={2}
+                        className={`shelter-display-title ${classes.speciesTitle}`}
                       >
-                        <IconCheck size={16} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        color="gray"
-                        onClick={() => setEditingName(false)}
-                        aria-label="Annuler"
-                      >
-                        <IconX size={16} />
-                      </ActionIcon>
-                    </Group>
-                  ) : (
-                    <Group gap="xs">
-                      <Title order={2} className="shelter-display-title">
                         {selected.name}
                       </Title>
                       <ActionIcon
+                        size="sm"
                         variant="subtle"
                         color="terracotta"
                         aria-label="Renommer"
@@ -626,23 +648,24 @@ export function SpeciesPageClient({
                       >
                         <IconPencil size={16} />
                       </ActionIcon>
-                    </Group>
-                  )}
-                  <Button
-                    color="danger"
-                    variant="light"
-                    leftSection={<IconTrash size={16} />}
-                    onClick={() =>
-                      setDeleteTarget({
-                        kind: 'species',
-                        id: selected.id,
-                        label: selected.name,
-                      })
-                    }
-                  >
-                    Supprimer
-                  </Button>
-                </Group>
+                    </div>
+                    <DeleteConfirmPopover
+                      title="Supprimer l’espèce"
+                      message={`Supprimer l’espèce « ${selected.name} » et toutes ses races / variantes ?`}
+                      onConfirm={handleDeleteSpecies}
+                    >
+                      <ActionIcon
+                        size="sm"
+                        variant="subtle"
+                        color="danger"
+                        aria-label="Supprimer"
+                        loading={busyKey === `delete:species:${selected.id}`}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </DeleteConfirmPopover>
+                  </div>
+                )}
               </div>
 
               <div className={classes.detailBody}>
@@ -667,7 +690,7 @@ export function SpeciesPageClient({
                       variant="light"
                       leftSection={<IconPlus size={16} />}
                       onClick={handleAddBreed}
-                      loading={pending}
+                      loading={busyKey === 'add-breed'}
                     >
                       Ajouter
                     </Button>
@@ -692,7 +715,7 @@ export function SpeciesPageClient({
                             <SortableBreedCard
                               key={breed.id}
                               breed={breed}
-                              pending={pending}
+                              busyKey={busyKey}
                               editingBreedId={editingBreedId}
                               breedDraft={breedDraft}
                               editingVariantId={editingVariantId}
@@ -706,11 +729,7 @@ export function SpeciesPageClient({
                                 setBreedDraft(breed.name);
                               }}
                               onDeleteBreed={() =>
-                                setDeleteTarget({
-                                  kind: 'breed',
-                                  id: breed.id,
-                                  label: breed.name,
-                                })
+                                handleDeleteBreed(breed.id, breed.name)
                               }
                               onSavePrices={(prices) =>
                                 handleSaveBreedPrices(breed.id, prices)
@@ -724,13 +743,12 @@ export function SpeciesPageClient({
                                 setEditingVariantId(variantId);
                                 setVariantDraft(label);
                               }}
-                              onDeleteVariant={(variantId, label) =>
-                                setDeleteTarget({
-                                  kind: 'variant',
-                                  id: variantId,
-                                  label,
-                                })
-                              }
+                              onDeleteVariant={(variantId) => {
+                                const label =
+                                  breed.variants.find((v) => v.id === variantId)?.label ??
+                                  variantId;
+                                return handleDeleteVariant(variantId, label);
+                              }}
                               onVariantInputChange={(value) =>
                                 setVariantInputs((prev) => ({
                                   ...prev,
@@ -753,31 +771,6 @@ export function SpeciesPageClient({
           )}
         </section>
       </div>
-
-      <Modal
-        opened={deleteTarget != null}
-        onClose={() => setDeleteTarget(null)}
-        title="Confirmer la suppression"
-        centered
-      >
-        <Stack>
-          <Text size="sm">
-            {deleteTarget?.kind === 'species'
-              ? `Supprimer l’espèce « ${deleteTarget.label} » et toutes ses races / variantes ?`
-              : deleteTarget?.kind === 'breed'
-                ? `Supprimer la race « ${deleteTarget.label} » et ses variantes ?`
-                : `Supprimer « ${deleteTarget?.label} » ?`}
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={() => setDeleteTarget(null)}>
-              Annuler
-            </Button>
-            <Button color="danger" loading={pending} onClick={confirmDelete}>
-              Supprimer
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Container>
   );
 }

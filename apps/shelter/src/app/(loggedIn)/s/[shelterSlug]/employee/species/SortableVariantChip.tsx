@@ -4,6 +4,7 @@ import { ActionIcon, Group, TextInput } from '@mantine/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconCheck, IconGripVertical, IconPencil, IconTrash } from '@tabler/icons-react';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import classes from './SpeciesPage.module.scss';
 import type { SpeciesVariantDTO } from './types';
 
@@ -11,6 +12,7 @@ export function SortableVariantChip({
   variant,
   editing,
   draft,
+  saving,
   onDraftChange,
   onSave,
   onCancelEdit,
@@ -20,11 +22,12 @@ export function SortableVariantChip({
   variant: SpeciesVariantDTO;
   editing: boolean;
   draft: string;
+  saving?: boolean;
   onDraftChange: (value: string) => void;
   onSave: () => void;
   onCancelEdit: () => void;
   onStartEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => void | Promise<void>;
 }) {
   const {
     attributes,
@@ -43,7 +46,7 @@ export function SortableVariantChip({
   if (editing) {
     return (
       <div ref={setNodeRef} style={style}>
-        <Group gap={4} wrap="nowrap">
+        <Group gap={4} wrap="nowrap" align="center">
           <TextInput
             size="xs"
             value={draft}
@@ -54,7 +57,13 @@ export function SortableVariantChip({
             }}
             autoFocus
           />
-          <ActionIcon size="sm" color="terracotta" variant="filled" onClick={onSave}>
+          <ActionIcon
+            size="sm"
+            color="terracotta"
+            variant="filled"
+            onClick={onSave}
+            loading={saving}
+          >
             <IconCheck size={14} />
           </ActionIcon>
         </Group>
@@ -86,14 +95,19 @@ export function SortableVariantChip({
       >
         <IconPencil size={14} />
       </button>
-      <button
-        type="button"
-        className={classes.chipButton}
-        aria-label={`Supprimer ${variant.label}`}
-        onClick={onDelete}
+      <DeleteConfirmPopover
+        title="Supprimer la variante"
+        message={`Supprimer « ${variant.label} » ?`}
+        onConfirm={onDelete}
       >
-        <IconTrash size={14} />
-      </button>
+        <button
+          type="button"
+          className={classes.chipButton}
+          aria-label={`Supprimer ${variant.label}`}
+        >
+          <IconTrash size={14} />
+        </button>
+      </DeleteConfirmPopover>
     </span>
   );
 }
