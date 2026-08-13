@@ -519,7 +519,8 @@ export function AnimalDetailPageClient({
           {editing ? (
             <>
               <Button
-                variant="default"
+                variant="light"
+                color="terracotta"
                 leftSection={<IconX size={16} />}
                 onClick={cancelEditing}
                 disabled={pending}
@@ -590,7 +591,7 @@ export function AnimalDetailPageClient({
               />
               <div>
                 <NumberInput
-                  label="Prix d’adoption (€)"
+                  label="Prix d’adoption ($)"
                   required
                   min={0}
                   decimalScale={2}
@@ -669,7 +670,7 @@ export function AnimalDetailPageClient({
                 className={classes.spanFull}
               />
               <TextInput
-                label="Adoptant"
+                label="Adoptant(s)"
                 value={form.adopterName}
                 onChange={(e) => patchForm('adopterName', e.currentTarget.value)}
                 disabled={pending}
@@ -687,7 +688,7 @@ export function AnimalDetailPageClient({
               <FieldReadout label="Biographie" value={animal.biography} />
               <FieldReadout label="Soins prodigués" value={animal.careProvided} />
               <FieldReadout label="Notes" value={animal.notes} />
-              <FieldReadout label="Adoptant" value={animal.adopterName} />
+              <FieldReadout label="Adoptant(s)" value={animal.adopterName} />
               <FieldReadout
                 label="Date de départ"
                 value={
