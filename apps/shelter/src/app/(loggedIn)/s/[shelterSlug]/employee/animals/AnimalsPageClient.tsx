@@ -8,6 +8,7 @@ import {
   Modal,
   NumberInput,
   Select,
+  SimpleGrid,
   Stack,
   Table,
   Text,
@@ -160,68 +161,74 @@ function CreateAnimalForm({
 
   return (
     <Stack gap="md">
-      <TextInput
-        label="Nom"
-        required
-        value={name}
-        onChange={(e) => setName(e.currentTarget.value)}
-        disabled={pending || loadingOptions}
-      />
-      <Select
-        label="Espèce"
-        required
-        data={speciesOptions.map((s) => ({ value: s.id, label: s.name }))}
-        value={speciesId}
-        onChange={handleSpeciesChange}
-        searchable
-        disabled={pending || loadingOptions}
-      />
-      <Select
-        label="Race"
-        required
-        data={breeds.map((b) => ({ value: b.id, label: b.name }))}
-        value={breedId}
-        onChange={handleBreedChange}
-        searchable
-        disabled={pending || loadingOptions || !speciesId}
-      />
-      <Select
-        label="Variante"
-        data={variants.map((v) => ({ value: v.id, label: v.label }))}
-        value={variantId}
-        onChange={setVariantId}
-        clearable
-        searchable
-        disabled={pending || loadingOptions || !breedId || variants.length === 0}
-        placeholder={variants.length === 0 ? 'Aucune variante' : undefined}
-      />
-      <RpDateInput
-        label="Date d’arrivée"
-        required
-        value={arrivalDate}
-        onChange={setArrivalDate}
-        disabled={pending || loadingOptions}
-      />
-      <div>
-        <NumberInput
-          label="Prix d’adoption (€)"
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        <TextInput
+          label="Nom"
           required
-          min={0}
-          decimalScale={2}
-          fixedDecimalScale
-          value={adoptionPrice}
-          onChange={setAdoptionPrice}
+          value={name}
+          onChange={(e) => setName(e.currentTarget.value)}
           disabled={pending || loadingOptions}
         />
-        <AdoptionPriceHint
-          adoptionPrice={
-            typeof adoptionPrice === 'number'
-              ? adoptionPrice
-              : Number(String(adoptionPrice).replace(',', '.')) || null
-          }
-          animalierPurchasePrice={selectedBreed?.animalierPurchasePrice ?? null}
+        <RpDateInput
+          label="Date d’arrivée"
+          required
+          value={arrivalDate}
+          onChange={setArrivalDate}
+          disabled={pending || loadingOptions}
         />
-      </div>
+      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        <Select
+          label="Espèce"
+          required
+          data={speciesOptions.map((s) => ({ value: s.id, label: s.name }))}
+          value={speciesId}
+          onChange={handleSpeciesChange}
+          searchable
+          disabled={pending || loadingOptions}
+        />
+        <Select
+          label="Race"
+          required
+          data={breeds.map((b) => ({ value: b.id, label: b.name }))}
+          value={breedId}
+          onChange={handleBreedChange}
+          searchable
+          disabled={pending || loadingOptions || !speciesId}
+        />
+      </SimpleGrid>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        <Select
+          label="Variante"
+          data={variants.map((v) => ({ value: v.id, label: v.label }))}
+          value={variantId}
+          onChange={setVariantId}
+          clearable
+          searchable
+          disabled={pending || loadingOptions || !breedId || variants.length === 0}
+          placeholder={variants.length === 0 ? 'Aucune variante' : undefined}
+        />
+        <div>
+          <NumberInput
+            label="Prix d’adoption ($)"
+            required
+            min={0}
+            decimalScale={2}
+            fixedDecimalScale
+            value={adoptionPrice}
+            onChange={setAdoptionPrice}
+            disabled={pending || loadingOptions}
+          />
+          <AdoptionPriceHint
+            adoptionPrice={
+              typeof adoptionPrice === 'number'
+                ? adoptionPrice
+                : Number(String(adoptionPrice).replace(',', '.')) || null
+            }
+            animalierPurchasePrice={selectedBreed?.animalierPurchasePrice ?? null}
+          />
+        </div>
+      </SimpleGrid>
       <Select
         label="Responsable"
         required
@@ -307,7 +314,7 @@ export function AnimalsPageClient({
         opened={createOpen}
         onClose={() => setCreateOpen(false)}
         title="Nouvel animal"
-        size="lg"
+        size="xl"
       >
         <CreateAnimalForm
           shelterSlug={shelterSlug}

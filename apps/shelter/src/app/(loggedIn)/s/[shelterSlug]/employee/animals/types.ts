@@ -77,7 +77,7 @@ export function toIsoDateOnly(date: Date): string {
 
 export function formatMoney(value: number | null | undefined): string {
   if (value == null) return '—';
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
 export function actionErrorMessage(

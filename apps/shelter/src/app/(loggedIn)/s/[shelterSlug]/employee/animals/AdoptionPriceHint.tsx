@@ -1,6 +1,7 @@
 'use client';
 
-import { Text } from '@mantine/core';
+import { Group, Text } from '@mantine/core';
+import { IconCheck, IconMinus, IconX } from '@tabler/icons-react';
 import { formatMoney } from './types';
 
 export function AdoptionPriceHint({
@@ -13,20 +14,28 @@ export function AdoptionPriceHint({
   if (animalierPurchasePrice == null || adoptionPrice == null) return null;
 
   const animalierLabel = formatMoney(animalierPurchasePrice);
-  let comparison: string;
+  let color: string;
+  let Icon: typeof IconCheck;
+  let label: string;
+
   if (adoptionPrice < animalierPurchasePrice) {
-    comparison = 'moins cher';
+    color = 'teal';
+    Icon = IconCheck;
+    label = `Moins cher que l'animalier (${animalierLabel})`;
   } else if (adoptionPrice > animalierPurchasePrice) {
-    comparison = 'plus cher';
+    color = 'danger';
+    Icon = IconX;
+    label = `Plus cher que l'animalier (${animalierLabel})`;
   } else {
-    comparison = 'même prix';
+    color = 'leather';
+    Icon = IconMinus;
+    label = `Même prix que l'animalier (${animalierLabel})`;
   }
 
   return (
-    <Text size="sm" c="dimmed">
-      {comparison === 'même prix'
-        ? `Même prix que l'animalier (${animalierLabel})`
-        : `${comparison.charAt(0).toUpperCase()}${comparison.slice(1)} que l'animalier (${animalierLabel})`}
-    </Text>
+    <Group gap={6} mt={4} wrap="nowrap" c={color}>
+      <Icon size={14} stroke={2} />
+      <Text size="sm">{label}</Text>
+    </Group>
   );
 }
