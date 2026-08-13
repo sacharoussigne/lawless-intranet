@@ -38,24 +38,24 @@ import {
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import {
   createSpecies,
-  createSubspecies,
+  createBreed,
   createVariant,
   deleteSpecies,
-  deleteSubspecies,
+  deleteBreed,
   deleteVariant,
   reorderSpecies,
-  reorderSubspecies,
+  reorderBreeds,
   reorderVariants,
   updateSpecies,
-  updateSubspecies,
+  updateBreed,
   updateVariant,
 } from '@/app/_actions/species';
 import { SortableSpeciesItem } from './SortableSpeciesItem';
-import { SortableSubspeciesCard } from './SortableSubspeciesCard';
-import type { SpeciesDTO, SubspeciesDTO } from './types';
+import { SortableBreedCard } from './SortableBreedCard';
+import type { SpeciesDTO, BreedDTO } from './types';
 import classes from './SpeciesPage.module.scss';
 
-export type { SpeciesDTO, SubspeciesDTO, SpeciesVariantDTO } from './types';
+export type { SpeciesDTO, BreedDTO, SpeciesVariantDTO } from './types';
 
 function actionErrorMessage(
   result: { status: number; error?: string | Array<{ message: string }> },
@@ -86,14 +86,14 @@ export function SpeciesPageClient({
 
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
-  const [subInput, setSubInput] = useState('');
+  const [breedInput, setBreedInput] = useState('');
   const [variantInputs, setVariantInputs] = useState<Record<string, string>>({});
-  const [editingSubId, setEditingSubId] = useState<string | null>(null);
-  const [subDraft, setSubDraft] = useState('');
+  const [editingBreedId, setEditingBreedId] = useState<string | null>(null);
+  const [breedDraft, setBreedDraft] = useState('');
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [variantDraft, setVariantDraft] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{
-    kind: 'species' | 'subspecies' | 'variant';
+    kind: 'species' | 'breed' | 'variant';
     id: string;
     label: string;
   } | null>(null);
@@ -120,15 +120,15 @@ export function SpeciesPageClient({
     setSpecies((prev) => prev.map((s) => (s.id === next.id ? next : s)));
   };
 
-  const patchSubspecies = (
-    subspeciesId: string,
-    updater: (sub: SubspeciesDTO) => SubspeciesDTO,
+  const patchBreed = (
+    breedId: string,
+    updater: (breed: BreedDTO) => BreedDTO,
   ) => {
     if (!selected) return;
     replaceSpecies({
       ...selected,
-      subspecies: selected.subspecies.map((sub) =>
-        sub.id === subspeciesId ? updater(sub) : sub,
+      breeds: selected.breeds.map((breed) =>
+        breed.id === breedId ? updater(breed) : breed,
       ),
     });
   };
@@ -164,24 +164,24 @@ export function SpeciesPageClient({
     persistSpeciesOrder(next, previous);
   };
 
-  const handleSubspeciesDragEnd = (event: DragEndEvent) => {
+  const handleBreedsDragEnd = (event: DragEndEvent) => {
     if (!selected) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = selected.subspecies.findIndex((item) => item.id === active.id);
-    const newIndex = selected.subspecies.findIndex((item) => item.id === over.id);
+    const oldIndex = selected.breeds.findIndex((item) => item.id === active.id);
+    const newIndex = selected.breeds.findIndex((item) => item.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
     const previous = selected;
-    const nextSubs = withSortOrders(arrayMove(selected.subspecies, oldIndex, newIndex));
-    const nextSpecies: SpeciesDTO = { ...selected, subspecies: nextSubs };
+    const nextBreeds = withSortOrders(arrayMove(selected.breeds, oldIndex, newIndex));
+    const nextSpecies: SpeciesDTO = { ...selected, breeds: nextBreeds };
     replaceSpecies(nextSpecies);
 
     startTransition(async () => {
-      const result = await reorderSubspecies(shelterSlug, {
+      const result = await reorderBreeds(shelterSlug, {
         speciesId: selected.id,
-        items: nextSubs.map((item, index) => ({ id: item.id, sortOrder: index })),
+        items: nextBreeds.map((item, index) => ({ id: item.id, sortOrder: index })),
       });
       if (result.status !== 200) {
         replaceSpecies(previous);
@@ -195,31 +195,31 @@ export function SpeciesPageClient({
   };
 
   const handleVariantsReorder = (
-    subspeciesId: string,
+    breedId: string,
     activeId: string,
     overId: string,
   ) => {
     if (!selected) return;
-    const sub = selected.subspecies.find((s) => s.id === subspeciesId);
-    if (!sub) return;
+    const breed = selected.breeds.find((b) => b.id === breedId);
+    if (!breed) return;
 
-    const oldIndex = sub.variants.findIndex((item) => item.id === activeId);
-    const newIndex = sub.variants.findIndex((item) => item.id === overId);
+    const oldIndex = breed.variants.findIndex((item) => item.id === activeId);
+    const newIndex = breed.variants.findIndex((item) => item.id === overId);
     if (oldIndex < 0 || newIndex < 0) return;
 
     const previous = selected;
-    const nextVariants = withSortOrders(arrayMove(sub.variants, oldIndex, newIndex));
+    const nextVariants = withSortOrders(arrayMove(breed.variants, oldIndex, newIndex));
     const nextSpecies: SpeciesDTO = {
       ...selected,
-      subspecies: selected.subspecies.map((s) =>
-        s.id === subspeciesId ? { ...s, variants: nextVariants } : s,
+      breeds: selected.breeds.map((b) =>
+        b.id === breedId ? { ...b, variants: nextVariants } : b,
       ),
     };
     replaceSpecies(nextSpecies);
 
     startTransition(async () => {
       const result = await reorderVariants(shelterSlug, {
-        subspeciesId,
+        breedId,
         items: nextVariants.map((item, index) => ({ id: item.id, sortOrder: index })),
       });
       if (result.status !== 200) {
@@ -250,7 +250,7 @@ export function SpeciesPageClient({
       setSelectedId(result.data.id);
       setSearch('');
       setEditingName(false);
-      setEditingSubId(null);
+      setEditingBreedId(null);
       setEditingVariantId(null);
       notifications.show({
         title: 'Espèce créée',
@@ -283,12 +283,12 @@ export function SpeciesPageClient({
     });
   };
 
-  const handleAddSubspecies = () => {
+  const handleAddBreed = () => {
     if (!selected) return;
-    const name = subInput.trim();
+    const name = breedInput.trim();
     if (!name) return;
     startTransition(async () => {
-      const result = await createSubspecies(shelterSlug, {
+      const result = await createBreed(shelterSlug, {
         speciesId: selected.id,
         name,
       });
@@ -308,18 +308,18 @@ export function SpeciesPageClient({
       };
       replaceSpecies({
         ...selected,
-        subspecies: [...selected.subspecies, created],
+        breeds: [...selected.breeds, created],
       });
-      setSubInput('');
+      setBreedInput('');
     });
   };
 
-  const handleSaveSubspecies = (id: string) => {
+  const handleSaveBreed = (id: string) => {
     if (!selected) return;
-    const name = subDraft.trim();
+    const name = breedDraft.trim();
     if (!name) return;
     startTransition(async () => {
-      const result = await updateSubspecies(shelterSlug, { id, name });
+      const result = await updateBreed(shelterSlug, { id, name });
       if (result.status !== 200 || !('data' in result) || !result.data) {
         notifications.show({
           title: 'Erreur',
@@ -328,16 +328,16 @@ export function SpeciesPageClient({
         });
         return;
       }
-      patchSubspecies(id, (sub) => ({
-        ...sub,
+      patchBreed(id, (breed) => ({
+        ...breed,
         ...result.data!,
-        variants: result.data!.variants ?? sub.variants,
+        variants: result.data!.variants ?? breed.variants,
       }));
-      setEditingSubId(null);
+      setEditingBreedId(null);
     });
   };
 
-  const handleSaveSubspeciesPrices = (
+  const handleSaveBreedPrices = (
     id: string,
     prices: {
       shelterPurchasePrice: number;
@@ -345,10 +345,10 @@ export function SpeciesPageClient({
     },
   ) => {
     if (!selected) return;
-    const current = selected.subspecies.find((s) => s.id === id);
+    const current = selected.breeds.find((b) => b.id === id);
     if (!current) return;
     startTransition(async () => {
-      const result = await updateSubspecies(shelterSlug, {
+      const result = await updateBreed(shelterSlug, {
         id,
         name: current.name,
         shelterPurchasePrice: prices.shelterPurchasePrice,
@@ -362,10 +362,10 @@ export function SpeciesPageClient({
         });
         return;
       }
-      patchSubspecies(id, (sub) => ({
-        ...sub,
+      patchBreed(id, (breed) => ({
+        ...breed,
         ...result.data!,
-        variants: result.data!.variants ?? sub.variants,
+        variants: result.data!.variants ?? breed.variants,
       }));
       notifications.show({
         title: 'Prix enregistrés',
@@ -375,12 +375,12 @@ export function SpeciesPageClient({
     });
   };
 
-  const handleAddVariant = (subspeciesId: string) => {
+  const handleAddVariant = (breedId: string) => {
     if (!selected) return;
-    const label = (variantInputs[subspeciesId] ?? '').trim();
+    const label = (variantInputs[breedId] ?? '').trim();
     if (!label) return;
     startTransition(async () => {
-      const result = await createVariant(shelterSlug, { subspeciesId, label });
+      const result = await createVariant(shelterSlug, { breedId, label });
       if (result.status !== 201 || !('data' in result) || !result.data) {
         notifications.show({
           title: 'Erreur',
@@ -389,15 +389,15 @@ export function SpeciesPageClient({
         });
         return;
       }
-      patchSubspecies(subspeciesId, (sub) => ({
-        ...sub,
-        variants: [...sub.variants, result.data!],
+      patchBreed(breedId, (breed) => ({
+        ...breed,
+        variants: [...breed.variants, result.data!],
       }));
-      setVariantInputs((prev) => ({ ...prev, [subspeciesId]: '' }));
+      setVariantInputs((prev) => ({ ...prev, [breedId]: '' }));
     });
   };
 
-  const handleSaveVariant = (subspeciesId: string, id: string) => {
+  const handleSaveVariant = (breedId: string, id: string) => {
     if (!selected) return;
     const label = variantDraft.trim();
     if (!label) return;
@@ -411,9 +411,9 @@ export function SpeciesPageClient({
         });
         return;
       }
-      patchSubspecies(subspeciesId, (sub) => ({
-        ...sub,
-        variants: sub.variants.map((v) => (v.id === id ? result.data! : v)),
+      patchBreed(breedId, (breed) => ({
+        ...breed,
+        variants: breed.variants.map((v) => (v.id === id ? result.data! : v)),
       }));
       setEditingVariantId(null);
     });
@@ -440,8 +440,8 @@ export function SpeciesPageClient({
           );
           return next;
         });
-      } else if (target.kind === 'subspecies' && selected) {
-        const result = await deleteSubspecies(shelterSlug, { id: target.id });
+      } else if (target.kind === 'breed' && selected) {
+        const result = await deleteBreed(shelterSlug, { id: target.id });
         if (result.status !== 200) {
           notifications.show({
             title: 'Erreur',
@@ -452,7 +452,7 @@ export function SpeciesPageClient({
         }
         replaceSpecies({
           ...selected,
-          subspecies: selected.subspecies.filter((s) => s.id !== target.id),
+          breeds: selected.breeds.filter((b) => b.id !== target.id),
         });
       } else if (target.kind === 'variant' && selected) {
         const result = await deleteVariant(shelterSlug, { id: target.id });
@@ -466,9 +466,9 @@ export function SpeciesPageClient({
         }
         replaceSpecies({
           ...selected,
-          subspecies: selected.subspecies.map((sub) => ({
-            ...sub,
-            variants: sub.variants.filter((v) => v.id !== target.id),
+          breeds: selected.breeds.map((breed) => ({
+            ...breed,
+            variants: breed.variants.filter((v) => v.id !== target.id),
           })),
         });
       }
@@ -492,7 +492,7 @@ export function SpeciesPageClient({
           onSelect={() => {
             setSelectedId(item.id);
             setEditingName(false);
-            setEditingSubId(null);
+            setEditingBreedId(null);
             setEditingVariantId(null);
           }}
         />
@@ -504,7 +504,7 @@ export function SpeciesPageClient({
     <Container size="xl">
       <PageHeader
         title="Espèces"
-        description="Gérez les espèces, sous-espèces et variantes proposées à la création d’un animal."
+        description="Gérez les espèces, races et variantes proposées à la création d’un animal."
       />
 
       <div className={classes.layout}>
@@ -573,7 +573,7 @@ export function SpeciesPageClient({
                 Sélectionnez une espèce
               </Title>
               <Text size="sm">
-                Choisissez une espèce à gauche pour gérer ses sous-espèces et variantes.
+                Choisissez une espèce à gauche pour gérer ses races et variantes.
               </Text>
             </div>
           ) : (
@@ -647,18 +647,18 @@ export function SpeciesPageClient({
 
               <div className={classes.detailBody}>
                 <div className={classes.section}>
-                  <Text className={classes.sectionTitle}>Sous-espèces</Text>
+                  <Text className={classes.sectionTitle}>Races</Text>
                   <Text size="sm" c="dimmed">
-                    Chaque sous-espèce a ses propres variantes (options à la création d’un animal).
+                    Chaque race a ses propres variantes (options à la création d’un animal).
                   </Text>
 
                   <div className={classes.quickAdd}>
                     <TextInput
-                      placeholder="Ajouter une sous-espèce (ex. Labrador)"
-                      value={subInput}
-                      onChange={(e) => setSubInput(e.currentTarget.value)}
+                      placeholder="Ajouter une race (ex. Labrador)"
+                      value={breedInput}
+                      onChange={(e) => setBreedInput(e.currentTarget.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddSubspecies();
+                        if (e.key === 'Enter') handleAddBreed();
                       }}
                       style={{ flex: 1 }}
                     />
@@ -666,58 +666,58 @@ export function SpeciesPageClient({
                       color="terracotta"
                       variant="light"
                       leftSection={<IconPlus size={16} />}
-                      onClick={handleAddSubspecies}
+                      onClick={handleAddBreed}
                       loading={pending}
                     >
                       Ajouter
                     </Button>
                   </div>
 
-                  {selected.subspecies.length === 0 ? (
+                  {selected.breeds.length === 0 ? (
                     <Text size="sm" c="dimmed">
-                      Aucune sous-espèce. Ajoutez-en une pour définir des variantes.
+                      Aucune race. Ajoutez-en une pour définir des variantes.
                     </Text>
                   ) : (
                     <DndContext
                       sensors={sensors}
                       collisionDetection={closestCenter}
-                      onDragEnd={handleSubspeciesDragEnd}
+                      onDragEnd={handleBreedsDragEnd}
                     >
                       <SortableContext
-                        items={selected.subspecies.map((sub) => sub.id)}
+                        items={selected.breeds.map((breed) => breed.id)}
                         strategy={verticalListSortingStrategy}
                       >
                         <Stack gap="md">
-                          {selected.subspecies.map((sub) => (
-                            <SortableSubspeciesCard
-                              key={sub.id}
-                              sub={sub}
+                          {selected.breeds.map((breed) => (
+                            <SortableBreedCard
+                              key={breed.id}
+                              breed={breed}
                               pending={pending}
-                              editingSubId={editingSubId}
-                              subDraft={subDraft}
+                              editingBreedId={editingBreedId}
+                              breedDraft={breedDraft}
                               editingVariantId={editingVariantId}
                               variantDraft={variantDraft}
-                              variantInput={variantInputs[sub.id] ?? ''}
-                              onSubDraftChange={setSubDraft}
-                              onSaveSubspecies={() => handleSaveSubspecies(sub.id)}
-                              onCancelEditSub={() => setEditingSubId(null)}
-                              onStartEditSub={() => {
-                                setEditingSubId(sub.id);
-                                setSubDraft(sub.name);
+                              variantInput={variantInputs[breed.id] ?? ''}
+                              onBreedDraftChange={setBreedDraft}
+                              onSaveBreed={() => handleSaveBreed(breed.id)}
+                              onCancelEditBreed={() => setEditingBreedId(null)}
+                              onStartEditBreed={() => {
+                                setEditingBreedId(breed.id);
+                                setBreedDraft(breed.name);
                               }}
-                              onDeleteSub={() =>
+                              onDeleteBreed={() =>
                                 setDeleteTarget({
-                                  kind: 'subspecies',
-                                  id: sub.id,
-                                  label: sub.name,
+                                  kind: 'breed',
+                                  id: breed.id,
+                                  label: breed.name,
                                 })
                               }
                               onSavePrices={(prices) =>
-                                handleSaveSubspeciesPrices(sub.id, prices)
+                                handleSaveBreedPrices(breed.id, prices)
                               }
                               onVariantDraftChange={setVariantDraft}
                               onSaveVariant={(variantId) =>
-                                handleSaveVariant(sub.id, variantId)
+                                handleSaveVariant(breed.id, variantId)
                               }
                               onCancelEditVariant={() => setEditingVariantId(null)}
                               onStartEditVariant={(variantId, label) => {
@@ -734,12 +734,12 @@ export function SpeciesPageClient({
                               onVariantInputChange={(value) =>
                                 setVariantInputs((prev) => ({
                                   ...prev,
-                                  [sub.id]: value,
+                                  [breed.id]: value,
                                 }))
                               }
-                              onAddVariant={() => handleAddVariant(sub.id)}
+                              onAddVariant={() => handleAddVariant(breed.id)}
                               onVariantsReorder={(activeId, overId) =>
-                                handleVariantsReorder(sub.id, activeId, overId)
+                                handleVariantsReorder(breed.id, activeId, overId)
                               }
                             />
                           ))}
@@ -763,9 +763,9 @@ export function SpeciesPageClient({
         <Stack>
           <Text size="sm">
             {deleteTarget?.kind === 'species'
-              ? `Supprimer l’espèce « ${deleteTarget.label} » et toutes ses sous-espèces / variantes ?`
-              : deleteTarget?.kind === 'subspecies'
-                ? `Supprimer la sous-espèce « ${deleteTarget.label} » et ses variantes ?`
+              ? `Supprimer l’espèce « ${deleteTarget.label} » et toutes ses races / variantes ?`
+              : deleteTarget?.kind === 'breed'
+                ? `Supprimer la race « ${deleteTarget.label} » et ses variantes ?`
                 : `Supprimer « ${deleteTarget?.label} » ?`}
           </Text>
           <Group justify="flex-end">

@@ -8,6 +8,7 @@ import { hasPlatformAdminMiddleware } from './middlewares/hasPlatformAdminMiddle
 import { hasAdminRoleMiddleware } from './middlewares/hasAdminRoleMiddleware';
 import { hasBankAccessMiddleware } from './middlewares/hasBankAccessMiddleware';
 import { hasSpeciesManageMiddleware } from './middlewares/hasSpeciesManageMiddleware';
+import { hasAnimalsAccessMiddleware } from './middlewares/hasAnimalsAccessMiddleware';
 import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatureEnabledMiddleware';
 import { hasTenantAccessMiddleware } from './middlewares/hasTenantAccessMiddleware';
 import { chain } from './middlewares/chain';
@@ -70,6 +71,8 @@ export async function middleware(req: NextRequest) {
       );
     } else if (pathname.startsWith(t.species.index)) {
       middlewares.push(hasSpeciesManageMiddleware);
+    } else if (pathname.startsWith(t.animals.index)) {
+      middlewares.push(hasAnimalsAccessMiddleware);
     }
   } else if (pathname === '/') {
     middlewares.push(hasToBeLoggedInMiddleware);

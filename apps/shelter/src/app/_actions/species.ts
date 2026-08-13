@@ -40,7 +40,7 @@ const moneySchema = z
   );
 
 const speciesInclude = {
-  subspecies: {
+  breeds: {
     orderBy: [{ sortOrder: 'asc' as const }, { name: 'asc' as const }],
     include: {
       variants: { orderBy: [{ sortOrder: 'asc' as const }, { label: 'asc' as const }] },
@@ -63,7 +63,7 @@ type SerializedPurchasePrices = {
   animalierPurchasePrice: number | null;
 };
 
-function serializeSubspecies<T extends WithPurchasePrices>(
+function serializeBreed<T extends WithPurchasePrices>(
   row: T,
 ): Omit<T, 'shelterPurchasePrice' | 'animalierPurchasePrice'> & SerializedPurchasePrices {
   return {
@@ -73,17 +73,17 @@ function serializeSubspecies<T extends WithPurchasePrices>(
   };
 }
 
-function serializeSpecies<T extends { subspecies: WithPurchasePrices[] }>(
+function serializeSpecies<T extends { breeds: WithPurchasePrices[] }>(
   row: T,
-): Omit<T, 'subspecies'> & {
-  subspecies: Array<
-    Omit<T['subspecies'][number], 'shelterPurchasePrice' | 'animalierPurchasePrice'> &
+): Omit<T, 'breeds'> & {
+  breeds: Array<
+    Omit<T['breeds'][number], 'shelterPurchasePrice' | 'animalierPurchasePrice'> &
       SerializedPurchasePrices
   >;
 } {
   return {
     ...row,
-    subspecies: row.subspecies.map(serializeSubspecies),
+    breeds: row.breeds.map(serializeBreed),
   };
 }
 
@@ -101,9 +101,9 @@ async function requireSpeciesInShelter(shelterId: string, speciesId: string) {
   });
 }
 
-async function requireSubspeciesInShelter(shelterId: string, subspeciesId: string) {
-  return prisma.animalSubspecies.findFirst({
-    where: { id: subspeciesId, species: { shelterId } },
+async function requireBreedInShelter(shelterId: string, breedId: string) {
+  return prisma.animalBreed.findFirst({
+    where: { id: breedId, species: { shelterId } },
     select: { id: true, speciesId: true, name: true },
   });
 }
@@ -219,7 +219,7 @@ export async function deleteSpecies(shelterSlug: string, data: { id: string }) {
   }
 }
 
-export async function createSubspecies(
+export async function createBreed(
   shelterSlug: string,
   data: { speciesId: string; name: string },
 ) {
@@ -235,13 +235,13 @@ export async function createSubspecies(
       return { status: 404, error: 'Espèce introuvable' };
     }
 
-    const maxOrder = await prisma.animalSubspecies.aggregate({
+    const maxOrder = await prisma.animalBreed.aggregate({
       where: { speciesId },
       _max: { sortOrder: true },
     });
 
     try {
-      const row = await prisma.animalSubspecies.create({
+      const row = await prisma.animalBreed.create({
         data: {
           speciesId,
           name,
@@ -252,19 +252,19 @@ export async function createSubspecies(
         },
       });
       revalidateSpecies(shelterSlug);
-      return { status: 201, data: serializeSubspecies(row) };
+      return { status: 201, data: serializeBreed(row) };
     } catch (error) {
       return {
         status: 409,
-        error: uniqueConflictMessage('Une sous-espèce avec ce nom existe déjà', error),
+        error: uniqueConflictMessage('Une race avec ce nom existe déjà', error),
       };
     }
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création de la sous-espèce');
+    return actionErrorParser(error, 'Erreur lors de la création de la race');
   }
 }
 
-export async function updateSubspecies(
+export async function updateBreed(
   shelterSlug: string,
   data: {
     id: string;
@@ -297,13 +297,13 @@ export async function updateSubspecies(
       }
     }
 
-    const existing = await requireSubspeciesInShelter(shelterId, id);
+    const existing = await requireBreedInShelter(shelterId, id);
     if (!existing) {
-      return { status: 404, error: 'Sous-espèce introuvable' };
+      return { status: 404, error: 'Race introuvable' };
     }
 
     try {
-      const row = await prisma.animalSubspecies.update({
+      const row = await prisma.animalBreed.update({
         where: { id },
         data: {
           name,
@@ -319,63 +319,63 @@ export async function updateSubspecies(
         },
       });
       revalidateSpecies(shelterSlug);
-      return { status: 200, data: serializeSubspecies(row) };
+      return { status: 200, data: serializeBreed(row) };
     } catch (error) {
       return {
         status: 409,
-        error: uniqueConflictMessage('Une sous-espèce avec ce nom existe déjà', error),
+        error: uniqueConflictMessage('Une race avec ce nom existe déjà', error),
       };
     }
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la modification de la sous-espèce');
+    return actionErrorParser(error, 'Erreur lors de la modification de la race');
   }
 }
 
-export async function deleteSubspecies(shelterSlug: string, data: { id: string }) {
+export async function deleteBreed(shelterSlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
     if (!ctx.ok) return ctx.response;
     const { shelterId } = ctx.tenant;
     const id = z.string().uuid().parse(data.id);
 
-    const existing = await requireSubspeciesInShelter(shelterId, id);
+    const existing = await requireBreedInShelter(shelterId, id);
     if (!existing) {
-      return { status: 404, error: 'Sous-espèce introuvable' };
+      return { status: 404, error: 'Race introuvable' };
     }
 
-    await prisma.animalSubspecies.delete({ where: { id } });
+    await prisma.animalBreed.delete({ where: { id } });
     revalidateSpecies(shelterSlug);
     return { status: 200, data: { id } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression de la sous-espèce');
+    return actionErrorParser(error, 'Erreur lors de la suppression de la race');
   }
 }
 
 export async function createVariant(
   shelterSlug: string,
-  data: { subspeciesId: string; label: string },
+  data: { breedId: string; label: string },
 ) {
   try {
     const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
     if (!ctx.ok) return ctx.response;
     const { shelterId } = ctx.tenant;
-    const subspeciesId = z.string().uuid().parse(data.subspeciesId);
+    const breedId = z.string().uuid().parse(data.breedId);
     const label = variantLabelSchema.parse(data.label);
 
-    const subspecies = await requireSubspeciesInShelter(shelterId, subspeciesId);
-    if (!subspecies) {
-      return { status: 404, error: 'Sous-espèce introuvable' };
+    const breed = await requireBreedInShelter(shelterId, breedId);
+    if (!breed) {
+      return { status: 404, error: 'Race introuvable' };
     }
 
     const maxOrder = await prisma.animalSpeciesVariant.aggregate({
-      where: { subspeciesId },
+      where: { breedId },
       _max: { sortOrder: true },
     });
 
     try {
       const row = await prisma.animalSpeciesVariant.create({
         data: {
-          subspeciesId,
+          breedId,
           label,
           sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
         },
@@ -405,7 +405,7 @@ export async function updateVariant(
     const label = variantLabelSchema.parse(data.label);
 
     const existing = await prisma.animalSpeciesVariant.findFirst({
-      where: { id, subspecies: { species: { shelterId } } },
+      where: { id, breed: { species: { shelterId } } },
       select: { id: true },
     });
     if (!existing) {
@@ -438,7 +438,7 @@ export async function deleteVariant(shelterSlug: string, data: { id: string }) {
     const id = z.string().uuid().parse(data.id);
 
     const existing = await prisma.animalSpeciesVariant.findFirst({
-      where: { id, subspecies: { species: { shelterId } } },
+      where: { id, breed: { species: { shelterId } } },
       select: { id: true },
     });
     if (!existing) {
@@ -488,7 +488,7 @@ export async function reorderSpecies(
   }
 }
 
-export async function reorderSubspecies(
+export async function reorderBreeds(
   shelterSlug: string,
   data: { speciesId: string; items: { id: string; sortOrder: number }[] },
 ) {
@@ -505,17 +505,17 @@ export async function reorderSubspecies(
       return { status: 404, error: 'Espèce introuvable' };
     }
 
-    const owned = await prisma.animalSubspecies.findMany({
+    const owned = await prisma.animalBreed.findMany({
       where: { speciesId, id: { in: ids } },
       select: { id: true },
     });
     if (owned.length !== ids.length) {
-      return { status: 404, error: 'Une ou plusieurs sous-espèces sont introuvables' };
+      return { status: 404, error: 'Une ou plusieurs races sont introuvables' };
     }
 
     await prisma.$transaction(
       items.map((item) =>
-        prisma.animalSubspecies.update({
+        prisma.animalBreed.update({
           where: { id: item.id },
           data: { sortOrder: item.sortOrder },
         }),
@@ -525,29 +525,29 @@ export async function reorderSubspecies(
     revalidateSpecies(shelterSlug);
     return { status: 200, data: { success: true } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du réordonnancement des sous-espèces');
+    return actionErrorParser(error, 'Erreur lors du réordonnancement des races');
   }
 }
 
 export async function reorderVariants(
   shelterSlug: string,
-  data: { subspeciesId: string; items: { id: string; sortOrder: number }[] },
+  data: { breedId: string; items: { id: string; sortOrder: number }[] },
 ) {
   try {
     const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
     if (!ctx.ok) return ctx.response;
     const { shelterId } = ctx.tenant;
-    const subspeciesId = z.string().uuid().parse(data.subspeciesId);
+    const breedId = z.string().uuid().parse(data.breedId);
     const { items } = reorderItemsSchema.parse({ items: data.items });
     const ids = items.map((item) => item.id);
 
-    const subspecies = await requireSubspeciesInShelter(shelterId, subspeciesId);
-    if (!subspecies) {
-      return { status: 404, error: 'Sous-espèce introuvable' };
+    const breed = await requireBreedInShelter(shelterId, breedId);
+    if (!breed) {
+      return { status: 404, error: 'Race introuvable' };
     }
 
     const owned = await prisma.animalSpeciesVariant.findMany({
-      where: { subspeciesId, id: { in: ids } },
+      where: { breedId, id: { in: ids } },
       select: { id: true },
     });
     if (owned.length !== ids.length) {

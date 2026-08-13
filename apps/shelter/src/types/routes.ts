@@ -12,9 +12,12 @@ export function tenantRoutes(slug: string) {
       index: employeeBase,
       bank: `${employeeBase}/bank`,
       species: `${employeeBase}/species`,
+      animals: `${employeeBase}/animals`,
+      animal: (id: string) => `${employeeBase}/animals/${encodeURIComponent(id)}`,
     },
     bank: { index: `${employeeBase}/bank` },
     species: { index: `${employeeBase}/species` },
+    animals: { index: `${employeeBase}/animals` },
     admin: {
       settings: `${base}/admin/settings`,
       members: `${base}/admin/members`,
