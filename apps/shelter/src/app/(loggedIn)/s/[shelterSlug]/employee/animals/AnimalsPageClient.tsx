@@ -10,7 +10,6 @@ import {
   Select,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   TextInput,
 } from '@mantine/core';
@@ -22,16 +21,15 @@ import {
   listCaseManagerOptions,
   listSpeciesOptions,
 } from '@/app/_actions/animals';
+import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { ANIMAL_STATUS_LABELS } from '@/lib/animals/labels';
-import { formatRpDate } from '@/lib/rpCalendar';
 import { AdoptionPriceHint } from './AdoptionPriceHint';
-import classes from './AnimalsPage.module.scss';
+import { AnimalsTable } from './AnimalsTable';
 import {
   actionErrorMessage,
-  parseIsoDateOnly,
   toIsoDateOnly,
   type AnimalDTO,
   type CaseManagerOptionDTO,
@@ -41,9 +39,11 @@ import {
 function CreateAnimalForm({
   shelterSlug,
   onSuccess,
+  onCancel,
 }: {
   shelterSlug: string;
   onSuccess: (animal: AnimalDTO) => void;
+  onCancel: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [speciesOptions, setSpeciesOptions] = useState<SpeciesOptionDTO[]>([]);
@@ -238,7 +238,15 @@ function CreateAnimalForm({
         searchable
         disabled={pending || loadingOptions}
       />
-      <Group justify="flex-end" mt="sm">
+      <Group justify="flex-end" mt="sm" gap="sm">
+        <Button
+          variant="light"
+          color="terracotta"
+          onClick={onCancel}
+          disabled={pending}
+        >
+          Annuler
+        </Button>
         <Button color="terracotta" loading={pending} onClick={handleSubmit}>
           Créer
         </Button>
@@ -260,6 +268,77 @@ export function AnimalsPageClient({
   const canCreate = Boolean(permissions?.animals.create);
   const [createOpen, setCreateOpen] = useState(false);
 
+  const [nameFilter, setNameFilter] = useState('');
+  const [speciesFilter, setSpeciesFilter] = useState<string | null>(null);
+  const [breedFilter, setBreedFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [caseManagerFilter, setCaseManagerFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const speciesOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const animal of initialAnimals) {
+      map.set(animal.speciesId, animal.species.name);
+    }
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+  }, [initialAnimals]);
+
+  const breedOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const animal of initialAnimals) {
+      if (speciesFilter && animal.speciesId !== speciesFilter) continue;
+      map.set(animal.breedId, animal.breed.name);
+    }
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+  }, [initialAnimals, speciesFilter]);
+
+  const caseManagerOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const animal of initialAnimals) {
+      map.set(animal.caseManagerUserId, animal.caseManagerName);
+    }
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+  }, [initialAnimals]);
+
+  const filteredAnimals = useMemo(() => {
+    const needle = nameFilter.trim().toLowerCase();
+    return initialAnimals.filter((animal) => {
+      if (needle && !animal.name.toLowerCase().includes(needle)) return false;
+      if (speciesFilter && animal.speciesId !== speciesFilter) return false;
+      if (breedFilter && animal.breedId !== breedFilter) return false;
+      if (statusFilter && animal.status !== statusFilter) return false;
+      if (caseManagerFilter && animal.caseManagerUserId !== caseManagerFilter) return false;
+      return true;
+    });
+  }, [
+    initialAnimals,
+    nameFilter,
+    speciesFilter,
+    breedFilter,
+    statusFilter,
+    caseManagerFilter,
+  ]);
+
+  const pagedAnimals = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredAnimals.slice(start, start + pageSize);
+  }, [filteredAnimals, page, pageSize]);
+
+  const speciesLabel = speciesOptions.find((s) => s.value === speciesFilter)?.label;
+  const breedLabel = breedOptions.find((b) => b.value === breedFilter)?.label;
+  const caseManagerLabel = caseManagerOptions.find((m) => m.value === caseManagerFilter)?.label;
+  const statusLabel =
+    statusFilter && statusFilter in ANIMAL_STATUS_LABELS
+      ? ANIMAL_STATUS_LABELS[statusFilter as keyof typeof ANIMAL_STATUS_LABELS]
+      : undefined;
+
   return (
     <Container size="xl">
       <PageHeader title="Animaux" description="Suivi des animaux du refuge." />
@@ -278,36 +357,94 @@ export function AnimalsPageClient({
       {initialAnimals.length === 0 ? (
         <Text c="dimmed">Aucun animal pour le moment.</Text>
       ) : (
-        <Table striped highlightOnHover withTableBorder>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Nom</Table.Th>
-              <Table.Th>Espèce</Table.Th>
-              <Table.Th>Race</Table.Th>
-              <Table.Th>Statut</Table.Th>
-              <Table.Th>Arrivée</Table.Th>
-              <Table.Th>Responsable</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {initialAnimals.map((animal) => (
-              <Table.Tr
-                key={animal.id}
-                className={classes.clickableRow}
-                onClick={() => router.push(t.employee.animal(animal.id))}
-              >
-                <Table.Td>{animal.name}</Table.Td>
-                <Table.Td>{animal.species.name}</Table.Td>
-                <Table.Td>{animal.breed.name}</Table.Td>
-                <Table.Td>{ANIMAL_STATUS_LABELS[animal.status]}</Table.Td>
-                <Table.Td>
-                  {formatRpDate(parseIsoDateOnly(animal.arrivalDate), 'dd/MM/yyyy')}
-                </Table.Td>
-                <Table.Td>{animal.caseManagerName}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <>
+          <ActiveFilters
+            filters={[
+              {
+                label: 'Nom',
+                value: nameFilter,
+                onRemove: () => {
+                  setNameFilter('');
+                  setPage(1);
+                },
+              },
+              {
+                label: 'Espèce',
+                value: speciesFilter,
+                displayValue: speciesLabel,
+                onRemove: () => {
+                  setSpeciesFilter(null);
+                  setBreedFilter(null);
+                  setPage(1);
+                },
+              },
+              {
+                label: 'Race',
+                value: breedFilter,
+                displayValue: breedLabel,
+                onRemove: () => {
+                  setBreedFilter(null);
+                  setPage(1);
+                },
+              },
+              {
+                label: 'Statut',
+                value: statusFilter,
+                displayValue: statusLabel,
+                onRemove: () => {
+                  setStatusFilter(null);
+                  setPage(1);
+                },
+              },
+              {
+                label: 'Responsable',
+                value: caseManagerFilter,
+                displayValue: caseManagerLabel,
+                onRemove: () => {
+                  setCaseManagerFilter(null);
+                  setPage(1);
+                },
+              },
+            ]}
+          />
+          <AnimalsTable
+            animals={pagedAnimals}
+            nameFilter={nameFilter}
+            speciesFilter={speciesFilter}
+            breedFilter={breedFilter}
+            statusFilter={statusFilter}
+            caseManagerFilter={caseManagerFilter}
+            speciesOptions={speciesOptions}
+            breedOptions={breedOptions}
+            caseManagerOptions={caseManagerOptions}
+            page={page}
+            pageSize={pageSize}
+            totalRecords={filteredAnimals.length}
+            onNameFilterChange={(value) => {
+              setNameFilter(value);
+              setPage(1);
+            }}
+            onSpeciesFilterChange={(value) => {
+              setSpeciesFilter(value);
+              setBreedFilter(null);
+              setPage(1);
+            }}
+            onBreedFilterChange={(value) => {
+              setBreedFilter(value);
+              setPage(1);
+            }}
+            onStatusFilterChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            onCaseManagerFilterChange={(value) => {
+              setCaseManagerFilter(value);
+              setPage(1);
+            }}
+            onPageChange={setPage}
+            onRowClick={(animal) => router.push(t.employee.animal(animal.id))}
+          />
+        </>
       )}
 
       <Modal
@@ -318,6 +455,7 @@ export function AnimalsPageClient({
       >
         <CreateAnimalForm
           shelterSlug={shelterSlug}
+          onCancel={() => setCreateOpen(false)}
           onSuccess={(animal) => {
             setCreateOpen(false);
             router.push(t.employee.animal(animal.id));
