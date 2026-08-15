@@ -1,0 +1,140 @@
+.followUpCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--shelter-border);
+  background: var(--shelter-surface);
+  cursor: pointer;
+  color: inherit;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--shelter-bg-accent) 55%, var(--shelter-surface));
+  }
+}
+
+.followUpCardActive {
+  border-color: color-mix(in srgb, var(--shelter-terracotta) 45%, var(--shelter-border));
+  background: color-mix(in srgb, var(--shelter-terracotta) 8%, var(--shelter-surface));
+}
+
+.followUpCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.followUpMeta {
+  font-size: 0.85rem;
+  color: var(--shelter-muted);
+}
+
+.threadPanel {
+  margin-top: 1rem;
+  border: 1.5px solid var(--shelter-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--shelter-bg) 55%, var(--shelter-surface));
+  overflow: hidden;
+}
+
+.threadHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px dashed var(--shelter-border);
+  background: color-mix(in srgb, var(--shelter-bg-accent) 50%, var(--shelter-surface));
+}
+
+.threadMessages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  max-height: 28rem;
+  overflow: auto;
+}
+
+.bubbleRow {
+  display: flex;
+  width: 100%;
+}
+
+.bubbleRowShelter {
+  justify-content: flex-end;
+}
+
+.bubbleRowRecipient {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: min(32rem, 85%);
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--shelter-border);
+}
+
+.bubbleShelter {
+  background: color-mix(in srgb, var(--shelter-terracotta) 18%, var(--shelter-surface));
+  border-bottom-right-radius: 4px;
+}
+
+.bubbleRecipient {
+  background: var(--shelter-surface);
+  border-bottom-left-radius: 4px;
+}
+
+.bubbleSide {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--shelter-muted);
+  margin-bottom: 0.25rem;
+}
+
+.bubbleBody {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.bubbleDate {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--shelter-muted);
+  text-align: right;
+}
+
+.threadComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px dashed var(--shelter-border);
+  background: var(--shelter-surface);
+}
+
+.composerRow {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.closureNote {
+  padding: 0.75rem 1rem;
+  border-top: 1px dashed var(--shelter-border);
+  background: color-mix(in srgb, var(--shelter-bg-accent) 35%, var(--shelter-surface));
+}

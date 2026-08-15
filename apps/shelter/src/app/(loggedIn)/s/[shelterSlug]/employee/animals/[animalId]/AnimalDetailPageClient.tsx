@@ -57,6 +57,7 @@ import {
   type CaseManagerOptionDTO,
   type SpeciesOptionDTO,
 } from '../types';
+import { AnimalFollowUpsSection } from './AnimalFollowUpsSection';
 
 const HISTORY_ACTION_LABELS: Record<string, string> = {
   create: 'Création',
@@ -700,6 +701,14 @@ export function AnimalDetailPageClient({
             </SimpleGrid>
           )}
         </section>
+
+        <AnimalFollowUpsSection
+          shelterSlug={shelterSlug}
+          animalId={animal.id}
+          defaultRecipientName={animal.adopterName}
+          defaultConductedByUserId={animal.caseManagerUserId}
+          canUpdate={canUpdate}
+        />
       </Stack>
 
       {editing && canUpdateCore && !canUpdate ? (

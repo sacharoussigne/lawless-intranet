@@ -21,6 +21,7 @@ model Shelter {
   animalSpecies   AnimalSpecies[]
   animals         Animal[]
   animalHistory   AnimalHistory[]
+  animalFollowUps AnimalFollowUp[]
 
   @@index([createdById])
   @@map("shelter")
@@ -167,6 +168,7 @@ model Animal {
   breed             AnimalBreed   @relation(fields: [breedId], references: [id], onDelete: Restrict)
   variant           AnimalSpeciesVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   history           AnimalHistory[]
+  followUps         AnimalFollowUp[]
 
   @@index([shelterId, status])
   @@index([shelterId, name])
@@ -194,4 +196,55 @@ model AnimalHistory {
   @@index([shelterId, createdAt])
   @@index([animalId, createdAt])
   @@map("animal_history")
+}
+
+enum AnimalFollowUpStatus {
+  initial
+  awaiting_recipient
+  no_reply
+  awaiting_shelter
+  cancelled
+  validated
+  refused
+}
+
+enum AnimalFollowUpMessageSide {
+  shelter
+  recipient
+}
+
+model AnimalFollowUp {
+  id                String               @id @default(uuid())
+  animalId          String
+  shelterId         String
+  date              DateTime             @db.Date
+  motif             String
+  status            AnimalFollowUpStatus @default(initial)
+  conductedByUserId String
+  recipientName     String
+  closureNote       String?              @db.Text
+  closedAt          DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  animal            Animal               @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  shelter           Shelter              @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  messages          AnimalFollowUpMessage[]
+
+  @@index([animalId, date])
+  @@index([shelterId, status])
+  @@map("animal_follow_up")
+}
+
+model AnimalFollowUpMessage {
+  id              String                     @id @default(uuid())
+  followUpId      String
+  side            AnimalFollowUpMessageSide
+  body            String                     @db.Text
+  letterDate      DateTime                   @db.Date
+  createdByUserId String
+  createdAt       DateTime                   @default(now())
+  followUp        AnimalFollowUp             @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+
+  @@index([followUpId, createdAt])
+  @@map("animal_follow_up_message")
 }
