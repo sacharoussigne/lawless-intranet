@@ -23,6 +23,7 @@ import { authClient } from '@lawless-intranet/auth-client/browser';
 import {
   FOLLOW_UP_STATUS_BADGE_COLORS,
   FOLLOW_UP_STATUS_LABELS,
+  isFollowUpClosed,
 } from '@/lib/animals/followUpLabels';
 import { formatRpDate } from '@/lib/rpCalendar';
 import pageClasses from '../AnimalsPage.module.scss';
@@ -296,6 +297,11 @@ export function AnimalFollowUpsSection({
                   ? ` · ${followUp.messages.length} lettre${followUp.messages.length > 1 ? 's' : ''}`
                   : ''}
               </Text>
+              {isFollowUpClosed(followUp.status) && followUp.closureNote ? (
+                <Text className={classes.followUpClosure} size="sm">
+                  Clôture : {followUp.closureNote}
+                </Text>
+              ) : null}
             </button>
           ))}
         </Stack>

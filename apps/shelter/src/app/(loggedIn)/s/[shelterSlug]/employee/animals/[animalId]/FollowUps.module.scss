@@ -7,8 +7,8 @@
   padding: 0.85rem 1rem;
   border-radius: 8px;
   border: 1.5px solid var(--shelter-border);
-  background: var(--shelter-surface);
-  box-shadow: var(--shelter-shadow-card);
+  background: color-mix(in srgb, var(--shelter-surface) 55%, var(--shelter-bg-accent));
+  box-shadow: 0 1px 2px rgba(62, 59, 57, 0.04);
   cursor: pointer;
   color: inherit;
   transition:
@@ -17,8 +17,8 @@
     box-shadow 120ms ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--shelter-bg-accent) 40%, var(--shelter-surface));
-    border-color: color-mix(in srgb, var(--shelter-terracotta) 28%, var(--shelter-border));
+    background: color-mix(in srgb, var(--shelter-bg-accent) 70%, var(--shelter-surface));
+    border-color: color-mix(in srgb, var(--shelter-terracotta) 22%, var(--shelter-border));
   }
 }
 
@@ -33,6 +33,14 @@
 .followUpMeta {
   font-size: 0.85rem;
   color: var(--shelter-muted);
+}
+
+.followUpClosure {
+  margin-top: 0.15rem;
+  color: var(--shelter-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .detailLayout {
