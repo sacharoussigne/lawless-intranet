@@ -1,0 +1,66 @@
+/* Post-Mantine overrides for a ledger / letterpress feel */
+
+.mantine-Button-root,
+.mantine-ActionIcon-root,
+.mantine-TextInput-input,
+.mantine-Textarea-input,
+.mantine-Select-input,
+.mantine-NumberInput-input,
+.mantine-Autocomplete-input,
+.mantine-MultiSelect-input,
+.mantine-Modal-content,
+.mantine-Paper-root,
+.mantine-Card-root {
+  border-radius: var(--mantine-radius-md) !important;
+}
+
+.mantine-TextInput-input,
+.mantine-Textarea-input,
+.mantine-Select-input,
+.mantine-NumberInput-input,
+.mantine-Autocomplete-input,
+.mantine-MultiSelect-input {
+  border-width: 1.5px;
+  box-shadow: inset 0 1px 2px rgba(62, 59, 57, 0.04);
+}
+
+.mantine-Modal-title,
+.mantine-Modal-header .mantine-Text-root {
+  font-family: var(--shelter-font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.mantine-Menu-dropdown,
+.mantine-Popover-dropdown,
+.mantine-Combobox-dropdown {
+  border: 1.5px solid var(--shelter-border);
+  box-shadow: var(--shelter-shadow-card);
+}
+
+/* mantine-datatable — subtle filter icons in header */
+.mantine-datatable-table thead tr th {
+  .mantine-datatable-header-cell-filter-action-icon,
+  .mantine-ActionIcon-root {
+    --ai-bg: transparent;
+    --ai-hover: var(--mantine-color-terracotta-0);
+    --ai-color: var(--shelter-muted);
+    --ai-hover-color: var(--shelter-terracotta);
+    background-color: transparent !important;
+    color: var(--shelter-muted) !important;
+    border: none;
+    box-shadow: none;
+
+    &:hover {
+      background-color: var(--mantine-color-terracotta-0) !important;
+      color: var(--shelter-terracotta) !important;
+    }
+  }
+
+  .mantine-datatable-header-cell-filter-action-icon[data-active] {
+    --ai-bg: var(--mantine-color-terracotta-0);
+    --ai-color: var(--shelter-terracotta);
+    background-color: var(--mantine-color-terracotta-0) !important;
+    color: var(--shelter-terracotta) !important;
+  }
+}
