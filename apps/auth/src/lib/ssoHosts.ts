@@ -1,4 +1,8 @@
-const DEV_CALLBACK_HOSTS = new Set(['dispensary.localhost', 'localhost']);
+const DEV_CALLBACK_HOSTS = new Set([
+  'dispensary.localhost',
+  'shelter.localhost',
+  'localhost',
+]);
 
 function getParentDomain(hostname: string): string | null {
   const parts = hostname.split('.').filter(Boolean);
@@ -22,18 +26,42 @@ function getConfiguredDispensaryHostname(): string | null {
   }
 }
 
+function getConfiguredShelterHostname(): string | null {
+  const shelterUrl =
+    process.env.NEXT_PUBLIC_SHELTER_URL ?? process.env.SHELTER_URL;
+  if (!shelterUrl) {
+    return null;
+  }
+
+  try {
+    return new URL(shelterUrl).hostname;
+  } catch {
+    return null;
+  }
+}
+
 export function isAllowedSsoHostname(hostname: string): boolean {
   if (DEV_CALLBACK_HOSTS.has(hostname)) {
     return true;
   }
 
-  const virtualHost = process.env.DISPENSARY_VIRTUAL_HOST?.trim();
-  if (virtualHost && hostname === virtualHost) {
+  const dispensaryVirtualHost = process.env.DISPENSARY_VIRTUAL_HOST?.trim();
+  if (dispensaryVirtualHost && hostname === dispensaryVirtualHost) {
+    return true;
+  }
+
+  const shelterVirtualHost = process.env.SHELTER_VIRTUAL_HOST?.trim();
+  if (shelterVirtualHost && hostname === shelterVirtualHost) {
     return true;
   }
 
   const configuredHost = getConfiguredDispensaryHostname();
   if (configuredHost && hostname === configuredHost) {
+    return true;
+  }
+
+  const configuredShelterHost = getConfiguredShelterHostname();
+  if (configuredShelterHost && hostname === configuredShelterHost) {
     return true;
   }
 
@@ -45,7 +73,9 @@ export function isAllowedSsoHostname(hostname: string): boolean {
     }
   }
 
-  const configuredParent = configuredHost ? getParentDomain(configuredHost) : null;
+  const configuredParent =
+    (configuredHost ? getParentDomain(configuredHost) : null) ??
+    (configuredShelterHost ? getParentDomain(configuredShelterHost) : null);
   const hostParent = getParentDomain(hostname);
   return configuredParent !== null && configuredParent === hostParent;
 }

@@ -7,6 +7,7 @@ Add to your hosts file (required for SSO cookie sharing on `.localhost`):
 ```
 127.0.0.1 auth.localhost
 127.0.0.1 dispensary.localhost
+127.0.0.1 shelter.localhost
 127.0.0.1 documents.localhost
 127.0.0.1 agenda.localhost
 127.0.0.1 bank.localhost
@@ -15,7 +16,7 @@ Add to your hosts file (required for SSO cookie sharing on `.localhost`):
 
 On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 
-`pnpm dev` binds to all interfaces on ports 3000–3005; use the hostnames above in the browser (not `127.0.0.1`) so Better Auth `crossSubDomainCookies` work.
+`pnpm dev` binds to all interfaces on ports 3000–3006; use the hostnames above in the browser (not `127.0.0.1`) so Better Auth `crossSubDomainCookies` work.
 
 ## Apps
 
@@ -23,6 +24,7 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 |-----|-----|------|
 | auth (IdP) | http://auth.localhost:3001 | 3001 |
 | dispensary (RP) | http://dispensary.localhost:3000 | 3000 |
+| shelter (RP) | http://shelter.localhost:3006 | 3006 |
 | documents (API) | http://documents.localhost:3002 | 3002 |
 | agenda (API) | http://agenda.localhost:3003 | 3003 |
 | bank (API) | http://bank.localhost:3004 | 3004 |
@@ -32,27 +34,31 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 
 1. Copy `apps/auth/.env.example` to `apps/auth/.env`
 2. Copy `apps/dispensary/.env.example` to `apps/dispensary/.env`
-3. Copy `apps/documents/.env.example` to `apps/documents/.env`
-4. Copy `apps/agenda/.env.example` to `apps/agenda/.env`
-5. Copy `apps/bank/.env.example` to `apps/bank/.env`
-6. Copy `apps/inventory/.env.example` to `apps/inventory/.env`
-7. Set the same `AUTH_INTERNAL_SECRET` in auth + dispensary
-8. Set the same `AGENDA_INTERNAL_SECRET` in agenda + dispensary (required for admin agenda ops)
-9. Set the same `DOCUMENTS_INTERNAL_SECRET` in documents + dispensary (required for all documents API calls)
-10. Set the same `BANK_INTERNAL_SECRET` / `BANK_BOT_API_SECRET` in bank + dispensary
-11. Set the same `INVENTORY_INTERNAL_SECRET` in inventory + dispensary
-12. Configure separate PostgreSQL databases:
+3. Copy `apps/shelter/.env.example` to `apps/shelter/.env`
+4. Copy `apps/documents/.env.example` to `apps/documents/.env`
+5. Copy `apps/agenda/.env.example` to `apps/agenda/.env`
+6. Copy `apps/bank/.env.example` to `apps/bank/.env`
+7. Copy `apps/inventory/.env.example` to `apps/inventory/.env`
+8. Set the same `AUTH_INTERNAL_SECRET` in auth + dispensary + shelter
+9. Set the same `AGENDA_INTERNAL_SECRET` in agenda + dispensary (required for admin agenda ops)
+10. Set the same `DOCUMENTS_INTERNAL_SECRET` in documents + dispensary (required for all documents API calls)
+11. Set the same `BANK_INTERNAL_SECRET` / `BANK_BOT_API_SECRET` in bank + dispensary + shelter
+12. Set the same `INVENTORY_INTERNAL_SECRET` in inventory + dispensary
+13. Configure separate PostgreSQL databases:
    - `DATABASE_URL` in auth → auth DB
    - `DATABASE_URL` in dispensary → dispensary DB (no user/session tables)
+   - `DATABASE_URL` in shelter → shelter DB
    - `DATABASE_URL` in documents → documents DB
    - `DATABASE_URL` in agenda → agenda DB
    - `DATABASE_URL` in bank → bank DB
    - `DATABASE_URL` in inventory → inventory DB
-13. Point dispensary at the services:
+14. Point dispensary at the services:
    - `DOCUMENTS_URL=http://localhost:3002`
    - `AGENDA_URL=http://localhost:3003`
    - `BANK_URL=http://localhost:3004`
    - `INVENTORY_URL=http://localhost:3005`
+15. Point shelter at bank: `BANK_URL=http://localhost:3004`
+16. In auth `.env`, set `SHELTER_URL` / `NEXT_PUBLIC_SHELTER_URL` to `http://localhost:3006` (or `http://shelter.localhost:3006`)
 
 Optional root `.env` for one-shot migration scripts:
 
@@ -61,6 +67,7 @@ Optional root `.env` for one-shot migration scripts:
 | `OLD_DISPENSARY_DATABASE_URL` | Legacy mono-app DB backup (still has `user` / `account` tables) |
 | `AUTH_DATABASE_URL` | Target auth DB |
 | `DISPENSARY_DATABASE_URL` | Current dispensary DB (orphan check after migration / agenda/bank/inventory source) |
+| `SHELTER_DATABASE_URL` | Shelter DB |
 | `AGENDA_DATABASE_URL` | Target agenda DB |
 | `BANK_DATABASE_URL` | Target bank DB |
 | `INVENTORY_DATABASE_URL` | Target inventory DB |

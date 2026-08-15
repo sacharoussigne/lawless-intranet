@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Shelter {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+
+  members         ShelterMember[]
+  rolePermissions ShelterRolePermission[]
+  settings        AppSettings?
+  animalSpecies   AnimalSpecies[]
+  animals         Animal[]
+  animalHistory   AnimalHistory[]
+  animalFollowUps AnimalFollowUp[]
+
+  @@index([createdById])
+  @@map("shelter")
+}
+
+model ShelterMember {
+  id          String   @id @default(uuid())
+  shelterId   String
+  userId      String
+  role        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  shelter     Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  permissions ShelterMemberPermission[]
+
+  @@unique([shelterId, userId])
+  @@index([userId])
+  @@map("shelter_member")
+}
+
+model ShelterRolePermission {
+  id        String   @id @default(uuid())
+  shelterId String
+  role      String
+  resource  String
+  action    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shelter   Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+
+  @@unique([shelterId, role, resource, action])
+  @@index([shelterId, role])
+  @@map("shelter_role_permission")
+}
+
+enum MemberPermissionEffect {
+  GRANT
+  DENY
+}
+
+model ShelterMemberPermission {
+  id        String                  @id @default(uuid())
+  memberId  String
+  resource  String
+  action    String
+  effect    MemberPermissionEffect
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  member    ShelterMember           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, resource, action])
+  @@index([memberId])
+  @@map("shelter_member_permission")
+}
+
+model AppSettings {
+  shelterId           String   @id
+  shelter             Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  shelterName         String   @default("Refuge")
+  featureBankEnabled  Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+model AnimalSpecies {
+  id        String        @id @default(uuid())
+  shelterId String
+  name      String
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  shelter   Shelter       @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  breeds    AnimalBreed[]
+  animals   Animal[]
+
+  @@unique([shelterId, name])
+  @@index([shelterId, sortOrder])
+  @@map("animal_species")
+}
+
+model AnimalBreed {
+  id                     String                 @id @default(uuid())
+  speciesId              String
+  name                   String
+  sortOrder              Int                    @default(0)
+  shelterPurchasePrice   Decimal?               @db.Decimal(10, 2)
+  animalierPurchasePrice Decimal?               @db.Decimal(10, 2)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  species                AnimalSpecies          @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  variants               AnimalSpeciesVariant[]
+  animals                Animal[]
+
+  @@unique([speciesId, name])
+  @@index([speciesId, sortOrder])
+  @@map("animal_breed")
+}
+
+model AnimalSpeciesVariant {
+  id        String      @id @default(uuid())
+  breedId   String
+  label     String      @db.VarChar(255)
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  breed     AnimalBreed @relation(fields: [breedId], references: [id], onDelete: Cascade)
+  animals   Animal[]
+
+  @@unique([breedId, label])
+  @@index([breedId, sortOrder])
+  @@map("animal_species_variant")
+}
+
+enum AnimalStatus {
+  in_care
+  awaiting_adoption
+  adopted
+  deceased
+}
+
+model Animal {
+  id                String        @id @default(uuid())
+  shelterId         String
+  name              String
+  speciesId         String
+  breedId           String
+  variantId         String?
+  arrivalDate       DateTime      @db.Date
+  adoptionPrice     Decimal       @db.Decimal(10, 2)
+  caseManagerUserId String
+  status            AnimalStatus  @default(awaiting_adoption)
+  biography         String?       @db.Text
+  careProvided      String?       @db.Text
+  notes             String?       @db.Text
+  adopterName       String?
+  departureDate     DateTime?     @db.Date
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  shelter           Shelter       @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  species           AnimalSpecies @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  breed             AnimalBreed   @relation(fields: [breedId], references: [id], onDelete: Restrict)
+  variant           AnimalSpeciesVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  history           AnimalHistory[]
+  followUps         AnimalFollowUp[]
+
+  @@index([shelterId, status])
+  @@index([shelterId, name])
+  @@map("animal")
+}
+
+enum AnimalHistoryAction {
+  create
+  update
+  delete
+}
+
+model AnimalHistory {
+  id             String              @id @default(uuid())
+  animalId       String?
+  shelterId      String
+  action         AnimalHistoryAction
+  actorUserId    String?
+  previousValues Json?
+  nextValues     Json?
+  createdAt      DateTime            @default(now())
+  animal         Animal?             @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  shelter        Shelter             @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+
+  @@index([shelterId, createdAt])
+  @@index([animalId, createdAt])
+  @@map("animal_history")
+}
+
+enum AnimalFollowUpStatus {
+  initial
+  awaiting_recipient
+  no_reply
+  awaiting_shelter
+  cancelled
+  validated
+  refused
+}
+
+enum AnimalFollowUpMessageSide {
+  shelter
+  recipient
+}
+
+model AnimalFollowUp {
+  id                String               @id @default(uuid())
+  animalId          String
+  shelterId         String
+  date              DateTime             @db.Date
+  motif             String
+  status            AnimalFollowUpStatus @default(initial)
+  conductedByUserId String
+  recipientName     String
+  closureNote       String?              @db.Text
+  closedAt          DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  animal            Animal               @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  shelter           Shelter              @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  messages          AnimalFollowUpMessage[]
+
+  @@index([animalId, date])
+  @@index([shelterId, status])
+  @@map("animal_follow_up")
+}
+
+model AnimalFollowUpMessage {
+  id              String                     @id @default(uuid())
+  followUpId      String
+  side            AnimalFollowUpMessageSide
+  body            String                     @db.Text
+  letterDate      DateTime                   @db.Date
+  createdByUserId String
+  createdAt       DateTime                   @default(now())
+  followUp        AnimalFollowUp             @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+
+  @@index([followUpId, createdAt])
+  @@map("animal_follow_up_message")
+}

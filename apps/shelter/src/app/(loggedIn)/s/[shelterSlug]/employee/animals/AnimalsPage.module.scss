@@ -1,0 +1,87 @@
+.clickableRow {
+  cursor: pointer;
+
+  &:hover td {
+    background: var(--mantine-color-terracotta-0);
+  }
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--shelter-muted);
+  margin-bottom: 0.25rem;
+}
+
+.readout {
+  margin-bottom: 0;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--shelter-border);
+}
+
+.titleBlock {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.titleInput {
+  flex: 1 1 12rem;
+  max-width: 28rem;
+
+  :global(input) {
+    font-family: var(--shelter-font-display);
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  text-transform: none;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.headerActions {
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  font-family: var(--shelter-font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--shelter-terracotta);
+  margin-bottom: 0.85rem;
+}
+
+.spanFull {
+  grid-column: 1 / -1;
+}
+
+.historyEntry {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}

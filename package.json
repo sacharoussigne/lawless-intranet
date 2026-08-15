@@ -20,6 +20,7 @@
     "docker:build:agenda": "docker build --build-arg APP_NAME=agenda --build-arg APP_PORT=3003 -t lawless-agenda .",
     "docker:build:bank": "docker build --build-arg APP_NAME=bank --build-arg APP_PORT=3004 -t lawless-bank .",
     "docker:build:inventory": "docker build --build-arg APP_NAME=inventory --build-arg APP_PORT=3005 -t lawless-inventory .",
+    "docker:build:shelter": "docker build --build-arg APP_NAME=shelter --build-arg APP_PORT=3006 -t lawless-shelter .",
       "docker:up": "docker compose --env-file .env.docker up -d --build",
       "docker:down": "docker compose --env-file .env.docker down"
     },
