@@ -44,11 +44,11 @@ export const FOLLOW_UP_STATUS_BADGE_COLORS: Record<
   { color: string; variant: 'filled' }
 > = {
   initial: { color: 'leather', variant: 'filled' },
-  awaiting_recipient: { color: 'teal', variant: 'filled' },
+  awaiting_recipient: { color: 'sageDust', variant: 'filled' },
   no_reply: { color: 'leather', variant: 'filled' },
   awaiting_shelter: { color: 'terracotta', variant: 'filled' },
-  cancelled: { color: 'gray', variant: 'filled' },
-  validated: { color: 'teal', variant: 'filled' },
+  cancelled: { color: 'leather', variant: 'filled' },
+  validated: { color: 'sageDust', variant: 'filled' },
   refused: { color: 'danger', variant: 'filled' },
 };
 

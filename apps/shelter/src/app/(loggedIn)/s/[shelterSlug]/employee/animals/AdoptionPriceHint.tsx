@@ -19,7 +19,7 @@ export function AdoptionPriceHint({
   let label: string;
 
   if (adoptionPrice < animalierPurchasePrice) {
-    color = 'teal';
+    color = 'sageDust';
     Icon = IconCheck;
     label = `Moins cher que l'animalier (${animalierLabel})`;
   } else if (adoptionPrice > animalierPurchasePrice) {
