@@ -5,15 +5,17 @@ import {
   Badge,
   Button,
   Group,
+  Menu,
   Modal,
   SegmentedControl,
   Select,
   Stack,
   Text,
   Textarea,
+  UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconSend } from '@tabler/icons-react';
+import { IconCheck, IconChevronDown, IconSend } from '@tabler/icons-react';
 import {
   addAnimalFollowUpMessage,
   closeAnimalFollowUp,
@@ -35,16 +37,31 @@ import { actionErrorMessage, parseIsoDateOnly, toIsoDateOnly } from '../types';
 import classes from './FollowUps.module.scss';
 import type { FollowUpDTO } from './followUpTypes';
 
+function StatusBadge({ status }: { status: AnimalFollowUpStatus }) {
+  return (
+    <Badge
+      size="lg"
+      radius="sm"
+      color={FOLLOW_UP_STATUS_BADGE_COLORS[status].color}
+      variant={FOLLOW_UP_STATUS_BADGE_COLORS[status].variant}
+    >
+      {FOLLOW_UP_STATUS_LABELS[status]}
+    </Badge>
+  );
+}
+
 export function FollowUpThread({
   shelterSlug,
   followUp,
   canUpdate,
   onUpdated,
+  fullPage = false,
 }: {
   shelterSlug: string;
   followUp: FollowUpDTO;
   canUpdate: boolean;
   onUpdated: (next: FollowUpDTO) => void;
+  fullPage?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [body, setBody] = useState('');
@@ -152,7 +169,7 @@ export function FollowUpThread({
   };
 
   return (
-    <div className={classes.threadPanel}>
+    <div className={`${classes.threadPanel} ${fullPage ? classes.threadPanelFull : ''}`}>
       <div className={classes.threadHeader}>
         <div>
           <Text fw={700}>{followUp.motif}</Text>
@@ -160,26 +177,43 @@ export function FollowUpThread({
             Destinataire : {followUp.recipientName} · Conduit par {followUp.conductedByName}
           </Text>
         </div>
-        <Group gap="sm" wrap="wrap">
+        <Group gap="sm" wrap="wrap" className={classes.threadHeaderActions}>
           {canUpdate && !closed ? (
-            <Select
-              aria-label="Statut du suivi"
-              data={openStatusOptions}
-              value={followUp.status}
-              onChange={handleStatusChange}
-              allowDeselect={false}
-              w={240}
-              disabled={pending}
-            />
+            <Menu shadow="md" width={280} position="bottom-end" disabled={pending}>
+              <Menu.Target>
+                <UnstyledButton
+                  className={classes.statusMenuTarget}
+                  aria-label="Statut du suivi"
+                  disabled={pending}
+                >
+                  <StatusBadge status={followUp.status} />
+                  <IconChevronDown size={16} stroke={1.75} />
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Statut</Menu.Label>
+                {openStatusOptions.map((option) => {
+                  const active = option.value === followUp.status;
+                  return (
+                    <Menu.Item
+                      key={option.value}
+                      leftSection={
+                        active ? (
+                          <IconCheck size={14} />
+                        ) : (
+                          <span className={classes.statusMenuSpacer} />
+                        )
+                      }
+                      onClick={() => handleStatusChange(option.value)}
+                    >
+                      {option.label}
+                    </Menu.Item>
+                  );
+                })}
+              </Menu.Dropdown>
+            </Menu>
           ) : (
-            <Badge
-              size="lg"
-              radius="sm"
-              color={FOLLOW_UP_STATUS_BADGE_COLORS[followUp.status].color}
-              variant={FOLLOW_UP_STATUS_BADGE_COLORS[followUp.status].variant}
-            >
-              {FOLLOW_UP_STATUS_LABELS[followUp.status]}
-            </Badge>
+            <StatusBadge status={followUp.status} />
           )}
           {canUpdate && !closed ? (
             <Button
@@ -257,18 +291,22 @@ export function FollowUpThread({
                 : 'Copie de la lettre reçue du destinataire…'
             }
             minRows={3}
+            resize="vertical"
             value={body}
             onChange={(e) => setBody(e.currentTarget.value)}
             disabled={pending}
           />
           <div className={classes.composerRow}>
             <RpDateInput
+              className={classes.composerDate}
               label="Date de la lettre"
+              size="sm"
               value={letterDate}
               onChange={setLetterDate}
               disabled={pending}
             />
             <Button
+              className={classes.composerSubmit}
               color="terracotta"
               leftSection={<IconSend size={16} />}
               loading={pending}

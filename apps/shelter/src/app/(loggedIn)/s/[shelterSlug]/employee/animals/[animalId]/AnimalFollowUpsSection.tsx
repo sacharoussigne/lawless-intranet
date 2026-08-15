@@ -14,9 +14,11 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconX } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
 import { listCaseManagerOptions } from '@/app/_actions/animals';
 import { createAnimalFollowUp, listAnimalFollowUps } from '@/app/_actions/followUps';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
+import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { authClient } from '@lawless-intranet/auth-client/browser';
 import {
   FOLLOW_UP_STATUS_BADGE_COLORS,
@@ -30,7 +32,6 @@ import {
   toIsoDateOnly,
   type CaseManagerOptionDTO,
 } from '../types';
-import { FollowUpThread } from './FollowUpThread';
 import classes from './FollowUps.module.scss';
 import type { FollowUpDTO } from './followUpTypes';
 
@@ -47,16 +48,17 @@ export function AnimalFollowUpsSection({
   defaultConductedByUserId: string;
   canUpdate: boolean;
 }) {
+  const router = useRouter();
+  const t = useTenantRoutes();
   const [followUps, setFollowUps] = useState<FollowUpDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [managers, setManagers] = useState<CaseManagerOptionDTO[]>([]);
 
   const [date, setDate] = useState<Date | null>(new Date());
   const [motif, setMotif] = useState('');
-  const [recipientName, setRecipientName] = useState(defaultRecipientName ?? '');
+  const [recipientName, setRecipientName] = useState(defaultRecipientName?.trim() ?? '');
   const [conductedByUserId, setConductedByUserId] = useState<string | null>(
     defaultConductedByUserId,
   );
@@ -100,10 +102,6 @@ export function AnimalFollowUpsSection({
     };
   }, [shelterSlug, animalId]);
 
-  useEffect(() => {
-    setRecipientName(defaultRecipientName ?? '');
-  }, [defaultRecipientName]);
-
   const managerOptions = useMemo(() => {
     const options = managers.map((m) => ({ value: m.userId, label: m.name }));
     if (conductedByUserId && !options.some((o) => o.value === conductedByUserId)) {
@@ -112,13 +110,15 @@ export function AnimalFollowUpsSection({
     return options;
   }, [managers, conductedByUserId]);
 
-  const selected = followUps.find((f) => f.id === selectedId) ?? null;
-
   const openCreate = () => {
     setMotif('');
     setDate(new Date());
-    setRecipientName(defaultRecipientName ?? '');
+    setRecipientName(defaultRecipientName?.trim() ?? '');
     setCreateOpen(true);
+  };
+
+  const openFollowUp = (followUpId: string) => {
+    router.push(t.employee.animalFollowUp(animalId, followUpId));
   };
 
   const handleCreate = () => {
@@ -147,15 +147,12 @@ export function AnimalFollowUpsSection({
         return;
       }
       const created = result.data as FollowUpDTO;
-      setFollowUps((prev) => [created, ...prev]);
-      setSelectedId(created.id);
-      setCreateOpen(false);
-      setMotif('');
       notifications.show({
         title: 'Suivi créé',
         message: created.motif,
         color: 'terracotta',
       });
+      router.push(t.employee.animalFollowUp(animalId, created.id));
     });
   };
 
@@ -209,6 +206,11 @@ export function AnimalFollowUpsSection({
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.currentTarget.value)}
                 disabled={pending}
+                description={
+                  defaultRecipientName?.trim()
+                    ? `Par défaut : adoptant (${defaultRecipientName.trim()})`
+                    : undefined
+                }
               />
             </SimpleGrid>
             <TextInput
@@ -256,54 +258,38 @@ export function AnimalFollowUpsSection({
         </Text>
       ) : (
         <Stack gap="sm">
-          {followUps.map((followUp) => {
-            const active = followUp.id === selectedId;
-            return (
-              <button
-                key={followUp.id}
-                type="button"
-                className={`${classes.followUpCard} ${active ? classes.followUpCardActive : ''}`}
-                onClick={() =>
-                  setSelectedId((current) => (current === followUp.id ? null : followUp.id))
-                }
-              >
-                <div className={classes.followUpCardTop}>
-                  <Text fw={700}>{followUp.motif}</Text>
-                  <Badge
-                    size="md"
-                    radius="sm"
-                    color={FOLLOW_UP_STATUS_BADGE_COLORS[followUp.status].color}
-                    variant={FOLLOW_UP_STATUS_BADGE_COLORS[followUp.status].variant}
-                  >
-                    {FOLLOW_UP_STATUS_LABELS[followUp.status]}
-                  </Badge>
-                </div>
-                <Text className={classes.followUpMeta}>
-                  {formatRpDate(parseIsoDateOnly(followUp.date), 'dd/MM/yyyy')}
-                  {' · '}
-                  Destinataire : {followUp.recipientName}
-                  {' · '}
-                  Conduit par {followUp.conductedByName}
-                  {followUp.messages.length > 0
-                    ? ` · ${followUp.messages.length} lettre${followUp.messages.length > 1 ? 's' : ''}`
-                    : ''}
-                </Text>
-              </button>
-            );
-          })}
+          {followUps.map((followUp) => (
+            <button
+              key={followUp.id}
+              type="button"
+              className={classes.followUpCard}
+              onClick={() => openFollowUp(followUp.id)}
+            >
+              <div className={classes.followUpCardTop}>
+                <Text fw={700}>{followUp.motif}</Text>
+                <Badge
+                  size="md"
+                  radius="sm"
+                  color={FOLLOW_UP_STATUS_BADGE_COLORS[followUp.status].color}
+                  variant={FOLLOW_UP_STATUS_BADGE_COLORS[followUp.status].variant}
+                >
+                  {FOLLOW_UP_STATUS_LABELS[followUp.status]}
+                </Badge>
+              </div>
+              <Text className={classes.followUpMeta}>
+                {formatRpDate(parseIsoDateOnly(followUp.date), 'dd/MM/yyyy')}
+                {' · '}
+                Destinataire : {followUp.recipientName}
+                {' · '}
+                Conduit par {followUp.conductedByName}
+                {followUp.messages.length > 0
+                  ? ` · ${followUp.messages.length} lettre${followUp.messages.length > 1 ? 's' : ''}`
+                  : ''}
+              </Text>
+            </button>
+          ))}
         </Stack>
       )}
-
-      {selected ? (
-        <FollowUpThread
-          shelterSlug={shelterSlug}
-          followUp={selected}
-          canUpdate={canUpdate}
-          onUpdated={(next) => {
-            setFollowUps((prev) => prev.map((f) => (f.id === next.id ? next : f)));
-          }}
-        />
-      ) : null}
     </section>
   );
 }

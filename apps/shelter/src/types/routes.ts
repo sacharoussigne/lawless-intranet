@@ -14,6 +14,8 @@ export function tenantRoutes(slug: string) {
       species: `${employeeBase}/species`,
       animals: `${employeeBase}/animals`,
       animal: (id: string) => `${employeeBase}/animals/${encodeURIComponent(id)}`,
+      animalFollowUp: (animalId: string, followUpId: string) =>
+        `${employeeBase}/animals/${encodeURIComponent(animalId)}/follow-ups/${encodeURIComponent(followUpId)}`,
     },
     bank: { index: `${employeeBase}/bank` },
     species: { index: `${employeeBase}/species` },

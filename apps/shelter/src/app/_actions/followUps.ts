@@ -43,8 +43,12 @@ function toDateOnlyIso(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function revalidateAnimal(shelterSlug: string, animalId: string) {
-  revalidatePath(tenantRoutes(shelterSlug).employee.animal(animalId));
+function revalidateAnimal(shelterSlug: string, animalId: string, followUpId?: string) {
+  const routes = tenantRoutes(shelterSlug).employee;
+  revalidatePath(routes.animal(animalId));
+  if (followUpId) {
+    revalidatePath(routes.animalFollowUp(animalId, followUpId));
+  }
 }
 
 function serializeMessage(row: {
@@ -119,6 +123,20 @@ async function requireFollowUpInShelter(shelterId: string, followUpId: string) {
   });
 }
 
+function withProfiles(
+  row: NonNullable<Awaited<ReturnType<typeof requireFollowUpInShelter>>>,
+  profiles: Map<string, { name: string }>,
+) {
+  return {
+    ...serializeFollowUp(row),
+    conductedByName: profiles.get(row.conductedByUserId)?.name ?? row.conductedByUserId,
+    messages: row.messages.map((m) => ({
+      ...serializeMessage(m),
+      createdByName: profiles.get(m.createdByUserId)?.name ?? m.createdByUserId,
+    })),
+  };
+}
+
 export async function listAnimalFollowUps(shelterSlug: string, animalId: string) {
   try {
     const ctx = await requireTenantServerActionContext(shelterSlug, animalsAccessAuth);
@@ -143,18 +161,30 @@ export async function listAnimalFollowUps(shelterSlug: string, animalId: string)
     ];
     const profiles = await fetchUserProfiles(userIds);
 
-    const data = rows.map((row) => ({
-      ...serializeFollowUp(row),
-      conductedByName: profiles.get(row.conductedByUserId)?.name ?? row.conductedByUserId,
-      messages: row.messages.map((m) => ({
-        ...serializeMessage(m),
-        createdByName: profiles.get(m.createdByUserId)?.name ?? m.createdByUserId,
-      })),
-    }));
+    const data = rows.map((row) => withProfiles(row, profiles));
 
     return { status: 200, data };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement des suivis');
+  }
+}
+
+export async function getAnimalFollowUp(shelterSlug: string, followUpId: string) {
+  try {
+    const ctx = await requireTenantServerActionContext(shelterSlug, animalsAccessAuth);
+    if (!ctx.ok) return ctx.response;
+    const { shelterId } = ctx.tenant;
+    const id = z.string().uuid().parse(followUpId);
+
+    const row = await requireFollowUpInShelter(shelterId, id);
+    if (!row) return { status: 404, error: 'Suivi introuvable' };
+
+    const userIds = [row.conductedByUserId, ...row.messages.map((m) => m.createdByUserId)];
+    const profiles = await fetchUserProfiles(userIds);
+
+    return { status: 200, data: withProfiles(row, profiles) };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du chargement du suivi');
   }
 }
 
@@ -206,7 +236,7 @@ export async function createAnimalFollowUp(
     });
 
     const profiles = await fetchUserProfiles([row.conductedByUserId]);
-    revalidateAnimal(shelterSlug, animalId);
+    revalidateAnimal(shelterSlug, animalId, row.id);
 
     return {
       status: 201,
@@ -259,7 +289,7 @@ export async function updateAnimalFollowUpStatus(
       row.conductedByUserId,
       ...row.messages.map((m) => m.createdByUserId),
     ]);
-    revalidateAnimal(shelterSlug, row.animalId);
+    revalidateAnimal(shelterSlug, row.animalId, row.id);
 
     return {
       status: 200,
@@ -313,7 +343,7 @@ export async function closeAnimalFollowUp(
       row.conductedByUserId,
       ...row.messages.map((m) => m.createdByUserId),
     ]);
-    revalidateAnimal(shelterSlug, row.animalId);
+    revalidateAnimal(shelterSlug, row.animalId, row.id);
 
     return {
       status: 200,
@@ -382,7 +412,7 @@ export async function addAnimalFollowUpMessage(
       row.conductedByUserId,
       ...row.messages.map((m) => m.createdByUserId),
     ]);
-    revalidateAnimal(shelterSlug, row.animalId);
+    revalidateAnimal(shelterSlug, row.animalId, row.id);
 
     return {
       status: 201,
