@@ -8,14 +8,17 @@
   border-radius: 8px;
   border: 1.5px solid var(--shelter-border);
   background: var(--shelter-surface);
+  box-shadow: var(--shelter-shadow-card);
   cursor: pointer;
   color: inherit;
   transition:
     border-color 120ms ease,
-    background 120ms ease;
+    background 120ms ease,
+    box-shadow 120ms ease;
 
   &:hover {
-    background: color-mix(in srgb, var(--shelter-bg-accent) 55%, var(--shelter-surface));
+    background: color-mix(in srgb, var(--shelter-bg-accent) 40%, var(--shelter-surface));
+    border-color: color-mix(in srgb, var(--shelter-terracotta) 28%, var(--shelter-border));
   }
 }
 
@@ -75,10 +78,10 @@
 
 .sideFieldLabel {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--mantine-color-dimmed);
+  color: var(--shelter-muted);
   margin-bottom: 0.25rem;
 }
 

@@ -35,6 +35,11 @@ import {
 import classes from './FollowUps.module.scss';
 import type { FollowUpDTO } from './followUpTypes';
 
+function compareFollowUpsRecentFirst(a: FollowUpDTO, b: FollowUpDTO): number {
+  if (a.date !== b.date) return b.date.localeCompare(a.date);
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
 export function AnimalFollowUpsSection({
   shelterSlug,
   animalId,
@@ -110,6 +115,11 @@ export function AnimalFollowUpsSection({
     return options;
   }, [managers, conductedByUserId]);
 
+  const sortedFollowUps = useMemo(
+    () => followUps.slice().sort(compareFollowUpsRecentFirst),
+    [followUps],
+  );
+
   const openCreate = () => {
     setMotif('');
     setDate(new Date());
@@ -160,7 +170,7 @@ export function AnimalFollowUpsSection({
     <section>
       <Group justify="space-between" align="center" mb="sm" wrap="wrap">
         <Text className={pageClasses.sectionTitle} mb={0}>
-          Suivis
+          Suivis ({loading ? '…' : sortedFollowUps.length})
         </Text>
         {canUpdate ? (
           <Button
@@ -252,13 +262,13 @@ export function AnimalFollowUpsSection({
         <Text size="sm" c="dimmed">
           Chargement des suivis…
         </Text>
-      ) : followUps.length === 0 ? (
+      ) : sortedFollowUps.length === 0 ? (
         <Text size="sm" c="dimmed">
           Aucun suivi pour cet animal.
         </Text>
       ) : (
         <Stack gap="sm">
-          {followUps.map((followUp) => (
+          {sortedFollowUps.map((followUp) => (
             <button
               key={followUp.id}
               type="button"

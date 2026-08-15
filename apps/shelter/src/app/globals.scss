@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --shelter-bg: #F0E6D6;
-  --shelter-bg-accent: #E8DCC8;
-  --shelter-surface: #FBF6EE;
-  --shelter-border: #DCCBB3;
-  --shelter-ink: #3E3B39;
-  --shelter-muted: #6A635C;
+  --shelter-bg: #E8DCC8;
+  --shelter-bg-accent: #DDD0B8;
+  --shelter-surface: #FFFCF7;
+  --shelter-border: #C9B496;
+  --shelter-ink: #2F2C2A;
+  --shelter-muted: #5A534C;
   --shelter-terracotta: #8B4532;
   --shelter-sage-dust: #A4AC86;
   --shelter-leather: #8B5E3C;
   --shelter-danger: #8B2323;
-  --shelter-table-header: #E8DCC8;
-  --shelter-table-zebra: #F5EDE0;
-  --shelter-shadow-card: 0 1px 2px rgba(62, 59, 57, 0.05), 0 2px 6px rgba(62, 59, 57, 0.04);
-  --shelter-shadow-header: 0 1px 0 rgba(220, 203, 179, 0.9), 0 2px 6px rgba(62, 59, 57, 0.04);
+  --shelter-table-header: #E0D3BC;
+  --shelter-table-zebra: #F3EADF;
+  --shelter-shadow-card: 0 1px 2px rgba(62, 59, 57, 0.07), 0 3px 10px rgba(62, 59, 57, 0.06);
+  --shelter-shadow-header: 0 1px 0 rgba(201, 180, 150, 0.95), 0 2px 8px rgba(62, 59, 57, 0.06);
   --shelter-font-ui: var(--font-ui), "Courier New", Courier, monospace;
   --shelter-font-display: var(--font-display), var(--font-ui), "Courier New", Courier, monospace;
 
@@ -44,15 +44,15 @@ body {
 .shelter-paper-bg {
   background-color: var(--shelter-bg);
   background-image:
-    radial-gradient(ellipse at 18% 0%, rgba(139, 69, 50, 0.07) 0%, transparent 48%),
-    radial-gradient(ellipse at 82% 100%, rgba(164, 172, 134, 0.08) 0%, transparent 52%),
-    radial-gradient(ellipse at 50% 40%, rgba(62, 59, 57, 0.03) 0%, transparent 55%),
+    radial-gradient(ellipse at 18% 0%, rgba(139, 69, 50, 0.09) 0%, transparent 48%),
+    radial-gradient(ellipse at 82% 100%, rgba(164, 172, 134, 0.1) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 40%, rgba(62, 59, 57, 0.04) 0%, transparent 55%),
     repeating-linear-gradient(
       0deg,
       transparent,
       transparent 2px,
-      rgba(62, 59, 57, 0.012) 2px,
-      rgba(62, 59, 57, 0.012) 3px
+      rgba(62, 59, 57, 0.018) 2px,
+      rgba(62, 59, 57, 0.018) 3px
     );
   min-height: 100dvh;
   width: 100%;
@@ -75,6 +75,6 @@ body {
 
 .shelter-section-divider {
   border: none;
-  border-top: 1px dashed var(--shelter-border);
+  border-top: 1px dashed color-mix(in srgb, var(--shelter-border) 75%, var(--shelter-ink));
   margin: 0;
 }
