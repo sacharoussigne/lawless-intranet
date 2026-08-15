@@ -5,7 +5,7 @@ import {
   Badge,
   Button,
   Group,
-  Paper,
+  Modal,
   Select,
   SimpleGrid,
   Stack,
@@ -13,7 +13,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconX } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { listCaseManagerOptions } from '@/app/_actions/animals';
 import { createAnimalFollowUp, listAnimalFollowUps } from '@/app/_actions/followUps';
@@ -186,78 +186,65 @@ export function AnimalFollowUpsSection({
         ) : null}
       </Group>
 
-      {createOpen ? (
-        <Paper withBorder p="md" mb="md" radius="md">
-          <Group justify="space-between" mb="sm">
-            <Text fw={700}>Nouveau suivi</Text>
+      <Modal
+        opened={createOpen}
+        onClose={() => {
+          if (!pending) setCreateOpen(false);
+        }}
+        title="Nouveau suivi"
+        size="lg"
+        centered
+      >
+        <Stack gap="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <RpDateInput
+              label="Date"
+              required
+              value={date}
+              onChange={setDate}
+              disabled={pending}
+            />
+            <TextInput
+              label="Destinataire"
+              required
+              value={recipientName}
+              onChange={(e) => setRecipientName(e.currentTarget.value)}
+              disabled={pending}
+            />
+          </SimpleGrid>
+          <TextInput
+            label="Motif"
+            required
+            value={motif}
+            onChange={(e) => setMotif(e.currentTarget.value)}
+            disabled={pending}
+            placeholder="Ex. Contrôle post-adoption"
+          />
+          <Select
+            label="Conduit par"
+            required
+            data={managerOptions}
+            value={conductedByUserId}
+            onChange={setConductedByUserId}
+            searchable
+            disabled={pending}
+          />
+          <Group justify="flex-end" gap="sm">
             <Button
               type="button"
-              variant="subtle"
-              color="gray"
-              size="compact-sm"
-              leftSection={<IconX size={14} />}
+              variant="light"
+              color="terracotta"
               onClick={() => setCreateOpen(false)}
               disabled={pending}
             >
-              Fermer
+              Annuler
+            </Button>
+            <Button type="button" color="terracotta" loading={pending} onClick={handleCreate}>
+              Créer
             </Button>
           </Group>
-          <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <RpDateInput
-                label="Date"
-                required
-                value={date}
-                onChange={setDate}
-                disabled={pending}
-              />
-              <TextInput
-                label="Destinataire"
-                required
-                value={recipientName}
-                onChange={(e) => setRecipientName(e.currentTarget.value)}
-                disabled={pending}
-                description={
-                  defaultRecipientName?.trim()
-                    ? `Par défaut : adoptant (${defaultRecipientName.trim()})`
-                    : undefined
-                }
-              />
-            </SimpleGrid>
-            <TextInput
-              label="Motif"
-              required
-              value={motif}
-              onChange={(e) => setMotif(e.currentTarget.value)}
-              disabled={pending}
-              placeholder="Ex. Contrôle post-adoption"
-            />
-            <Select
-              label="Conduit par"
-              required
-              data={managerOptions}
-              value={conductedByUserId}
-              onChange={setConductedByUserId}
-              searchable
-              disabled={pending}
-            />
-            <Group justify="flex-end" gap="sm">
-              <Button
-                type="button"
-                variant="light"
-                color="terracotta"
-                onClick={() => setCreateOpen(false)}
-                disabled={pending}
-              >
-                Annuler
-              </Button>
-              <Button type="button" color="terracotta" loading={pending} onClick={handleCreate}>
-                Créer
-              </Button>
-            </Group>
-          </Stack>
-        </Paper>
-      ) : null}
+        </Stack>
+      </Modal>
 
       {loading ? (
         <Text size="sm" c="dimmed">
