@@ -5,9 +5,7 @@ import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
 import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
 import { getAppSettings } from '@/lib/appSettings';
-import { listAnimals } from '@/app/_actions/animals';
 import type { AuthSession } from '@/types/session';
-import type { AnimalDTO } from '@/app/(loggedIn)/s/[shelterSlug]/employee/animals/types';
 import {
   listAccessibleShelters,
   requireShelterFromSlug,
@@ -44,19 +42,13 @@ export default async function ShelterLayout({
     redirect(target);
   }
 
-  const [effectiveRole, appSettings, accessibleShelters, impersonatorDisplayName, animalsResult] =
+  const [effectiveRole, appSettings, accessibleShelters, impersonatorDisplayName] =
     await Promise.all([
       getEffectiveRoleForShelter(authSession, shelter.id),
       getAppSettings(shelter.id),
       listAccessibleShelters(authSession),
       getImpersonatorDisplayName(session?.session?.impersonatedBy),
-      listAnimals(shelterSlug).catch(() => null),
     ]);
-
-  const spotlightAnimals: AnimalDTO[] =
-    animalsResult && 'data' in animalsResult && Array.isArray(animalsResult.data)
-      ? (animalsResult.data as AnimalDTO[])
-      : [];
 
   const effectivePermissions = await resolveEffectivePermissionsForShelter(
     authSession,
@@ -75,7 +67,7 @@ export default async function ShelterLayout({
       accessibleShelters={accessibleShelters}
     >
       <LoggedInShell>
-        <ShelterClientProviders animals={spotlightAnimals}>
+        <ShelterClientProviders shelterSlug={shelterSlug}>
           <Header
             session={authSession}
             shelterSlug={shelterSlug}

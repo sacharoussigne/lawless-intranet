@@ -202,6 +202,7 @@ export default function Header({
       <AnimalSpotlight
         shelterSlug={shelterSlug}
         animals={spotlight.animals}
+        loading={spotlight.loading}
         opened={spotlight.opened}
         onClose={spotlight.close}
       />

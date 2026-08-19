@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Modal, Text, TextInput } from '@mantine/core';
+import { Badge, Loader, Modal, Text, TextInput } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { tenantRoutes } from '@/types/routes';
@@ -64,31 +64,40 @@ function getResults(animals: AnimalDTO[], query: string): SpotlightResult[] {
 export function AnimalSpotlight({
   shelterSlug,
   animals,
+  loading,
   opened,
   onClose,
 }: {
   shelterSlug: string;
   animals: AnimalDTO[];
+  loading: boolean;
   opened: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const results = useMemo(() => getResults(animals, query), [animals, query]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const results = useMemo(() => getResults(animals, debouncedQuery), [animals, debouncedQuery]);
 
   useEffect(() => {
     if (opened) {
       setQuery('');
+      setDebouncedQuery('');
       setFocusedIndex(0);
     }
   }, [opened]);
 
   useEffect(() => {
     setFocusedIndex(0);
-  }, [query]);
+  }, [debouncedQuery]);
 
   const navigate = (result: SpotlightResult) => {
     const t = tenantRoutes(shelterSlug);
@@ -123,6 +132,8 @@ export function AnimalSpotlight({
     }
   };
 
+  const showResults = !loading && query.trim().length > 0;
+
   return (
     <Modal
       opened={opened}
@@ -131,7 +142,7 @@ export function AnimalSpotlight({
       size="lg"
       padding={0}
       className={classes.overlay}
-      classNames={{ content: '', body: '' }}
+      styles={{ body: { padding: 0 } }}
       yOffset="15vh"
     >
       <div className={classes.searchWrapper}>
@@ -156,7 +167,11 @@ export function AnimalSpotlight({
       </div>
 
       <div className={classes.results}>
-        {query.trim().length === 0 ? (
+        {loading ? (
+          <div className={classes.empty}>
+            <Loader size="sm" color="var(--shelter-ink)" />
+          </div>
+        ) : !showResults ? (
           <div className={classes.empty}>
             <Text size="sm" c="dimmed">
               Tapez pour rechercher un animal…
@@ -165,7 +180,7 @@ export function AnimalSpotlight({
         ) : results.length === 0 ? (
           <div className={classes.empty}>
             <Text size="sm" c="dimmed">
-              Aucun animal trouvé pour « {query} »
+              Aucun animal trouvé pour « {debouncedQuery} »
             </Text>
           </div>
         ) : (

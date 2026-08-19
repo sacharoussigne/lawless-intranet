@@ -2,17 +2,16 @@
 
 import type { ReactNode } from 'react';
 import { AnimalSpotlightProvider } from '@/app/_contexts/AnimalSpotlightContext';
-import type { AnimalDTO } from '@/app/(loggedIn)/s/[shelterSlug]/employee/animals/types';
 
 export function ShelterClientProviders({
-  animals,
+  shelterSlug,
   children,
 }: {
-  animals: AnimalDTO[];
+  shelterSlug: string;
   children: ReactNode;
 }) {
   return (
-    <AnimalSpotlightProvider animals={animals}>
+    <AnimalSpotlightProvider shelterSlug={shelterSlug}>
       {children}
     </AnimalSpotlightProvider>
   );
