@@ -240,6 +240,7 @@ export function SortableBreedCard({
           placeholder="0.00"
           value={shelterPrice}
           onChange={setShelterPrice}
+          onKeyDown={(e) => { if (e.key === 'Enter' && canSavePrices) handleSavePrices(); }}
           min={0}
           decimalScale={2}
           fixedDecimalScale
@@ -252,6 +253,7 @@ export function SortableBreedCard({
           placeholder="Optionnel"
           value={animalierPrice}
           onChange={setAnimalierPrice}
+          onKeyDown={(e) => { if (e.key === 'Enter' && canSavePrices) handleSavePrices(); }}
           min={0}
           decimalScale={2}
           fixedDecimalScale
