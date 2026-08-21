@@ -5,6 +5,7 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  importTransactions,
   getNameSuggestions,
   getDescriptionSuggestions,
   addNameSuggestion,
@@ -51,6 +52,7 @@ export function createDispensaryBankActions(dispensarySlug: string): BankUiActio
       asBankResult(deleteTransaction(dispensarySlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
+    importTransactions: (data) => asBankResult(importTransactions(dispensarySlug, data)),
     getNameSuggestions: () => asBankResult(getNameSuggestions(dispensarySlug)),
     getDescriptionSuggestions: () => asBankResult(getDescriptionSuggestions(dispensarySlug)),
     addNameSuggestion: (data) => asBankResult(addNameSuggestion(dispensarySlug, data)),

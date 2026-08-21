@@ -117,6 +117,20 @@ export const createFromOrderSchema = z.object({
   type: transactionTypeSchema,
 });
 
+export const importTransactionItemSchema = z.object({
+  date: z.string().min(1),
+  type: transactionTypeSchema,
+  name: z.string().min(1),
+  description: z.string().optional().nullable(),
+  amount: z.number().positive(),
+});
+
+export const importTransactionsSchema = z.object({
+  scopeType: z.string().min(1),
+  scopeId: z.string().uuid(),
+  items: z.array(importTransactionItemSchema).min(1).max(5000),
+});
+
 export function zodErrorMessage(error: z.ZodError): string {
   return error.issues.map((i) => i.message).join(', ') || 'Validation error';
 }

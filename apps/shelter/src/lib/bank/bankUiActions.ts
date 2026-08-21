@@ -5,6 +5,7 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  importTransactions,
   getNameSuggestions,
   getDescriptionSuggestions,
   addNameSuggestion,
@@ -51,6 +52,7 @@ export function createShelterBankActions(shelterSlug: string): BankUiActions {
       asBankResult(deleteTransaction(shelterSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
+    importTransactions: (data) => asBankResult(importTransactions(shelterSlug, data)),
     getNameSuggestions: () => asBankResult(getNameSuggestions(shelterSlug)),
     getDescriptionSuggestions: () => asBankResult(getDescriptionSuggestions(shelterSlug)),
     addNameSuggestion: (data) => asBankResult(addNameSuggestion(shelterSlug, data)),

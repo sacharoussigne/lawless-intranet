@@ -7,12 +7,14 @@ import { bankActionError, bankCookie, bankScope } from '@/lib/bank/client';
 import {
   createBankTransaction,
   deleteBankTransaction,
+  importBankTransactions,
   updateBankTransaction,
 } from '@lawless-intranet/bank-client/server';
 import {
   createTransactionSchema,
   updateTransactionSchema,
   deleteTransactionSchema,
+  importTransactionsSchema,
 } from '@/app/_actions/bank/schemas';
 
 export async function createTransaction(
@@ -43,6 +45,38 @@ export async function createTransaction(
       return bankActionError(error, 'Erreur lors de la création de la transaction');
     } catch (e) {
       return actionErrorParser(e, 'Erreur lors de la création de la transaction');
+    }
+  }
+}
+
+export async function importTransactions(
+  shelterSlug: string,
+  data: {
+    items: Array<{
+      date: string;
+      type: 'DEPOSIT' | 'WITHDRAWAL' | 'TRANSFER_IN' | 'TRANSFER_OUT';
+      name: string;
+      description?: string | null;
+      amount: number;
+    }>;
+  },
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(shelterSlug, bankActionAuth);
+    if (!ctx.ok) return ctx.response;
+    const { shelterId } = ctx.tenant;
+    const validatedData = importTransactionsSchema.parse(data);
+
+    const result = await importBankTransactions(
+      { ...bankScope(shelterId), items: validatedData.items },
+      await bankCookie(),
+    );
+    return { status: 200, data: result };
+  } catch (error) {
+    try {
+      return bankActionError(error, "Erreur lors de l'import des transactions");
+    } catch (e) {
+      return actionErrorParser(e, "Erreur lors de l'import des transactions");
     }
   }
 }

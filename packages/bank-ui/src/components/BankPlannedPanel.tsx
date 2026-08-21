@@ -17,10 +17,9 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
-import dayjs from "dayjs";
 import { useBankUi } from "../BankUiProvider";
 import { apothecaryBooleanPills } from "../lib/apothecaryPill";
-import { toRpDisplayDate } from "../rpCalendar";
+import { formatRpDay } from "../rpCalendar";
 import type {
   BankActionResult,
   SerializedPlannedTransaction,
@@ -341,7 +340,7 @@ export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
                       <Text size="xs" c="dimmed">
                         {item.amount.toFixed(2)} $ ·{" "}
                         {item.scheduleKind === "ONCE"
-                          ? `Une fois le ${item.onceDate ? dayjs(toRpDisplayDate(new Date(item.onceDate))).format("DD/MM/YYYY") : ""}`
+                          ? `Une fois le ${item.onceDate ? formatRpDay(item.onceDate) : ""}`
                           : `Hebdo · ${item.weekdays.map((day) => WEEKDAY_OPTIONS.find((option) => option.value === String(day))?.label).join(", ")}`}
                         {item.description ? ` · ${item.description}` : ""}
                       </Text>

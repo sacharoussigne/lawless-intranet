@@ -669,6 +669,174 @@ export async function createTransactionFromOrder(input: {
   return { ok: true as const, status: 201, data: serializeTransaction(transaction) };
 }
 
+const RP_DISPLAY_YEAR_OFFSET = 136;
+
+/** Parse RP `DD/MM/YYYY[ HH:mm]` → Paris wall time (+136y). `sortAt` equals that instant for ordering. */
+function parseRpImportDate(raw: string): { date: Date; sortAt: number } | null {
+  const trimmed = raw.trim();
+  let parsed = dayjs(trimmed, 'DD/MM/YYYY HH:mm', true);
+  if (!parsed.isValid()) parsed = dayjs(trimmed, 'DD/MM/YYYY', true);
+  if (!parsed.isValid()) return null;
+
+  const year = parsed.year() + RP_DISPLAY_YEAR_OFFSET;
+  const month = parsed.month() + 1;
+  const day = parsed.date();
+  const hour = parsed.hour();
+  const minute = parsed.minute();
+  const wall = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const real = dayjs.tz(wall, 'YYYY-MM-DD HH:mm', TZ);
+  if (!real.isValid()) return null;
+
+  return {
+    date: real.toDate(),
+    sortAt: real.valueOf(),
+  };
+}
+
+function transactionDedupeKey(
+  date: Date,
+  type: string,
+  name: string,
+  amount: number,
+  description: string | null | undefined,
+) {
+  const day = dayjs(date).tz(TZ).format('YYYY-MM-DD');
+  return [
+    day,
+    type,
+    name.trim().toLowerCase(),
+    Number(amount).toFixed(2),
+    (description ?? '').trim().toLowerCase(),
+  ].join('|');
+}
+
+export async function importTransactions(input: {
+  scopeType: string;
+  scopeId: string;
+  items: Array<{
+    date: string;
+    type: TransactionType;
+    name: string;
+    description?: string | null;
+    amount: number;
+  }>;
+}) {
+  const errors: Array<{ index: number; message: string }> = [];
+  const parsed: Array<{
+    index: number;
+    realDate: Date;
+    sortAt: number;
+    type: TransactionType;
+    name: string;
+    description: string | null;
+    amount: number;
+  }> = [];
+
+  input.items.forEach((item, index) => {
+    const parsedDate = parseRpImportDate(item.date);
+    if (!parsedDate) {
+      errors.push({ index, message: `Date invalide : ${item.date}` });
+      return;
+    }
+    parsed.push({
+      index,
+      realDate: parsedDate.date,
+      sortAt: parsedDate.sortAt,
+      type: item.type,
+      name: item.name.trim(),
+      description: item.description?.trim() || null,
+      amount: item.amount,
+    });
+  });
+
+  parsed.sort((a, b) => a.sortAt - b.sortAt || a.index - b.index);
+
+  const existing = await prisma.bankTransaction.findMany({
+    where: { week: scopeWhere(input.scopeType, input.scopeId) },
+    select: {
+      date: true,
+      type: true,
+      name: true,
+      amount: true,
+      description: true,
+      order: true,
+    },
+  });
+
+  const existingKeys = new Set(
+    existing.map((t) =>
+      transactionDedupeKey(t.date, t.type, t.name, Number(t.amount), t.description),
+    ),
+  );
+
+  const nextOrderByDay = new Map<string, number>();
+  for (const t of existing) {
+    const dayKey = dayjs(t.date).tz(TZ).format('YYYY-MM-DD');
+    const current = nextOrderByDay.get(dayKey) ?? -1;
+    nextOrderByDay.set(dayKey, Math.max(current, t.order));
+  }
+
+  const weekCache = new Map<string, string>();
+  const touchedWeekIds = new Set<string>();
+  const seenInBatch = new Set<string>();
+  let created = 0;
+  let skipped = 0;
+
+  for (const item of parsed) {
+    const key = transactionDedupeKey(
+      item.realDate,
+      item.type,
+      item.name,
+      item.amount,
+      item.description,
+    );
+    if (existingKeys.has(key) || seenInBatch.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    seenInBatch.add(key);
+
+    const { start } = getWeekBounds(item.realDate);
+    const weekCacheKey = start.toISOString();
+    let weekId = weekCache.get(weekCacheKey);
+    if (!weekId) {
+      const week = await getOrCreateWeek(input.scopeType, input.scopeId, item.realDate);
+      weekId = week.id;
+      weekCache.set(weekCacheKey, weekId);
+    }
+
+    const dayKey = dayjs(item.realDate).tz(TZ).format('YYYY-MM-DD');
+    const nextOrder = (nextOrderByDay.get(dayKey) ?? -1) + 1;
+    nextOrderByDay.set(dayKey, nextOrder);
+
+    await prisma.bankTransaction.create({
+      data: {
+        weekId,
+        date: item.realDate,
+        type: item.type,
+        name: item.name,
+        description: item.description,
+        amount: item.amount,
+        order: nextOrder,
+      },
+    });
+
+    existingKeys.add(key);
+    touchedWeekIds.add(weekId);
+    created += 1;
+  }
+
+  for (const weekId of touchedWeekIds) {
+    await recalculateWeekBalance(input.scopeType, input.scopeId, weekId);
+  }
+
+  return {
+    ok: true as const,
+    status: 200,
+    data: { created, skipped, errors },
+  };
+}
+
 export async function purgeScope(scopeType: string, scopeId: string) {
   const where = scopeWhere(scopeType, scopeId);
   const [weeks, planned, nameSuggestions, descriptionSuggestions] = await Promise.all([
