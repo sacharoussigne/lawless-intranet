@@ -1,5 +1,6 @@
 import Header from '@/app/(loggedIn)/_components/Header/Header';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
+import { ShelterClientProviders } from '@/app/(loggedIn)/_components/ShelterClientProviders/ShelterClientProviders';
 import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
 import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
@@ -66,12 +67,14 @@ export default async function ShelterLayout({
       accessibleShelters={accessibleShelters}
     >
       <LoggedInShell>
-        <Header
-          session={authSession}
-          shelterSlug={shelterSlug}
-          impersonatorDisplayName={impersonatorDisplayName}
-        />
-        <div className="flex-1 w-full min-w-0 pb-8 min-h-0">{children}</div>
+        <ShelterClientProviders shelterSlug={shelterSlug}>
+          <Header
+            session={authSession}
+            shelterSlug={shelterSlug}
+            impersonatorDisplayName={impersonatorDisplayName}
+          />
+          <div className="flex-1 w-full min-w-0 pb-8 min-h-0">{children}</div>
+        </ShelterClientProviders>
       </LoggedInShell>
     </PermissionsProvider>
   );

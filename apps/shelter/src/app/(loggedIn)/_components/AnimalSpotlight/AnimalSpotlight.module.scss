@@ -1,0 +1,120 @@
+.overlay {
+  :global(.mantine-Modal-content) {
+    background: var(--shelter-surface);
+    border: 1.5px dashed var(--shelter-border);
+    box-shadow: var(--shelter-shadow-card);
+    border-radius: 10px;
+    padding: 0;
+  }
+
+  :global(.mantine-Modal-body) {
+    padding: 0;
+  }
+}
+
+.searchWrapper {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px dashed var(--shelter-border);
+  background: color-mix(in srgb, var(--shelter-bg-accent) 55%, var(--shelter-surface));
+  border-radius: 8px 8px 0 0;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background 100ms ease,
+    border-color 100ms ease;
+}
+
+.resultItem:hover,
+.resultItemFocused {
+  background: color-mix(in srgb, var(--shelter-terracotta) 8%, transparent);
+  border-color: color-mix(in srgb, var(--shelter-terracotta) 25%, var(--shelter-border));
+}
+
+.filterItem {
+  gap: 0.5rem;
+}
+
+.filterIcon {
+  flex-shrink: 0;
+  color: var(--shelter-muted);
+}
+
+.filterLabel {
+  font-size: 0.85rem;
+  color: var(--shelter-ink);
+  font-style: italic;
+}
+
+.resultName {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--shelter-ink);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultMeta {
+  font-size: 0.78rem;
+  color: var(--shelter-muted);
+  white-space: nowrap;
+}
+
+.matchType {
+  font-size: 0.7rem;
+  color: var(--shelter-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+  font-style: italic;
+}
+
+.empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--shelter-muted);
+  font-size: 0.9rem;
+}
+
+.hint {
+  padding: 0.5rem 1rem;
+  border-top: 1px dashed var(--shelter-border);
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 0.72rem;
+  color: var(--shelter-muted);
+  background: color-mix(in srgb, var(--shelter-bg-accent) 30%, var(--shelter-surface));
+  border-radius: 0 0 8px 8px;
+}
+
+.hintKey {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--shelter-border);
+  border-radius: 3px;
+  font-family: var(--shelter-font-ui);
+  font-size: 0.7rem;
+  background: var(--shelter-surface);
+  color: var(--shelter-ink);
+}
