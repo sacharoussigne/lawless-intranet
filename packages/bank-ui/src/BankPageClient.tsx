@@ -19,7 +19,6 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { DataTable } from "mantine-datatable";
-import dayjs from "dayjs";
 import {
   IconArrowDown,
   IconArrowLeft,
@@ -51,9 +50,7 @@ import {
   denimPalette,
   mossPalette,
 } from "./lib/apothecaryPill";
-import { toRpDisplayDate } from "./rpCalendar";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { formatRpDay, formatRpLongDay } from "./rpCalendar";
 import type {
   BankActionResult,
   SerializedBankWeek,
@@ -120,12 +117,6 @@ function isSuccess<T>(
 ): result is { status: number; data: T } {
   return result.data !== undefined;
 }
-
-const formatRpDay = (value: Date | string) =>
-  dayjs(toRpDisplayDate(new Date(value))).format("DD/MM/YYYY");
-
-const formatRpLongDay = (value: Date | string) =>
-  format(toRpDisplayDate(new Date(value)), "d MMMM yyyy", { locale: fr });
 
 const formatRpWeekRange = (start: Date | string, end: Date | string) =>
   `${formatRpLongDay(start)} au ${formatRpLongDay(end)}`;

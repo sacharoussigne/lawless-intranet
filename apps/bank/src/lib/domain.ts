@@ -671,12 +671,26 @@ export async function createTransactionFromOrder(input: {
 
 const RP_DISPLAY_YEAR_OFFSET = 136;
 
-function parseRpImportDate(raw: string): Date | null {
+/** Parse RP `DD/MM/YYYY[ HH:mm]` → Paris start-of-day (+136y). `sortAt` keeps wall time for ordering. */
+function parseRpImportDate(raw: string): { date: Date; sortAt: number } | null {
   const trimmed = raw.trim();
   let parsed = dayjs(trimmed, 'DD/MM/YYYY HH:mm', true);
   if (!parsed.isValid()) parsed = dayjs(trimmed, 'DD/MM/YYYY', true);
   if (!parsed.isValid()) return null;
-  return parsed.add(RP_DISPLAY_YEAR_OFFSET, 'year').toDate();
+
+  const year = parsed.year() + RP_DISPLAY_YEAR_OFFSET;
+  const month = parsed.month() + 1;
+  const day = parsed.date();
+  const hour = parsed.hour();
+  const minute = parsed.minute();
+  const wall = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const real = dayjs.tz(wall, 'YYYY-MM-DD HH:mm', TZ);
+  if (!real.isValid()) return null;
+
+  return {
+    date: real.startOf('day').toDate(),
+    sortAt: real.valueOf(),
+  };
 }
 
 function transactionDedupeKey(
@@ -711,6 +725,7 @@ export async function importTransactions(input: {
   const parsed: Array<{
     index: number;
     realDate: Date;
+    sortAt: number;
     type: TransactionType;
     name: string;
     description: string | null;
@@ -718,14 +733,15 @@ export async function importTransactions(input: {
   }> = [];
 
   input.items.forEach((item, index) => {
-    const realDate = parseRpImportDate(item.date);
-    if (!realDate) {
+    const parsedDate = parseRpImportDate(item.date);
+    if (!parsedDate) {
       errors.push({ index, message: `Date invalide : ${item.date}` });
       return;
     }
     parsed.push({
       index,
-      realDate,
+      realDate: parsedDate.date,
+      sortAt: parsedDate.sortAt,
       type: item.type,
       name: item.name.trim(),
       description: item.description?.trim() || null,
@@ -733,7 +749,7 @@ export async function importTransactions(input: {
     });
   });
 
-  parsed.sort((a, b) => a.realDate.getTime() - b.realDate.getTime() || a.index - b.index);
+  parsed.sort((a, b) => a.sortAt - b.sortAt || a.index - b.index);
 
   const existing = await prisma.bankTransaction.findMany({
     where: { week: scopeWhere(input.scopeType, input.scopeId) },
