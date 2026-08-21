@@ -20,6 +20,7 @@ export function RpDateInput({
   onChange,
   valueFormat = 'DD/MM/YYYY',
   locale = 'fr',
+  defaultDate,
   ...props
 }: RpDateInputProps) {
   const realDate = toRealDate(value);
@@ -32,6 +33,7 @@ export function RpDateInput({
         locale={locale}
         valueFormat={valueFormat}
         value={rpValue}
+        defaultDate={defaultDate ?? rpValue ?? toRpDisplayDate(new Date())}
         onChange={(rp) => {
           if (rp == null) {
             onChange(null);
