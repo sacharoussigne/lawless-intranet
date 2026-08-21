@@ -46,6 +46,21 @@
   border-color: color-mix(in srgb, var(--shelter-terracotta) 25%, var(--shelter-border));
 }
 
+.filterItem {
+  gap: 0.5rem;
+}
+
+.filterIcon {
+  flex-shrink: 0;
+  color: var(--shelter-muted);
+}
+
+.filterLabel {
+  font-size: 0.85rem;
+  color: var(--shelter-ink);
+  font-style: italic;
+}
+
 .resultName {
   font-weight: 700;
   font-size: 0.9rem;

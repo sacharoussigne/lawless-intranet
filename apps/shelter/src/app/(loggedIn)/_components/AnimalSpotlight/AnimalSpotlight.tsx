@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Loader, Modal, Text, TextInput } from '@mantine/core';
-import { IconSearch } from '@tabler/icons-react';
+import { IconFilter, IconSearch } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { tenantRoutes } from '@/types/routes';
 import { ANIMAL_STATUS_LABELS } from '@/lib/animals/labels';
@@ -12,10 +12,21 @@ import classes from './AnimalSpotlight.module.scss';
 
 type MatchKind = 'name' | 'species' | 'breed' | 'status';
 
-type SpotlightResult = {
+type SpotlightAnimalItem = {
+  type: 'animal';
   animal: AnimalDTO;
   kind: MatchKind;
 };
+
+type SpotlightFilterItem = {
+  type: 'filter';
+  filter: 'species' | 'breed' | 'status';
+  label: string;
+  speciesId?: string;
+  value: string;
+};
+
+type SpotlightItem = SpotlightAnimalItem | SpotlightFilterItem;
 
 const STATUS_COLORS: Record<AnimalStatus, string> = {
   in_care: 'sageDust',
@@ -31,34 +42,82 @@ const KIND_LABELS: Record<MatchKind, string> = {
   status: 'statut',
 };
 
-function getResults(animals: AnimalDTO[], query: string): SpotlightResult[] {
+const FILTER_LABELS: Record<SpotlightFilterItem['filter'], string> = {
+  species: 'espèce',
+  breed: 'race',
+  status: 'statut',
+};
+
+function getItems(animals: AnimalDTO[], query: string): SpotlightItem[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
-  const seen = new Set<string>();
-  const results: SpotlightResult[] = [];
+  const items: SpotlightItem[] = [];
+  const seenSpecies = new Set<string>();
+  const seenBreeds = new Set<string>();
+  const seenStatuses = new Set<string>();
 
-  const push = (animal: AnimalDTO, kind: MatchKind) => {
-    if (seen.has(animal.id)) return;
-    seen.add(animal.id);
-    results.push({ animal, kind });
+  for (const animal of animals) {
+    if (animal.species.name.toLowerCase().includes(q) && !seenSpecies.has(animal.speciesId)) {
+      seenSpecies.add(animal.speciesId);
+      items.push({
+        type: 'filter',
+        filter: 'species',
+        label: animal.species.name,
+        value: animal.speciesId,
+      });
+    }
+  }
+
+  for (const animal of animals) {
+    if (animal.breed.name.toLowerCase().includes(q) && !seenBreeds.has(animal.breedId)) {
+      seenBreeds.add(animal.breedId);
+      items.push({
+        type: 'filter',
+        filter: 'breed',
+        label: animal.breed.name,
+        speciesId: animal.speciesId,
+        value: animal.breedId,
+      });
+    }
+  }
+
+  for (const [status, label] of Object.entries(ANIMAL_STATUS_LABELS) as [AnimalStatus, string][]) {
+    if (label.toLowerCase().includes(q) && !seenStatuses.has(status)) {
+      seenStatuses.add(status);
+      items.push({
+        type: 'filter',
+        filter: 'status',
+        label,
+        value: status,
+      });
+    }
+  }
+
+  const seenAnimals = new Set<string>();
+  const animalItems: SpotlightAnimalItem[] = [];
+
+  const pushAnimal = (animal: AnimalDTO, kind: MatchKind) => {
+    if (seenAnimals.has(animal.id)) return;
+    seenAnimals.add(animal.id);
+    animalItems.push({ type: 'animal', animal, kind });
   };
 
   for (const animal of animals) {
-    if (animal.name.toLowerCase().includes(q)) push(animal, 'name');
+    if (animal.name.toLowerCase().includes(q)) pushAnimal(animal, 'name');
   }
   for (const animal of animals) {
-    if (animal.species.name.toLowerCase().includes(q)) push(animal, 'species');
+    if (animal.species.name.toLowerCase().includes(q)) pushAnimal(animal, 'species');
   }
   for (const animal of animals) {
-    if (animal.breed.name.toLowerCase().includes(q)) push(animal, 'breed');
+    if (animal.breed.name.toLowerCase().includes(q)) pushAnimal(animal, 'breed');
   }
   for (const animal of animals) {
     const statusLabel = ANIMAL_STATUS_LABELS[animal.status]?.toLowerCase() ?? '';
-    if (statusLabel.includes(q)) push(animal, 'status');
+    if (statusLabel.includes(q)) pushAnimal(animal, 'status');
   }
 
-  return results.slice(0, 8);
+  return [...items, ...animalItems.slice(0, 8)];
 }
 
 export function AnimalSpotlight({
@@ -85,7 +144,7 @@ export function AnimalSpotlight({
     return () => clearTimeout(t);
   }, [query]);
 
-  const results = useMemo(() => getResults(animals, debouncedQuery), [animals, debouncedQuery]);
+  const items = useMemo(() => getItems(animals, debouncedQuery), [animals, debouncedQuery]);
 
   useEffect(() => {
     if (opened) {
@@ -99,34 +158,36 @@ export function AnimalSpotlight({
     setFocusedIndex(0);
   }, [debouncedQuery]);
 
-  const navigate = (result: SpotlightResult) => {
+  const navigate = (item: SpotlightItem) => {
     const t = tenantRoutes(shelterSlug);
     onClose();
 
-    if (result.kind === 'name') {
-      router.push(t.employee.animal(result.animal.id));
+    if (item.type === 'animal') {
+      router.push(t.employee.animal(item.animal.id));
       return;
     }
 
     const base = t.employee.animals;
-    if (result.kind === 'species') {
-      router.push(`${base}?species=${encodeURIComponent(result.animal.speciesId)}`);
-    } else if (result.kind === 'breed') {
-      router.push(`${base}?species=${encodeURIComponent(result.animal.speciesId)}`);
-    } else if (result.kind === 'status') {
-      router.push(`${base}?status=${encodeURIComponent(result.animal.status)}`);
+    if (item.filter === 'species') {
+      router.push(`${base}?species=${encodeURIComponent(item.value)}`);
+    } else if (item.filter === 'breed') {
+      const params = new URLSearchParams({ breed: item.value });
+      if (item.speciesId) params.set('species', item.speciesId);
+      router.push(`${base}?${params.toString()}`);
+    } else {
+      router.push(`${base}?status=${encodeURIComponent(item.value)}`);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setFocusedIndex((i) => Math.min(i + 1, results.length - 1));
+      setFocusedIndex((i) => Math.min(i + 1, items.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setFocusedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' && results[focusedIndex]) {
-      navigate(results[focusedIndex]);
+    } else if (e.key === 'Enter' && items[focusedIndex]) {
+      navigate(items[focusedIndex]);
     } else if (e.key === 'Escape') {
       onClose();
     }
@@ -167,7 +228,7 @@ export function AnimalSpotlight({
       </div>
 
       <div className={classes.results}>
-        {loading ? (
+        {loading && animals.length === 0 ? (
           <div className={classes.empty}>
             <Loader size="sm" color="var(--shelter-ink)" />
           </div>
@@ -177,36 +238,52 @@ export function AnimalSpotlight({
               Tapez pour rechercher un animal…
             </Text>
           </div>
-        ) : results.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className={classes.empty}>
             <Text size="sm" c="dimmed">
-              Aucun animal trouvé pour « {debouncedQuery} »
+              Aucun résultat pour « {debouncedQuery} »
             </Text>
           </div>
         ) : (
-          results.map((result, i) => (
-            <div
-              key={result.animal.id}
-              className={`${classes.resultItem} ${i === focusedIndex ? classes.resultItemFocused : ''}`}
-              onClick={() => navigate(result)}
-              onMouseEnter={() => setFocusedIndex(i)}
-              role="button"
-              tabIndex={-1}
-            >
-              <span className={classes.resultName}>{result.animal.name}</span>
-              <span className={classes.resultMeta}>
-                {result.animal.species.name} · {result.animal.breed.name}
-              </span>
-              <Badge
-                size="xs"
-                color={STATUS_COLORS[result.animal.status]}
-                variant="light"
+          items.map((item, i) =>
+            item.type === 'filter' ? (
+              <div
+                key={`filter-${item.filter}-${item.value}`}
+                className={`${classes.resultItem} ${classes.filterItem} ${i === focusedIndex ? classes.resultItemFocused : ''}`}
+                onClick={() => navigate(item)}
+                onMouseEnter={() => setFocusedIndex(i)}
+                role="button"
+                tabIndex={-1}
               >
-                {ANIMAL_STATUS_LABELS[result.animal.status]}
-              </Badge>
-              <span className={classes.matchType}>via {KIND_LABELS[result.kind]}</span>
-            </div>
-          ))
+                <IconFilter size={14} className={classes.filterIcon} />
+                <span className={classes.filterLabel}>
+                  Filtrer par {FILTER_LABELS[item.filter]} : {item.label}
+                </span>
+              </div>
+            ) : (
+              <div
+                key={item.animal.id}
+                className={`${classes.resultItem} ${i === focusedIndex ? classes.resultItemFocused : ''}`}
+                onClick={() => navigate(item)}
+                onMouseEnter={() => setFocusedIndex(i)}
+                role="button"
+                tabIndex={-1}
+              >
+                <span className={classes.resultName}>{item.animal.name}</span>
+                <span className={classes.resultMeta}>
+                  {item.animal.species.name} · {item.animal.breed.name}
+                </span>
+                <Badge
+                  size="xs"
+                  color={STATUS_COLORS[item.animal.status]}
+                  variant="light"
+                >
+                  {ANIMAL_STATUS_LABELS[item.animal.status]}
+                </Badge>
+                <span className={classes.matchType}>via {KIND_LABELS[item.kind]}</span>
+              </div>
+            ),
+          )
         )}
       </div>
 
