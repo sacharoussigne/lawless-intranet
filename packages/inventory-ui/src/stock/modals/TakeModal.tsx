@@ -16,7 +16,7 @@ import {
   Text,
   ScrollArea,
 } from '@mantine/core';
-import { IconTrash } from '@tabler/icons-react';
+import { IconArrowBarToDown, IconArrowBarToUp, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useInventoryUi } from '../../InventoryUiProvider';
 import { unwrapActionResult } from '../../lib/actionResult';
@@ -47,7 +47,7 @@ export default function TakeDepositModal({
   initialChestId = null,
 }: TakeDepositModalProps) {
   const { scopeKey, actions } = useInventoryUi();
-  const [mode, setMode] = useState<ChestStockMoveMode>('take');
+  const [mode, setMode] = useState<ChestStockMoveMode>('deposit');
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
   const [lines, setLines] = useState<MoveLine[]>([]);
 
@@ -93,7 +93,7 @@ export default function TakeDepositModal({
 
   useEffect(() => {
     if (opened) {
-      setMode('take');
+      setMode('deposit');
       setDefaultChestId(initialChestId);
       setLines([]);
     }
@@ -226,7 +226,7 @@ export default function TakeDepositModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Prendre / Déposer"
+      title="Déposer / Prendre"
       size="xl"
       yOffset={60}
       scrollAreaComponent={ScrollArea.Autosize}
@@ -237,8 +237,24 @@ export default function TakeDepositModal({
           value={mode}
           onChange={(value) => setMode(value as ChestStockMoveMode)}
           data={[
-            { label: 'Prendre', value: 'take' },
-            { label: 'Déposer', value: 'deposit' },
+            {
+              value: 'deposit',
+              label: (
+                <Group gap={6} justify="center" wrap="nowrap">
+                  <IconArrowBarToDown size={16} />
+                  <span style={{ paddingTop: "4px" }}>Déposer</span>
+                </Group>
+              ),
+            },
+            {
+              value: 'take',
+              label: (
+                <Group gap={6} justify="center" wrap="nowrap">
+                  <IconArrowBarToUp size={16} />
+                  <span style={{ paddingTop: "4px" }}>Prendre</span>
+                </Group>
+              ),
+            },
           ]}
         />
 
