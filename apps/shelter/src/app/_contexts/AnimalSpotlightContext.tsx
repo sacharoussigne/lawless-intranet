@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { listAnimals } from '@/app/_actions/animals';
 import type { AnimalDTO } from '@/app/(loggedIn)/s/[shelterSlug]/employee/animals/types';
 
@@ -24,12 +24,9 @@ export function AnimalSpotlightProvider({
   const [animals, setAnimals] = useState<AnimalDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [opened, setOpened] = useState(false);
-  const fetched = useRef(false);
 
   const open = () => {
     setOpened(true);
-    if (fetched.current) return;
-    fetched.current = true;
     setLoading(true);
     void listAnimals(shelterSlug).then((result) => {
       if ('data' in result && Array.isArray(result.data)) {
