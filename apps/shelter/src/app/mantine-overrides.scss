@@ -38,6 +38,15 @@
   box-shadow: var(--shelter-shadow-card);
 }
 
+.mantine-Menu-dropdown {
+  .mantine-Menu-item {
+    &[data-hovered],
+    &:hover {
+      background-color: var(--mantine-color-terracotta-0);
+    }
+  }
+}
+
 /* mantine-datatable — subtle filter icons in header */
 .mantine-datatable-table thead tr th {
   .mantine-datatable-header-cell-filter-action-icon,
