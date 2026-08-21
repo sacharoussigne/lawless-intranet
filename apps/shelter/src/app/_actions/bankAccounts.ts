@@ -1,5 +1,5 @@
 export { getOrCreateWeek, getBankWeeks } from '@/app/_actions/bank/weeks';
-export { createTransaction, updateTransaction, deleteTransaction } from '@/app/_actions/bank/transactions';
+export { createTransaction, updateTransaction, deleteTransaction, importTransactions } from '@/app/_actions/bank/transactions';
 export {
   getNameSuggestions,
   getDescriptionSuggestions,

@@ -6,12 +6,15 @@ export {
   type BankUiProviderProps,
   type CreateTransactionInput,
   type UpdateTransactionInput,
+  type ImportTransactionItem,
+  type ImportTransactionsResult,
   type PlannedTransactionInput,
   type UpdatePlannedTransactionInput,
 } from './BankUiProvider';
 export { default as BankPage } from './BankPageClient';
 export { BankPlannedPanel } from './components/BankPlannedPanel';
 export { BankPendingOccurrencesBanner } from './components/BankPendingOccurrencesBanner';
+export { ImportTransactionsModal } from './components/ImportTransactionsModal';
 export {
   addParisWeeks,
   clampParisWeekDateToMax,

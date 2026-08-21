@@ -46,7 +46,7 @@ export function StockHeader({
                 variant="light"
                 color="clay"
               >
-                Prendre / Déposer
+                Déposer / Prendre
               </Button>
             )}
             {canTransfer && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Button,
   Container,
@@ -267,6 +268,7 @@ export function AnimalsPageClient({
   const { permissions } = usePermissions();
   const canCreate = Boolean(permissions?.animals.create);
   const [createOpen, setCreateOpen] = useState(false);
+  const searchParams = useSearchParams();
 
   const [nameFilter, setNameFilter] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState<string | null>(null);
@@ -274,6 +276,19 @@ export function AnimalsPageClient({
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [caseManagerFilter, setCaseManagerFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+
+  // Sync filters from spotlight-driven query params (also when already on this page)
+  useEffect(() => {
+    const name = searchParams.get('name');
+    const species = searchParams.get('species');
+    const breed = searchParams.get('breed');
+    const status = searchParams.get('status');
+    if (name !== null) setNameFilter(name);
+    if (species !== null) setSpeciesFilter(species);
+    if (breed !== null) setBreedFilter(breed);
+    if (status !== null) setStatusFilter(status);
+    if (name !== null || species !== null || breed !== null || status !== null) setPage(1);
+  }, [searchParams]);
   const pageSize = 10;
 
   const speciesOptions = useMemo(() => {

@@ -6,67 +6,39 @@ import {
   Button,
   Group,
   NumberInput,
-  Text,
   TextInput,
 } from '@mantine/core';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   IconCheck,
   IconGripVertical,
   IconPencil,
-  IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import classes from './SpeciesPage.module.scss';
-import { SortableVariantChip } from './SortableVariantChip';
 import type { BreedDTO } from './types';
 
 export function SortableBreedCard({
   breed,
+  selected,
   busyKey,
   editingBreedId,
   breedDraft,
-  editingVariantId,
-  variantDraft,
-  variantInput,
   onBreedDraftChange,
   onSaveBreed,
   onCancelEditBreed,
   onStartEditBreed,
   onDeleteBreed,
   onSavePrices,
-  onVariantDraftChange,
-  onSaveVariant,
-  onCancelEditVariant,
-  onStartEditVariant,
-  onDeleteVariant,
-  onVariantInputChange,
-  onAddVariant,
-  onVariantsReorder,
+  onSelect,
 }: {
   breed: BreedDTO;
+  selected: boolean;
   busyKey: string | null;
   editingBreedId: string | null;
   breedDraft: string;
-  editingVariantId: string | null;
-  variantDraft: string;
-  variantInput: string;
   onBreedDraftChange: (value: string) => void;
   onSaveBreed: () => void;
   onCancelEditBreed: () => void;
@@ -76,14 +48,7 @@ export function SortableBreedCard({
     shelterPurchasePrice: number;
     animalierPurchasePrice: number | null;
   }) => void;
-  onVariantDraftChange: (value: string) => void;
-  onSaveVariant: (variantId: string) => void;
-  onCancelEditVariant: () => void;
-  onStartEditVariant: (variantId: string, label: string) => void;
-  onDeleteVariant: (variantId: string) => void | Promise<void>;
-  onVariantInputChange: (value: string) => void;
-  onAddVariant: () => void;
-  onVariantsReorder: (activeId: string, overId: string) => void;
+  onSelect: () => void;
 }) {
   const {
     attributes,
@@ -142,35 +107,37 @@ export function SortableBreedCard({
     });
   };
 
-  const variantSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const handleVariantDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    onVariantsReorder(String(active.id), String(over.id));
-  };
-
   const savingBreed = busyKey === `save-breed:${breed.id}`;
   const savingPrices = busyKey === `save-prices:${breed.id}`;
-  const addingVariant = busyKey === `add-variant:${breed.id}`;
+  const isEditing = editingBreedId === breed.id;
+
+  const priceLabel = breed.shelterPurchasePrice != null
+    ? `$${breed.shelterPurchasePrice.toFixed(2)}${breed.animalierPurchasePrice != null ? ` / $${breed.animalierPurchasePrice.toFixed(2)}` : ''}`
+    : null;
 
   return (
     <div
       ref={setNodeRef}
-      className={`${classes.breedCard} ${isDragging ? classes.isDragging : ''}`}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <div className={classes.breedHeader}>
-        {editingBreedId === breed.id ? (
+      <div
+        className={`${classes.breedRow} ${selected ? classes.breedRowActive : ''} ${isDragging ? classes.isDragging : ''}`}
+      >
+        <button
+          type="button"
+          className={classes.dragHandle}
+          aria-label={`Réordonner ${breed.name}`}
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <IconGripVertical size={15} stroke={1.5} />
+        </button>
+
+        {isEditing ? (
           <Group gap="xs" wrap="nowrap" align="center" style={{ flex: 1 }}>
             <TextInput
-              size="sm"
+              size="xs"
               value={breedDraft}
               onChange={(e) => onBreedDraftChange(e.currentTarget.value)}
               onKeyDown={(e) => {
@@ -192,144 +159,90 @@ export function SortableBreedCard({
           </Group>
         ) : (
           <>
-            <div className={classes.titleActions}>
-              <button
-                type="button"
-                className={classes.dragHandle}
-                aria-label={`Réordonner ${breed.name}`}
-                {...attributes}
-                {...listeners}
-              >
-                <IconGripVertical size={16} stroke={1.5} />
-              </button>
-              <Text fw={700} className={classes.breedName}>
-                {breed.name}
-              </Text>
+            <button
+              type="button"
+              className={classes.breedRowName}
+              onClick={onSelect}
+              aria-pressed={selected}
+            >
+              {breed.name}
+            </button>
+            {priceLabel ? (
+              <span className={classes.breedRowPrices} style={{ paddingTop: "3px"}}>{priceLabel}</span>
+            ) : null}
+            <div className={classes.breedRowActions}>
               <ActionIcon
                 size="sm"
                 variant="subtle"
                 color="terracotta"
                 aria-label={`Renommer ${breed.name}`}
-                onClick={onStartEditBreed}
+                onClick={(e) => { e.stopPropagation(); onStartEditBreed(); }}
               >
-                <IconPencil size={14} />
+                <IconPencil size={13} />
               </ActionIcon>
+              <DeleteConfirmPopover
+                title="Supprimer la race"
+                message={`Supprimer la race « ${breed.name} » et ses variantes ?`}
+                onConfirm={onDeleteBreed}
+              >
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="danger"
+                  aria-label={`Supprimer ${breed.name}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <IconTrash size={13} />
+                </ActionIcon>
+              </DeleteConfirmPopover>
             </div>
-            <DeleteConfirmPopover
-              title="Supprimer la race"
-              message={`Supprimer la race « ${breed.name} » et ses variantes ?`}
-              onConfirm={onDeleteBreed}
-            >
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                color="danger"
-                aria-label={`Supprimer ${breed.name}`}
-              >
-                <IconTrash size={14} />
-              </ActionIcon>
-            </DeleteConfirmPopover>
           </>
         )}
       </div>
 
-      <div className={classes.priceRow}>
-        <NumberInput
-          size="sm"
-          label="Prix d’achat refuge"
-          placeholder="0.00"
-          value={shelterPrice}
-          onChange={setShelterPrice}
-          min={0}
-          decimalScale={2}
-          fixedDecimalScale
-          step={0.01}
-          required
-        />
-        <NumberInput
-          size="sm"
-          label="Prix d’achat animalier"
-          placeholder="Optionnel"
-          value={animalierPrice}
-          onChange={setAnimalierPrice}
-          min={0}
-          decimalScale={2}
-          fixedDecimalScale
-          step={0.01}
-          allowNegative={false}
-        />
-        <Button
-          size="sm"
-          color="terracotta"
-          variant="light"
-          className={classes.priceSave}
-          onClick={handleSavePrices}
-          disabled={!canSavePrices}
-          loading={savingPrices}
-        >
-          Enregistrer les prix
-        </Button>
-      </div>
-
-      <Text size="xs" c="dimmed" mb={6}>
-        Variantes
-      </Text>
-      {breed.variants.length === 0 ? (
-        <Text size="sm" c="dimmed">
-          Aucune variante.
-        </Text>
-      ) : (
-        <DndContext
-          sensors={variantSensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleVariantDragEnd}
-        >
-          <SortableContext
-            items={breed.variants.map((v) => v.id)}
-            strategy={horizontalListSortingStrategy}
+      {selected && !isEditing && (
+        <div className={classes.breedPriceEdit}>
+          <div className={classes.priceInputRow}>
+            <NumberInput
+              size="sm"
+              label="Prix d'achat refuge"
+              placeholder="0.00"
+              value={shelterPrice}
+              onChange={setShelterPrice}
+              onKeyDown={(e) => { if (e.key === 'Enter' && canSavePrices) handleSavePrices(); }}
+              min={0}
+              decimalScale={2}
+              fixedDecimalScale
+              step={0.01}
+              required
+            />
+            <NumberInput
+              size="sm"
+              label="Prix d'achat animalier"
+              placeholder="Optionnel"
+              value={animalierPrice}
+              onChange={setAnimalierPrice}
+              onKeyDown={(e) => { if (e.key === 'Enter' && canSavePrices) handleSavePrices(); }}
+              min={0}
+              decimalScale={2}
+              fixedDecimalScale
+              step={0.01}
+              allowNegative={false}
+            />
+          </div>
+          <Button
+            size="sm"
+            color="terracotta"
+            variant="light"
+            onClick={handleSavePrices}
+            disabled={!canSavePrices}
+            loading={savingPrices}
+            style={{ alignSelf: 'flex-start' }}
           >
-            <div className={classes.chipRow}>
-              {breed.variants.map((variant) => (
-                <SortableVariantChip
-                  key={variant.id}
-                  variant={variant}
-                  editing={editingVariantId === variant.id}
-                  draft={variantDraft}
-                  saving={busyKey === `save-variant:${variant.id}`}
-                  onDraftChange={onVariantDraftChange}
-                  onSave={() => onSaveVariant(variant.id)}
-                  onCancelEdit={onCancelEditVariant}
-                  onStartEdit={() => onStartEditVariant(variant.id, variant.label)}
-                  onDelete={() => onDeleteVariant(variant.id)}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+            Enregistrer les prix
+          </Button>
+        </div>
       )}
-      <div className={classes.quickAdd} style={{ marginTop: '0.65rem' }}>
-        <TextInput
-          size="sm"
-          placeholder="Ajouter une variante (ex. Long poils)"
-          value={variantInput}
-          onChange={(e) => onVariantInputChange(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') onAddVariant();
-          }}
-          style={{ flex: 1 }}
-          maxLength={255}
-        />
-        <Button
-          size="sm"
-          color="terracotta"
-          variant="light"
-          leftSection={<IconPlus size={14} />}
-          onClick={onAddVariant}
-          loading={addingVariant}
-        >
-          Ajouter
-        </Button>
-      </div>
     </div>
   );
 }

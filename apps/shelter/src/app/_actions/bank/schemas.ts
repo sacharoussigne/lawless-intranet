@@ -31,6 +31,18 @@ export const deleteTransactionSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
+export const importTransactionItemSchema = z.object({
+  date: z.string().min(1, 'La date est requise'),
+  type: transactionTypeSchema,
+  name: z.string().min(1, 'Le nom est requis'),
+  description: z.string().optional().nullable(),
+  amount: z.number().positive('Le montant doit être positif'),
+});
+
+export const importTransactionsSchema = z.object({
+  items: z.array(importTransactionItemSchema).min(1, 'Au moins une transaction').max(5000),
+});
+
 export const createPlannedTransactionSchema = z
   .object({
     type: transactionTypeSchema,

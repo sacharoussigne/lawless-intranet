@@ -179,7 +179,7 @@ export function EmployeeQuickActions({
           color="clay"
           onClick={() => setTakeOpened(true)}
         >
-          Prendre / Déposer
+          Déposer / Prendre
         </Button>
       )}
     </>

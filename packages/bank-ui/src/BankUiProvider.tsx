@@ -23,6 +23,20 @@ export type CreateTransactionInput = {
   order?: number;
 };
 
+export type ImportTransactionItem = {
+  date: string;
+  type: TransactionType;
+  name: string;
+  description?: string | null;
+  amount: number;
+};
+
+export type ImportTransactionsResult = {
+  created: number;
+  skipped: number;
+  errors: Array<{ index: number; message: string }>;
+};
+
 export type UpdateTransactionInput = Partial<Omit<CreateTransactionInput, 'weekId'>> & {
   id: string;
 };
@@ -52,6 +66,9 @@ export type BankUiActions = {
     data: UpdateTransactionInput,
   ) => Promise<BankActionResult<SerializedBankTransaction>>;
   deleteTransaction: (data: { id: string }) => Promise<BankActionResult<{ success: true }>>;
+  importTransactions: (
+    data: { items: ImportTransactionItem[] },
+  ) => Promise<BankActionResult<ImportTransactionsResult>>;
   getNameSuggestions: () => Promise<BankActionResult<BankNameSuggestions>>;
   getDescriptionSuggestions: () => Promise<BankActionResult<string[]>>;
   addNameSuggestion: (data: { value: string }) => Promise<BankActionResult<string>>;

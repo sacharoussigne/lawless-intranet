@@ -12,6 +12,7 @@ import {
   Badge,
   Button,
   Container,
+  Grid,
   Group,
   Modal,
   NumberInput,
@@ -645,60 +646,77 @@ export function AnimalDetailPageClient({
         <section>
           <Text className={classes.sectionTitle}>Informations complémentaires</Text>
           {editing && canUpdate ? (
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Textarea
-                label="Biographie"
-                minRows={3}
-                value={form.biography}
-                onChange={(e) => patchForm('biography', e.currentTarget.value)}
-                disabled={pending}
-                className={classes.spanFull}
-              />
-              <Textarea
-                label="Soins prodigués"
-                minRows={3}
-                value={form.careProvided}
-                onChange={(e) => patchForm('careProvided', e.currentTarget.value)}
-                disabled={pending}
-                className={classes.spanFull}
-              />
-              <Textarea
-                label="Notes"
-                minRows={3}
-                value={form.notes}
-                onChange={(e) => patchForm('notes', e.currentTarget.value)}
-                disabled={pending}
-                className={classes.spanFull}
-              />
-              <TextInput
-                label="Adoptant(s)"
-                value={form.adopterName}
-                onChange={(e) => patchForm('adopterName', e.currentTarget.value)}
-                disabled={pending}
-              />
-              <RpDateInput
-                label="Date de départ"
-                clearable
-                value={form.departureDate}
-                onChange={(d) => patchForm('departureDate', d)}
-                disabled={pending}
-              />
-            </SimpleGrid>
+            <Grid>
+              <Grid.Col span={12}>
+                <Textarea
+                  label="Biographie"
+                  minRows={3}
+                  value={form.biography}
+                  onChange={(e) => patchForm('biography', e.currentTarget.value)}
+                  disabled={pending}
+                />
+              </Grid.Col>
+              <Grid.Col span={12}>
+                <Textarea
+                  label="Soins prodigués"
+                  minRows={3}
+                  value={form.careProvided}
+                  onChange={(e) => patchForm('careProvided', e.currentTarget.value)}
+                  disabled={pending}
+                />
+              </Grid.Col>
+              <Grid.Col span={12}>
+                <Textarea
+                  label="Notes"
+                  minRows={3}
+                  value={form.notes}
+                  onChange={(e) => patchForm('notes', e.currentTarget.value)}
+                  disabled={pending}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <TextInput
+                  label="Adoptant(s)"
+                  value={form.adopterName}
+                  onChange={(e) => patchForm('adopterName', e.currentTarget.value)}
+                  disabled={pending}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <RpDateInput
+                  label="Date de départ"
+                  clearable
+                  value={form.departureDate}
+                  onChange={(d) => patchForm('departureDate', d)}
+                  disabled={pending}
+                />
+              </Grid.Col>
+            </Grid>
           ) : (
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <FieldReadout label="Biographie" value={animal.biography} />
-              <FieldReadout label="Soins prodigués" value={animal.careProvided} />
-              <FieldReadout label="Notes" value={animal.notes} />
-              <FieldReadout label="Adoptant(s)" value={animal.adopterName} />
-              <FieldReadout
-                label="Date de départ"
-                value={
-                  animal.departureDate
-                    ? formatRpDate(parseIsoDateOnly(animal.departureDate), 'dd/MM/yyyy')
-                    : null
-                }
-              />
-            </SimpleGrid>
+            <Grid>
+              <Grid.Col span={12}>
+                <FieldReadout label="Biographie" value={animal.biography} />
+              </Grid.Col>
+              <Grid.Col span={12}>
+                <FieldReadout label="Soins prodigués" value={animal.careProvided} />
+              </Grid.Col>
+              <Grid.Col span={12}>
+                <FieldReadout label="Notes" value={animal.notes} />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <FieldReadout label="Adoptant(s)" value={animal.adopterName} />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <FieldReadout
+                  label="Date de départ"
+                  value={
+                    animal.departureDate
+                      ? formatRpDate(parseIsoDateOnly(animal.departureDate), 'dd/MM/yyyy')
+                      : null
+                  }
+                />
+              </Grid.Col>
+            </Grid>
           )}
         </section>
 

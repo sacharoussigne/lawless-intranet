@@ -19,7 +19,6 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { DataTable } from "mantine-datatable";
-import dayjs from "dayjs";
 import {
   IconArrowDown,
   IconArrowLeft,
@@ -29,6 +28,7 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconEdit,
+  IconFileImport,
   IconPlus,
   IconReceipt,
   IconTransfer,
@@ -40,6 +40,7 @@ import { addParisWeeks } from "./bankWeek";
 import { BankPlannedPanel } from "./components/BankPlannedPanel";
 import { BankPendingOccurrencesBanner } from "./components/BankPendingOccurrencesBanner";
 import { DataTableEmptyState } from "./components/DataTableEmptyState";
+import { ImportTransactionsModal } from "./components/ImportTransactionsModal";
 import { RpDateInput } from "./components/RpDateInput";
 import { SuggestionAutocomplete } from "./components/SuggestionAutocomplete";
 import {
@@ -49,9 +50,7 @@ import {
   denimPalette,
   mossPalette,
 } from "./lib/apothecaryPill";
-import { toRpDisplayDate } from "./rpCalendar";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { formatRpDay, formatRpLongDay } from "./rpCalendar";
 import type {
   BankActionResult,
   SerializedBankWeek,
@@ -119,12 +118,6 @@ function isSuccess<T>(
   return result.data !== undefined;
 }
 
-const formatRpDay = (value: Date | string) =>
-  dayjs(toRpDisplayDate(new Date(value))).format("DD/MM/YYYY");
-
-const formatRpLongDay = (value: Date | string) =>
-  format(toRpDisplayDate(new Date(value)), "d MMMM yyyy", { locale: fr });
-
 const formatRpWeekRange = (start: Date | string, end: Date | string) =>
   `${formatRpLongDay(start)} au ${formatRpLongDay(end)}`;
 
@@ -151,6 +144,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
   const [newTransaction, setNewTransaction] = useState<TransactionDraft | null>(
     null,
   );
+  const [importOpened, setImportOpened] = useState(false);
   const [deletePopoverOpened, setDeletePopoverOpened] = useState<string | null>(
     null,
   );
@@ -281,11 +275,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
             !typeFilter.length || typeFilter.includes(transaction.type),
         )
         .slice()
-        .sort(
-          (a, b) =>
-            (sortOrder === "asc" ? 1 : -1) *
-            (+new Date(a.date) - +new Date(b.date) || a.order - b.order),
-        ),
+        .sort((a, b) => {
+          const dateCmp = +new Date(a.date) - +new Date(b.date);
+          if (dateCmp !== 0) return (sortOrder === "asc" ? 1 : -1) * dateCmp;
+          return a.order - b.order;
+        }),
     [week.transactions, typeFilter, sortOrder],
   );
   const records = useMemo<TableTransaction[]>(() => {
@@ -442,9 +436,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
       )
       .sort((a, b) => a.order - b.order);
     const index = sameDay.findIndex((item) => item.id === id);
-    const effectiveDirection =
-      sortOrder === "desc" ? (direction === "up" ? "down" : "up") : direction;
-    const target = sameDay[effectiveDirection === "up" ? index - 1 : index + 1];
+    const target = sameDay[direction === "up" ? index - 1 : index + 1];
     if (!target) return;
     setLoading(true);
     try {
@@ -471,6 +463,22 @@ export default function BankPage({ initialWeek }: BankPageProps) {
     if (transaction.isNew)
       setNewTransaction((draft) => ({ ...draft, ...patch }));
     else setEditingTransactionData((draft) => ({ ...draft, ...patch }));
+  };
+
+  const canSaveNewTransaction =
+    Boolean(newTransaction?.name?.trim()) &&
+    parseAmount(newTransaction?.amount) != null;
+
+  const trySubmitNewTransaction = () => {
+    if (!newTransaction || !canSaveNewTransaction) return;
+    void saveTransaction(newTransaction);
+  };
+
+  const handleNewTransactionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    if (!canSaveNewTransaction) return;
+    e.preventDefault();
+    queueMicrotask(() => trySubmitNewTransaction());
   };
 
   return (
@@ -612,23 +620,35 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                     </>
                   )}
                 </Group>
-                {!newTransaction && (
-                  <Button
-                    leftSection={<IconPlus size={18} />}
-                    size="sm"
-                    onClick={() =>
-                      setNewTransaction({
-                        date: new Date(),
-                        type: "DEPOSIT",
-                        name: "",
-                        description: "",
-                        order: week.transactions.length,
-                      })
-                    }
-                  >
-                    Ajouter une transaction
-                  </Button>
-                )}
+                <Group>
+                  {!newTransaction && (
+                    <>
+                      <Button
+                        leftSection={<IconFileImport size={18} />}
+                        size="sm"
+                        variant="light"
+                        onClick={() => setImportOpened(true)}
+                      >
+                        Importer
+                      </Button>
+                      <Button
+                        leftSection={<IconPlus size={18} />}
+                        size="sm"
+                        onClick={() =>
+                          setNewTransaction({
+                            date: new Date(),
+                            type: "DEPOSIT",
+                            name: "",
+                            description: "",
+                            order: week.transactions.length,
+                          })
+                        }
+                      >
+                        Ajouter une transaction
+                      </Button>
+                    </>
+                  )}
+                </Group>
               </Group>
               <Paper shadow="sm" withBorder p={0}>
                 <DataTable
@@ -667,6 +687,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             }
                             onChange={(date) =>
                               date && setDraft(transaction, { date })
+                            }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
                             }
                           />
                         ) : (
@@ -710,6 +735,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 type: type as TransactionType,
                               })
                             }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
+                            }
                           />
                         ) : (
                           (() => {
@@ -743,6 +773,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             onChange={(name) => setDraft(transaction, { name })}
                             onAddSuggestion={handleAddNameSuggestion}
                             onDeleteSuggestion={handleDeleteNameSuggestion}
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
+                            }
                           />
                         ) : (
                           <Text size="sm" lineClamp={1} title={transaction.name}>
@@ -769,6 +804,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             onAddSuggestion={handleAddDescriptionSuggestion}
                             onDeleteSuggestion={
                               handleDeleteDescriptionSuggestion
+                            }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
                             }
                           />
                         ) : (
@@ -797,10 +837,15 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             allowDecimal
                             value={
                               draftFor(transaction)?.amount ??
-                              transaction.amount
+                              (transaction.isNew ? "" : transaction.amount)
                             }
                             onChange={(amount) =>
                               setDraft(transaction, { amount })
+                            }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
                             }
                           />
                         ) : (
@@ -829,14 +874,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 size="sm"
                                 variant="light"
                                 color="moss"
-                                onClick={() =>
-                                  newTransaction &&
-                                  void saveTransaction(newTransaction)
-                                }
-                                disabled={
-                                  !newTransaction?.name ||
-                                  parseAmount(newTransaction.amount) == null
-                                }
+                                onClick={() => trySubmitNewTransaction()}
+                                disabled={!canSaveNewTransaction}
                               >
                                 <IconCheck size={16} />
                               </ActionIcon>
@@ -905,14 +944,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                         const index = sameDay.findIndex(
                           (item) => item.id === transaction.id,
                         );
-                        const canUp =
-                          sortOrder === "desc"
-                            ? index < sameDay.length - 1
-                            : index > 0;
-                        const canDown =
-                          sortOrder === "desc"
-                            ? index > 0
-                            : index < sameDay.length - 1;
+                        const canUp = index > 0;
+                        const canDown = index < sameDay.length - 1;
                         return (
                           <Group gap={4} justify="center" wrap="nowrap">
                             {sameDay.length > 1 && (
@@ -1022,6 +1055,13 @@ export default function BankPage({ initialWeek }: BankPageProps) {
           </Tabs.Panel>
         </Tabs>
       </Stack>
+      <ImportTransactionsModal
+        opened={importOpened}
+        onClose={() => setImportOpened(false)}
+        onImported={async () => {
+          await Promise.all([loadWeek(new Date(week.weekStart)), loadWeeks()]);
+        }}
+      />
     </Container>
   );
 }

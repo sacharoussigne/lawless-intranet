@@ -1,8 +1,18 @@
 .layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(200px, 280px);
   gap: 1.25rem;
   align-items: stretch;
+}
+
+@media (max-width: 64em) {
+  .layout {
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  }
+
+  .variantsPanel {
+    display: none;
+  }
 }
 
 @media (max-width: 48em) {
@@ -12,6 +22,20 @@
 }
 
 .listPanel,
+.breedsPanel,
+.variantsPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100dvh - 14rem);
+  background: var(--shelter-surface);
+  border: 1.5px solid var(--shelter-border);
+  border-radius: 8px;
+  box-shadow: var(--shelter-shadow-card);
+  overflow: hidden;
+}
+
+/* legacy alias kept for compatibility */
 .detailPanel {
   display: flex;
   flex-direction: column;
@@ -25,10 +49,21 @@
 }
 
 .listHeader,
+.breedsHeader,
+.variantsHeader,
 .detailHeader {
   padding: 1rem 1.1rem;
   border-bottom: 1px dashed var(--shelter-border);
   background: color-mix(in srgb, var(--shelter-bg-accent) 55%, var(--shelter-surface));
+}
+
+.panelTitle {
+  font-family: var(--shelter-font-display);
+  font-size: 1.05rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--shelter-terracotta);
+  margin: 0;
 }
 
 .searchCreateRow {
@@ -37,13 +72,25 @@
   gap: 0.5rem;
 }
 
-.listBody {
+.listBody,
+.breedsBody,
+.variantsBody {
   flex: 1;
   min-height: 0;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  overflow: auto;
+}
+
+.detailBody {
+  flex: 1;
+  min-height: 0;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   overflow: auto;
 }
 
@@ -125,14 +172,110 @@
   white-space: nowrap;
 }
 
-.detailBody {
+/* breed row in col 2 */
+.breedRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+  width: 100%;
+}
+
+.breedRow:hover {
+  background: var(--shelter-bg-accent);
+}
+
+.breedRowActive {
+  background: color-mix(in srgb, var(--shelter-terracotta) 10%, transparent);
+  border-color: color-mix(in srgb, var(--shelter-terracotta) 35%, var(--shelter-border));
+}
+
+.breedRowName {
   flex: 1;
-  min-height: 0;
-  padding: 1.1rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--shelter-ink);
+  text-align: left;
+}
+
+.breedRowPrices {
+  font-size: 0.75rem;
+  color: var(--shelter-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.breedRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+/* price edit area below selected breed */
+.breedPriceEdit {
+  padding: 0.9rem 1rem;
+  border-radius: 6px;
+  border: 1px dashed var(--shelter-border);
+  background: color-mix(in srgb, var(--shelter-bg) 70%, var(--shelter-surface));
+  margin-top: 0.4rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  overflow: auto;
+  gap: 0.65rem;
+}
+
+.priceInputRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+@media (max-width: 40em) {
+  .priceInputRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* variant row in col 3 */
+.variantRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px dashed var(--shelter-border);
+  background: color-mix(in srgb, var(--shelter-bg) 70%, var(--shelter-surface));
+}
+
+.variantRowLabel {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.variantRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
 }
 
 .section {

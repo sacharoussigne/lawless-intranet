@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Avatar,
   Button,
@@ -18,6 +18,8 @@ import Link from 'next/link';
 import { type AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { useAnimalSpotlight } from '@/app/_contexts/AnimalSpotlightContext';
+import { AnimalSpotlight } from '@/app/(loggedIn)/_components/AnimalSpotlight/AnimalSpotlight';
 import { shelterSiteTitle } from '@/lib/appSettingsShared';
 import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
@@ -49,6 +51,25 @@ export default function Header({
     usePermissions();
   const shelterSlug = shelterSlugProp ?? ctxSlug;
   const t = shelterSlug ? tenantRoutes(shelterSlug) : null;
+  const spotlight = useAnimalSpotlight();
+
+  useEffect(() => {
+    if (!spotlight) return;
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.key === '/' &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        spotlight.open();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [spotlight]);
   const isPlatformAdminUser = isPlatformAdmin(session?.user?.role);
   const isImpersonating = Boolean(session?.session?.impersonatedBy);
 
@@ -176,6 +197,16 @@ export default function Header({
   ) : null;
 
   return (
+    <>
+    {spotlight && shelterSlug && (
+      <AnimalSpotlight
+        shelterSlug={shelterSlug}
+        animals={spotlight.animals}
+        loading={spotlight.loading}
+        opened={spotlight.opened}
+        onClose={spotlight.close}
+      />
+    )}
     <header className={`${classes.header} mb-8`}>
       <Container size="xl">
         <div className={classes.headerInner}>
@@ -246,5 +277,6 @@ export default function Header({
         </div>
       </Container>
     </header>
+    </>
   );
 }
