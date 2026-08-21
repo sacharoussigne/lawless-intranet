@@ -275,11 +275,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
             !typeFilter.length || typeFilter.includes(transaction.type),
         )
         .slice()
-        .sort(
-          (a, b) =>
-            (sortOrder === "asc" ? 1 : -1) *
-            (+new Date(a.date) - +new Date(b.date) || a.order - b.order),
-        ),
+        .sort((a, b) => {
+          const dateCmp = +new Date(a.date) - +new Date(b.date);
+          if (dateCmp !== 0) return (sortOrder === "asc" ? 1 : -1) * dateCmp;
+          return a.order - b.order;
+        }),
     [week.transactions, typeFilter, sortOrder],
   );
   const records = useMemo<TableTransaction[]>(() => {
@@ -436,9 +436,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
       )
       .sort((a, b) => a.order - b.order);
     const index = sameDay.findIndex((item) => item.id === id);
-    const effectiveDirection =
-      sortOrder === "desc" ? (direction === "up" ? "down" : "up") : direction;
-    const target = sameDay[effectiveDirection === "up" ? index - 1 : index + 1];
+    const target = sameDay[direction === "up" ? index - 1 : index + 1];
     if (!target) return;
     setLoading(true);
     try {
@@ -946,14 +944,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                         const index = sameDay.findIndex(
                           (item) => item.id === transaction.id,
                         );
-                        const canUp =
-                          sortOrder === "desc"
-                            ? index < sameDay.length - 1
-                            : index > 0;
-                        const canDown =
-                          sortOrder === "desc"
-                            ? index > 0
-                            : index < sameDay.length - 1;
+                        const canUp = index > 0;
+                        const canDown = index < sameDay.length - 1;
                         return (
                           <Group gap={4} justify="center" wrap="nowrap">
                             {sameDay.length > 1 && (

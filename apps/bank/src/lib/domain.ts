@@ -671,7 +671,7 @@ export async function createTransactionFromOrder(input: {
 
 const RP_DISPLAY_YEAR_OFFSET = 136;
 
-/** Parse RP `DD/MM/YYYY[ HH:mm]` → Paris start-of-day (+136y). `sortAt` keeps wall time for ordering. */
+/** Parse RP `DD/MM/YYYY[ HH:mm]` → Paris wall time (+136y). `sortAt` equals that instant for ordering. */
 function parseRpImportDate(raw: string): { date: Date; sortAt: number } | null {
   const trimmed = raw.trim();
   let parsed = dayjs(trimmed, 'DD/MM/YYYY HH:mm', true);
@@ -688,7 +688,7 @@ function parseRpImportDate(raw: string): { date: Date; sortAt: number } | null {
   if (!real.isValid()) return null;
 
   return {
-    date: real.startOf('day').toDate(),
+    date: real.toDate(),
     sortAt: real.valueOf(),
   };
 }
