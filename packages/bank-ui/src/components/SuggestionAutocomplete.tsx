@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type KeyboardEventHandler } from "react";
 import { ActionIcon, Autocomplete, Group, Text } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 
@@ -15,6 +15,7 @@ interface SuggestionAutocompleteProps {
   size?: "xs" | "sm" | "md" | "lg";
   label?: string;
   required?: boolean;
+  onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 }
 
 export function SuggestionAutocomplete({
@@ -28,6 +29,7 @@ export function SuggestionAutocomplete({
   size = "xs",
   label,
   required,
+  onKeyDown,
 }: SuggestionAutocompleteProps) {
   const data = useMemo(() => {
     const merged = [...suggestions];
@@ -58,6 +60,7 @@ export function SuggestionAutocomplete({
       label={label}
       required={required}
       placeholder={placeholder}
+      onKeyDown={onKeyDown}
       renderOption={({ option }) => {
         const canDelete = deletableSet.has(option.value.toLowerCase());
 

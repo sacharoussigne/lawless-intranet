@@ -473,6 +473,22 @@ export default function BankPage({ initialWeek }: BankPageProps) {
     else setEditingTransactionData((draft) => ({ ...draft, ...patch }));
   };
 
+  const canSaveNewTransaction =
+    Boolean(newTransaction?.name?.trim()) &&
+    parseAmount(newTransaction?.amount) != null;
+
+  const trySubmitNewTransaction = () => {
+    if (!newTransaction || !canSaveNewTransaction) return;
+    void saveTransaction(newTransaction);
+  };
+
+  const handleNewTransactionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    if (!canSaveNewTransaction) return;
+    e.preventDefault();
+    queueMicrotask(() => trySubmitNewTransaction());
+  };
+
   return (
     <Container size={1600} py="xl">
       <Stack gap="lg">
@@ -668,6 +684,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             onChange={(date) =>
                               date && setDraft(transaction, { date })
                             }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
+                            }
                           />
                         ) : (
                           <Text size="sm">
@@ -710,6 +731,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 type: type as TransactionType,
                               })
                             }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
+                            }
                           />
                         ) : (
                           (() => {
@@ -743,6 +769,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             onChange={(name) => setDraft(transaction, { name })}
                             onAddSuggestion={handleAddNameSuggestion}
                             onDeleteSuggestion={handleDeleteNameSuggestion}
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
+                            }
                           />
                         ) : (
                           <Text size="sm" lineClamp={1} title={transaction.name}>
@@ -769,6 +800,11 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             onAddSuggestion={handleAddDescriptionSuggestion}
                             onDeleteSuggestion={
                               handleDeleteDescriptionSuggestion
+                            }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
                             }
                           />
                         ) : (
@@ -797,10 +833,15 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                             allowDecimal
                             value={
                               draftFor(transaction)?.amount ??
-                              transaction.amount
+                              (transaction.isNew ? "" : transaction.amount)
                             }
                             onChange={(amount) =>
                               setDraft(transaction, { amount })
+                            }
+                            onKeyDown={
+                              transaction.isNew
+                                ? handleNewTransactionKeyDown
+                                : undefined
                             }
                           />
                         ) : (
@@ -829,14 +870,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                                 size="sm"
                                 variant="light"
                                 color="moss"
-                                onClick={() =>
-                                  newTransaction &&
-                                  void saveTransaction(newTransaction)
-                                }
-                                disabled={
-                                  !newTransaction?.name ||
-                                  parseAmount(newTransaction.amount) == null
-                                }
+                                onClick={() => trySubmitNewTransaction()}
+                                disabled={!canSaveNewTransaction}
                               >
                                 <IconCheck size={16} />
                               </ActionIcon>
