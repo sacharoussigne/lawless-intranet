@@ -71,6 +71,30 @@ export async function createBankTransaction(
   return parseJsonResponse(response);
 }
 
+export async function importBankTransactions(
+  input: BankScopeParams & {
+    items: Array<{
+      date: string;
+      type: BankTransactionType;
+      name: string;
+      description?: string | null;
+      amount: number;
+    }>;
+  },
+  options: ClientOptions = {},
+): Promise<{
+  created: number;
+  skipped: number;
+  errors: Array<{ index: number; message: string }>;
+}> {
+  const response = await bankFetch('/api/transactions/import', {
+    method: 'POST',
+    cookieHeader: options.cookieHeader,
+    body: JSON.stringify(input),
+  });
+  return parseJsonResponse(response);
+}
+
 export async function updateBankTransaction(
   input: BankScopeParams & {
     id: string;

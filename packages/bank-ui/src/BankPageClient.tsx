@@ -29,6 +29,7 @@ import {
   IconCalendarEvent,
   IconCheck,
   IconEdit,
+  IconFileImport,
   IconPlus,
   IconReceipt,
   IconTransfer,
@@ -40,6 +41,7 @@ import { addParisWeeks } from "./bankWeek";
 import { BankPlannedPanel } from "./components/BankPlannedPanel";
 import { BankPendingOccurrencesBanner } from "./components/BankPendingOccurrencesBanner";
 import { DataTableEmptyState } from "./components/DataTableEmptyState";
+import { ImportTransactionsModal } from "./components/ImportTransactionsModal";
 import { RpDateInput } from "./components/RpDateInput";
 import { SuggestionAutocomplete } from "./components/SuggestionAutocomplete";
 import {
@@ -151,6 +153,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
   const [newTransaction, setNewTransaction] = useState<TransactionDraft | null>(
     null,
   );
+  const [importOpened, setImportOpened] = useState(false);
   const [deletePopoverOpened, setDeletePopoverOpened] = useState<string | null>(
     null,
   );
@@ -628,23 +631,35 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                     </>
                   )}
                 </Group>
-                {!newTransaction && (
-                  <Button
-                    leftSection={<IconPlus size={18} />}
-                    size="sm"
-                    onClick={() =>
-                      setNewTransaction({
-                        date: new Date(),
-                        type: "DEPOSIT",
-                        name: "",
-                        description: "",
-                        order: week.transactions.length,
-                      })
-                    }
-                  >
-                    Ajouter une transaction
-                  </Button>
-                )}
+                <Group>
+                  {!newTransaction && (
+                    <>
+                      <Button
+                        leftSection={<IconFileImport size={18} />}
+                        size="sm"
+                        variant="light"
+                        onClick={() => setImportOpened(true)}
+                      >
+                        Importer
+                      </Button>
+                      <Button
+                        leftSection={<IconPlus size={18} />}
+                        size="sm"
+                        onClick={() =>
+                          setNewTransaction({
+                            date: new Date(),
+                            type: "DEPOSIT",
+                            name: "",
+                            description: "",
+                            order: week.transactions.length,
+                          })
+                        }
+                      >
+                        Ajouter une transaction
+                      </Button>
+                    </>
+                  )}
+                </Group>
               </Group>
               <Paper shadow="sm" withBorder p={0}>
                 <DataTable
@@ -1057,6 +1072,13 @@ export default function BankPage({ initialWeek }: BankPageProps) {
           </Tabs.Panel>
         </Tabs>
       </Stack>
+      <ImportTransactionsModal
+        opened={importOpened}
+        onClose={() => setImportOpened(false)}
+        onImported={async () => {
+          await Promise.all([loadWeek(new Date(week.weekStart)), loadWeeks()]);
+        }}
+      />
     </Container>
   );
 }
