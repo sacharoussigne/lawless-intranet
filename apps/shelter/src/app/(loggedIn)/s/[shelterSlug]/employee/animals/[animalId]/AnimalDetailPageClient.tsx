@@ -59,6 +59,11 @@ import {
   type SpeciesOptionDTO,
 } from '../types';
 import { AnimalFollowUpsSection } from './AnimalFollowUpsSection';
+import { AnimalDocumentsSection } from './AnimalDocumentsSection';
+import type {
+  AnimalDocumentListItem,
+  AnimalDocumentTemplateListItem,
+} from '@/types/animalDocuments';
 
 const HISTORY_ACTION_LABELS: Record<string, string> = {
   create: 'Création',
@@ -195,10 +200,16 @@ function summarizeHistoryDiff(
 
 export function AnimalDetailPageClient({
   shelterSlug,
+  shelterName,
   initialAnimal,
+  initialDocuments,
+  availableTemplates,
 }: {
   shelterSlug: string;
+  shelterName: string;
   initialAnimal: AnimalDTO;
+  initialDocuments: AnimalDocumentListItem[];
+  availableTemplates: AnimalDocumentTemplateListItem[];
 }) {
   const router = useRouter();
   const t = useTenantRoutes();
@@ -719,6 +730,15 @@ export function AnimalDetailPageClient({
             </Grid>
           )}
         </section>
+
+        <AnimalDocumentsSection
+          shelterSlug={shelterSlug}
+          shelterName={shelterName}
+          animal={animal}
+          initialDocuments={initialDocuments}
+          availableTemplates={availableTemplates}
+          canUpdate={canUpdate}
+        />
 
         <AnimalFollowUpsSection
           shelterSlug={shelterSlug}

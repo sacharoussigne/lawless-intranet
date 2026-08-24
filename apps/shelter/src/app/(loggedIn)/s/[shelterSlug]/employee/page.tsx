@@ -1,7 +1,7 @@
 'use client';
 
 import { Container, SimpleGrid, Text } from '@mantine/core';
-import { IconBuildingBank, IconDog, IconPaw } from '@tabler/icons-react';
+import { IconBuildingBank, IconDog, IconPaw, IconTemplate } from '@tabler/icons-react';
 import { ModuleCard } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
@@ -33,6 +33,14 @@ export default function EmployeeHubPage() {
       description: 'Espèces, races et variantes pour les animaux.',
       href: t.employee.species,
       icon: IconPaw,
+    });
+  }
+  if (permissions?.documentTemplates.manage) {
+    cards.push({
+      title: 'Modèles de documents',
+      description: 'Modèles pour générer des documents sur les fiches animal.',
+      href: t.employee.templates,
+      icon: IconTemplate,
     });
   }
 
