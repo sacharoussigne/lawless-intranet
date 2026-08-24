@@ -24,15 +24,22 @@ import {
   parseSelectOptions,
   renderTemplate,
   resolveJsValue,
+  substituteVariables,
   type TemplateInput,
 } from '@lawless-intranet/mail-template-engine';
 import { buildTemplateRenderContext, useMailTemplateContext } from './MailTemplateProvider';
 
 type FormValues = Record<string, string | number | boolean | undefined>;
 
-function buildInitialValues(inputs: TemplateInput[]): FormValues {
+function buildInitialValues(
+  inputs: TemplateInput[],
+  variables?: Record<string, string>,
+): FormValues {
   return inputs.reduce((acc, input) => {
-    const resolvedValue = resolveJsValue(input.defaultValue);
+    const resolvedValue = substituteVariables(
+      resolveJsValue(input.defaultValue),
+      variables,
+    );
 
     if (input.type === 'number') {
       acc[input.name] = resolvedValue ? Number(resolvedValue) : undefined;
@@ -89,12 +96,27 @@ export const TemplateFormGenerator = forwardRef<
     [template]
   );
 
+  const initialValues = useMemo(
+    () => buildInitialValues(inputs, variables),
+    [inputs, variables],
+  );
+
   const form = useForm({
-    initialValues: buildInitialValues(inputs),
+    initialValues,
   });
 
+  useEffect(() => {
+    form.setValues(initialValues);
+    form.resetDirty(initialValues);
+    // Only re-seed when template defaults / variables change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues]);
+
   useImperativeHandle(ref, () => ({
-    reset: () => form.reset(),
+    reset: () => {
+      form.setValues(initialValues);
+      form.resetDirty(initialValues);
+    },
   }));
 
   const [debouncedValues] = useDebouncedValue(form.values, 200);
