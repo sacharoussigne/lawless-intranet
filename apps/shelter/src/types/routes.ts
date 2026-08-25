@@ -16,6 +16,10 @@ export function tenantRoutes(slug: string) {
       animal: (id: string) => `${employeeBase}/animals/${encodeURIComponent(id)}`,
       animalFollowUp: (animalId: string, followUpId: string) =>
         `${employeeBase}/animals/${encodeURIComponent(animalId)}/follow-ups/${encodeURIComponent(followUpId)}`,
+      templates: `${employeeBase}/templates`,
+      templateNew: `${employeeBase}/templates/new`,
+      templateEdit: (id: string) =>
+        `${employeeBase}/templates/${encodeURIComponent(id)}/edit`,
     },
     bank: { index: `${employeeBase}/bank` },
     species: { index: `${employeeBase}/species` },

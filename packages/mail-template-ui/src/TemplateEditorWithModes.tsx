@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Stack,
   SegmentedControl,
@@ -81,8 +81,6 @@ export function TemplateEditorWithModes({
   }, []);
 
   useEffect(() => {
-    if (mode !== 'visual') return;
-
     if (pendingParentSyncRef.current) {
       if (value === lastEmittedRef.current) {
         pendingParentSyncRef.current = false;
@@ -94,7 +92,7 @@ export function TemplateEditorWithModes({
 
     lastEmittedRef.current = value;
     syncVisualFromContent(value);
-  }, [value, mode, syncVisualFromContent]);
+  }, [value, syncVisualFromContent]);
 
   const handleModeChange = (nextMode: string) => {
     const typedMode = nextMode as EditorMode;
@@ -113,11 +111,6 @@ export function TemplateEditorWithModes({
 
     setMode(typedMode);
   };
-
-  const detectedContent = useMemo(
-    () => serializeTemplateDocument({ segments }),
-    [segments],
-  );
 
   const modeControl = (
     <SegmentedControl
@@ -182,7 +175,7 @@ export function TemplateEditorWithModes({
             </Text>
             <Paper p="md" withBorder>
               <ScrollArea h={500} scrollbars="y" type="auto">
-                <DetectedParameters content={detectedContent} />
+                <DetectedParameters content={value} />
               </ScrollArea>
             </Paper>
           </Stack>
