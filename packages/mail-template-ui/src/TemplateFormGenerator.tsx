@@ -24,8 +24,10 @@ import {
   parseSelectOptions,
   renderTemplate,
   resolveJsValue,
+  resolveRenderVariables,
   substituteVariables,
   type TemplateInput,
+  type UserGender,
 } from '@lawless-intranet/mail-template-engine';
 import { buildTemplateRenderContext, useMailTemplateContext } from './MailTemplateProvider';
 
@@ -34,11 +36,25 @@ type FormValues = Record<string, string | number | boolean | undefined>;
 function buildInitialValues(
   inputs: TemplateInput[],
   variables?: Record<string, string>,
+  userContext?: {
+    username: string;
+    userDescription: string;
+    userGender: UserGender;
+  },
 ): FormValues {
+  const mergedVariables =
+    resolveRenderVariables({
+      inputs: {},
+      username: userContext?.username,
+      userDescription: userContext?.userDescription,
+      userGender: userContext?.userGender,
+      variables,
+    }) ?? variables;
+
   return inputs.reduce((acc, input) => {
     const resolvedValue = substituteVariables(
       resolveJsValue(input.defaultValue),
-      variables,
+      mergedVariables,
     );
 
     if (input.type === 'number') {
@@ -97,8 +113,13 @@ export const TemplateFormGenerator = forwardRef<
   );
 
   const initialValues = useMemo(
-    () => buildInitialValues(inputs, variables),
-    [inputs, variables],
+    () =>
+      buildInitialValues(inputs, variables, {
+        username,
+        userDescription,
+        userGender,
+      }),
+    [inputs, variables, username, userDescription, userGender],
   );
 
   const form = useForm({
