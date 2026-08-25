@@ -13,7 +13,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
-import { IconArrowLeft, IconPencil, IconPlus, IconTemplate, IconTrash } from '@tabler/icons-react';
+import { IconArrowLeft, IconFlask, IconPencil, IconPlus, IconTemplate, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
@@ -235,6 +235,15 @@ export function AnimalDocumentTemplatesPageClient({
                 textAlign: 'right',
                 render: (template) => (
                   <Group gap="xs" justify="flex-end" wrap="nowrap">
+                    <ActionIcon
+                      variant="light"
+                      color="moss"
+                      onClick={() => router.push(t.employee.templateTest(template.id))}
+                      title="Tester le modèle"
+                      aria-label={`Tester ${template.name}`}
+                    >
+                      <IconFlask size={16} />
+                    </ActionIcon>
                     <ActionIcon
                       variant="light"
                       color="terracotta"

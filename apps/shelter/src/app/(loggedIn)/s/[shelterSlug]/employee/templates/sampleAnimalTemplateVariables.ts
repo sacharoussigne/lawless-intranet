@@ -1,0 +1,16 @@
+export const SAMPLE_ANIMAL_TEMPLATE_VARIABLES = {
+  shelterName: 'Refuge Lawless',
+  animalName: 'Moustache',
+  speciesName: 'Chat',
+  breedName: 'Européen',
+  variantName: 'Roux',
+  arrivalDate: '12/03/1890',
+  adoptionPrice: '$150.00',
+  status: "En attente d'adoption",
+  caseManagerName: 'Alice Dupont',
+  adopterName: 'Jean Martin',
+  departureDate: '20/06/1890',
+  biography: 'Chat calin et sociable.',
+  careProvided: 'Vaccination et vermifuge.',
+  notes: 'Préfère les foyers calmes.',
+};
