@@ -19,23 +19,7 @@ import {
 import { handleAction } from '@/lib/action';
 import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
-
-const SAMPLE_VARIABLES = {
-  shelterName: 'Refuge Lawless',
-  animalName: 'Moustache',
-  speciesName: 'Chat',
-  breedName: 'Européen',
-  variantName: 'Roux',
-  arrivalDate: '12/03/1890',
-  adoptionPrice: '$150.00',
-  status: "En attente d'adoption",
-  caseManagerName: 'Alice Dupont',
-  adopterName: 'Jean Martin',
-  departureDate: '20/06/1890',
-  biography: 'Chat calin et sociable.',
-  careProvided: 'Vaccination et vermifuge.',
-  notes: 'Préfère les foyers calmes.',
-};
+import { SAMPLE_ANIMAL_TEMPLATE_VARIABLES } from './sampleAnimalTemplateVariables';
 
 interface TemplateFormPageProps {
   shelterSlug: string;
@@ -62,9 +46,13 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
     },
   });
 
-  const preview = useTemplatePreviewActions(form.values.content, SAMPLE_VARIABLES, {
-    inputsMode: 'disabled',
-  });
+  const preview = useTemplatePreviewActions(
+    form.values.content,
+    SAMPLE_ANIMAL_TEMPLATE_VARIABLES,
+    {
+      inputsMode: 'disabled',
+    },
+  );
 
   const handleCopy = async () => {
     if (!form.values.content) return;
@@ -215,7 +203,7 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
             <Tabs.Panel value="preview" pt="md">
               <TemplatePreviewWithForm
                 templateContent={form.values.content}
-                variables={SAMPLE_VARIABLES}
+                variables={SAMPLE_ANIMAL_TEMPLATE_VARIABLES}
                 inputsMode="disabled"
                 resultLabel="Aperçu animal (données fictives)"
                 formRef={preview.formRef}

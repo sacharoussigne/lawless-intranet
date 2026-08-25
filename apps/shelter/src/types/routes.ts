@@ -20,6 +20,8 @@ export function tenantRoutes(slug: string) {
       templateNew: `${employeeBase}/templates/new`,
       templateEdit: (id: string) =>
         `${employeeBase}/templates/${encodeURIComponent(id)}/edit`,
+      templateTest: (id: string) =>
+        `${employeeBase}/templates/${encodeURIComponent(id)}/test`,
       waitlist: `${employeeBase}/waitlist`,
     },
     bank: { index: `${employeeBase}/bank` },
