@@ -1,7 +1,7 @@
 'use client';
 
 import { Container, SimpleGrid, Text } from '@mantine/core';
-import { IconBuildingBank, IconClipboardList, IconDog, IconPaw, IconTemplate } from '@tabler/icons-react';
+import { IconBuildingBank, IconDog, IconPaw, IconTemplate } from '@tabler/icons-react';
 import { ModuleCard } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
@@ -41,14 +41,6 @@ export default function EmployeeHubPage() {
       description: 'Modèles pour générer des documents sur les fiches animal.',
       href: t.employee.templates,
       icon: IconTemplate,
-    });
-  }
-  if (permissions?.waitlist.manage) {
-    cards.push({
-      title: 'File d’attente',
-      description: 'Demandes d’animaux absents à faire arriver plus tard.',
-      href: t.employee.waitlist,
-      icon: IconClipboardList,
     });
   }
 
