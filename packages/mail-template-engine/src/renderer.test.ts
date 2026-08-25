@@ -24,6 +24,38 @@ describe('renderTemplate with default={js}', () => {
   });
 });
 
+describe('renderTemplate with default=${variable}', () => {
+  it('substitutes template variables in input defaults when form value is empty', () => {
+    const template =
+      '{input:[type="text"][name="documentDate"][label="Date"][default="${departureDate}"]}';
+    const rendered = render(template, {
+      inputs: {},
+      variables: { departureDate: '23 août 1890' },
+    });
+    expect(rendered).toBe('23 août 1890');
+  });
+
+  it('prefers form value over variable default', () => {
+    const template =
+      '{input:[type="text"][name="adopterFullName"][label="Adoptant"][default="${adopterName}"]}';
+    const rendered = render(template, {
+      inputs: { adopterFullName: 'Nom édité' },
+      variables: { adopterName: 'Jean Martin' },
+    });
+    expect(rendered).toBe('Nom édité');
+  });
+
+  it('substitutes username from render context in input defaults', () => {
+    const template =
+      '{input:[type="text"][name="seller"][label="Vendeur"][default="${username}"]}';
+    const rendered = render(template, {
+      inputs: {},
+      username: 'Owen Clark',
+    });
+    expect(rendered).toBe('Owen Clark');
+  });
+});
+
 describe('renderTemplate with checkbox', () => {
   const checkboxTemplate =
     'Matériaux:\n{input:[type="checkbox"][name="adr"][label="Seringue d\'Adrénaline"][checkedValue="- Seringue d\'Adrénaline:"]}\n{input:[type="checkbox"][name="bandage"][label="Bandage"][checkedValue="- Bandage:"]}';

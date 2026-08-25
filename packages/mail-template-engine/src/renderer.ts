@@ -8,6 +8,16 @@ import { processConditionalBlocks } from './conditions';
 import { applyGreetingAdaptation } from './greeting';
 import { substituteVariables } from './variables';
 
+function resolveDefaultValue(
+  defaultValue: string | undefined,
+  context: RenderContext,
+): string {
+  const resolved = resolveJsValue(defaultValue);
+  if (!resolved) return '';
+  const variables = resolveRenderVariables(context);
+  return variables ? substituteVariables(resolved, variables) : resolved;
+}
+
 export type { RenderContext, RenderOptions };
 
 export function executeJsCode(jsCode: string): string {
@@ -83,7 +93,7 @@ export function resolveInputReplacement(
     }
 
     if (input.defaultValue && !isCheckboxChecked(input.defaultValue)) {
-      const defaultText = resolveJsValue(input.defaultValue).trim();
+      const defaultText = resolveDefaultValue(input.defaultValue, context).trim();
       if (defaultText) {
         return appendDependentValues(
           defaultText,
@@ -97,7 +107,7 @@ export function resolveInputReplacement(
     return appendDependentValues('', input, context, allInputs);
   }
 
-  return rawValue || resolveJsValue(input.defaultValue) || '';
+  return rawValue || resolveDefaultValue(input.defaultValue, context) || '';
 }
 
 export function getReplacementSpan(
