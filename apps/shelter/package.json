@@ -25,6 +25,7 @@
     "@lawless-intranet/documents-client": "workspace:*",
     "@lawless-intranet/mail-template-engine": "workspace:*",
     "@lawless-intranet/mail-template-ui": "workspace:*",
+    "@lawless-intranet/realtime": "workspace:*",
     "@lawless-intranet/types": "workspace:*",
     "@mantine/charts": "^8.3.17",
     "@mantine/core": "^8.3.17",

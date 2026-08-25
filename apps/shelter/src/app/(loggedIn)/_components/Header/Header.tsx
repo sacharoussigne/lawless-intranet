@@ -25,6 +25,7 @@ import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/shelter/platformAdmin';
 import { rewritePathWithShelterSlug } from '@/lib/shelter/slug';
+import { HeaderWaitlistIndicator } from './HeaderWaitlistIndicator';
 import {
   IconArrowBackUp,
   IconCashRegister,
@@ -192,6 +193,12 @@ export default function Header({
         >
           {impersonatorDisplayName?.trim() || 'Compte'}
         </Button>
+      )}
+      {permissions?.waitlist.manage && t && shelterSlug && (
+        <HeaderWaitlistIndicator
+          shelterSlug={shelterSlug}
+          waitlistHref={t.employee.waitlist}
+        />
       )}
       {avatarMenu}
     </Group>

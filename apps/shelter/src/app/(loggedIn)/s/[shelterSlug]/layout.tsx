@@ -17,6 +17,7 @@ import { resolveEffectivePermissionsForShelter } from '@/lib/shelter/permissions
 import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
 import { notFound, redirect } from 'next/navigation';
 import { MailTemplateProvider } from '@lawless-intranet/mail-template-ui';
+import { ShelterRealtimeShell } from './ShelterRealtimeShell';
 
 export default async function ShelterLayout({
   children,
@@ -71,16 +72,18 @@ export default async function ShelterLayout({
         username={session?.user.name ?? 'Utilisateur'}
         userGender={session?.user.gender ?? 'male'}
       >
-        <LoggedInShell>
-          <ShelterClientProviders shelterSlug={shelterSlug}>
-            <Header
-              session={authSession}
-              shelterSlug={shelterSlug}
-              impersonatorDisplayName={impersonatorDisplayName}
-            />
-            <div className="flex-1 w-full min-w-0 pb-8 min-h-0">{children}</div>
-          </ShelterClientProviders>
-        </LoggedInShell>
+        <ShelterRealtimeShell>
+          <LoggedInShell>
+            <ShelterClientProviders shelterSlug={shelterSlug}>
+              <Header
+                session={authSession}
+                shelterSlug={shelterSlug}
+                impersonatorDisplayName={impersonatorDisplayName}
+              />
+              <div className="flex-1 w-full min-w-0 pb-8 min-h-0">{children}</div>
+            </ShelterClientProviders>
+          </LoggedInShell>
+        </ShelterRealtimeShell>
       </MailTemplateProvider>
     </PermissionsProvider>
   );
