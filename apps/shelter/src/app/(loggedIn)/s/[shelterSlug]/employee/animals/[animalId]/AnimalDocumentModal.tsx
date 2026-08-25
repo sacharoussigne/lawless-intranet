@@ -1,0 +1,327 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Button,
+  Center,
+  Grid,
+  Group,
+  Modal,
+  Select,
+  Stack,
+  Tabs,
+  Text,
+  TextInput,
+  Textarea,
+} from '@mantine/core';
+import { useForm } from '@mantine/form';
+import {
+  TemplatePreviewWithForm,
+  useTemplatePreviewActions,
+} from '@lawless-intranet/mail-template-ui';
+import type {
+  AnimalDocumentListItem,
+  AnimalDocumentTemplateListItem,
+} from '@/types/animalDocuments';
+
+type TemplateVariables = Record<string, string>;
+
+interface AnimalDocumentModalProps {
+  opened: boolean;
+  onClose: () => void;
+  mode: 'create' | 'edit';
+  document: AnimalDocumentListItem | null;
+  templates: AnimalDocumentTemplateListItem[];
+  variables: TemplateVariables;
+  onCreateFreeText: (values: { name: string; content: string }) => Promise<void>;
+  onCreateFromTemplate: (values: {
+    templateId: string;
+    name: string;
+    content: string;
+  }) => Promise<void>;
+  onUpdate: (values: { id: string; name: string; content: string }) => Promise<void>;
+}
+
+type CreateMode = 'template' | 'freeText';
+
+function getInitialCreateMode(templates: AnimalDocumentTemplateListItem[]): CreateMode {
+  return templates.length > 0 ? 'template' : 'freeText';
+}
+
+function getDefaultTemplateId(templates: AnimalDocumentTemplateListItem[]): string | null {
+  return templates[0]?.id ?? null;
+}
+
+const freeTextAreaStyles = {
+  input: {
+    minHeight: 'min(50vh, 28rem)',
+    maxHeight: 'min(70vh, 42rem)',
+    resize: 'vertical' as const,
+    overflowY: 'auto' as const,
+  },
+};
+
+export function AnimalDocumentModal({
+  opened,
+  onClose,
+  mode,
+  document,
+  templates,
+  variables,
+  onCreateFreeText,
+  onCreateFromTemplate,
+  onUpdate,
+}: AnimalDocumentModalProps) {
+  const isEdit = mode === 'edit' && document !== null;
+  const [createMode, setCreateMode] = useState<CreateMode>(() =>
+    isEdit && document
+      ? document.source === 'template'
+        ? 'template'
+        : 'freeText'
+      : getInitialCreateMode(templates),
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() =>
+    isEdit && document?.templateId
+      ? document.templateId
+      : getDefaultTemplateId(templates),
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.id === selectedTemplateId) ?? null,
+    [selectedTemplateId, templates],
+  );
+
+  const form = useForm({
+    initialValues: {
+      name: '',
+      content: '',
+    },
+    validate: {
+      name: (value) => (value.trim().length === 0 ? 'Le nom est requis' : null),
+      content: (value) => (value.trim().length === 0 ? 'Le contenu est requis' : null),
+    },
+  });
+
+  const preview = useTemplatePreviewActions(selectedTemplate?.content ?? '', variables);
+
+  useEffect(() => {
+    if (isEdit && document) {
+      setCreateMode(document.source === 'template' ? 'template' : 'freeText');
+      setSelectedTemplateId(document.templateId);
+      form.setValues({
+        name: document.name,
+        content: document.content,
+      });
+    } else {
+      const defaultTemplateId = getDefaultTemplateId(templates);
+      const defaultTemplate = templates.find((t) => t.id === defaultTemplateId) ?? null;
+      setCreateMode(getInitialCreateMode(templates));
+      setSelectedTemplateId(defaultTemplateId);
+      form.setValues({
+        name: defaultTemplate?.defaultDocumentName ?? defaultTemplate?.name ?? '',
+        content: '',
+      });
+    }
+
+    setReady(true);
+    // Mount-only init: parent remounts this modal on each open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleClose = () => {
+    onClose();
+    setSubmitting(false);
+  };
+
+  const handleCreateModeChange = (value: string | null) => {
+    const nextMode = (value as CreateMode) ?? 'template';
+    setCreateMode(nextMode);
+    if (nextMode === 'freeText') {
+      form.setFieldValue('content', '');
+    } else {
+      preview.handleRegenerate();
+      form.setFieldValue('content', '');
+    }
+  };
+
+  const handleTemplateChange = (templateId: string | null) => {
+    setSelectedTemplateId(templateId);
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) return;
+
+    form.setFieldValue('name', template.defaultDocumentName ?? template.name);
+    form.setFieldValue('content', '');
+    preview.handleRegenerate();
+  };
+
+  const resolveContent = () => {
+    if (isEdit || createMode === 'freeText') {
+      return form.values.content.trim();
+    }
+    return form.values.content.trim() || preview.resultContent.trim();
+  };
+
+  const handleSubmit = async () => {
+    const name = form.values.name.trim();
+    const content = resolveContent();
+
+    if (!name) {
+      form.setFieldError('name', 'Le nom est requis');
+      return;
+    }
+    if (!content) {
+      form.setFieldError('content', 'Le contenu est requis');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      if (isEdit && document) {
+        await onUpdate({ id: document.id, name, content });
+      } else if (createMode === 'template') {
+        if (!selectedTemplateId) {
+          form.setFieldError('content', 'Sélectionnez un modèle');
+          setSubmitting(false);
+          return;
+        }
+
+        await onCreateFromTemplate({
+          templateId: selectedTemplateId,
+          name,
+          content,
+        });
+      } else {
+        await onCreateFreeText({ name, content });
+      }
+
+      handleClose();
+    } catch {
+      setSubmitting(false);
+    }
+  };
+
+  const templateOptions = templates.map((template) => ({
+    value: template.id,
+    label: template.name,
+  }));
+
+  const previewResultContent = form.values.content || preview.resultContent;
+  const showTemplatePreview = !isEdit && createMode === 'template';
+  const showFreeText = isEdit || createMode === 'freeText';
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={handleClose}
+      title={isEdit ? 'Modifier le document' : 'Nouveau document'}
+      size="90%"
+      styles={{
+        content: {
+          maxWidth: '85rem',
+          maxHeight: 'calc(100dvh - 4rem)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        },
+        body: {
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
+    >
+      {!ready ? (
+        <Center py="xl">
+          <Text c="dimmed">Chargement…</Text>
+        </Center>
+      ) : (
+        <Stack gap="md" style={{ flex: 1, minHeight: 0 }}>
+          <Stack gap="md" style={{ flexShrink: 0 }}>
+            {!isEdit && (
+              <Tabs value={createMode} onChange={handleCreateModeChange}>
+                <Tabs.List>
+                  <Tabs.Tab value="template" disabled={templates.length === 0}>
+                    Depuis un modèle
+                  </Tabs.Tab>
+                  <Tabs.Tab value="freeText">Texte libre</Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+            )}
+
+            <Grid gutter="md">
+              <Grid.Col span={{ base: 12, sm: showTemplatePreview ? 6 : 12 }}>
+                <TextInput
+                  label="Nom"
+                  placeholder="Nom du document"
+                  required
+                  {...form.getInputProps('name')}
+                />
+              </Grid.Col>
+              {showTemplatePreview && (
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Select
+                    label="Modèle"
+                    placeholder="Choisir un modèle"
+                    data={templateOptions}
+                    value={selectedTemplateId}
+                    onChange={handleTemplateChange}
+                    nothingFoundMessage="Aucun modèle"
+                    searchable
+                  />
+                </Grid.Col>
+              )}
+            </Grid>
+          </Stack>
+
+          <div style={{ flexShrink: 0 }}>
+            {showTemplatePreview &&
+              (selectedTemplate ? (
+                <TemplatePreviewWithForm
+                  templateContent={selectedTemplate.content}
+                  variables={variables}
+                  formRef={preview.formRef}
+                  onFormChange={preview.setFormContent}
+                  resultContent={previewResultContent}
+                  onResultChange={(value) => form.setFieldValue('content', value)}
+                  isManuallyEdited={preview.isManuallyEdited || Boolean(form.values.content)}
+                  onRegenerate={() => {
+                    preview.handleRegenerate();
+                    form.setFieldValue('content', '');
+                  }}
+                />
+              ) : (
+                <Center py="xl">
+                  <Text c="dimmed">Sélectionnez un modèle pour préparer le document.</Text>
+                </Center>
+              ))}
+
+            {showFreeText && (
+              <Textarea
+                label="Contenu"
+                placeholder="Contenu du document"
+                required
+                {...form.getInputProps('content')}
+                styles={freeTextAreaStyles}
+              />
+            )}
+          </div>
+
+          <Group justify="flex-end" style={{ flexShrink: 0, marginTop: 'auto' }}>
+            <Button variant="subtle" color="gray" onClick={handleClose}>
+              Annuler
+            </Button>
+            <Button color="terracotta" loading={submitting} onClick={() => void handleSubmit()}>
+              {isEdit ? 'Enregistrer' : 'Créer'}
+            </Button>
+          </Group>
+        </Stack>
+      )}
+    </Modal>
+  );
+}

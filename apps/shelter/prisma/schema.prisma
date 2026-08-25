@@ -18,10 +18,11 @@ model Shelter {
   members         ShelterMember[]
   rolePermissions ShelterRolePermission[]
   settings        AppSettings?
-  animalSpecies   AnimalSpecies[]
-  animals         Animal[]
-  animalHistory   AnimalHistory[]
-  animalFollowUps AnimalFollowUp[]
+  animalSpecies       AnimalSpecies[]
+  animals             Animal[]
+  animalHistory       AnimalHistory[]
+  animalFollowUps     AnimalFollowUp[]
+  animalWaitRequests  AnimalWaitRequest[]
 
   @@index([createdById])
   @@map("shelter")
@@ -97,8 +98,9 @@ model AnimalSpecies {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   shelter   Shelter       @relation(fields: [shelterId], references: [id], onDelete: Cascade)
-  breeds    AnimalBreed[]
-  animals   Animal[]
+  breeds       AnimalBreed[]
+  animals      Animal[]
+  waitRequests AnimalWaitRequest[]
 
   @@unique([shelterId, name])
   @@index([shelterId, sortOrder])
@@ -117,6 +119,7 @@ model AnimalBreed {
   species                AnimalSpecies          @relation(fields: [speciesId], references: [id], onDelete: Cascade)
   variants               AnimalSpeciesVariant[]
   animals                Animal[]
+  waitRequests           AnimalWaitRequest[]
 
   @@unique([speciesId, name])
   @@index([speciesId, sortOrder])
@@ -169,6 +172,7 @@ model Animal {
   variant           AnimalSpeciesVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   history           AnimalHistory[]
   followUps         AnimalFollowUp[]
+  fulfilledWaitRequests AnimalWaitRequest[]
 
   @@index([shelterId, status])
   @@index([shelterId, name])
@@ -247,4 +251,32 @@ model AnimalFollowUpMessage {
 
   @@index([followUpId, createdAt])
   @@map("animal_follow_up_message")
+}
+
+enum AnimalWaitRequestStatus {
+  open
+  fulfilled
+  cancelled
+}
+
+model AnimalWaitRequest {
+  id                String                  @id @default(uuid())
+  shelterId         String
+  requestedAt       DateTime                @db.Date
+  requesterName     String
+  speciesId         String
+  breedId           String?
+  comment           String?                 @db.Text
+  status            AnimalWaitRequestStatus @default(open)
+  fulfilledAnimalId String?
+  createdByUserId   String
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  shelter           Shelter                 @relation(fields: [shelterId], references: [id], onDelete: Cascade)
+  species           AnimalSpecies           @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  breed             AnimalBreed?            @relation(fields: [breedId], references: [id], onDelete: Restrict)
+  fulfilledAnimal   Animal?                 @relation(fields: [fulfilledAnimalId], references: [id], onDelete: SetNull)
+
+  @@index([shelterId, status, requestedAt])
+  @@map("animal_wait_request")
 }

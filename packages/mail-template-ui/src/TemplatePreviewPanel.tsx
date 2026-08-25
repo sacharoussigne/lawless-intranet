@@ -135,6 +135,21 @@ interface TemplatePreviewWithFormProps {
   onRegenerate: () => void;
 }
 
+/** Fixed px height — both panels match and ScrollArea scrolls reliably. */
+const PANEL_HEIGHT = 420;
+
+const panelColStyle = { minWidth: 0 } as const;
+
+const previewTextareaStyles = {
+  input: {
+    border: 'none',
+    background: 'transparent',
+    fontFamily: 'inherit',
+    lineHeight: 1.5,
+    padding: 0,
+  },
+};
+
 export function TemplatePreviewWithForm({
   templateContent,
   variables,
@@ -152,13 +167,13 @@ export function TemplatePreviewWithForm({
   return (
     <Grid gutter="xl">
       {showForm && (
-        <Grid.Col span={5}>
+        <Grid.Col span={5} style={panelColStyle}>
           <Stack gap="md">
             <Text size="sm" fw={600}>
               Formulaire
             </Text>
             <Paper p="md" withBorder>
-              <ScrollArea h={600} scrollbars="y" type="auto">
+              <ScrollArea h={PANEL_HEIGHT} type="auto" offsetScrollbars>
                 <TemplateFormGenerator
                   ref={formRef}
                   template={templateContent}
@@ -170,7 +185,7 @@ export function TemplatePreviewWithForm({
           </Stack>
         </Grid.Col>
       )}
-      <Grid.Col span={showForm ? 7 : 12}>
+      <Grid.Col span={showForm ? 7 : 12} style={panelColStyle}>
         <Stack gap="md">
           <Group justify="space-between">
             <Text size="sm" fw={600}>
@@ -183,23 +198,20 @@ export function TemplatePreviewWithForm({
             )}
           </Group>
           <Paper p="md" withBorder>
-            <Textarea
-              value={resultContent}
-              onChange={(e) => onResultChange(e.currentTarget.value)}
-              placeholder={
-                showForm
-                  ? 'Remplissez le formulaire pour générer le résultat…'
-                  : 'Aperçu du courrier…'
-              }
-              minRows={24}
-              autosize
-              styles={{
-                input: {
-                  fontFamily: 'inherit',
-                  lineHeight: 1.5,
-                },
-              }}
-            />
+            <ScrollArea h={PANEL_HEIGHT} type="auto" offsetScrollbars>
+              <Textarea
+                value={resultContent}
+                onChange={(e) => onResultChange(e.currentTarget.value)}
+                placeholder={
+                  showForm
+                    ? 'Remplissez le formulaire pour générer le résultat…'
+                    : 'Aperçu du courrier…'
+                }
+                autosize
+                minRows={16}
+                styles={previewTextareaStyles}
+              />
+            </ScrollArea>
           </Paper>
         </Stack>
       </Grid.Col>

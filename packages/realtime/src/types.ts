@@ -3,6 +3,7 @@ export const REALTIME_DOMAIN = {
   weeklyActivity: 'weeklyActivity',
   sales: 'sales',
   orders: 'orders',
+  waitlist: 'waitlist',
 } as const;
 
 export type RealtimeDomain = (typeof REALTIME_DOMAIN)[keyof typeof REALTIME_DOMAIN];

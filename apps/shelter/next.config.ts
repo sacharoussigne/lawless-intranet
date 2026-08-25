@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: [
       '@lawless-intranet/bank-ui',
+      '@lawless-intranet/mail-template-engine',
+      '@lawless-intranet/mail-template-ui',
       '@mantine/core',
       '@mantine/hooks',
       '@mantine/dates',
