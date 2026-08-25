@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Center,
+  Grid,
   Group,
   Modal,
   Select,
@@ -50,6 +51,15 @@ function getInitialCreateMode(templates: AnimalDocumentTemplateListItem[]): Crea
 function getDefaultTemplateId(templates: AnimalDocumentTemplateListItem[]): string | null {
   return templates[0]?.id ?? null;
 }
+
+const freeTextAreaStyles = {
+  input: {
+    minHeight: 'min(38vh, 22rem)',
+    maxHeight: 'min(50vh, 28rem)',
+    resize: 'vertical' as const,
+    overflowY: 'auto' as const,
+  },
+};
 
 export function AnimalDocumentModal({
   opened,
@@ -199,6 +209,8 @@ export function AnimalDocumentModal({
   }));
 
   const previewResultContent = form.values.content || preview.resultContent;
+  const showTemplatePreview = !isEdit && createMode === 'template';
+  const showFreeText = isEdit || createMode === 'freeText';
 
   return (
     <Modal
@@ -207,8 +219,21 @@ export function AnimalDocumentModal({
       title={isEdit ? 'Modifier le document' : 'Nouveau document'}
       size="90%"
       styles={{
-        content: { maxWidth: '75rem' },
-        body: { maxHeight: 'calc(100dvh - 10rem)' },
+        content: {
+          maxWidth: '85rem',
+          maxHeight: 'calc(100dvh - 4rem)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        },
+        body: {
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        },
       }}
     >
       {!ready ? (
@@ -216,38 +241,47 @@ export function AnimalDocumentModal({
           <Text c="dimmed">Chargement…</Text>
         </Center>
       ) : (
-        <Stack>
-          {!isEdit && (
-            <Tabs value={createMode} onChange={handleCreateModeChange}>
-              <Tabs.List>
-                <Tabs.Tab value="template" disabled={templates.length === 0}>
-                  Depuis un modèle
-                </Tabs.Tab>
-                <Tabs.Tab value="freeText">Texte libre</Tabs.Tab>
-              </Tabs.List>
-            </Tabs>
-          )}
+        <Stack gap="md" style={{ flex: 1, minHeight: 0 }}>
+          <Stack gap="md" style={{ flexShrink: 0 }}>
+            {!isEdit && (
+              <Tabs value={createMode} onChange={handleCreateModeChange}>
+                <Tabs.List>
+                  <Tabs.Tab value="template" disabled={templates.length === 0}>
+                    Depuis un modèle
+                  </Tabs.Tab>
+                  <Tabs.Tab value="freeText">Texte libre</Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+            )}
 
-          <TextInput
-            label="Nom"
-            placeholder="Nom du document"
-            required
-            {...form.getInputProps('name')}
-          />
+            <Grid gutter="md">
+              <Grid.Col span={{ base: 12, sm: showTemplatePreview ? 6 : 12 }}>
+                <TextInput
+                  label="Nom"
+                  placeholder="Nom du document"
+                  required
+                  {...form.getInputProps('name')}
+                />
+              </Grid.Col>
+              {showTemplatePreview && (
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Select
+                    label="Modèle"
+                    placeholder="Choisir un modèle"
+                    data={templateOptions}
+                    value={selectedTemplateId}
+                    onChange={handleTemplateChange}
+                    nothingFoundMessage="Aucun modèle"
+                    searchable
+                  />
+                </Grid.Col>
+              )}
+            </Grid>
+          </Stack>
 
-          {!isEdit && createMode === 'template' && (
-            <>
-              <Select
-                label="Modèle"
-                placeholder="Choisir un modèle"
-                data={templateOptions}
-                value={selectedTemplateId}
-                onChange={handleTemplateChange}
-                nothingFoundMessage="Aucun modèle"
-                searchable
-              />
-
-              {selectedTemplate ? (
+          <div style={{ flexShrink: 0 }}>
+            {showTemplatePreview &&
+              (selectedTemplate ? (
                 <TemplatePreviewWithForm
                   templateContent={selectedTemplate.content}
                   variables={variables}
@@ -265,22 +299,20 @@ export function AnimalDocumentModal({
                 <Center py="xl">
                   <Text c="dimmed">Sélectionnez un modèle pour préparer le document.</Text>
                 </Center>
-              )}
-            </>
-          )}
+              ))}
 
-          {(isEdit || createMode === 'freeText') && (
-            <Textarea
-              label="Contenu"
-              placeholder="Contenu du document"
-              minRows={24}
-              autosize
-              required
-              {...form.getInputProps('content')}
-            />
-          )}
+            {showFreeText && (
+              <Textarea
+                label="Contenu"
+                placeholder="Contenu du document"
+                required
+                {...form.getInputProps('content')}
+                styles={freeTextAreaStyles}
+              />
+            )}
+          </div>
 
-          <Group justify="flex-end">
+          <Group justify="flex-end" style={{ flexShrink: 0, marginTop: 'auto' }}>
             <Button variant="subtle" color="gray" onClick={handleClose}>
               Annuler
             </Button>

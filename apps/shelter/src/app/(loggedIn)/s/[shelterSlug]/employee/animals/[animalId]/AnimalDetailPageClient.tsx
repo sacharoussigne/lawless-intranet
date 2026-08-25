@@ -135,7 +135,7 @@ function FieldReadout({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className={classes.readout}>
       <div className={classes.fieldLabel}>{label}</div>
-      <Text>{value || '—'}</Text>
+      <Text component="div">{value || '—'}</Text>
     </div>
   );
 }
