@@ -54,8 +54,8 @@ function getDefaultTemplateId(templates: AnimalDocumentTemplateListItem[]): stri
 
 const freeTextAreaStyles = {
   input: {
-    minHeight: 'min(38vh, 22rem)',
-    maxHeight: 'min(50vh, 28rem)',
+    minHeight: 'min(50vh, 28rem)',
+    maxHeight: 'min(70vh, 42rem)',
     resize: 'vertical' as const,
     overflowY: 'auto' as const,
   },

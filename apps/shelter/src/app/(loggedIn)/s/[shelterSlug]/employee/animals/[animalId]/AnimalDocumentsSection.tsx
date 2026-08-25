@@ -235,7 +235,7 @@ export function AnimalDocumentsSection({
         <Group justify="space-between" align="flex-start" mb="sm" wrap="wrap">
           <div>
             <Title order={3} className="shelter-display-title">
-              Documents
+              Documents ({documents.length})
             </Title>
             <Text size="sm" c="dimmed">
               Documents rattachés à cette fiche animal.
@@ -274,7 +274,7 @@ export function AnimalDocumentsSection({
                   <Group gap="xs" wrap="nowrap">
                     <ActionIcon
                       variant="light"
-                      color="gray"
+                      color="terracotta"
                       aria-label={`Voir ${document.name}`}
                       loading={loadingDocumentId === document.id}
                       onClick={() => void openViewDocument(document)}
@@ -285,7 +285,7 @@ export function AnimalDocumentsSection({
                       <>
                         <ActionIcon
                           variant="light"
-                          color="gray"
+                          color="terracotta"
                           aria-label={`Modifier ${document.name}`}
                           loading={loadingDocumentId === document.id}
                           onClick={() => void openEditDocumentModal(document)}
@@ -322,7 +322,10 @@ export function AnimalDocumentsSection({
           setCopiedDocument(false);
         }}
         title={viewingDocument?.name ?? 'Document'}
-        size="lg"
+        size="90%"
+        styles={{
+          content: { maxWidth: '60rem' },
+        }}
       >
         {viewingDocument ? (
           <Stack gap="sm">
