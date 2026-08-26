@@ -35,5 +35,5 @@ export function payrollRpDisplayDate(d: Date): Date {
 export function wireTransferDescription(weekStart: Date, weekEnd: Date): string {
   const displayStart = payrollRpDisplayDate(weekStart);
   const displayEnd = payrollRpDisplayDate(weekEnd);
-  return `Salaire Semaine ${format(displayStart, 'dd MMMM yyyy', { locale: fr })} au ${format(displayEnd, 'dd MMMM yyyy', { locale: fr })} - N°${getISOWeek(weekStart)}`;
+  return `Salaire ${format(displayStart, 'dd MMMM yyyy', { locale: fr })} au ${format(displayEnd, 'dd MMMM yyyy', { locale: fr })} - N°${getISOWeek(weekStart)}`;
 }
