@@ -11,14 +11,6 @@ export default function EmployeeHubPage() {
   const { permissions, appSettings } = usePermissions();
 
   const cards = [];
-  if (permissions?.bank.access && appSettings.featureBankEnabled) {
-    cards.push({
-      title: 'Banque',
-      description: 'Comptes, semaines et transactions du refuge.',
-      href: t.employee.bank,
-      icon: IconBuildingBank,
-    });
-  }
   if (permissions?.animals.access) {
     cards.push({
       title: 'Animaux',
@@ -35,6 +27,15 @@ export default function EmployeeHubPage() {
       icon: IconPaw,
     });
   }
+  if (permissions?.bank.access && appSettings.featureBankEnabled) {
+    cards.push({
+      title: 'Banque',
+      description: 'Comptes, semaines et transactions du refuge.',
+      href: t.employee.bank,
+      icon: IconBuildingBank,
+    });
+  }
+ 
   if (permissions?.documentTemplates.manage) {
     cards.push({
       title: 'Modèles de documents',
