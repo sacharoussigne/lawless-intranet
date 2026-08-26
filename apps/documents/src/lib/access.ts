@@ -13,9 +13,16 @@ type OwnableResource = {
 };
 
 type DocumentResource = {
+  type: string;
   ownerId: string;
   accesses: AccessRecord[];
 };
+
+export const SCOPE_SHARED_DOCUMENT_TYPES = new Set(['animal-document']);
+
+export function isScopeSharedDocumentType(type: string): boolean {
+  return SCOPE_SHARED_DOCUMENT_TYPES.has(type);
+}
 
 export function canReadTemplate(
   template: OwnableResource,
@@ -59,6 +66,10 @@ export function canReadDocument(
   document: DocumentResource,
   userId: string,
 ): boolean {
+  if (isScopeSharedDocumentType(document.type)) {
+    return true;
+  }
+
   if (canWriteDocument(document, userId)) {
     return true;
   }
@@ -72,6 +83,10 @@ export function canWriteDocument(
   document: DocumentResource,
   userId: string,
 ): boolean {
+  if (isScopeSharedDocumentType(document.type)) {
+    return true;
+  }
+
   if (document.ownerId === userId) {
     return true;
   }
@@ -118,13 +133,23 @@ export function templateListWhere(
   };
 }
 
+const IMPOSSIBLE_DOCUMENT_ID = '00000000-0000-0000-0000-000000000000';
+
 export function documentListWhere(
   userId: string,
   type: string,
   scopeId: string,
   ownerId?: string,
+  ownerScope?: 'scope',
 ) {
   const base = { type, scopeId };
+
+  if (ownerScope === 'scope') {
+    if (!isScopeSharedDocumentType(type)) {
+      return { ...base, id: IMPOSSIBLE_DOCUMENT_ID };
+    }
+    return base;
+  }
 
   if (ownerId) {
     return { ...base, ownerId };

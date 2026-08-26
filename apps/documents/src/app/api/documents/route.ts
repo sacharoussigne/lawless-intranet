@@ -10,6 +10,7 @@ import prisma from '@/lib/prisma';
 import {
   canReadDocument,
   documentListWhere,
+  isScopeSharedDocumentType,
   serializeDates,
   DOCUMENT_INCLUDE,
 } from '@/lib/access';
@@ -39,10 +40,12 @@ export async function GET(request: Request) {
     type: searchParams.get('type'),
     scopeId: searchParams.get('scopeId'),
     ownerId: searchParams.get('ownerId') ?? undefined,
+    ownerScope: searchParams.get('ownerScope') ?? undefined,
     page: searchParams.get('page') ?? undefined,
     pageSize: searchParams.get('pageSize') ?? undefined,
     nameSearch: searchParams.get('nameSearch') ?? undefined,
     receiverSearch: searchParams.get('receiverSearch') ?? undefined,
+    metadataAnimalId: searchParams.get('metadataAnimalId') ?? undefined,
   });
 
   if (!parsed.success) {
@@ -53,16 +56,37 @@ export async function GET(request: Request) {
     type,
     scopeId,
     ownerId,
+    ownerScope,
     page,
     pageSize,
     nameSearch,
     receiverSearch,
+    metadataAnimalId,
   } = parsed.data;
   const nameTerm = nameSearch?.trim();
   const receiverTerm = receiverSearch?.trim();
+  const documentOwnerScope = ownerScope === 'scope' ? 'scope' : undefined;
 
-  const where = {
-    ...documentListWhere(auth.userId, type, scopeId, ownerId),
+  const metadataFilters: Prisma.DocumentWhereInput[] = [];
+  if (receiverTerm) {
+    metadataFilters.push({
+      metadata: {
+        path: ['receiver'],
+        string_contains: receiverTerm,
+      },
+    });
+  }
+  if (metadataAnimalId && isScopeSharedDocumentType(type)) {
+    metadataFilters.push({
+      metadata: {
+        path: ['animalId'],
+        equals: metadataAnimalId,
+      },
+    });
+  }
+
+  const where: Prisma.DocumentWhereInput = {
+    ...documentListWhere(auth.userId, type, scopeId, ownerId, documentOwnerScope),
     ...(nameTerm
       ? {
           name: {
@@ -71,14 +95,11 @@ export async function GET(request: Request) {
           },
         }
       : {}),
-    ...(receiverTerm
-      ? {
-          metadata: {
-            path: ['receiver'],
-            string_contains: receiverTerm,
-          },
-        }
-      : {}),
+    ...(metadataFilters.length === 1
+      ? metadataFilters[0]
+      : metadataFilters.length > 1
+        ? { AND: metadataFilters }
+        : {}),
   };
 
   const [items, totalCount] = await Promise.all([
