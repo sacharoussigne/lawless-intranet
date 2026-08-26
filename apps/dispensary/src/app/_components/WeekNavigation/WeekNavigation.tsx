@@ -1,10 +1,14 @@
 'use client';
 
-import { ActionIcon, Group, Text } from '@mantine/core';
+import { ActionIcon, Button, Group, Text } from '@mantine/core';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { formatDate, parsePickerDate } from '@/lib/date';
-import { getBankWeekBounds, isParisWeekAfter } from '@/lib/bankWeek';
+import {
+  getBankWeekBounds,
+  getCurrentParisWeekStart,
+  isParisWeekAfter,
+} from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import { fromRpDisplayDate, toRpDisplayDate } from '@/lib/rpCalendar';
 
@@ -48,6 +52,10 @@ export function WeekNavigation({
     : undefined;
   const isAtMaxWeek =
     maxWeekBounds != null && weekStart.getTime() >= maxWeekBounds.start.getTime();
+  const currentWeekStart = maxWeekStart ?? getCurrentParisWeekStart();
+  const isCurrentWeek =
+    getBankWeekBounds(weekStart).start.getTime() ===
+    getBankWeekBounds(currentWeekStart).start.getTime();
 
   return (
     <DatesProvider settings={{ locale: 'fr' }}>
@@ -97,6 +105,14 @@ export function WeekNavigation({
         >
           <IconChevronRight size={18} />
         </ActionIcon>
+        <Button
+          size="compact-sm"
+          variant="light"
+          disabled={loading || isCurrentWeek}
+          onClick={() => onWeekChange(currentWeekStart)}
+        >
+          Aujourd&apos;hui
+        </Button>
         <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
           <Text size="xs" c="dimmed" mb={2}>
             Période
