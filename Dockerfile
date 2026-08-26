@@ -5,7 +5,7 @@
 ARG APP_NAME=dispensary
 ARG APP_PORT=3000
 
-FROM node:22-alpine AS base
+FROM node:22.23.2-alpine3.24 AS base
 RUN apk add --no-cache libc6-compat openssl
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -16,7 +16,7 @@ FROM base AS prune
 ARG APP_NAME
 WORKDIR /app
 COPY . .
-RUN pnpm dlx turbo@^2 prune "${APP_NAME}" --docker
+RUN pnpm dlx turbo@2.5.0 prune "${APP_NAME}" --docker
 
 # --- Install & build ---
 FROM base AS builder
@@ -30,7 +30,9 @@ WORKDIR /app
 
 COPY --from=prune /app/out/json/ .
 COPY --from=prune /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store \
+    && pnpm install --frozen-lockfile
 
 COPY --from=prune /app/out/full/ .
 
@@ -55,7 +57,7 @@ RUN mkdir -p "/app/apps/${APP_NAME}/public"
 RUN npm install prisma@7.8.0 dotenv@17.2.3 --prefix /prisma-tools --omit=dev
 
 # --- Runtime (Next.js standalone — traced node_modules) ---
-FROM node:22-alpine AS runner
+FROM node:22.23.2-alpine3.24 AS runner
 ARG APP_NAME
 ARG APP_PORT
 
