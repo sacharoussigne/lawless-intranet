@@ -1,4 +1,4 @@
-.PHONY:help network bash start stop restart status logs build rebuild pull push remove dockerfile
+.PHONY:help network bash start stop restart status logs build rebuild pull push remove dockerfile deploy service docker-prune docker-df
 .DEFAULT_GOAL=help
 
 CYAN   = \033[0;36m
@@ -55,7 +55,21 @@ build: .env ## Build du conteneur
 build-no-cache: .env ## Build du conteneur (sans utilisation du cache)
 	@docker compose build --no-cache
 
-rebuild: network stop build-no-cache start ## Reconstruction et démarrage des conteneurs
+rebuild: network stop build-no-cache start ## Rebuild TOTAL sans cache - dépannage uniquement
 	
 remove: ## Suppression des conteneurs
 	@docker compose down --rmi all -v --remove-orphans
+
+deploy: network ## Build avec cache puis déploiement
+	@docker compose up -d --build --remove-orphans
+
+service: network ## Déploiement d'un seul service (make service SERVICE=dispensary)
+	@test -n "$(SERVICE)" || (echo "Usage: make service SERVICE=dispensary" && exit 1)
+	@docker compose up -d --build --remove-orphans $(SERVICE)
+
+docker-prune: ## Purge le cache de build Docker
+	@docker buildx prune -a -f
+
+docker-df: ## Affiche l'utilisation disque Docker
+	@docker system df
+	@docker buildx du 2>/dev/null | tail -3 || true
