@@ -62,6 +62,7 @@ export function AnimalDocumentsSection({
   const [editingDocument, setEditingDocument] = useState<AnimalDocumentListItem | null>(null);
   const [viewingDocument, setViewingDocument] = useState<AnimalDocumentListItem | null>(null);
   const [copiedDocument, setCopiedDocument] = useState(false);
+  const [copiedDocumentId, setCopiedDocumentId] = useState<string | null>(null);
   const [loadingDocumentId, setLoadingDocumentId] = useState<string | null>(null);
 
   const templateVariables = useMemo(
@@ -207,6 +208,27 @@ export function AnimalDocumentsSection({
     }
   };
 
+  const handleCopyDocumentFromList = async (document: AnimalDocumentListItem) => {
+    try {
+      const full = await loadFullDocument(document);
+      await navigator.clipboard.writeText(full.content);
+      setCopiedDocumentId(document.id);
+      notifications.show({
+        title: 'Succès',
+        message: 'Document copié dans le presse-papiers',
+        color: 'teal',
+      });
+      setTimeout(() => setCopiedDocumentId(null), 2000);
+    } catch (error: unknown) {
+      notifications.show({
+        title: 'Erreur',
+        message:
+          error instanceof Error ? error.message : 'Impossible de copier le document',
+        color: 'danger',
+      });
+    }
+  };
+
   const handleDeleteDocument = async (document: AnimalDocumentListItem) => {
     try {
       const result = await deleteAnimalDocument(shelterSlug, {
@@ -280,6 +302,19 @@ export function AnimalDocumentsSection({
                       onClick={() => void openViewDocument(document)}
                     >
                       <IconEye size={16} />
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="light"
+                      color={copiedDocumentId === document.id ? 'teal' : 'terracotta'}
+                      aria-label={`Copier ${document.name}`}
+                      loading={loadingDocumentId === document.id}
+                      onClick={() => void handleCopyDocumentFromList(document)}
+                    >
+                      {copiedDocumentId === document.id ? (
+                        <IconCheck size={16} />
+                      ) : (
+                        <IconCopy size={16} />
+                      )}
                     </ActionIcon>
                     {canUpdate ? (
                       <>
