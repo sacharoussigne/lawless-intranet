@@ -104,7 +104,7 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
           mode === 'create' ? 'Modèle créé avec succès' : 'Modèle modifié avec succès',
         color: 'teal',
       });
-      router.push(routes.employee.templates);
+      router.push(routes.management.templates);
     } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',
@@ -123,7 +123,7 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(routes.employee.templates)}
+          onClick={() => router.push(routes.management.templates)}
         >
           Retour aux modèles
         </Button>

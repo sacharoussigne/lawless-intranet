@@ -7,25 +7,29 @@ export function shelterBase(slug: string): string {
 export function tenantRoutes(slug: string) {
   const base = shelterBase(slug);
   const employeeBase = `${base}/employee`;
+  const managementBase = `${base}/management`;
   return {
     employee: {
       index: employeeBase,
       bank: `${employeeBase}/bank`,
-      species: `${employeeBase}/species`,
       animals: `${employeeBase}/animals`,
       animal: (id: string) => `${employeeBase}/animals/${encodeURIComponent(id)}`,
       animalFollowUp: (animalId: string, followUpId: string) =>
         `${employeeBase}/animals/${encodeURIComponent(animalId)}/follow-ups/${encodeURIComponent(followUpId)}`,
-      templates: `${employeeBase}/templates`,
-      templateNew: `${employeeBase}/templates/new`,
-      templateEdit: (id: string) =>
-        `${employeeBase}/templates/${encodeURIComponent(id)}/edit`,
-      templateTest: (id: string) =>
-        `${employeeBase}/templates/${encodeURIComponent(id)}/test`,
       waitlist: `${employeeBase}/waitlist`,
     },
+    management: {
+      index: managementBase,
+      species: `${managementBase}/species`,
+      templates: `${managementBase}/templates`,
+      templateNew: `${managementBase}/templates/new`,
+      templateEdit: (id: string) =>
+        `${managementBase}/templates/${encodeURIComponent(id)}/edit`,
+      templateTest: (id: string) =>
+        `${managementBase}/templates/${encodeURIComponent(id)}/test`,
+    },
     bank: { index: `${employeeBase}/bank` },
-    species: { index: `${employeeBase}/species` },
+    species: { index: `${managementBase}/species` },
     animals: { index: `${employeeBase}/animals` },
     admin: {
       settings: `${base}/admin/settings`,

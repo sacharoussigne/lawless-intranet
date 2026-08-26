@@ -133,7 +133,7 @@ export function AnimalDocumentTemplatesPageClient({
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(t.employee.index)}
+          onClick={() => router.push(t.management.index)}
         >
           Retour
         </Button>
@@ -149,7 +149,7 @@ export function AnimalDocumentTemplatesPageClient({
           <Button
             leftSection={<IconPlus size={16} />}
             color="terracotta"
-            onClick={() => router.push(t.employee.templateNew)}
+            onClick={() => router.push(t.management.templateNew)}
           >
             Nouveau modèle
           </Button>
@@ -238,7 +238,7 @@ export function AnimalDocumentTemplatesPageClient({
                     <ActionIcon
                       variant="light"
                       color="moss"
-                      onClick={() => router.push(t.employee.templateTest(template.id))}
+                      onClick={() => router.push(t.management.templateTest(template.id))}
                       title="Tester le modèle"
                       aria-label={`Tester ${template.name}`}
                     >
@@ -247,7 +247,7 @@ export function AnimalDocumentTemplatesPageClient({
                     <ActionIcon
                       variant="light"
                       color="terracotta"
-                      onClick={() => router.push(t.employee.templateEdit(template.id))}
+                      onClick={() => router.push(t.management.templateEdit(template.id))}
                       aria-label={`Modifier ${template.name}`}
                     >
                       <IconPencil size={16} />
