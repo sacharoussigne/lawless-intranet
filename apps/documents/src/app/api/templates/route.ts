@@ -49,9 +49,10 @@ export async function GET(request: Request) {
     parsed.data;
   const ownerFilter = parseOwnerIdFilter(ownerId, ownerScope, auth.userId);
   const nameTerm = nameSearch?.trim();
+  const templateOwnerScope = ownerScope === 'scope' ? undefined : ownerScope;
 
   const where = {
-    ...templateListWhere(auth.userId, type, scopeId, ownerFilter, ownerScope),
+    ...templateListWhere(auth.userId, type, scopeId, ownerFilter, templateOwnerScope),
     ...(nameTerm
       ? {
           name: {
