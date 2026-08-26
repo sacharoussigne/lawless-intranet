@@ -29,6 +29,80 @@ cp docker/.env.example .env.docker
 docker compose --env-file .env.docker up -d --build
 ```
 
+## Workflow de déploiement (prod)
+
+Après un `git pull`, **ne pas** utiliser `make rebuild` en routine — cette commande force un rebuild sans cache des 7 apps et remplit rapidement le disque.
+
+| Situation | Commande |
+|-----------|----------|
+| Déploiement normal | `make deploy` |
+| Une seule app modifiée | `make service SERVICE=dispensary` |
+| Package partagé (`packages/*`) | `make deploy` |
+| Cache Docker suspect / build incohérent | `make rebuild` (dépannage uniquement) |
+| Après builds ratés ou disque plein | `make docker-prune` |
+
+`make deploy` exécute `docker compose up -d --build` : Docker réutilise les couches inchangées (deps, lockfile, etc.) et ne reconstruit que ce qui a changé.
+
+Services disponibles pour `make service SERVICE=…` : `auth`, `dispensary`, `documents`, `agenda`, `bank`, `inventory`, `shelter`.
+
+## Maintenance disque
+
+Sur un VPS avec 7 apps Next.js, prévoir **≥ 80 Go** de disque ou purger régulièrement le cache de build.
+
+### Surveillance
+
+```bash
+make docker-df
+# ou manuellement :
+df -h /
+docker system df
+docker buildx du
+```
+
+Sur Docker Engine récent (containerd image store), l'espace est surtout dans `/var/lib/containerd`, pas dans `/var/lib/docker`.
+
+### Nettoyage du cache BuildKit
+
+```bash
+make docker-prune
+```
+
+Si `docker system df` affiche `RECLAIMABLE 0B` malgré des dizaines de Go de Build Cache, redémarrer Docker débloque souvent BuildKit :
+
+```bash
+systemctl restart docker
+docker ps                    # vérifier que les conteneurs sont repartis
+docker buildx prune -a -f
+df -h /
+```
+
+**Ne jamais** supprimer manuellement `/var/lib/containerd` — les images et conteneurs actifs y sont stockés.
+
+### Nettoyage initial (avant le premier déploiement optimisé)
+
+À exécuter une fois sur le serveur si le disque est saturé :
+
+```bash
+df -h /
+docker system df
+du -h --max-depth=1 /var/lib/containerd 2>/dev/null | sort -hr
+
+systemctl restart docker
+docker ps
+
+docker buildx prune -a -f
+
+df -h /
+docker system df
+```
+
+### Cron optionnel (serveur)
+
+```bash
+# /etc/cron.weekly/docker-prune
+docker buildx prune -a -f --filter "until=168h"
+```
+
 ## Build manuel d’une app
 
 ```bash
@@ -187,3 +261,4 @@ Résumé :
 - **Important** : les variables `NEXT_PUBLIC_*` sont **inlinées au build** (logout, login client, etc.). Les mettre dans `docker-compose.yml` `environment:` seul ne suffit pas — il faut rebuild après changement d’URL (`build.args` dans compose).
 - `DATABASE_URL` factice est utilisée uniquement pour `prisma generate` pendant le build.
 - Pour le dev local, continuez avec `pnpm dev` (pas Docker).
+- Le Dockerfile utilise un **cache mount BuildKit** pour le store pnpm (`/pnpm/store`) : les paquets déjà téléchargés sont réutilisés entre builds, y compris lors de rebuilds successifs de plusieurs apps.
