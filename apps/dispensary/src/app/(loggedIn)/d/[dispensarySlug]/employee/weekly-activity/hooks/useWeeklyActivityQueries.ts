@@ -13,6 +13,7 @@ import {
   markOwnWeeklyChestToday,
   markOwnWeeklyPresenceToday,
   updateDispensaryWeeklyActivity,
+  updateDispensaryDiscordProfile,
 } from '@/app/_actions/dispensaryWeeklyActivity';
 import { handleAction } from '@/lib/action';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
@@ -244,6 +245,45 @@ export function useUpdateWeeklyActivityMutation() {
     onSuccess: ({ weekBounds }) => {
       invalidate(weekBounds);
       notifications.show({ title: 'Enregistré', message: '', color: 'moss' });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useUpdateDiscordProfileMutation() {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      discordUserId: string;
+      role: string | null;
+      accountNumber: number | null;
+      weekBounds: WeeklyActivityWeekBounds;
+    }) => {
+      const result = await updateDispensaryDiscordProfile(dispensarySlug, {
+        discordUserId: vars.discordUserId,
+        role: vars.role,
+        accountNumber: vars.accountNumber,
+      });
+      handleAction(result);
+      return vars;
+    },
+    onSuccess: ({ weekBounds }) => {
+      void queryClient.invalidateQueries({ queryKey: weeklyActivityKeys.all(dispensarySlug) });
+      void queryClient.invalidateQueries({
+        queryKey: weeklyActivityKeys.list(
+          dispensarySlug,
+          weeklyActivityWeekKey(weekBounds),
+        ),
+      });
+      notifications.show({ title: 'Profil enregistré', message: '', color: 'moss' });
     },
     onError: (error: Error) => {
       notifications.show({

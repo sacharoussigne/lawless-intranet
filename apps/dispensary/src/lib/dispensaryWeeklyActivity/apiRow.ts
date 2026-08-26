@@ -11,6 +11,8 @@ type RowLike = {
   periodEnd: Date;
   displayName: string;
   resolvedDisplayName: string;
+  discordProfileRole: string | null;
+  discordProfileAccountNumber: number | null;
   discordUserId: string;
   userId: string | null;
   chestDays: unknown;
@@ -29,6 +31,8 @@ export type SerializedDispensaryWeeklyActivityRow = {
   periodEnd: string;
   displayName: string;
   resolvedDisplayName: string;
+  discordProfileRole: string | null;
+  discordProfileAccountNumber: number | null;
   discordUserId: string;
   userId: string | null;
   chestDays: WeekdayFlags;
@@ -54,6 +58,8 @@ export function serializeDispensaryWeeklyActivityApiRow(r: RowLike): SerializedD
     periodEnd: r.periodEnd.toISOString(),
     displayName: r.displayName,
     resolvedDisplayName: r.resolvedDisplayName,
+    discordProfileRole: r.discordProfileRole,
+    discordProfileAccountNumber: r.discordProfileAccountNumber,
     discordUserId: r.discordUserId,
     userId: r.userId,
     chestDays,

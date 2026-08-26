@@ -69,6 +69,12 @@ export function compareWeeklyActivityRows(
 
   if (columnAccessor === 'resolvedDisplayName') {
     cmp = a.resolvedDisplayName.localeCompare(b.resolvedDisplayName, 'fr', { sensitivity: 'base' });
+  } else if (columnAccessor === 'discordProfileRole') {
+    cmp = (a.discordProfileRole ?? '').localeCompare(b.discordProfileRole ?? '', 'fr', {
+      sensitivity: 'base',
+    });
+  } else if (columnAccessor === 'discordProfileAccountNumber') {
+    cmp = (a.discordProfileAccountNumber ?? 0) - (b.discordProfileAccountNumber ?? 0);
   } else if (columnAccessor === 'periodStart') {
     cmp = new Date(a.periodStart).getTime() - new Date(b.periodStart).getTime();
   } else if (columnAccessor === 'patientsCount') {

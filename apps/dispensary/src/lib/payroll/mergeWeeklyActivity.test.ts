@@ -12,6 +12,8 @@ const emptyDay = { caisse: null as string | null, presence: null as string | nul
 function row(
   overrides: Partial<DispensaryWeeklyActivity> & {
     resolvedDisplayName: string;
+    discordProfileRole?: string | null;
+    discordProfileAccountNumber?: number | null;
     user?: { name: string } | null;
   },
 ): Parameters<typeof mergeHtmlAndWeeklyActivity>[1][number] {
@@ -125,6 +127,59 @@ describe('mergeHtmlAndWeeklyActivity', () => {
     expect(out[0].stats.patients_soignes).toBe(0);
     expect(out[1].name).toBe('DiscordPseudo');
     expect(out[1].stats.patients_soignes).toBe(4);
+  });
+
+  it('prefers discord profile role and account over HTML', () => {
+    const schedule = Object.fromEntries(PAYROLL_DAYS.map((d) => [d, { ...emptyDay }])) as ParsedPayrollTable['employees'][0]['schedule'];
+    const parsed: ParsedPayrollTable = {
+      employees: [
+        {
+          name: 'Alice',
+          role: 'Apprenti',
+          id: 111,
+          schedule,
+          stats: {
+            sherifs: null,
+            palefreniers: null,
+            patients_soignes: 0,
+            nombre_caisses: 0,
+            nombre_presences: 0,
+          },
+        },
+      ],
+      global_stats: { total_employees: 1, total_caisses: 0, total_sherifs: 0, total_palefreniers: 0 },
+    };
+    const wa = [
+      row({
+        resolvedDisplayName: 'Alice',
+        displayName: 'Alice',
+        discordProfileRole: 'Médecin',
+        discordProfileAccountNumber: 6408,
+      }),
+    ];
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa);
+    expect(out[0].role).toBe('Médecin');
+    expect(out[0].id).toBe(6408);
+  });
+
+  it('fills role and account for weekly-only employees from profile', () => {
+    const parsed: ParsedPayrollTable = {
+      employees: [],
+      global_stats: { total_employees: 0, total_caisses: 0, total_sherifs: 0, total_palefreniers: 0 },
+    };
+    const wa = [
+      row({
+        id: 'w2',
+        resolvedDisplayName: 'Bob',
+        displayName: 'Bob',
+        discordProfileRole: 'Infirmier',
+        discordProfileAccountNumber: 42,
+        patientsCount: 3,
+      }),
+    ];
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa);
+    expect(out[0].role).toBe('Infirmier');
+    expect(out[0].id).toBe(42);
   });
 });
 

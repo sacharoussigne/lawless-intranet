@@ -37,6 +37,7 @@ import {
   WEEKLY_ACTIVITY_DUPLICATE_MESSAGE,
 } from '@/lib/dispensaryWeeklyActivity/service';
 import { loadSerializedWeeklyActivityByIdForDispensary } from '@/lib/dispensaryWeeklyActivity/loadSerializedRow';
+import { updateDiscordProfileFields } from '@/lib/dispensaryDiscordProfile/service';
 import {
   applyVisibilityToCreateInput,
   applyVisibilityToUpdateInput,
@@ -769,5 +770,49 @@ export async function incrementOwnWeeklyCounter(
     return { status: 200 as const, data: { row } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de l’incrémentation');
+  }
+}
+
+const updateDiscordProfileSchema = z.object({
+  discordUserId: z.string().min(1).max(128),
+  role: z.string().max(100).nullable().optional(),
+  accountNumber: z.number().int().min(1).max(999999).nullable().optional(),
+});
+
+export async function updateDispensaryDiscordProfile(
+  dispensarySlug: string,
+  input: z.infer<typeof updateDiscordProfileSchema>,
+) {
+  try {
+    const gate = await requireWeeklyActivityEdit(dispensarySlug);
+    if (!gate.ok) {
+      return gate.response;
+    }
+
+    const parsed = updateDiscordProfileSchema.safeParse(input);
+    if (!parsed.success) {
+      return { status: 400 as const, error: 'Données invalides' };
+    }
+
+    const { dispensaryId } = gate.tenant;
+    const perms = gate.tenant.effectivePermissions;
+
+    if (!canEditAllWeeklyDispensaryActivity(perms)) {
+      const discordId = await getDiscordAccountIdForUser(prisma, gate.session.user.id);
+      if (!discordId || discordId !== parsed.data.discordUserId) {
+        return { status: 403 as const, error: 'Permission refusée' };
+      }
+    }
+
+    const profile = await updateDiscordProfileFields(prisma, {
+      dispensaryId,
+      discordUserId: parsed.data.discordUserId,
+      role: parsed.data.role,
+      accountNumber: parsed.data.accountNumber,
+    });
+
+    return { status: 200 as const, data: profile };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la mise à jour du profil Discord');
   }
 }

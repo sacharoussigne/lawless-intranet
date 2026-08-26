@@ -8,6 +8,7 @@ import {
   redactSerializedWeeklyActivityRow,
   weeklyActivityFieldVisibilityFromSettings,
 } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
+import { attachDiscordProfilesToActivities } from '@/lib/dispensaryDiscordProfile/attachProfiles';
 import { mergeResolvedDisplayNames } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 
 export async function loadSerializedWeeklyActivityById(
@@ -18,22 +19,25 @@ export async function loadSerializedWeeklyActivityById(
   });
   if (!full) return null;
   const [withName] = await mergeResolvedDisplayNames(prisma, [full]);
+  const [withProfile] = await attachDiscordProfilesToActivities(prisma, [withName]);
   return serializeDispensaryWeeklyActivityApiRow({
-    id: withName.id,
-    periodStart: withName.periodStart,
-    periodEnd: withName.periodEnd,
-    displayName: withName.displayName,
-    resolvedDisplayName: withName.resolvedDisplayName,
-    discordUserId: withName.discordUserId,
-    userId: withName.userId,
-    chestDays: withName.chestDays,
-    presenceDays: withName.presenceDays,
-    sherifCount: withName.sherifCount,
-    patientsCount: withName.patientsCount,
-    infusionsCount: withName.infusionsCount,
-    poppyMilkCount: withName.poppyMilkCount,
-    createdAt: withName.createdAt,
-    updatedAt: withName.updatedAt,
+    id: withProfile.id,
+    periodStart: withProfile.periodStart,
+    periodEnd: withProfile.periodEnd,
+    displayName: withProfile.displayName,
+    resolvedDisplayName: withProfile.resolvedDisplayName,
+    discordProfileRole: withProfile.discordProfileRole,
+    discordProfileAccountNumber: withProfile.discordProfileAccountNumber,
+    discordUserId: withProfile.discordUserId,
+    userId: withProfile.userId,
+    chestDays: withProfile.chestDays,
+    presenceDays: withProfile.presenceDays,
+    sherifCount: withProfile.sherifCount,
+    patientsCount: withProfile.patientsCount,
+    infusionsCount: withProfile.infusionsCount,
+    poppyMilkCount: withProfile.poppyMilkCount,
+    createdAt: withProfile.createdAt,
+    updatedAt: withProfile.updatedAt,
   });
 }
 

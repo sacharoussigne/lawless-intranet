@@ -21,6 +21,7 @@ model Dispensary {
   settings                     AppSettings?
   payrollWeeklyReports         PayrollWeeklyReport[]
   dispensaryWeeklyActivities   DispensaryWeeklyActivity[]
+  dispensaryDiscordProfiles    DispensaryDiscordProfile[]
   cabinets                     Cabinet[]
 
   @@index([createdById])
@@ -211,6 +212,23 @@ model DispensaryWeeklyActivityHistory {
   @@index([activityId, createdAt])
   @@index([actorUserId])
   @@map("dispensary_weekly_activity_history")
+}
+
+model DispensaryDiscordProfile {
+  id              String     @id @default(uuid())
+  dispensaryId    String
+  dispensary      Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  discordUserId   String
+  lastDisplayName String
+  role            String?
+  accountNumber   Int?
+  userId          String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@unique([dispensaryId, discordUserId])
+  @@index([dispensaryId])
+  @@map("dispensary_discord_profile")
 }
 
 enum CabinetAccessLevel {

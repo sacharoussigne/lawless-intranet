@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { ActionIcon, Group, Text, Tooltip } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
-import { IconHistory, IconPencil, IconTrash } from '@tabler/icons-react';
+import { IconHistory, IconId, IconPencil, IconTrash } from '@tabler/icons-react';
 import {
   formatParisPeriodEndLabel,
   formatParisPeriodStartLabel,
@@ -24,6 +24,7 @@ type WeeklyActivityTableProps = {
   isFetching: boolean;
   onOpenHistory: (row: WeeklyActivityListItem) => void;
   onStartEdit: (row: WeeklyActivityListItem) => void;
+  onEditProfile: (row: WeeklyActivityListItem) => void;
   onDelete: (row: WeeklyActivityListItem) => void;
 };
 
@@ -39,6 +40,7 @@ export function WeeklyActivityTable({
   isFetching,
   onOpenHistory,
   onStartEdit,
+  onEditProfile,
   onDelete,
 }: WeeklyActivityTableProps) {
   const canEditRow = useCallback(
@@ -72,6 +74,18 @@ export function WeeklyActivityTable({
         title: 'Médecin',
         sortable: true,
         render: (r) => r.resolvedDisplayName,
+      },
+      {
+        accessor: 'discordProfileRole',
+        title: 'Grade',
+        sortable: true,
+        render: (r) => r.discordProfileRole ?? '—',
+      },
+      {
+        accessor: 'discordProfileAccountNumber',
+        title: 'N° compte',
+        sortable: true,
+        render: (r) => (r.discordProfileAccountNumber != null ? r.discordProfileAccountNumber : '—'),
       },
       {
         accessor: 'periodStart',
@@ -135,6 +149,16 @@ export function WeeklyActivityTable({
           </Tooltip>
           {canEditRow(r) && (
             <>
+              <Tooltip label="Profil Discord">
+                <ActionIcon
+                  variant="subtle"
+                  color="slate"
+                  onClick={() => onEditProfile(r)}
+                  aria-label="Profil Discord"
+                >
+                  <IconId size={18} />
+                </ActionIcon>
+              </Tooltip>
               <Tooltip label="Modifier">
                 <ActionIcon variant="subtle" color="slate" onClick={() => onStartEdit(r)} aria-label="Modifier">
                   <IconPencil size={18} />
@@ -156,7 +180,7 @@ export function WeeklyActivityTable({
       ),
     });
     return cols;
-  }, [fieldVisibility, canEditRow, onOpenHistory, onStartEdit, confirmDelete]);
+  }, [fieldVisibility, canEditRow, onOpenHistory, onStartEdit, onEditProfile, confirmDelete]);
 
   return (
     <DataTable
