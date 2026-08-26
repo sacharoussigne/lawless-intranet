@@ -1,655 +1,346 @@
 'use client';
 
-
-
 import { useEffect, useState } from 'react';
-
-import { Avatar, Button, Container, Group, Menu, SegmentedControl, Select, UnstyledButton, } from '@mantine/core';
-
+import {
+  Avatar,
+  Button,
+  Container,
+  Group,
+  Menu,
+  SegmentedControl,
+  Select,
+  UnstyledButton,
+} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-
 import classes from './Header.module.scss';
-
 import { authClient } from '@lawless-intranet/auth-client/browser';
-
 import { usePathname, useRouter } from 'next/navigation';
-
 import Link from 'next/link';
-
 import { type AuthSession } from '@/types/session';
-
 import { routes, tenantRoutes } from '@/types/routes';
-
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-
 import { useAnimalSpotlight } from '@/app/_contexts/AnimalSpotlightContext';
-
 import { AnimalSpotlight } from '@/app/(loggedIn)/_components/AnimalSpotlight/AnimalSpotlight';
-
 import { shelterSiteTitle } from '@/lib/appSettingsShared';
-
 import { hasRole } from '@lawless-intranet/auth-permissions';
-
 import { Role } from '@/types/enum/roles';
-
 import { isPlatformAdmin } from '@/lib/shelter/platformAdmin';
-
 import { rewritePathWithShelterSlug } from '@/lib/shelter/slug';
-
 import { HeaderWaitlistIndicator } from './HeaderWaitlistIndicator';
-
-import { IconArrowBackUp, IconCashRegister, IconDog, IconLogout, IconPaw, IconSettings, IconTemplate, } from '@tabler/icons-react';
-
-
+import {
+  IconArrowBackUp,
+  IconCashRegister,
+  IconDog,
+  IconLogout,
+  IconPaw,
+  IconSettings,
+  IconTemplate,
+} from '@tabler/icons-react';
 
 export default function Header({
   session,
   shelterSlug: shelterSlugProp,
   impersonatorDisplayName,
 }: Readonly<{
-
   session: AuthSession | null;
-
   shelterSlug?: string;
-
   impersonatorDisplayName?: string | null;
-
 }>) {
-
   const router = useRouter();
-
   const pathname = usePathname();
-
   const [userMenuOpened, setUserMenuOpened] = useState(false);
-
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
-
   const { permissions, userRole, appSettings, accessibleShelters, shelterSlug: ctxSlug } =
-
     usePermissions();
-
   const shelterSlug = shelterSlugProp ?? ctxSlug;
-
   const t = shelterSlug ? tenantRoutes(shelterSlug) : null;
-
   const spotlight = useAnimalSpotlight();
 
   useEffect(() => {
-
     if (!spotlight) return;
-
     const handler = (e: KeyboardEvent) => {
-
       if (
-
         e.key === '/' &&
-
         !e.ctrlKey &&
-
         !e.metaKey &&
-
         !(e.target instanceof HTMLInputElement) &&
-
         !(e.target instanceof HTMLTextAreaElement)
-
       ) {
-
         e.preventDefault();
-
         spotlight.open();
-
       }
-
     };
-
     window.addEventListener('keydown', handler);
-
     return () => window.removeEventListener('keydown', handler);
-
   }, [spotlight]);
 
   const isPlatformAdminUser = isPlatformAdmin(session?.user?.role);
-
   const isImpersonating = Boolean(session?.session?.impersonatedBy);
-
-
-
   const isManagementSpace = Boolean(t && pathname?.startsWith(t.management.index));
-
-
-
   const canSwitchSpaces = Boolean(
-
     permissions?.application.management ||
-
     permissions?.species.manage ||
-
     permissions?.documentTemplates.manage,
-
   );
-
-
 
   const handleSpaceChange = (value: string) => {
-
     if (!t) return;
-
     if (value === 'employee') {
-
       router.push(t.employee.index);
-
     } else if (value === 'management') {
-
       router.push(t.management.index);
-
     }
-
   };
-
-
 
   const handleShelterChange = (newSlug: string | null) => {
-
     if (!newSlug || !pathname) return;
-
     router.push(rewritePathWithShelterSlug(pathname, newSlug));
-
   };
-
-
 
   const handleLogout = async () => {
-
     await authClient.signOut({
-
       fetchOptions: {
-
         onSuccess: () => {
-
           router.refresh();
-
         },
-
       },
-
     });
-
   };
-
-
 
   const handleStopImpersonating = async () => {
-
     setStoppingImpersonation(true);
-
     try {
-
       const result = await authClient.admin.stopImpersonating();
-
       if (result.error) {
-
         notifications.show({
-
           title: 'Erreur',
-
           message: result.error.message || 'Impossible de quitter la session impersonnée.',
-
           color: 'danger',
-
         });
-
         return;
-
       }
-
       notifications.show({
-
         title: 'Session restaurée',
-
         message: 'Vous êtes de nouveau connecté avec votre compte.',
-
         color: 'terracotta',
-
       });
-
       router.refresh();
-
       router.push(routes.platform.users);
-
     } catch {
-
       notifications.show({
-
         title: 'Erreur',
-
         message: 'Impossible de quitter la session impersonnée.',
-
         color: 'danger',
-
       });
-
     } finally {
-
       setStoppingImpersonation(false);
-
     }
-
   };
 
-
-
   const isActive = (route: string) =>
-
     Boolean(pathname && (pathname === route || pathname.startsWith(`${route}/`)));
 
-
-
   const brandHref = t
-
     ? isManagementSpace
-
       ? t.management.index
-
       : t.employee.index
-
     : '/';
 
-
-
   const avatarMenu = session ? (
-
     <Menu
-
       width={260}
-
       position="bottom-end"
-
       transitionProps={{ transition: 'pop-top-right' }}
-
       onClose={() => setUserMenuOpened(false)}
-
       onOpen={() => setUserMenuOpened(true)}
-
       withinPortal
-
     >
-
       <Menu.Target>
-
         <UnstyledButton className={userMenuOpened ? classes.userActive : undefined}>
-
           <Avatar
-
             alt={session.user.name}
-
             radius="xl"
-
             size={36}
-
             src={session.user.image ?? null}
-
           />
-
         </UnstyledButton>
-
       </Menu.Target>
-
       <Menu.Dropdown>
-
         {isPlatformAdminUser && (
-
           <>
-
             <Menu.Label>Plateforme</Menu.Label>
-
             <Menu.Item component={Link} href={routes.platform.shelters}>
-
               Refuges
-
             </Menu.Item>
-
             <Menu.Item component={Link} href={routes.platform.users}>
-
               Comptes utilisateurs
-
             </Menu.Item>
-
             <Menu.Divider />
-
           </>
-
         )}
-
         {hasRole(userRole, Role.ADMIN) && t && (
-
           <>
-
             <Menu.Label>Admin refuge</Menu.Label>
-
             <Menu.Item component={Link} href={t.admin.settings}>
-
               Paramètres du refuge
-
             </Menu.Item>
-
             <Menu.Divider />
-
           </>
-
         )}
-
         <Menu.Item
-
           component={Link}
-
           href={routes.settings.index}
-
           leftSection={<IconSettings size={16} stroke={1.5} />}
-
         >
-
           Paramètres compte
-
         </Menu.Item>
-
         <Menu.Item
-
           leftSection={<IconLogout size={16} stroke={1.5} />}
-
           onClick={handleLogout}
-
         >
-
           Déconnexion
-
         </Menu.Item>
-
       </Menu.Dropdown>
-
     </Menu>
-
   ) : null;
-
-
 
   const actions = session ? (
-
     <Group gap="sm" wrap="nowrap" className={classes.headerSide}>
-
       {isImpersonating && (
-
         <Button
-
           color="leather"
-
           variant="light"
-
           leftSection={<IconArrowBackUp size={18} />}
-
           loading={stoppingImpersonation}
-
           onClick={handleStopImpersonating}
-
         >
-
           {impersonatorDisplayName?.trim() || 'Compte'}
-
         </Button>
-
       )}
-
       {canSwitchSpaces && t && (
-
         <SegmentedControl
-
           size="md"
-
           classNames={{
-
             root: classes.spaceToggle,
-
             label: classes.spaceToggleLabel,
-
           }}
-
           value={isManagementSpace ? 'management' : 'employee'}
-
           onChange={handleSpaceChange}
-
           data={[
-
             { label: 'Employé', value: 'employee' },
-
             { label: 'Gestion', value: 'management' },
-
           ]}
-
         />
-
       )}
-
       {permissions?.waitlist.manage && t && shelterSlug && (
-
         <HeaderWaitlistIndicator
-
           shelterSlug={shelterSlug}
-
           waitlistHref={t.employee.waitlist}
-
         />
-
       )}
-
       {avatarMenu}
-
     </Group>
-
   ) : null;
 
-
-
   return (
-
     <>
-
       {spotlight && shelterSlug && (
-
         <AnimalSpotlight
-
           shelterSlug={shelterSlug}
-
           animals={spotlight.animals}
-
           loading={spotlight.loading}
-
           opened={spotlight.opened}
-
           onClose={spotlight.close}
-
         />
-
       )}
-
       <header className={`${classes.header} mb-8`}>
-
         <Container size="xl">
-
           <div className={classes.headerInner}>
-
             <Group gap="md" wrap="nowrap" className={classes.headerSide}>
-
               <Link href={brandHref} className={classes.brand}>
-
                 {shelterSiteTitle(appSettings)}
-
               </Link>
-
               {session && accessibleShelters.length > 1 && (
-
                 <Select
-
                   aria-label="Refuge"
-
                   data={accessibleShelters.map((s) => ({
-
                     value: s.slug,
-
                     label: s.name,
-
                   }))}
-
                   value={shelterSlug}
-
                   onChange={handleShelterChange}
-
                   allowDeselect={false}
-
                   w={200}
-
                   size="sm"
-
                 />
-
               )}
-
             </Group>
 
-
-
             {session && t ? (
-
               <>
-
                 <div className={classes.headerNavSlot}>
-
                   <nav className={classes.nav} aria-label="Navigation principale">
-
                     {isManagementSpace ? (
-
                       <>
-
                         {permissions?.species.manage && (
-
                           <Link
-
                             href={t.management.species}
-
                             className={`${classes.navLink} ${isActive(t.management.species) ? classes.navLinkActive : ''}`}
-
                           >
-
                             <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-
                               <IconPaw size={18} stroke={1.6} />
-
                               <span>Espèces</span>
-
                             </Group>
-
                           </Link>
-
                         )}
-
                         {permissions?.documentTemplates.manage && (
-
                           <Link
-
                             href={t.management.templates}
-
                             className={`${classes.navLink} ${isActive(t.management.templates) ? classes.navLinkActive : ''}`}
-
                           >
-
                             <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-
                               <IconTemplate size={18} stroke={1.6} />
-
                               <span>Modèles</span>
-
                             </Group>
-
                           </Link>
-
                         )}
-
                       </>
-
                     ) : (
-
                       <>
-
                         {permissions?.animals.access && (
-
                           <Link
-
                             href={t.employee.animals}
-
                             className={`${classes.navLink} ${isActive(t.employee.animals) ? classes.navLinkActive : ''}`}
-
                           >
-
                             <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-
                               <IconDog size={18} stroke={1.6} />
-
                               <span>Animaux</span>
-
                             </Group>
-
                           </Link>
-
                         )}
-
                         {permissions?.bank.access && appSettings.featureBankEnabled && (
-
                           <Link
-
                             href={t.employee.bank}
-
                             className={`${classes.navLink} ${isActive(t.employee.bank) ? classes.navLinkActive : ''}`}
-
                           >
-
                             <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-
                               <IconCashRegister size={18} stroke={1.6} />
-
                               <span>Banque</span>
-
                             </Group>
-
                           </Link>
-
                         )}
-
                       </>
-
                     )}
-
                   </nav>
-
                 </div>
-
                 {actions}
-
               </>
-
             ) : (
-
               actions
-
             )}
-
           </div>
-
         </Container>
-
       </header>
-
     </>
-
   );
-
 }
-
-
