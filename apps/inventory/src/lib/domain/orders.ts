@@ -311,7 +311,7 @@ export async function updateOrder(input: {
 }
 
 /**
- * Completes an order and mutates stock. Does NOT create bank transactions or send mail.
+ * Completes an order and mutates stock. Does not send mail.
  * Returns order data so the host can orchestrate side effects.
  */
 export async function completeOrder(input: {
@@ -334,15 +334,10 @@ export async function completeOrder(input: {
     select: {
       status: true,
       type: true,
-      price: true,
-      name: true,
-      company: { select: { name: true, bankAccountNumber: true } },
-      individualCustomer: { select: { name: true } },
       items: {
         select: {
           itemId: true,
           quantity: true,
-          item: { select: { id: true, isEnabled: true } },
         },
       },
     },

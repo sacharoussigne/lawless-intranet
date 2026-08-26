@@ -22,7 +22,6 @@ export const createTransactionSchema = z.object({
   description: z.string().optional().nullable(),
   amount: z.number().positive(),
   order: z.number().int().optional(),
-  orderId: z.string().uuid().optional().nullable(),
 });
 
 export const updateTransactionSchema = z.object({
@@ -103,19 +102,6 @@ export const updatePlannedTransactionSchema = z
       });
     }
   });
-
-export const createFromOrderSchema = z.object({
-  scopeType: z.string().min(1),
-  scopeId: z.string().uuid(),
-  orderId: z.string().uuid(),
-  orderName: z.string().min(1),
-  orderType: z.enum(['INCOMING', 'OUTGOING']),
-  amount: z.number().positive(),
-  date: z.string().or(z.date()),
-  name: z.string().min(1),
-  description: z.string().optional().nullable(),
-  type: transactionTypeSchema,
-});
 
 export const importTransactionItemSchema = z.object({
   date: z.string().min(1),

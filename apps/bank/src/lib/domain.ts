@@ -89,26 +89,11 @@ export async function createTransaction(input: {
   description?: string | null;
   amount: number;
   order?: number;
-  orderId?: string | null;
 }) {
   const week = await prisma.bankWeek.findFirst({
     where: { id: input.weekId, ...scopeWhere(input.scopeType, input.scopeId) },
   });
   if (!week) return { ok: false as const, status: 404, error: 'Semaine introuvable' };
-
-  if (input.orderId) {
-    const existing = await prisma.bankTransaction.findUnique({
-      where: { orderId: input.orderId },
-      select: { id: true },
-    });
-    if (existing) {
-      return {
-        ok: false as const,
-        status: 400,
-        error: 'Une transaction bancaire existe déjà pour cette commande',
-      };
-    }
-  }
 
   const date = parseDate(input.date);
   const normalizedDate = normalizeDay(date);
@@ -149,7 +134,6 @@ export async function createTransaction(input: {
       description: input.description?.trim() || null,
       amount: input.amount,
       order: newOrder,
-      orderId: input.orderId ?? null,
     },
   });
 
@@ -586,87 +570,6 @@ export async function getGlobalStats(scopeType: string, scopeId: string) {
     monthNet: monthIn - monthOut,
     pendingOccurrences: pendingCount,
   };
-}
-
-export async function createTransactionFromOrder(input: {
-  scopeType: string;
-  scopeId: string;
-  orderId: string;
-  orderName: string;
-  amount: number;
-  date: string | Date;
-  name: string;
-  description?: string | null;
-  type: TransactionType;
-}) {
-  const existing = await prisma.bankTransaction.findUnique({
-    where: { orderId: input.orderId },
-    select: { id: true },
-  });
-  if (existing) {
-    return {
-      ok: false as const,
-      status: 400,
-      error: 'Une transaction bancaire existe déjà pour cette commande',
-    };
-  }
-
-  const transactionDate = startOfParisDay(parseDate(input.date));
-  const { start, end } = getWeekBounds(transactionDate);
-
-  let week = await prisma.bankWeek.findFirst({
-    where: {
-      ...scopeWhere(input.scopeType, input.scopeId),
-      weekStart: { gte: start, lte: end },
-    },
-  });
-
-  if (!week) {
-    const previousWeek = await prisma.bankWeek.findFirst({
-      where: {
-        ...scopeWhere(input.scopeType, input.scopeId),
-        weekStart: { lt: start },
-      },
-      orderBy: { weekStart: 'desc' },
-    });
-
-    week = await prisma.bankWeek.create({
-      data: {
-        scopeType: input.scopeType,
-        scopeId: input.scopeId,
-        weekStart: start,
-        weekEnd: end,
-        balance: previousWeek ? previousWeek.balance : 0,
-      },
-    });
-  }
-
-  const sameDateTransactions = await prisma.bankTransaction.findMany({
-    where: { weekId: week.id },
-    select: { date: true, order: true },
-  });
-  const dayKey = transactionDate.getTime();
-  const sameDay = sameDateTransactions.filter(
-    (t) => startOfParisDay(t.date).getTime() === dayKey,
-  );
-  const maxOrder = sameDay.length > 0 ? Math.max(...sameDay.map((t) => t.order)) : -1;
-
-  const transaction = await prisma.bankTransaction.create({
-    data: {
-      weekId: week.id,
-      date: transactionDate,
-      type: input.type,
-      name: input.name,
-      description: input.description ?? `Commande ${input.orderName}`,
-      amount: input.amount,
-      order: maxOrder + 1,
-      orderId: input.orderId,
-    },
-  });
-
-  await recalculateWeekBalance(input.scopeType, input.scopeId, week.id);
-
-  return { ok: true as const, status: 201, data: serializeTransaction(transaction) };
 }
 
 const RP_DISPLAY_YEAR_OFFSET = 136;

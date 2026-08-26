@@ -1,7 +1,6 @@
 'use server';
 
 import { z } from 'zod/v3';
-import { parseISO } from 'date-fns';
 import {
   completeOrder as completeOrderApi,
   createOrder as createOrderApi,
@@ -12,9 +11,6 @@ import {
   updateOrder as updateOrderApi,
 } from '@lawless-intranet/inventory-client/server';
 import { actionErrorParser } from '@/lib/action';
-import { getAppFeatureActionBlock } from '@/lib/appSettings';
-import { createBankTransactionFromOrder } from '@/lib/bank/fromOrder';
-import { bankCookie } from '@/lib/bank/client';
 import {
   inventoryActionError,
   inventoryCookie,
@@ -173,17 +169,6 @@ const completeOrderSchema = z
         }),
       )
       .optional(),
-    createBankTransaction: z.boolean().optional(),
-    bankTransactionDate: z.string().or(z.date()).optional().nullable(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.createBankTransaction && !data.bankTransactionDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'La date de transaction bancaire est requise',
-        path: ['bankTransactionDate'],
-      });
-    }
   });
 
 const deleteOrderSchema = z.object({
@@ -432,8 +417,6 @@ export async function completeOrder(
     items?: { itemId: string; quantity: number }[];
     skipStock: boolean;
     stockLines?: { itemId: string; quantity: number; chestId: string }[];
-    createBankTransaction?: boolean;
-    bankTransactionDate?: string | Date | null;
   },
 ) {
   try {
@@ -451,32 +434,6 @@ export async function completeOrder(
 
     const validatedData = completeOrderSchema.parse(data);
 
-    const createBankTransaction = Boolean(validatedData.createBankTransaction);
-    let bankTransactionDate: Date | null = null;
-    if (createBankTransaction) {
-      const featureBlock = await getAppFeatureActionBlock(dispensaryId, 'bank');
-      if (featureBlock) {
-        return { status: featureBlock.status, error: featureBlock.error };
-      }
-
-      const rawDate = validatedData.bankTransactionDate;
-      if (rawDate == null) {
-        return { status: 400, error: 'La date de transaction bancaire est requise' };
-      }
-      bankTransactionDate =
-        typeof rawDate === 'string' ? parseISO(rawDate) : rawDate;
-      if (Number.isNaN(bankTransactionDate.getTime())) {
-        return { status: 400, error: 'Date de transaction bancaire invalide' };
-      }
-
-      if (validatedData.price != null && validatedData.price <= 0) {
-        return {
-          status: 400,
-          error: 'Un prix de commande est requis pour créer une transaction bancaire',
-        };
-      }
-    }
-
     const order = await completeOrderApi(
       {
         ...inventoryScope(dispensaryId),
@@ -493,44 +450,11 @@ export async function completeOrder(
       await inventoryCookie(),
     );
 
-    let bankWarning: string | undefined;
-    if (createBankTransaction && bankTransactionDate) {
-      const amount = order.price != null ? Number(order.price) : 0;
-      if (amount <= 0) {
-        bankWarning = 'Un prix de commande est requis pour créer une transaction bancaire';
-      } else {
-        const cookie = await bankCookie();
-        const bankResult = await createBankTransactionFromOrder({
-          dispensaryId,
-          orderId: order.id,
-          orderName: order.name,
-          orderType: order.type,
-          amount,
-          date: bankTransactionDate,
-          company: order.company
-            ? {
-                name: order.company.name,
-                bankAccountNumber: order.company.bankAccountNumber ?? null,
-              }
-            : null,
-          individualCustomer: order.individualCustomer
-            ? { name: order.individualCustomer.name }
-            : null,
-          cookieHeader: cookie.cookieHeader,
-        });
-
-        if (!bankResult.ok) {
-          bankWarning = bankResult.error;
-        }
-      }
-    }
-
     await emitOrdersChange(dispensaryId, { orderId: order.id });
 
     return {
       status: 200,
       data: order as unknown as OrderWithRelations,
-      ...(bankWarning ? { warning: bankWarning } : {}),
     };
   } catch (error) {
     try {
