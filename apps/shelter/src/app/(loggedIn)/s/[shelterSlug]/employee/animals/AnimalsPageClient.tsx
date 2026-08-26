@@ -19,6 +19,7 @@ import { IconPlus } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import {
   createAnimal,
+  deleteAnimal,
   listCaseManagerOptions,
   listSpeciesOptions,
 } from '@/app/_actions/animals';
@@ -267,8 +268,14 @@ export function AnimalsPageClient({
   const t = useTenantRoutes();
   const { permissions } = usePermissions();
   const canCreate = Boolean(permissions?.animals.create);
+  const canDelete = Boolean(permissions?.animals.delete);
   const [createOpen, setCreateOpen] = useState(false);
+  const [animals, setAnimals] = useState(initialAnimals);
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    setAnimals(initialAnimals);
+  }, [initialAnimals]);
 
   const [nameFilter, setNameFilter] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState<string | null>(null);
@@ -293,38 +300,38 @@ export function AnimalsPageClient({
 
   const speciesOptions = useMemo(() => {
     const map = new Map<string, string>();
-    for (const animal of initialAnimals) {
+    for (const animal of animals) {
       map.set(animal.speciesId, animal.species.name);
     }
     return [...map.entries()]
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
-  }, [initialAnimals]);
+  }, [animals]);
 
   const breedOptions = useMemo(() => {
     const map = new Map<string, string>();
-    for (const animal of initialAnimals) {
+    for (const animal of animals) {
       if (speciesFilter && animal.speciesId !== speciesFilter) continue;
       map.set(animal.breedId, animal.breed.name);
     }
     return [...map.entries()]
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
-  }, [initialAnimals, speciesFilter]);
+  }, [animals, speciesFilter]);
 
   const caseManagerOptions = useMemo(() => {
     const map = new Map<string, string>();
-    for (const animal of initialAnimals) {
+    for (const animal of animals) {
       map.set(animal.caseManagerUserId, animal.caseManagerName);
     }
     return [...map.entries()]
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
-  }, [initialAnimals]);
+  }, [animals]);
 
   const filteredAnimals = useMemo(() => {
     const needle = nameFilter.trim().toLowerCase();
-    return initialAnimals.filter((animal) => {
+    return animals.filter((animal) => {
       if (needle && !animal.name.toLowerCase().includes(needle)) return false;
       if (speciesFilter && animal.speciesId !== speciesFilter) return false;
       if (breedFilter && animal.breedId !== breedFilter) return false;
@@ -333,7 +340,7 @@ export function AnimalsPageClient({
       return true;
     });
   }, [
-    initialAnimals,
+    animals,
     nameFilter,
     speciesFilter,
     breedFilter,
@@ -345,6 +352,41 @@ export function AnimalsPageClient({
     const start = (page - 1) * pageSize;
     return filteredAnimals.slice(start, start + pageSize);
   }, [filteredAnimals, page, pageSize]);
+
+  const handleDelete = async (animal: AnimalDTO) => {
+    const result = await deleteAnimal(shelterSlug, { id: animal.id });
+    if (result.status >= 400) {
+      notifications.show({
+        title: 'Erreur',
+        message: actionErrorMessage(result, 'Impossible de supprimer'),
+        color: 'danger',
+      });
+      return;
+    }
+
+    notifications.show({
+      title: 'Animal supprimé',
+      message: animal.name,
+      color: 'terracotta',
+    });
+
+    const nextAnimals = animals.filter((item) => item.id !== animal.id);
+    setAnimals(nextAnimals);
+
+    const needle = nameFilter.trim().toLowerCase();
+    const nextFilteredCount = nextAnimals.filter((item) => {
+      if (needle && !item.name.toLowerCase().includes(needle)) return false;
+      if (speciesFilter && item.speciesId !== speciesFilter) return false;
+      if (breedFilter && item.breedId !== breedFilter) return false;
+      if (statusFilter && item.status !== statusFilter) return false;
+      if (caseManagerFilter && item.caseManagerUserId !== caseManagerFilter) return false;
+      return true;
+    }).length;
+    const maxPage = Math.max(1, Math.ceil(nextFilteredCount / pageSize) || 1);
+    if (page > maxPage) {
+      setPage(maxPage);
+    }
+  };
 
   const speciesLabel = speciesOptions.find((s) => s.value === speciesFilter)?.label;
   const breedLabel = breedOptions.find((b) => b.value === breedFilter)?.label;
@@ -369,7 +411,7 @@ export function AnimalsPageClient({
         </Group>
       ) : null}
 
-      {initialAnimals.length === 0 ? (
+      {animals.length === 0 ? (
         <Text c="dimmed">Aucun animal pour le moment.</Text>
       ) : (
         <>
@@ -435,6 +477,7 @@ export function AnimalsPageClient({
             page={page}
             pageSize={pageSize}
             totalRecords={filteredAnimals.length}
+            canDelete={canDelete}
             onNameFilterChange={(value) => {
               setNameFilter(value);
               setPage(1);
@@ -458,6 +501,7 @@ export function AnimalsPageClient({
             }}
             onPageChange={setPage}
             onRowClick={(animal) => router.push(t.employee.animal(animal.id))}
+            onDelete={handleDelete}
           />
         </>
       )}

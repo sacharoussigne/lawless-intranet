@@ -45,10 +45,12 @@ export type ListDocumentsParams = {
   type: string;
   scopeId: string;
   ownerId?: string;
+  ownerScope?: 'scope';
   page?: number;
   pageSize?: number;
   nameSearch?: string;
   receiverSearch?: string;
+  metadataAnimalId?: string;
 };
 
 export type CreateDocumentInput = {
@@ -201,10 +203,12 @@ export async function listDocuments(
       type: params.type,
       scopeId: params.scopeId,
       ownerId: params.ownerId,
+      ownerScope: params.ownerScope,
       page: params.page,
       pageSize: params.pageSize,
       nameSearch: params.nameSearch,
       receiverSearch: params.receiverSearch,
+      metadataAnimalId: params.metadataAnimalId,
     })}`,
     { cookieHeader: options.cookieHeader },
   );

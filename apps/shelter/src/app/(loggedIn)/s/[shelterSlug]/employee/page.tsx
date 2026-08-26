@@ -1,7 +1,7 @@
 'use client';
 
 import { Container, SimpleGrid, Text } from '@mantine/core';
-import { IconBuildingBank, IconDog, IconPaw, IconTemplate } from '@tabler/icons-react';
+import { IconBuildingBank, IconDog } from '@tabler/icons-react';
 import { ModuleCard } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
@@ -11,14 +11,6 @@ export default function EmployeeHubPage() {
   const { permissions, appSettings } = usePermissions();
 
   const cards = [];
-  if (permissions?.bank.access && appSettings.featureBankEnabled) {
-    cards.push({
-      title: 'Banque',
-      description: 'Comptes, semaines et transactions du refuge.',
-      href: t.employee.bank,
-      icon: IconBuildingBank,
-    });
-  }
   if (permissions?.animals.access) {
     cards.push({
       title: 'Animaux',
@@ -27,20 +19,12 @@ export default function EmployeeHubPage() {
       icon: IconDog,
     });
   }
-  if (permissions?.species.manage) {
+  if (permissions?.bank.access && appSettings.featureBankEnabled) {
     cards.push({
-      title: 'Espèces',
-      description: 'Espèces, races et variantes pour les animaux.',
-      href: t.employee.species,
-      icon: IconPaw,
-    });
-  }
-  if (permissions?.documentTemplates.manage) {
-    cards.push({
-      title: 'Modèles de documents',
-      description: 'Modèles pour générer des documents sur les fiches animal.',
-      href: t.employee.templates,
-      icon: IconTemplate,
+      title: 'Banque',
+      description: 'Comptes, semaines et transactions du refuge.',
+      href: t.employee.bank,
+      icon: IconBuildingBank,
     });
   }
 

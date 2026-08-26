@@ -109,7 +109,7 @@ async function requireBreedInShelter(shelterId: string, breedId: string) {
 }
 
 function revalidateSpecies(shelterSlug: string) {
-  revalidatePath(tenantRoutes(shelterSlug).employee.species);
+  revalidatePath(tenantRoutes(shelterSlug).management.species);
 }
 
 export async function listSpecies(shelterSlug: string) {

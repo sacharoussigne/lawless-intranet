@@ -108,6 +108,8 @@ export async function listAnimalDocuments(shelterSlug: string, animalId: string)
       {
         type: ANIMAL_DOCUMENT_TYPE,
         scopeId: auth.tenant.shelterId,
+        ownerScope: 'scope',
+        metadataAnimalId: animalId,
         pageSize: 50,
       },
       { cookieHeader },

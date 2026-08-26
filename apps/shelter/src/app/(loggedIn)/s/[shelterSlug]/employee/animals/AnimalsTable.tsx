@@ -1,7 +1,9 @@
 'use client';
 
-import { Paper, Select, TextInput } from '@mantine/core';
+import { ActionIcon, Group, Paper, Select, TextInput } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
 import { DataTable } from 'mantine-datatable';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { ANIMAL_STATUS_LABELS, ANIMAL_STATUS_OPTIONS } from '@/lib/animals/labels';
 import { formatRpDate } from '@/lib/rpCalendar';
 import { parseIsoDateOnly, type AnimalDTO } from './types';
@@ -21,6 +23,7 @@ type AnimalsTableProps = {
   page: number;
   pageSize: number;
   totalRecords: number;
+  canDelete: boolean;
   onNameFilterChange: (value: string) => void;
   onSpeciesFilterChange: (value: string | null) => void;
   onBreedFilterChange: (value: string | null) => void;
@@ -28,6 +31,7 @@ type AnimalsTableProps = {
   onCaseManagerFilterChange: (value: string | null) => void;
   onPageChange: (page: number) => void;
   onRowClick: (animal: AnimalDTO) => void;
+  onDelete: (animal: AnimalDTO) => void | Promise<void>;
 };
 
 export function AnimalsTable({
@@ -43,6 +47,7 @@ export function AnimalsTable({
   page,
   pageSize,
   totalRecords,
+  canDelete,
   onNameFilterChange,
   onSpeciesFilterChange,
   onBreedFilterChange,
@@ -50,6 +55,7 @@ export function AnimalsTable({
   onCaseManagerFilterChange,
   onPageChange,
   onRowClick,
+  onDelete,
 }: AnimalsTableProps) {
   return (
     <Paper shadow="sm" p="md" withBorder>
@@ -141,6 +147,39 @@ export function AnimalsTable({
               />
             ),
           },
+          ...(canDelete
+            ? [
+                {
+                  accessor: 'actions',
+                  title: '',
+                  textAlign: 'right' as const,
+                  width: 56,
+                  render: (animal: AnimalDTO) => (
+                    <Group
+                      gap="xs"
+                      justify="flex-end"
+                      wrap="nowrap"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <DeleteConfirmPopover
+                        title="Supprimer l’animal ?"
+                        message={`L’animal « ${animal.name} » sera supprimé.`}
+                        onConfirm={() => onDelete(animal)}
+                      >
+                        <ActionIcon
+                          variant="light"
+                          color="danger"
+                          aria-label={`Supprimer ${animal.name}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </DeleteConfirmPopover>
+                    </Group>
+                  ),
+                },
+              ]
+            : []),
         ]}
         totalRecords={totalRecords}
         recordsPerPage={pageSize}

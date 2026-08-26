@@ -1,8 +1,10 @@
 import { getAnimal } from '@/app/_actions/animals';
+import { listAnimalDocumentTemplates } from '@/app/_actions/animalDocumentTemplates';
 import { getAnimalFollowUp } from '@/app/_actions/followUps';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { NotFoundError } from '@/lib/errors/NoFoundError';
 import { getDataOrThrow } from '@/lib/response';
+import { requireTenantActionContext } from '@/lib/shelter/serverActionContext';
 import type { AnimalDTO } from '../../../types';
 import type { FollowUpDTO } from '../../followUpTypes';
 import { FollowUpDetailPageClient } from './FollowUpDetailPageClient';
@@ -16,9 +18,13 @@ async function FollowUpDetailContent({
   animalId: string;
   followUpId: string;
 }) {
-  const [animalResult, followUpResult] = await Promise.all([
+  const tenant = await requireTenantActionContext(shelterSlug);
+  const shelterName = tenant.ok ? tenant.ctx.shelter.name : 'Refuge';
+
+  const [animalResult, followUpResult, templatesResult] = await Promise.all([
     getAnimal(shelterSlug, animalId),
     getAnimalFollowUp(shelterSlug, followUpId),
+    listAnimalDocumentTemplates(shelterSlug),
   ]);
   const animal = getDataOrThrow(animalResult, "Erreur lors du chargement de l'animal") as AnimalDTO;
   const followUp = getDataOrThrow(
@@ -33,8 +39,14 @@ async function FollowUpDetailContent({
   return (
     <FollowUpDetailPageClient
       shelterSlug={shelterSlug}
+      shelterName={shelterName}
       animal={animal}
       initialFollowUp={followUp}
+      availableTemplates={
+        templatesResult.status === 200 && 'data' in templatesResult
+          ? (templatesResult.data ?? [])
+          : []
+      }
     />
   );
 }
