@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
+  ActionIcon,
   Badge,
   Button,
   Group,
@@ -12,10 +13,11 @@ import {
   Stack,
   Text,
   Textarea,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconChevronDown, IconSend } from '@tabler/icons-react';
+import { IconCheck, IconChevronDown, IconSend, IconTemplate } from '@tabler/icons-react';
 import {
   addAnimalFollowUpMessage,
   closeAnimalFollowUp,
@@ -33,7 +35,9 @@ import {
 } from '@/lib/animals/followUpLabels';
 import { formatRpDate } from '@/lib/rpCalendar';
 import type { AnimalFollowUpMessageSide, AnimalFollowUpStatus } from '@/generated/prisma/client';
+import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
 import { actionErrorMessage, parseIsoDateOnly, toIsoDateOnly } from '../types';
+import { FollowUpTemplateMessageModal } from './FollowUpTemplateMessageModal';
 import classes from './FollowUps.module.scss';
 import type { FollowUpDTO } from './followUpTypes';
 
@@ -55,12 +59,16 @@ export function FollowUpThread({
   followUp,
   canUpdate,
   onUpdated,
+  templates = [],
+  templateVariables = {},
   fullPage = false,
 }: {
   shelterSlug: string;
   followUp: FollowUpDTO;
   canUpdate: boolean;
   onUpdated: (next: FollowUpDTO) => void;
+  templates?: AnimalDocumentTemplateListItem[];
+  templateVariables?: Record<string, string>;
   fullPage?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
@@ -68,6 +76,7 @@ export function FollowUpThread({
   const [side, setSide] = useState<AnimalFollowUpMessageSide>('shelter');
   const [letterDate, setLetterDate] = useState<Date | null>(new Date());
   const [closeOpen, setCloseOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [closeStatus, setCloseStatus] = useState<'validated' | 'refused' | 'cancelled'>(
     'validated',
   );
@@ -75,6 +84,7 @@ export function FollowUpThread({
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const closed = isFollowUpClosed(followUp.status);
+  const canUseTemplates = templates.length > 0;
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -305,17 +315,42 @@ export function FollowUpThread({
               onChange={setLetterDate}
               disabled={pending}
             />
-            <Button
-              className={classes.composerSubmit}
-              color="terracotta"
-              leftSection={<IconSend size={16} />}
-              loading={pending}
-              onClick={handleSend}
-            >
-              Ajouter
-            </Button>
+            <Group gap="sm" className={classes.composerActions} wrap="nowrap">
+              {canUseTemplates ? (
+                <Tooltip label="Écrire depuis un modèle">
+                  <ActionIcon
+                    variant="light"
+                    color="terracotta"
+                    size="lg"
+                    aria-label="Écrire depuis un modèle"
+                    disabled={pending}
+                    onClick={() => setTemplateModalOpen(true)}
+                  >
+                    <IconTemplate size={18} stroke={1.6} />
+                  </ActionIcon>
+                </Tooltip>
+              ) : null}
+              <Button
+                color="terracotta"
+                leftSection={<IconSend size={16} />}
+                loading={pending}
+                onClick={handleSend}
+              >
+                Ajouter
+              </Button>
+            </Group>
           </div>
         </div>
+      ) : null}
+
+      {templateModalOpen && canUseTemplates ? (
+        <FollowUpTemplateMessageModal
+          opened={templateModalOpen}
+          onClose={() => setTemplateModalOpen(false)}
+          templates={templates}
+          variables={templateVariables}
+          onApply={setBody}
+        />
       ) : null}
 
       <Modal

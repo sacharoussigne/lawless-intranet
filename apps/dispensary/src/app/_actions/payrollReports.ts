@@ -14,6 +14,7 @@ import {
   isPayrollReportType,
 } from '@/lib/payroll/constants';
 import { mergeHtmlAndWeeklyActivity, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
+import { attachDiscordProfilesToActivities } from '@/lib/dispensaryDiscordProfile/attachProfiles';
 import { type ParsedPayrollTable, parsePayrollHtmlTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import { weekRangeFromIsoDate } from '@/lib/payroll/week';
@@ -242,9 +243,9 @@ export async function createPayrollReportFromForm(dispensarySlug: string, formDa
         ...tenantWhere(dispensaryId),
       },
     });
-    activitiesWithNames = (await mergeResolvedDisplayNames(
+    activitiesWithNames = (await attachDiscordProfilesToActivities(
       prisma,
-      rawActivities,
+      (await mergeResolvedDisplayNames(prisma, rawActivities)) as WaRow[],
     )) as WaRow[];
   }
 

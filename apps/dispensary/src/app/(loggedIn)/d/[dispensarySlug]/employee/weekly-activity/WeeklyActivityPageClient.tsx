@@ -18,6 +18,7 @@ import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/qu
 import { useWeeklyActivityRealtime } from '@/lib/dispensaryWeeklyActivity/realtime/client/useWeeklyActivityRealtime';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 import { CreateWeeklyActivityModal } from './CreateWeeklyActivityModal';
+import { EditDiscordProfileModal } from './EditDiscordProfileModal';
 import { EditWeeklyActivityModal } from './EditWeeklyActivityModal';
 import { HistoryWeeklyActivityModal } from './HistoryWeeklyActivityModal';
 import { WeeklyActivityTable } from './WeeklyActivityTable';
@@ -66,6 +67,7 @@ export default function WeeklyActivityPageClient({
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editRow, setEditRow] = useState<WeeklyActivityListItem | null>(null);
+  const [profileRow, setProfileRow] = useState<WeeklyActivityListItem | null>(null);
   const [historyActivityId, setHistoryActivityId] = useState<string | null>(null);
   const [historyTitle, setHistoryTitle] = useState('');
   const [selectedDoctorKey, setSelectedDoctorKey] = useState<string | null>(null);
@@ -223,6 +225,7 @@ export default function WeeklyActivityPageClient({
           isFetching={isFetching}
           onOpenHistory={handleOpenHistory}
           onStartEdit={setEditRow}
+          onEditProfile={setProfileRow}
           onDelete={handleDelete}
         />
       </Paper>
@@ -235,6 +238,8 @@ export default function WeeklyActivityPageClient({
         defaultWeekMonday={defaultWeekMonday}
         fieldVisibility={fieldVisibility}
       />
+
+      <EditDiscordProfileModal row={profileRow} onClose={() => setProfileRow(null)} />
 
       <EditWeeklyActivityModal
         row={editRow}

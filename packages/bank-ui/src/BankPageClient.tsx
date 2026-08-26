@@ -15,6 +15,7 @@ import {
   Stack,
   Tabs,
   Text,
+  TextInput,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -50,6 +51,7 @@ import {
   denimPalette,
   mossPalette,
 } from "./lib/apothecaryPill";
+import { normalizeString } from "./normalizeString";
 import { formatRpDay, formatRpLongDay } from "./rpCalendar";
 import type {
   BankActionResult,
@@ -150,6 +152,8 @@ export default function BankPage({ initialWeek }: BankPageProps) {
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [nameFilter, setNameFilter] = useState("");
+  const [descriptionFilter, setDescriptionFilter] = useState("");
   const [pendingOccurrences, setPendingOccurrences] = useState<
     SerializedPlannedOccurrence[]
   >([]);
@@ -192,7 +196,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
       const result = await actions.getOrCreateWeek(date);
       if (!isSuccess(result)) return showError(result.error);
       setWeek(result.data);
-      setWeekDateValue(new Date(result.data.weekStart));
+      setWeekDateValue(date);
     } finally {
       setLoading(false);
     }
@@ -270,18 +274,54 @@ export default function BankPage({ initialWeek }: BankPageProps) {
   const filteredTransactions = useMemo(
     () =>
       week.transactions
-        .filter(
-          (transaction) =>
-            !typeFilter.length || typeFilter.includes(transaction.type),
-        )
+        .filter((transaction) => {
+          if (typeFilter.length && !typeFilter.includes(transaction.type)) {
+            return false;
+          }
+          if (
+            nameFilter.trim() &&
+            !normalizeString(transaction.name).includes(
+              normalizeString(nameFilter),
+            )
+          ) {
+            return false;
+          }
+          if (
+            descriptionFilter.trim() &&
+            !normalizeString(transaction.description ?? "").includes(
+              normalizeString(descriptionFilter),
+            )
+          ) {
+            return false;
+          }
+          return true;
+        })
         .slice()
         .sort((a, b) => {
           const dateCmp = +new Date(a.date) - +new Date(b.date);
           if (dateCmp !== 0) return (sortOrder === "asc" ? 1 : -1) * dateCmp;
           return a.order - b.order;
         }),
-    [week.transactions, typeFilter, sortOrder],
+    [
+      week.transactions,
+      typeFilter,
+      nameFilter,
+      descriptionFilter,
+      sortOrder,
+    ],
   );
+  const hasActiveFilters =
+    typeFilter.length > 0 ||
+    Boolean(nameFilter.trim()) ||
+    Boolean(descriptionFilter.trim());
+  const isTodaySelected =
+    weekDateValue != null &&
+    formatRpDay(weekDateValue) === formatRpDay(new Date());
+  const clearFilters = () => {
+    setTypeFilter([]);
+    setNameFilter("");
+    setDescriptionFilter("");
+  };
   const records = useMemo<TableTransaction[]>(() => {
     const data = [...filteredTransactions];
     if (!newTransaction) return data;
@@ -545,6 +585,15 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                       >
                         <IconArrowRight size={18} />
                       </ActionIcon>
+                      <Button
+                        size="compact-sm"
+                        variant="light"
+                        disabled={isTodaySelected}
+                        loading={loading}
+                        onClick={() => void loadWeek(new Date())}
+                      >
+                        Aujourd&apos;hui
+                      </Button>
                     </Group>
                     <div style={{ textAlign: "right" }}>
                       <Text size="xs" c="dimmed" mb={2}>
@@ -594,7 +643,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
               </Paper>
               <Group justify="space-between">
                 <Group>
-                  {typeFilter.length > 0 && (
+                  {hasActiveFilters && (
                     <>
                       <Text size="sm">Filtres :</Text>
                       {typeFilter.map((type) => (
@@ -606,14 +655,33 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                               values.filter((value) => value !== type),
                             )
                           }
+                          style={{ cursor: "pointer" }}
                         >
                           {typeInfo(type as TransactionType).label}
                         </Badge>
                       ))}
+                      {nameFilter.trim() && (
+                        <Badge
+                          rightSection={<IconX size={12} />}
+                          onClick={() => setNameFilter("")}
+                          style={{ cursor: "pointer" }}
+                        >
+                          Nom : {nameFilter.trim()}
+                        </Badge>
+                      )}
+                      {descriptionFilter.trim() && (
+                        <Badge
+                          rightSection={<IconX size={12} />}
+                          onClick={() => setDescriptionFilter("")}
+                          style={{ cursor: "pointer" }}
+                        >
+                          Description : {descriptionFilter.trim()}
+                        </Badge>
+                      )}
                       <Button
                         size="compact-xs"
                         variant="subtle"
-                        onClick={() => setTypeFilter([])}
+                        onClick={clearFilters}
                       >
                         Effacer
                       </Button>
@@ -661,7 +729,7 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                     <DataTableEmptyState
                       icon={IconReceipt}
                       message={
-                        typeFilter.length
+                        hasActiveFilters
                           ? "Aucune transaction ne correspond aux filtres."
                           : "Aucune transaction sur cette semaine."
                       }
@@ -761,6 +829,15 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                     {
                       accessor: "name",
                       title: "Nom",
+                      filtering: Boolean(nameFilter.trim()),
+                      filter: (
+                        <TextInput
+                          placeholder="Rechercher un nom..."
+                          value={nameFilter}
+                          onChange={(e) => setNameFilter(e.currentTarget.value)}
+                          size="xs"
+                        />
+                      ),
                       render: (transaction) =>
                         editable(transaction) ? (
                           <SuggestionAutocomplete
@@ -788,6 +865,17 @@ export default function BankPage({ initialWeek }: BankPageProps) {
                     {
                       accessor: "description",
                       title: "Description",
+                      filtering: Boolean(descriptionFilter.trim()),
+                      filter: (
+                        <TextInput
+                          placeholder="Rechercher une description..."
+                          value={descriptionFilter}
+                          onChange={(e) =>
+                            setDescriptionFilter(e.currentTarget.value)
+                          }
+                          size="xs"
+                        />
+                      ),
                       render: (transaction) =>
                         editable(transaction) ? (
                           <SuggestionAutocomplete

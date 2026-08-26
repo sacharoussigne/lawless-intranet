@@ -96,7 +96,7 @@ docker build \
 | `INVENTORY_DATABASE_URL` | inventory | DB stock / commandes / ventes / entreprises |
 | `AUTH_INTERNAL_SECRET` | auth + hosts | API interne service-to-service |
 | `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
-| `BANK_INTERNAL_SECRET` | bank + dispensary + shelter | Secret host→bank (from-order, purge-scope) |
+| `BANK_INTERNAL_SECRET` | bank + dispensary + shelter | Secret host→bank (purge-scope) |
 | `BANK_BOT_API_SECRET` | bank + dispensary | Secret bot materialize-planned |
 | `INVENTORY_INTERNAL_SECRET` | inventory + dispensary | Secret host→inventory (purge-scope) |
 | `DOCUMENTS_INTERNAL_SECRET` | documents + dispensary | Secret host→documents (toutes les routes API sauf health) |

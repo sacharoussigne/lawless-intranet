@@ -7,6 +7,7 @@ import {
   Container,
   Group,
   Menu,
+  SegmentedControl,
   Select,
   UnstyledButton,
 } from '@mantine/core';
@@ -72,8 +73,24 @@ export default function Header({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [spotlight]);
+
   const isPlatformAdminUser = isPlatformAdmin(session?.user?.role);
   const isImpersonating = Boolean(session?.session?.impersonatedBy);
+  const isManagementSpace = Boolean(t && pathname?.startsWith(t.management.index));
+  const canSwitchSpaces = Boolean(
+    permissions?.application.management ||
+    permissions?.species.manage ||
+    permissions?.documentTemplates.manage,
+  );
+
+  const handleSpaceChange = (value: string) => {
+    if (!t) return;
+    if (value === 'employee') {
+      router.push(t.employee.index);
+    } else if (value === 'management') {
+      router.push(t.management.index);
+    }
+  };
 
   const handleShelterChange = (newSlug: string | null) => {
     if (!newSlug || !pathname) return;
@@ -122,6 +139,12 @@ export default function Header({
 
   const isActive = (route: string) =>
     Boolean(pathname && (pathname === route || pathname.startsWith(`${route}/`)));
+
+  const brandHref = t
+    ? isManagementSpace
+      ? t.management.index
+      : t.employee.index
+    : '/';
 
   const avatarMenu = session ? (
     <Menu
@@ -194,6 +217,21 @@ export default function Header({
           {impersonatorDisplayName?.trim() || 'Compte'}
         </Button>
       )}
+      {canSwitchSpaces && t && (
+        <SegmentedControl
+          size="md"
+          classNames={{
+            root: classes.spaceToggle,
+            label: classes.spaceToggleLabel,
+          }}
+          value={isManagementSpace ? 'management' : 'employee'}
+          onChange={handleSpaceChange}
+          data={[
+            { label: 'Employé', value: 'employee' },
+            { label: 'Gestion', value: 'management' },
+          ]}
+        />
+      )}
       {permissions?.waitlist.manage && t && shelterSlug && (
         <HeaderWaitlistIndicator
           shelterSlug={shelterSlug}
@@ -219,7 +257,7 @@ export default function Header({
         <Container size="xl">
           <div className={classes.headerInner}>
             <Group gap="md" wrap="nowrap" className={classes.headerSide}>
-              <Link href={t?.employee.index ?? '/'} className={classes.brand}>
+              <Link href={brandHref} className={classes.brand}>
                 {shelterSiteTitle(appSettings)}
               </Link>
               {session && accessibleShelters.length > 1 && (
@@ -242,50 +280,56 @@ export default function Header({
               <>
                 <div className={classes.headerNavSlot}>
                   <nav className={classes.nav} aria-label="Navigation principale">
-
-                    {permissions?.animals.access && (
-                      <Link
-                        href={t.employee.animals}
-                        className={`${classes.navLink} ${isActive(t.employee.animals) ? classes.navLinkActive : ''}`}
-                      >
-                        <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-                          <IconDog size={18} stroke={1.6} />
-                          <span>Animaux</span>
-                        </Group>
-                      </Link>
-                    )}
-                    {permissions?.species.manage && (
-                      <Link
-                        href={t.employee.species}
-                        className={`${classes.navLink} ${isActive(t.employee.species) ? classes.navLinkActive : ''}`}
-                      >
-                        <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-                          <IconPaw size={18} stroke={1.6} />
-                          <span>Espèces</span>
-                        </Group>
-                      </Link>
-                    )}
-                    {permissions?.bank.access && appSettings.featureBankEnabled && (
-                      <Link
-                        href={t.employee.bank}
-                        className={`${classes.navLink} ${isActive(t.employee.bank) ? classes.navLinkActive : ''}`}
-                      >
-                        <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-                          <IconCashRegister size={18} stroke={1.6} />
-                          <span>Banque</span>
-                        </Group>
-                      </Link>
-                    )}
-                    {permissions?.documentTemplates.manage && (
-                      <Link
-                        href={t.employee.templates}
-                        className={`${classes.navLink} ${isActive(t.employee.templates) ? classes.navLinkActive : ''}`}
-                      >
-                        <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-                          <IconTemplate size={18} stroke={1.6} />
-                          <span>Modèles</span>
-                        </Group>
-                      </Link>
+                    {isManagementSpace ? (
+                      <>
+                        {permissions?.species.manage && (
+                          <Link
+                            href={t.management.species}
+                            className={`${classes.navLink} ${isActive(t.management.species) ? classes.navLinkActive : ''}`}
+                          >
+                            <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                              <IconPaw size={18} stroke={1.6} />
+                              <span>Espèces</span>
+                            </Group>
+                          </Link>
+                        )}
+                        {permissions?.documentTemplates.manage && (
+                          <Link
+                            href={t.management.templates}
+                            className={`${classes.navLink} ${isActive(t.management.templates) ? classes.navLinkActive : ''}`}
+                          >
+                            <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                              <IconTemplate size={18} stroke={1.6} />
+                              <span>Modèles</span>
+                            </Group>
+                          </Link>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {permissions?.animals.access && (
+                          <Link
+                            href={t.employee.animals}
+                            className={`${classes.navLink} ${isActive(t.employee.animals) ? classes.navLinkActive : ''}`}
+                          >
+                            <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                              <IconDog size={18} stroke={1.6} />
+                              <span>Animaux</span>
+                            </Group>
+                          </Link>
+                        )}
+                        {permissions?.bank.access && appSettings.featureBankEnabled && (
+                          <Link
+                            href={t.employee.bank}
+                            className={`${classes.navLink} ${isActive(t.employee.bank) ? classes.navLinkActive : ''}`}
+                          >
+                            <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                              <IconCashRegister size={18} stroke={1.6} />
+                              <span>Banque</span>
+                            </Group>
+                          </Link>
+                        )}
+                      </>
                     )}
                   </nav>
                 </div>

@@ -201,7 +201,7 @@ export default function PayrollNewPageClient() {
           Nouveau rapport
         </Title>
         <Text size="sm" c="dimmed" maw={520} mb="xl">
-          Semaine, tarifs, fusion activité Discord (optionnel), tableau HTML obligatoire si pas d’import.
+          Semaine, tarifs, fusion activité Discord (optionnel). HTML facultatif si l’import est activé ; profils Discord (grade, n° compte) alimentent la paie.
         </Text>
 
         <Stack gap="lg">

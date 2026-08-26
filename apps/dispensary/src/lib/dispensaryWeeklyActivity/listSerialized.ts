@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import type { DispensaryWeeklyActivity } from '@prisma/client';
 import { getAppSettings } from '@/lib/appSettings';
 import prisma from '@/lib/prisma';
+import { attachDiscordProfilesToActivities } from '@/lib/dispensaryDiscordProfile/attachProfiles';
 import {
   serializeDispensaryWeeklyActivityApiRow,
   type SerializedDispensaryWeeklyActivityRow,
@@ -14,7 +15,11 @@ import {
 import { mergeResolvedDisplayNames } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import { batchSyncActivityUserIds } from '@/lib/dispensaryWeeklyActivity/service';
 
-type ActivityRowWithResolvedName = DispensaryWeeklyActivity & { resolvedDisplayName: string };
+type ActivityRowWithResolvedName = DispensaryWeeklyActivity & {
+  resolvedDisplayName: string;
+  discordProfileRole: string | null;
+  discordProfileAccountNumber: number | null;
+};
 
 export function serializeActivityRows(
   rows: ActivityRowWithResolvedName[],
@@ -28,6 +33,8 @@ export function serializeActivityRows(
         periodEnd: r.periodEnd,
         displayName: r.displayName,
         resolvedDisplayName: r.resolvedDisplayName,
+        discordProfileRole: r.discordProfileRole,
+        discordProfileAccountNumber: r.discordProfileAccountNumber,
         discordUserId: r.discordUserId,
         userId: r.userId,
         chestDays: r.chestDays,
@@ -54,7 +61,8 @@ export async function listSerializedWeeklyActivities(
   const rows = await prisma.dispensaryWeeklyActivity.findMany({ where, orderBy });
   const synced = await batchSyncActivityUserIds(prisma, rows);
   const withNames = await mergeResolvedDisplayNames(prisma, synced);
+  const withProfiles = await attachDiscordProfilesToActivities(prisma, withNames);
   const settings = await getAppSettings(dispensaryId);
   const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
-  return serializeActivityRows(withNames, visibility);
+  return serializeActivityRows(withProfiles, visibility);
 }

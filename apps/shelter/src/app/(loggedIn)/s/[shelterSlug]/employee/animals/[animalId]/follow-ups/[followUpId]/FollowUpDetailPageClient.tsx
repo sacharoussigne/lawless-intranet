@@ -1,12 +1,15 @@
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Badge, Button, Container, Group, Text, Title } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
+import { buildAnimalTemplateVariables } from '@/lib/animals/documents';
 import { ANIMAL_STATUS_LABELS } from '@/lib/animals/labels';
+import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
 import type { AnimalDTO } from '../../../types';
+import { parseIsoDateOnly } from '../../../types';
 import { FollowUpThread } from '../../FollowUpThread';
 import classes from '../../FollowUps.module.scss';
 import type { FollowUpDTO } from '../../followUpTypes';
@@ -24,18 +27,45 @@ function SideField({ label, value }: { label: string; value: ReactNode }) {
 
 export function FollowUpDetailPageClient({
   shelterSlug,
+  shelterName,
   animal,
   initialFollowUp,
+  availableTemplates,
 }: {
   shelterSlug: string;
+  shelterName: string;
   animal: AnimalDTO;
   initialFollowUp: FollowUpDTO;
+  availableTemplates: AnimalDocumentTemplateListItem[];
 }) {
   const router = useRouter();
   const t = useTenantRoutes();
   const { permissions } = usePermissions();
   const canUpdate = Boolean(permissions?.animals.update);
   const [followUp, setFollowUp] = useState(initialFollowUp);
+
+  const templateVariables = useMemo(
+    () =>
+      buildAnimalTemplateVariables({
+        shelterName,
+        animal: {
+          name: animal.name,
+          speciesName: animal.species.name,
+          breedName: animal.breed.name,
+          variantName: animal.variant?.label ?? null,
+          arrivalDate: parseIsoDateOnly(animal.arrivalDate) ?? new Date(),
+          adoptionPrice: animal.adoptionPrice,
+          status: animal.status,
+          caseManagerName: animal.caseManagerName,
+          adopterName: animal.adopterName,
+          departureDate: parseIsoDateOnly(animal.departureDate),
+          biography: animal.biography,
+          careProvided: animal.careProvided,
+          notes: animal.notes,
+        },
+      }),
+    [animal, shelterName],
+  );
 
   return (
     <Container size="xl">
@@ -57,6 +87,8 @@ export function FollowUpDetailPageClient({
             followUp={followUp}
             canUpdate={canUpdate}
             onUpdated={setFollowUp}
+            templates={availableTemplates}
+            templateVariables={templateVariables}
             fullPage
           />
         </div>

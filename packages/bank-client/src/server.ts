@@ -56,7 +56,6 @@ export async function createBankTransaction(
     description?: string | null;
     amount: number;
     order?: number;
-    orderId?: string | null;
   },
   options: ClientOptions = {},
 ): Promise<BankTransactionRecord> {
@@ -347,31 +346,6 @@ export async function getBankGlobalStats(
     `/api/stats${toQuery(params)}`,
     { cookieHeader: options.cookieHeader },
   );
-  return parseJsonResponse(response);
-}
-
-export async function createBankTransactionFromOrder(
-  input: BankScopeParams & {
-    orderId: string;
-    orderName: string;
-    orderType: 'INCOMING' | 'OUTGOING';
-    amount: number;
-    date: string | Date;
-    name: string;
-    description?: string | null;
-    type: BankTransactionType;
-  },
-  options: InternalOptions = {},
-): Promise<BankTransactionRecord> {
-  const response = await bankFetch('/api/from-order', {
-    method: 'POST',
-    cookieHeader: options.cookieHeader,
-    internal: true,
-    body: JSON.stringify({
-      ...input,
-      date: typeof input.date === 'string' ? input.date : input.date.toISOString(),
-    }),
-  });
   return parseJsonResponse(response);
 }
 

@@ -5,8 +5,21 @@ import { cleanText, type ParsedPayrollTable, PAYROLL_DAYS } from '@/lib/payroll/
 
 type WaRow = DispensaryWeeklyActivity & {
   resolvedDisplayName: string;
+  discordProfileRole?: string | null;
+  discordProfileAccountNumber?: number | null;
   user?: { name: string } | null;
 };
+
+function roleFromSources(wa: WaRow | undefined, htmlRole: string): string {
+  const profileRole = wa?.discordProfileRole?.trim();
+  if (profileRole) return profileRole;
+  return cleanText(htmlRole ?? '');
+}
+
+function idFromSources(wa: WaRow | undefined, htmlId: number | null): number | null {
+  if (wa?.discordProfileAccountNumber != null) return wa.discordProfileAccountNumber;
+  return htmlId;
+}
 
 function emptyDay() {
   return { caisse: null as string | null, presence: null as string | null };
@@ -134,8 +147,8 @@ export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activitie
 
     out.push({
       name: cleanText(row.name ?? ''),
-      role: cleanText(row.role ?? ''),
-      id: row.id,
+      role: roleFromSources(wa, row.role ?? ''),
+      id: idFromSources(wa, row.id),
       salary_supplement_usd: 0,
       schedule,
       stats: {
@@ -158,8 +171,8 @@ export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activitie
     const label = cleanText(wa.resolvedDisplayName) || cleanText(wa.displayName) || '—';
     out.push({
       name: label,
-      role: '',
-      id: null,
+      role: roleFromSources(wa, ''),
+      id: idFromSources(wa, null),
       salary_supplement_usd: 0,
       schedule,
       stats: {

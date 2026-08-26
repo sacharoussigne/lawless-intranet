@@ -6,6 +6,7 @@ import type {
   PrismaClient,
 } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { upsertDiscordProfileFromActivity } from '@/lib/dispensaryDiscordProfile/service';
 import {
   findLinkedUserIdByDiscordAccount,
   resolveBotWeeklyActivityDisplayName,
@@ -236,6 +237,13 @@ export async function createDispensaryWeeklyActivityWithHistory(
 
     const row = await syncActivityUserIdFromDiscordIfMissing(tx, created);
 
+    await upsertDiscordProfileFromActivity(tx, {
+      dispensaryId,
+      discordUserId: row.discordUserId,
+      displayName: row.displayName,
+      userId: row.userId,
+    });
+
     await tx.dispensaryWeeklyActivityHistory.create({
       data: {
         activityId: row.id,
@@ -299,6 +307,13 @@ export async function updateDispensaryWeeklyActivityWithHistory(
     if (relinked.userId !== updated.userId) {
       row = relinked;
     }
+
+    await upsertDiscordProfileFromActivity(tx, {
+      dispensaryId: row.dispensaryId,
+      discordUserId: row.discordUserId,
+      displayName: row.displayName,
+      userId: row.userId,
+    });
 
     const prevSnap = activityToSnapshot(existing);
     const nextSnap = activityToSnapshot(row);

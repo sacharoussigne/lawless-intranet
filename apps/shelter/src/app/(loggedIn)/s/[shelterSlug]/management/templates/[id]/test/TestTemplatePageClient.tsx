@@ -47,7 +47,7 @@ export default function TestTemplatePageClient({
             variant="subtle"
             color="terracotta"
             leftSection={<IconArrowLeft size={16} />}
-            onClick={() => router.push(routes.employee.templates)}
+            onClick={() => router.push(routes.management.templates)}
           >
             Retour
           </Button>
@@ -113,7 +113,7 @@ export default function TestTemplatePageClient({
               <Button
                 variant="subtle"
                 color="terracotta"
-                onClick={() => router.push(routes.employee.templates)}
+                onClick={() => router.push(routes.management.templates)}
               >
                 Fermer
               </Button>
