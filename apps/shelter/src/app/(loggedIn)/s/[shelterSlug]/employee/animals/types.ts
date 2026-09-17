@@ -1,4 +1,4 @@
-import type { AnimalStatus } from '@/generated/prisma/client';
+import type { AnimalFollowUpStatus, AnimalStatus } from '@/generated/prisma/client';
 
 export type AnimalBreedRefDTO = {
   id: string;
@@ -29,6 +29,8 @@ export type AnimalDTO = {
   breed: AnimalBreedRefDTO;
   variant: { id: string; label: string } | null;
   caseManagerName: string;
+  lastFollowUpDate: string | null;
+  lastFollowUpStatus: AnimalFollowUpStatus | null;
 };
 
 export type SpeciesOptionDTO = {

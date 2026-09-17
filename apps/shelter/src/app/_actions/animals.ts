@@ -2,7 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod/v3';
-import { Prisma, type AnimalStatus } from '@/generated/prisma/client';
+import {
+  Prisma,
+  type AnimalFollowUpStatus,
+  type AnimalStatus,
+} from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import {
@@ -62,7 +66,12 @@ const animalInclude = {
     },
   },
   variant: { select: { id: true, label: true } },
-} as const;
+  followUps: {
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    take: 1,
+    select: { date: true, status: true },
+  },
+} satisfies Prisma.AnimalInclude;
 
 function serializeAnimal<
   T extends {
@@ -73,10 +82,13 @@ function serializeAnimal<
       shelterPurchasePrice: Prisma.Decimal | null;
       animalierPurchasePrice: Prisma.Decimal | null;
     };
+    followUps?: Array<{ date: Date; status: AnimalFollowUpStatus }>;
   },
 >(row: T) {
+  const last = row.followUps?.[0];
+  const { followUps: _followUps, ...rest } = row;
   return {
-    ...row,
+    ...rest,
     adoptionPrice: Number(row.adoptionPrice.toString()),
     arrivalDate: toDateOnlyIso(row.arrivalDate),
     departureDate: row.departureDate ? toDateOnlyIso(row.departureDate) : null,
@@ -85,6 +97,8 @@ function serializeAnimal<
       shelterPurchasePrice: decimalToNumber(row.breed.shelterPurchasePrice),
       animalierPurchasePrice: decimalToNumber(row.breed.animalierPurchasePrice),
     },
+    lastFollowUpDate: last ? toDateOnlyIso(last.date) : null,
+    lastFollowUpStatus: last?.status ?? null,
   };
 }
 

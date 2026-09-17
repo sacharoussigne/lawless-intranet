@@ -1,14 +1,43 @@
 'use client';
 
-import { ActionIcon, Group, Paper, Select, TextInput } from '@mantine/core';
+import { ActionIcon, Badge, Group, MultiSelect, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
-import { DataTable } from 'mantine-datatable';
+import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { ANIMAL_STATUS_LABELS, ANIMAL_STATUS_OPTIONS } from '@/lib/animals/labels';
+import {
+  FOLLOW_UP_STATUS_BADGE_COLORS,
+  FOLLOW_UP_STATUS_LABELS,
+  FOLLOW_UP_STATUS_OPTIONS,
+} from '@/lib/animals/followUpLabels';
 import { formatRpDate } from '@/lib/rpCalendar';
 import { parseIsoDateOnly, type AnimalDTO } from './types';
 
 export type SelectOption = { value: string; label: string };
+
+/** Relative day label + RP date in parentheses (trial display). */
+function formatLastFollowUpRelative(isoDate: string): string {
+  const date = parseIsoDateOnly(isoDate);
+  if (!date) return '—';
+
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfTarget = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const days = Math.round(
+    (startOfToday.getTime() - startOfTarget.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  const exact = formatRpDate(date, 'dd/MM/yyyy');
+
+  if (days === 0) return `Aujourd'hui (${exact})`;
+  if (days === 1) return `Hier (${exact})`;
+  if (days > 1) return `Il y a ${days} jours (${exact})`;
+  return exact;
+}
+
+export const FOLLOW_UP_STATUS_FILTER_OPTIONS: SelectOption[] = [
+  { value: 'none', label: 'Aucun suivi' },
+  ...FOLLOW_UP_STATUS_OPTIONS,
+];
 
 type AnimalsTableProps = {
   animals: AnimalDTO[];
@@ -17,9 +46,11 @@ type AnimalsTableProps = {
   breedFilter: string | null;
   statusFilter: string | null;
   caseManagerFilter: string | null;
+  followUpStatusFilter: string[];
   speciesOptions: SelectOption[];
   breedOptions: SelectOption[];
   caseManagerOptions: SelectOption[];
+  sortStatus: DataTableSortStatus<AnimalDTO>;
   page: number;
   pageSize: number;
   totalRecords: number;
@@ -29,6 +60,8 @@ type AnimalsTableProps = {
   onBreedFilterChange: (value: string | null) => void;
   onStatusFilterChange: (value: string | null) => void;
   onCaseManagerFilterChange: (value: string | null) => void;
+  onFollowUpStatusFilterChange: (value: string[]) => void;
+  onSortStatusChange: (status: DataTableSortStatus<AnimalDTO>) => void;
   onPageChange: (page: number) => void;
   onRowClick: (animal: AnimalDTO) => void;
   onDelete: (animal: AnimalDTO) => void | Promise<void>;
@@ -41,9 +74,11 @@ export function AnimalsTable({
   breedFilter,
   statusFilter,
   caseManagerFilter,
+  followUpStatusFilter,
   speciesOptions,
   breedOptions,
   caseManagerOptions,
+  sortStatus,
   page,
   pageSize,
   totalRecords,
@@ -53,6 +88,8 @@ export function AnimalsTable({
   onBreedFilterChange,
   onStatusFilterChange,
   onCaseManagerFilterChange,
+  onFollowUpStatusFilterChange,
+  onSortStatusChange,
   onPageChange,
   onRowClick,
   onDelete,
@@ -64,10 +101,13 @@ export function AnimalsTable({
         highlightOnHover
         rowStyle={() => ({ cursor: 'pointer' })}
         onRowClick={({ record }) => onRowClick(record)}
+        sortStatus={sortStatus}
+        onSortStatusChange={onSortStatusChange}
         columns={[
           {
             accessor: 'name',
             title: 'Nom',
+            sortable: true,
             filter: (
               <TextInput
                 placeholder="Rechercher un nom..."
@@ -113,6 +153,7 @@ export function AnimalsTable({
           {
             accessor: 'status',
             title: 'Statut',
+            sortable: true,
             render: (animal) => ANIMAL_STATUS_LABELS[animal.status],
             filter: (
               <Select
@@ -127,14 +168,58 @@ export function AnimalsTable({
             ),
           },
           {
+            accessor: 'lastFollowUpDate',
+            title: 'Dernier suivi',
+            sortable: true,
+            filtering: followUpStatusFilter.length > 0,
+            render: (animal) => {
+              if (!animal.lastFollowUpDate || !animal.lastFollowUpStatus) {
+                return (
+                  <Text c="dimmed" size="sm">
+                    —
+                  </Text>
+                );
+              }
+              return (
+                <Stack gap={4}>
+                  <Text size="sm">{formatLastFollowUpRelative(animal.lastFollowUpDate)}</Text>
+                  <Badge
+                    size="sm"
+                    radius="sm"
+                    color={FOLLOW_UP_STATUS_BADGE_COLORS[animal.lastFollowUpStatus].color}
+                    variant={FOLLOW_UP_STATUS_BADGE_COLORS[animal.lastFollowUpStatus].variant}
+                    w="fit-content"
+                  >
+                    {FOLLOW_UP_STATUS_LABELS[animal.lastFollowUpStatus]}
+                  </Badge>
+                </Stack>
+              );
+            },
+            filter: (
+              <MultiSelect
+                placeholder="Tous les suivis"
+                data={FOLLOW_UP_STATUS_FILTER_OPTIONS}
+                value={followUpStatusFilter}
+                onChange={onFollowUpStatusFilterChange}
+                clearable
+                searchable
+                hidePickedOptions
+                comboboxProps={{ withinPortal: false }}
+                style={{ minWidth: 260 }}
+              />
+            ),
+          },
+          {
             accessor: 'arrivalDate',
             title: 'Arrivée',
+            sortable: true,
             render: (animal) =>
               formatRpDate(parseIsoDateOnly(animal.arrivalDate), 'dd/MM/yyyy'),
           },
           {
             accessor: 'caseManagerName',
             title: 'Responsable',
+            sortable: true,
             filter: (
               <Select
                 placeholder="Tous les responsables"
