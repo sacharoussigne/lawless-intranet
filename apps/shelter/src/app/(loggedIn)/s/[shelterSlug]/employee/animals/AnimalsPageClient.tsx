@@ -17,6 +17,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconPlus } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import type { DataTableSortStatus } from 'mantine-datatable';
 import {
   createAnimal,
   deleteAnimal,
@@ -27,9 +28,16 @@ import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
+import { FOLLOW_UP_STATUS_LABELS } from '@/lib/animals/followUpLabels';
 import { ANIMAL_STATUS_LABELS } from '@/lib/animals/labels';
 import { AdoptionPriceHint } from './AdoptionPriceHint';
-import { AnimalsTable } from './AnimalsTable';
+import {
+  DEFAULT_ANIMALS_SORT,
+  readAnimalsFiltersPreference,
+  writeAnimalsFiltersPreference,
+  type AnimalsSortAccessor,
+} from './animalsFiltersStorage';
+import { AnimalsTable, FOLLOW_UP_STATUS_FILTER_OPTIONS } from './AnimalsTable';
 import {
   actionErrorMessage,
   toIsoDateOnly,
@@ -37,6 +45,76 @@ import {
   type CaseManagerOptionDTO,
   type SpeciesOptionDTO,
 } from './types';
+
+function compareAnimals(
+  a: AnimalDTO,
+  b: AnimalDTO,
+  columnAccessor: string,
+  direction: 'asc' | 'desc',
+): number {
+  const dir = direction === 'asc' ? 1 : -1;
+  const nullsLast = (left: string | null, right: string | null) => {
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;
+    if (right == null) return -1;
+    return left.localeCompare(right, 'fr') * dir;
+  };
+
+  switch (columnAccessor) {
+    case 'lastFollowUpDate':
+      return nullsLast(a.lastFollowUpDate, b.lastFollowUpDate) || a.name.localeCompare(b.name, 'fr');
+    case 'arrivalDate':
+      return a.arrivalDate.localeCompare(b.arrivalDate) * dir || a.name.localeCompare(b.name, 'fr');
+    case 'status':
+      return (
+        ANIMAL_STATUS_LABELS[a.status].localeCompare(ANIMAL_STATUS_LABELS[b.status], 'fr') * dir ||
+        a.name.localeCompare(b.name, 'fr')
+      );
+    case 'caseManagerName':
+      return (
+        a.caseManagerName.localeCompare(b.caseManagerName, 'fr') * dir ||
+        a.name.localeCompare(b.name, 'fr')
+      );
+    case 'name':
+    default:
+      return a.name.localeCompare(b.name, 'fr') * dir;
+  }
+}
+
+function matchesAnimalFilters(
+  animal: AnimalDTO,
+  {
+    nameFilter,
+    speciesFilter,
+    breedFilter,
+    statusFilter,
+    caseManagerFilter,
+    followUpStatusFilter,
+  }: {
+    nameFilter: string;
+    speciesFilter: string | null;
+    breedFilter: string | null;
+    statusFilter: string | null;
+    caseManagerFilter: string | null;
+    followUpStatusFilter: string[];
+  },
+): boolean {
+  const needle = nameFilter.trim().toLowerCase();
+  if (needle && !animal.name.toLowerCase().includes(needle)) return false;
+  if (speciesFilter && animal.speciesId !== speciesFilter) return false;
+  if (breedFilter && animal.breedId !== breedFilter) return false;
+  if (statusFilter && animal.status !== statusFilter) return false;
+  if (caseManagerFilter && animal.caseManagerUserId !== caseManagerFilter) return false;
+  if (followUpStatusFilter.length > 0) {
+    const wantsNone = followUpStatusFilter.includes('none');
+    const statusMatches =
+      animal.lastFollowUpStatus != null &&
+      followUpStatusFilter.includes(animal.lastFollowUpStatus);
+    const noneMatches = wantsNone && animal.lastFollowUpStatus == null;
+    if (!statusMatches && !noneMatches) return false;
+  }
+  return true;
+}
 
 function CreateAnimalForm({
   shelterSlug,
@@ -272,6 +350,7 @@ export function AnimalsPageClient({
   const [createOpen, setCreateOpen] = useState(false);
   const [animals, setAnimals] = useState(initialAnimals);
   const searchParams = useSearchParams();
+  const [filtersReady, setFiltersReady] = useState(false);
 
   useEffect(() => {
     setAnimals(initialAnimals);
@@ -282,10 +361,35 @@ export function AnimalsPageClient({
   const [breedFilter, setBreedFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [caseManagerFilter, setCaseManagerFilter] = useState<string | null>(null);
+  const [followUpStatusFilter, setFollowUpStatusFilter] = useState<string[]>([]);
+  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<AnimalDTO>>({
+    columnAccessor: DEFAULT_ANIMALS_SORT.columnAccessor,
+    direction: DEFAULT_ANIMALS_SORT.direction,
+  });
   const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    const saved = readAnimalsFiltersPreference(shelterSlug);
+    if (saved) {
+      setNameFilter(saved.nameFilter);
+      setSpeciesFilter(saved.speciesFilter);
+      setBreedFilter(saved.breedFilter);
+      setStatusFilter(saved.statusFilter);
+      setCaseManagerFilter(saved.caseManagerFilter);
+      setFollowUpStatusFilter(saved.followUpStatusFilter);
+      setSortStatus({
+        columnAccessor: saved.sortStatus.columnAccessor,
+        direction: saved.sortStatus.direction,
+      });
+      setPage(1);
+    }
+    setFiltersReady(true);
+  }, [shelterSlug]);
 
   // Sync filters from spotlight-driven query params (also when already on this page)
   useEffect(() => {
+    if (!filtersReady) return;
     const name = searchParams.get('name');
     const species = searchParams.get('species');
     const breed = searchParams.get('breed');
@@ -295,8 +399,38 @@ export function AnimalsPageClient({
     if (breed !== null) setBreedFilter(breed);
     if (status !== null) setStatusFilter(status);
     if (name !== null || species !== null || breed !== null || status !== null) setPage(1);
-  }, [searchParams]);
-  const pageSize = 10;
+  }, [searchParams, filtersReady]);
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    const columnAccessor = String(sortStatus.columnAccessor);
+    writeAnimalsFiltersPreference(shelterSlug, {
+      nameFilter,
+      speciesFilter,
+      breedFilter,
+      statusFilter,
+      caseManagerFilter,
+      followUpStatusFilter,
+      sortStatus: {
+        columnAccessor: (
+          ['lastFollowUpDate', 'name', 'arrivalDate', 'status', 'caseManagerName'] as const
+        ).includes(columnAccessor as AnimalsSortAccessor)
+          ? (columnAccessor as AnimalsSortAccessor)
+          : DEFAULT_ANIMALS_SORT.columnAccessor,
+        direction: sortStatus.direction,
+      },
+    });
+  }, [
+    shelterSlug,
+    filtersReady,
+    nameFilter,
+    speciesFilter,
+    breedFilter,
+    statusFilter,
+    caseManagerFilter,
+    followUpStatusFilter,
+    sortStatus,
+  ]);
 
   const speciesOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -329,29 +463,41 @@ export function AnimalsPageClient({
       .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
   }, [animals]);
 
+  const filterState = useMemo(
+    () => ({
+      nameFilter,
+      speciesFilter,
+      breedFilter,
+      statusFilter,
+      caseManagerFilter,
+      followUpStatusFilter,
+    }),
+    [
+      nameFilter,
+      speciesFilter,
+      breedFilter,
+      statusFilter,
+      caseManagerFilter,
+      followUpStatusFilter,
+    ],
+  );
+
   const filteredAnimals = useMemo(() => {
-    const needle = nameFilter.trim().toLowerCase();
-    return animals.filter((animal) => {
-      if (needle && !animal.name.toLowerCase().includes(needle)) return false;
-      if (speciesFilter && animal.speciesId !== speciesFilter) return false;
-      if (breedFilter && animal.breedId !== breedFilter) return false;
-      if (statusFilter && animal.status !== statusFilter) return false;
-      if (caseManagerFilter && animal.caseManagerUserId !== caseManagerFilter) return false;
-      return true;
-    });
-  }, [
-    animals,
-    nameFilter,
-    speciesFilter,
-    breedFilter,
-    statusFilter,
-    caseManagerFilter,
-  ]);
+    return animals.filter((animal) => matchesAnimalFilters(animal, filterState));
+  }, [animals, filterState]);
+
+  const sortedAnimals = useMemo(
+    () =>
+      [...filteredAnimals].sort((a, b) =>
+        compareAnimals(a, b, String(sortStatus.columnAccessor), sortStatus.direction),
+      ),
+    [filteredAnimals, sortStatus],
+  );
 
   const pagedAnimals = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return filteredAnimals.slice(start, start + pageSize);
-  }, [filteredAnimals, page, pageSize]);
+    return sortedAnimals.slice(start, start + pageSize);
+  }, [sortedAnimals, page, pageSize]);
 
   const handleDelete = async (animal: AnimalDTO) => {
     const result = await deleteAnimal(shelterSlug, { id: animal.id });
@@ -373,15 +519,9 @@ export function AnimalsPageClient({
     const nextAnimals = animals.filter((item) => item.id !== animal.id);
     setAnimals(nextAnimals);
 
-    const needle = nameFilter.trim().toLowerCase();
-    const nextFilteredCount = nextAnimals.filter((item) => {
-      if (needle && !item.name.toLowerCase().includes(needle)) return false;
-      if (speciesFilter && item.speciesId !== speciesFilter) return false;
-      if (breedFilter && item.breedId !== breedFilter) return false;
-      if (statusFilter && item.status !== statusFilter) return false;
-      if (caseManagerFilter && item.caseManagerUserId !== caseManagerFilter) return false;
-      return true;
-    }).length;
+    const nextFilteredCount = nextAnimals.filter((item) =>
+      matchesAnimalFilters(item, filterState),
+    ).length;
     const maxPage = Math.max(1, Math.ceil(nextFilteredCount / pageSize) || 1);
     if (page > maxPage) {
       setPage(maxPage);
@@ -395,6 +535,18 @@ export function AnimalsPageClient({
     statusFilter && statusFilter in ANIMAL_STATUS_LABELS
       ? ANIMAL_STATUS_LABELS[statusFilter as keyof typeof ANIMAL_STATUS_LABELS]
       : undefined;
+  const followUpStatusLabel =
+    followUpStatusFilter.length === 0
+      ? undefined
+      : followUpStatusFilter
+          .map(
+            (value) =>
+              FOLLOW_UP_STATUS_FILTER_OPTIONS.find((o) => o.value === value)?.label ??
+              (value in FOLLOW_UP_STATUS_LABELS
+                ? FOLLOW_UP_STATUS_LABELS[value as keyof typeof FOLLOW_UP_STATUS_LABELS]
+                : value),
+          )
+          .join(', ');
 
   return (
     <Container size="xl">
@@ -462,6 +614,15 @@ export function AnimalsPageClient({
                   setPage(1);
                 },
               },
+              {
+                label: 'Suivi',
+                value: followUpStatusFilter.length > 0 ? followUpStatusFilter.join(',') : null,
+                displayValue: followUpStatusLabel,
+                onRemove: () => {
+                  setFollowUpStatusFilter([]);
+                  setPage(1);
+                },
+              },
             ]}
           />
           <AnimalsTable
@@ -471,12 +632,14 @@ export function AnimalsPageClient({
             breedFilter={breedFilter}
             statusFilter={statusFilter}
             caseManagerFilter={caseManagerFilter}
+            followUpStatusFilter={followUpStatusFilter}
             speciesOptions={speciesOptions}
             breedOptions={breedOptions}
             caseManagerOptions={caseManagerOptions}
+            sortStatus={sortStatus}
             page={page}
             pageSize={pageSize}
-            totalRecords={filteredAnimals.length}
+            totalRecords={sortedAnimals.length}
             canDelete={canDelete}
             onNameFilterChange={(value) => {
               setNameFilter(value);
@@ -499,6 +662,11 @@ export function AnimalsPageClient({
               setCaseManagerFilter(value);
               setPage(1);
             }}
+            onFollowUpStatusFilterChange={(value) => {
+              setFollowUpStatusFilter(value);
+              setPage(1);
+            }}
+            onSortStatusChange={setSortStatus}
             onPageChange={setPage}
             onRowClick={(animal) => router.push(t.employee.animal(animal.id))}
             onDelete={handleDelete}

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { Button, Container, Group, Paper, Select } from '@mantine/core';
-import { IconPlus } from '@tabler/icons-react';
+import { IconClockHour4, IconPlus } from '@tabler/icons-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { DataTableSortStatus } from 'mantine-datatable';
@@ -22,6 +22,7 @@ import { EditDiscordProfileModal } from './EditDiscordProfileModal';
 import { EditWeeklyActivityModal } from './EditWeeklyActivityModal';
 import { HistoryWeeklyActivityModal } from './HistoryWeeklyActivityModal';
 import { WeeklyActivityTable } from './WeeklyActivityTable';
+import { WeeklyHoursRecapModal } from './WeeklyHoursRecapModal';
 import {
   buildDoctorOptions,
   compareWeeklyActivityRows,
@@ -70,6 +71,7 @@ export default function WeeklyActivityPageClient({
   const [profileRow, setProfileRow] = useState<WeeklyActivityListItem | null>(null);
   const [historyActivityId, setHistoryActivityId] = useState<string | null>(null);
   const [historyTitle, setHistoryTitle] = useState('');
+  const [hoursRecapOpen, setHoursRecapOpen] = useState(false);
   const [selectedDoctorKey, setSelectedDoctorKey] = useState<string | null>(null);
   const [periodWeekDateValue, setPeriodWeekDateValue] = useState<Date>(() =>
     getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,
@@ -116,6 +118,22 @@ export default function WeeklyActivityPageClient({
 
   const doctorOptions = useMemo(() => buildDoctorOptions(rows), [rows]);
 
+  const hoursRecapDoctorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      if (!row.discordUserId) continue;
+      map.set(row.discordUserId, row.resolvedDisplayName);
+    }
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+  }, [rows]);
+
+  const hoursRecapInitialDiscordUserId = useMemo(() => {
+    if (!selectedDoctorKey) return null;
+    return rows.find((r) => doctorKey(r) === selectedDoctorKey)?.discordUserId ?? null;
+  }, [rows, selectedDoctorKey]);
+
   const filteredRows = useMemo(() => {
     if (!selectedDoctorKey) return rows;
     return rows.filter((r) => doctorKey(r) === selectedDoctorKey);
@@ -132,6 +150,11 @@ export default function WeeklyActivityPageClient({
   const handleOpenHistory = useCallback((row: WeeklyActivityListItem) => {
     setHistoryActivityId(row.id);
     setHistoryTitle(row.resolvedDisplayName);
+  }, []);
+
+  const handleOpenHistoryById = useCallback((activityId: string, title: string) => {
+    setHistoryActivityId(activityId);
+    setHistoryTitle(title);
   }, []);
 
   const handleDelete = useCallback(
@@ -211,6 +234,14 @@ export default function WeeklyActivityPageClient({
               )
             }
           />
+          <Button
+            variant="light"
+            color="sage"
+            leftSection={<IconClockHour4 size={18} />}
+            onClick={() => setHoursRecapOpen(true)}
+          >
+            Récap horaires
+          </Button>
         </Group>
 
         <WeeklyActivityTable
@@ -253,6 +284,15 @@ export default function WeeklyActivityPageClient({
         activityId={historyActivityId}
         title={historyTitle}
         onClose={() => setHistoryActivityId(null)}
+      />
+
+      <WeeklyHoursRecapModal
+        opened={hoursRecapOpen}
+        onClose={() => setHoursRecapOpen(false)}
+        weekBounds={queryWeekBounds}
+        doctorOptions={hoursRecapDoctorOptions}
+        initialDiscordUserId={hoursRecapInitialDiscordUserId}
+        onOpenHistory={handleOpenHistoryById}
       />
     </Container>
   );
