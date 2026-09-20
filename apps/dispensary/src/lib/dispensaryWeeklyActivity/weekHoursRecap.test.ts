@@ -3,8 +3,9 @@ import dayjs from '@/lib/dayjs';
 import {
   buildWeekHoursRecap,
   buildWeekHoursRecapBundle,
+  eventCalendarDate,
   isParisAfternoonSlot,
-  patientBusinessDate,
+  isParisIgnoredMorningSlot,
 } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
 
 const TZ = 'Europe/Paris';
@@ -14,12 +15,16 @@ function parisDate(isoLocal: string): Date {
 }
 
 describe('weekHoursRecap helpers', () => {
-  it('maps 02:00 to previous business day', () => {
-    expect(patientBusinessDate(parisDate('2026-05-13 02:00:00'))).toBe('2026-05-12');
+  it('ignores 00:01 through 11:59 and keeps 00:00 / 12:00', () => {
+    expect(isParisIgnoredMorningSlot(parisDate('2026-05-13 00:00:00'))).toBe(false);
+    expect(isParisIgnoredMorningSlot(parisDate('2026-05-13 00:01:00'))).toBe(true);
+    expect(isParisIgnoredMorningSlot(parisDate('2026-05-13 11:59:00'))).toBe(true);
+    expect(isParisIgnoredMorningSlot(parisDate('2026-05-13 12:00:00'))).toBe(false);
   });
 
-  it('maps 06:00 to same calendar day', () => {
-    expect(patientBusinessDate(parisDate('2026-05-13 06:00:00'))).toBe('2026-05-13');
+  it('uses calendar day without overnight shift', () => {
+    expect(eventCalendarDate(parisDate('2026-05-13 02:00:00'))).toBe('2026-05-13');
+    expect(eventCalendarDate(parisDate('2026-05-13 14:00:00'))).toBe('2026-05-13');
   });
 
   it('detects afternoon inclusive of 12:00 and 20:00', () => {
@@ -45,7 +50,7 @@ describe('buildWeekHoursRecap', () => {
     periodStart,
   };
 
-  it('uses presence before patient for opening', () => {
+  it('ignores morning presence and patients entirely', () => {
     const days = buildWeekHoursRecap({
       periodStart,
       activities: [activityA],
@@ -69,7 +74,36 @@ describe('buildWeekHoursRecap', () => {
       ],
     });
     const tuesday = days.find((d) => d.date === '2026-05-12');
-    expect(tuesday?.openAt).toBe(parisDate('2026-05-12 08:00:00').toISOString());
+    expect(tuesday?.openAt).toBeNull();
+    expect(tuesday?.closeAt).toBeNull();
+    expect(tuesday?.afternoonPatientsCount).toBeNull();
+  });
+
+  it('uses evening presence before evening patient for opening', () => {
+    const days = buildWeekHoursRecap({
+      periodStart,
+      activities: [activityA],
+      history: [
+        {
+          id: 'h1',
+          activityId: 'act-a',
+          action: 'UPDATE_PRESENCE_DAYS',
+          createdAt: parisDate('2026-05-12 20:30:00'),
+          previousValues: { day: 'mardi', date: '2026-05-12', presence: false },
+          nextValues: { day: 'mardi', date: '2026-05-12', presence: true },
+        },
+        {
+          id: 'h2',
+          activityId: 'act-a',
+          action: 'INCREMENT_PATIENTS',
+          createdAt: parisDate('2026-05-12 21:00:00'),
+          previousValues: { patientsCount: 0 },
+          nextValues: { patientsCount: 1 },
+        },
+      ],
+    });
+    const tuesday = days.find((d) => d.date === '2026-05-12');
+    expect(tuesday?.openAt).toBe(parisDate('2026-05-12 20:30:00').toISOString());
     expect(tuesday?.openByName).toBe('Alice');
     expect(tuesday?.openHistoryEntryId).toBe('h1');
     expect(tuesday?.closeHistoryEntryId).toBe('h2');
@@ -124,7 +158,7 @@ describe('buildWeekHoursRecap', () => {
     expect(tuesday?.afternoonPatientsCount).toBeNull();
   });
 
-  it('assigns 02:00 patient to previous day and uses 20:01 for close after aprem', () => {
+  it('ignores overnight morning patient and uses 20:01 for open/close after aprem', () => {
     const days = buildWeekHoursRecap({
       periodStart,
       activities: [activityA],
@@ -156,10 +190,12 @@ describe('buildWeekHoursRecap', () => {
       ],
     });
     const tuesday = days.find((d) => d.date === '2026-05-12');
-    // 20:01 is outside aprem and chronologically before the 02:00 (next calendar day) event
+    const wednesday = days.find((d) => d.date === '2026-05-13');
     expect(tuesday?.openAt).toBe(parisDate('2026-05-12 20:01:00').toISOString());
     expect(tuesday?.afternoonPatientsCount).toBe(1);
-    expect(tuesday?.closeAt).toBe(parisDate('2026-05-13 02:00:00').toISOString());
+    expect(tuesday?.closeAt).toBe(parisDate('2026-05-12 20:01:00').toISOString());
+    expect(wednesday?.openAt).toBeNull();
+    expect(wednesday?.closeAt).toBeNull();
   });
 
   it('aggregates across doctors and filters by activity set', () => {
@@ -171,7 +207,7 @@ describe('buildWeekHoursRecap', () => {
           id: 'h1',
           activityId: 'act-b',
           action: 'INCREMENT_PATIENTS',
-          createdAt: parisDate('2026-05-12 08:00:00'),
+          createdAt: parisDate('2026-05-12 20:01:00'),
           previousValues: { patientsCount: 0 },
           nextValues: { patientsCount: 1 },
         },
@@ -179,7 +215,7 @@ describe('buildWeekHoursRecap', () => {
           id: 'h2',
           activityId: 'act-a',
           action: 'INCREMENT_PATIENTS',
-          createdAt: parisDate('2026-05-12 09:00:00'),
+          createdAt: parisDate('2026-05-12 21:00:00'),
           previousValues: { patientsCount: 0 },
           nextValues: { patientsCount: 1 },
         },
@@ -195,7 +231,7 @@ describe('buildWeekHoursRecap', () => {
           id: 'h1',
           activityId: 'act-b',
           action: 'INCREMENT_PATIENTS',
-          createdAt: parisDate('2026-05-12 08:00:00'),
+          createdAt: parisDate('2026-05-12 20:01:00'),
           previousValues: { patientsCount: 0 },
           nextValues: { patientsCount: 1 },
         },
@@ -203,7 +239,7 @@ describe('buildWeekHoursRecap', () => {
           id: 'h2',
           activityId: 'act-a',
           action: 'INCREMENT_PATIENTS',
-          createdAt: parisDate('2026-05-12 09:00:00'),
+          createdAt: parisDate('2026-05-12 21:00:00'),
           previousValues: { patientsCount: 0 },
           nextValues: { patientsCount: 1 },
         },
@@ -221,7 +257,7 @@ describe('buildWeekHoursRecap', () => {
           id: 'h1',
           activityId: 'act-b',
           action: 'INCREMENT_PATIENTS',
-          createdAt: parisDate('2026-05-12 08:00:00'),
+          createdAt: parisDate('2026-05-12 20:01:00'),
           previousValues: { patientsCount: 0 },
           nextValues: { patientsCount: 1 },
         },
@@ -243,7 +279,7 @@ describe('buildWeekHoursRecap', () => {
     expect(bob?.days.find((d) => d.date === '2026-05-12')?.openByName).toBe('Bob');
   });
 
-  it('counts intranet UPDATE patient deltas', () => {
+  it('ignores intranet UPDATE patient deltas in the morning', () => {
     const days = buildWeekHoursRecap({
       periodStart,
       activities: [activityA],
@@ -269,7 +305,7 @@ describe('buildWeekHoursRecap', () => {
       ],
     });
     const tuesday = days.find((d) => d.date === '2026-05-12');
-    expect(tuesday?.openAt).toBe(parisDate('2026-05-12 10:00:00').toISOString());
-    expect(tuesday?.closeAt).toBe(parisDate('2026-05-12 10:00:00').toISOString());
+    expect(tuesday?.openAt).toBeNull();
+    expect(tuesday?.closeAt).toBeNull();
   });
 });

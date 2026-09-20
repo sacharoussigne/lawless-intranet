@@ -29,6 +29,7 @@ export function HistoryWeeklyActivityModal({
       opened={activityId !== null}
       onClose={onClose}
       title={`Historique — ${title}`}
+      zIndex={400}
     >
       <Stack gap="sm">
         {isFetching && historyEntries.length === 0 ? (
