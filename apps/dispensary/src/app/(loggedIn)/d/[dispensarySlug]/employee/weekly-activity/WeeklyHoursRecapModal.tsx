@@ -241,7 +241,8 @@ export function WeeklyHoursRecapModal({
             </Table.Tbody>
           </Table>
           <Text size="xs" c="dimmed">
-            Clique un jour pour voir le détail par médecin. Aprem = 12h00–20h00 inclus.
+            Clique un jour pour voir le détail par médecin. Ignoré : 00h01–11h59. Aprem =
+            12h00–20h00 inclus (hors ouverture).
           </Text>
         </Stack>
       ) : (

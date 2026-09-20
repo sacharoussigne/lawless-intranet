@@ -12,6 +12,8 @@ export type AppModalProps = {
   description?: string;
   icon?: Icon;
   size?: string | number;
+  /** Raise above another open modal (Mantine default is 200). */
+  zIndex?: number;
   children: ReactNode;
   footer?: ReactNode;
 };
@@ -23,6 +25,7 @@ export function AppModal({
   description,
   icon: IconComponent,
   size = 'lg',
+  zIndex,
   children,
   footer,
 }: AppModalProps) {
@@ -40,7 +43,14 @@ export function AppModal({
   );
 
   return (
-    <Modal opened={opened} onClose={onClose} title={modalTitle} size={size} classNames={{ title: 'modal-title' }}>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={modalTitle}
+      size={size}
+      zIndex={zIndex}
+      classNames={{ title: 'modal-title' }}
+    >
       <Stack gap="md">
         {children}
         {footer && <div className={classes.footer}>{footer}</div>}

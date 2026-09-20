@@ -8,6 +8,8 @@ import {
 } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 
 const TZ = 'Europe/Paris';
+const IGNORED_MORNING_START_MINUTES = 0 * 60 + 1; // 00:01
+const IGNORED_MORNING_END_MINUTES = 11 * 60 + 59; // 11:59
 const AFTERNOON_START_MINUTES = 12 * 60;
 const AFTERNOON_END_MINUTES = 20 * 60;
 
@@ -63,7 +65,7 @@ type TimedSignal = {
 };
 
 type PatientEvent = TimedSignal & {
-  businessDate: string;
+  calendarDate: string;
   isAfternoon: boolean;
 };
 
@@ -72,16 +74,20 @@ function parisMinutesSinceMidnight(at: Date): number {
   return m.hour() * 60 + m.minute();
 }
 
+/** Events between 00:01 and 11:59 Paris are ignored entirely. */
+export function isParisIgnoredMorningSlot(at: Date): boolean {
+  const mins = parisMinutesSinceMidnight(at);
+  return mins >= IGNORED_MORNING_START_MINUTES && mins <= IGNORED_MORNING_END_MINUTES;
+}
+
 export function isParisAfternoonSlot(at: Date): boolean {
   const mins = parisMinutesSinceMidnight(at);
   return mins >= AFTERNOON_START_MINUTES && mins <= AFTERNOON_END_MINUTES;
 }
 
-/** Business day for a patient increment (0h–6h → previous calendar day). */
-export function patientBusinessDate(at: Date): string {
-  const paris = dayjs(at).tz(TZ);
-  const day = paris.hour() < 6 ? paris.subtract(1, 'day') : paris;
-  return day.format('YYYY-MM-DD');
+/** Calendar day in Paris for a kept event (ignored morning slots never reach this). */
+export function eventCalendarDate(at: Date): string {
+  return dayjs(at).tz(TZ).format('YYYY-MM-DD');
 }
 
 function parseSnapshotPatientsCount(raw: unknown): number | null {
@@ -243,19 +249,23 @@ function buildWeekHoursRecapForScope(options: {
     const activity = activityById.get(entry.activityId);
     if (!activity) continue;
 
+    if (isParisIgnoredMorningSlot(entry.createdAt)) {
+      continue;
+    }
+
     const delta = patientDelta(entry);
     if (delta > 0) {
-      const businessDate = patientBusinessDate(entry.createdAt);
-      if (weekDateSet.has(businessDate)) {
+      const calendarDate = eventCalendarDate(entry.createdAt);
+      if (weekDateSet.has(calendarDate)) {
         const event: PatientEvent = {
           at: entry.createdAt,
           activityId: activity.id,
           displayName: activity.displayName,
           historyEntryId: entry.id,
-          businessDate,
+          calendarDate,
           isAfternoon: isParisAfternoonSlot(entry.createdAt),
         };
-        const list = ensurePatientDay(businessDate);
+        const list = ensurePatientDay(calendarDate);
         for (let i = 0; i < delta; i += 1) {
           list.push(event);
         }
@@ -264,6 +274,7 @@ function buildWeekHoursRecapForScope(options: {
 
     for (const activation of extractPresenceActivations(entry, activity)) {
       if (!weekDateSet.has(activation.date)) continue;
+      if (isParisIgnoredMorningSlot(activation.at)) continue;
       if (isParisAfternoonSlot(activation.at)) continue;
       ensurePresenceDay(activation.date).push({
         at: activation.at,
