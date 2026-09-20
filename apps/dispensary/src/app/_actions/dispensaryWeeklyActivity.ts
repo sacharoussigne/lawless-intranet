@@ -17,6 +17,7 @@ import {
   getDiscordAccountIdForUser,
   getDiscordAccountIdsForUsers,
   getLatestDiscordDisplayNames,
+  mergeResolvedDisplayNames,
   resolveDiscordDisplayName,
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import { fetchDiscordLinkedUsers, fetchUserProfile, fetchUserProfiles } from '@/lib/authUsers';
@@ -53,6 +54,8 @@ import {
   BotDayEditError,
 } from '@/lib/dispensaryWeeklyActivity/botDayEdit';
 import { parseWeekdayFlagsJson } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
+import { buildWeekHoursRecap } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
+import { getBankWeekBounds } from '@/lib/bankWeek';
 import type { WeeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 
 const weeklyActivityMutationMetaSchema = z
@@ -191,6 +194,90 @@ export async function listDispensaryWeeklyActivities(
 }
 
 const idSchema = z.object({ id: z.string().uuid('ID invalide') });
+
+const hoursRecapInputSchema = z.object({
+  periodStart: z.coerce.date(),
+  discordUserId: z.string().min(1).max(128).nullable().optional(),
+});
+
+export async function getDispensaryWeeklyHoursRecap(
+  dispensarySlug: string,
+  input: z.infer<typeof hoursRecapInputSchema>,
+) {
+  try {
+    const gate = await requireWeeklyActivityView(dispensarySlug);
+    if (!gate.ok) {
+      return gate.response;
+    }
+
+    const parsed = hoursRecapInputSchema.safeParse(input);
+    if (!parsed.success) {
+      return { status: 400 as const, error: 'Paramètres invalides' };
+    }
+
+    const { dispensaryId } = gate.tenant;
+    const { start: periodStart, end: periodEnd } = getBankWeekBounds(parsed.data.periodStart);
+    const discordUserId = parsed.data.discordUserId ?? null;
+
+    const where = await listWhereForSession(
+      dispensaryId,
+      gate.session.user.id,
+      gate.tenant.effectivePermissions,
+    );
+    Object.assign(where, {
+      periodStart: { lte: periodEnd },
+      periodEnd: { gte: periodStart },
+      ...(discordUserId ? { discordUserId } : {}),
+    });
+
+    const activities = await prisma.dispensaryWeeklyActivity.findMany({
+      where,
+      orderBy: { displayName: 'asc' },
+    });
+
+    if (activities.length === 0) {
+      return {
+        status: 200 as const,
+        data: { days: buildWeekHoursRecap({ periodStart, activities: [], history: [] }) },
+      };
+    }
+
+    const withNames = await mergeResolvedDisplayNames(prisma, activities);
+    const activityIds = withNames.map((a) => a.id);
+
+    const history = await prisma.dispensaryWeeklyActivityHistory.findMany({
+      where: {
+        activityId: { in: activityIds },
+        action: { in: ['INCREMENT_PATIENTS', 'UPDATE_PRESENCE_DAYS', 'UPDATE'] },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const days = buildWeekHoursRecap({
+      periodStart,
+      activities: withNames.map((a) => ({
+        id: a.id,
+        displayName: a.resolvedDisplayName,
+        discordUserId: a.discordUserId,
+        periodStart: a.periodStart,
+      })),
+      history: history
+        .filter((h): h is typeof h & { activityId: string } => Boolean(h.activityId))
+        .map((h) => ({
+          id: h.id,
+          activityId: h.activityId,
+          action: h.action,
+          createdAt: h.createdAt,
+          previousValues: h.previousValues,
+          nextValues: h.nextValues,
+        })),
+    });
+
+    return { status: 200 as const, data: { days } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du chargement du récap horaires');
+  }
+}
 
 export async function getDispensaryWeeklyActivityHistory(
   dispensarySlug: string,

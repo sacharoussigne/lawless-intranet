@@ -7,6 +7,7 @@ import {
   createDispensaryWeeklyActivity,
   deleteDispensaryWeeklyActivity,
   getDispensaryWeeklyActivityHistory,
+  getDispensaryWeeklyHoursRecap,
   incrementOwnWeeklyCounter,
   listDispensaryWeeklyActivities,
   listDispensaryWeeklyActivityTargets,
@@ -24,6 +25,7 @@ import {
   type WeeklyActivityWeekBounds,
 } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import type { SerializedDispensaryWeeklyActivityRow } from '@/lib/dispensaryWeeklyActivity/apiRow';
+import type { WeekHoursRecapDay } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
 import { useOptionalWeeklyActivityRealtimeClientId } from '@/lib/dispensaryWeeklyActivity/realtime/client/WeeklyActivityRealtimeProvider';
 import { weeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/client/mutationMeta';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
@@ -48,6 +50,8 @@ export type WeeklyActivityTargetUser = {
   discordDisplayName: string;
 };
 
+export type WeeklyHoursRecapDayDto = WeekHoursRecapDay;
+
 export const weeklyActivityKeys = {
   all: (slug: string) => ['weeklyActivity', slug] as const,
   list: (slug: string, weekKey: string) =>
@@ -55,6 +59,8 @@ export const weeklyActivityKeys = {
   history: (slug: string, activityId: string) =>
     [...weeklyActivityKeys.all(slug), 'history', activityId] as const,
   targets: (slug: string) => [...weeklyActivityKeys.all(slug), 'targets'] as const,
+  hoursRecap: (slug: string, weekKey: string, discordUserId: string | null) =>
+    [...weeklyActivityKeys.all(slug), 'hoursRecap', weekKey, discordUserId ?? 'all'] as const,
 };
 
 async function fetchWeeklyActivities(
@@ -74,6 +80,19 @@ async function fetchWeeklyActivityHistory(
   const result = await getDispensaryWeeklyActivityHistory(dispensarySlug, { id: activityId });
   const data = handleAction(result);
   return Array.isArray(data) ? data : [];
+}
+
+async function fetchWeeklyHoursRecap(
+  dispensarySlug: string,
+  periodStart: Date,
+  discordUserId: string | null,
+): Promise<WeeklyHoursRecapDayDto[]> {
+  const result = await getDispensaryWeeklyHoursRecap(dispensarySlug, {
+    periodStart,
+    discordUserId,
+  });
+  const data = handleAction(result) as { days?: WeeklyHoursRecapDayDto[] } | undefined;
+  return data?.days ?? [];
 }
 
 async function fetchWeeklyActivityTargets(
@@ -164,6 +183,26 @@ export function useWeeklyActivityHistory(activityId: string | null, enabled: boo
       return fetchWeeklyActivityHistory(dispensarySlug, activityId);
     },
     enabled: Boolean(activityId && enabled),
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
+export function useWeeklyHoursRecap(
+  weekBounds: WeeklyActivityWeekBounds | null,
+  discordUserId: string | null,
+  enabled: boolean,
+) {
+  const dispensarySlug = useRequiredDispensarySlug();
+  const weekKey = weekBounds ? weeklyActivityWeekKey(weekBounds) : '';
+
+  return useQuery({
+    queryKey: weeklyActivityKeys.hoursRecap(dispensarySlug, weekKey, discordUserId),
+    queryFn: () => {
+      if (!weekBounds) throw new Error('weekBounds is required');
+      const { periodStart } = normalizeWeeklyActivityWeekBounds(weekBounds);
+      return fetchWeeklyHoursRecap(dispensarySlug, periodStart, discordUserId);
+    },
+    enabled: Boolean(dispensarySlug && weekBounds && enabled),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 }
