@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Anchor, Select, Stack, Table, Text } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+import { Anchor, SegmentedControl, Select, Stack, Table, Text, UnstyledButton } from '@mantine/core';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
 import dayjs from '@/lib/dayjs';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
@@ -13,6 +13,8 @@ import {
 const TZ = 'Europe/Paris';
 
 export type HoursRecapDoctorOption = { value: string; label: string };
+
+type RecapView = 'week' | 'day';
 
 type WeeklyHoursRecapModalProps = {
   opened: boolean;
@@ -30,6 +32,13 @@ function formatParisTime(iso: string | null): string {
 
 function formatParisDayLabel(dateStr: string): string {
   return dayjs.tz(dateStr, 'YYYY-MM-DD', TZ).format('dddd D MMM');
+}
+
+function defaultDayInWeek(weekDays: string[]): string {
+  if (weekDays.length === 0) return '';
+  const today = dayjs().tz(TZ).format('YYYY-MM-DD');
+  if (weekDays.includes(today)) return today;
+  return weekDays[0] ?? '';
 }
 
 function HistoryLink({
@@ -73,18 +82,60 @@ export function WeeklyHoursRecapModal({
   onOpenHistory,
 }: WeeklyHoursRecapModalProps) {
   const [discordUserId, setDiscordUserId] = useState<string | null>(initialDiscordUserId);
+  const [view, setView] = useState<RecapView>('week');
+  const [selectedDate, setSelectedDate] = useState<string>('');
 
   useEffect(() => {
     if (opened) {
       setDiscordUserId(initialDiscordUserId);
+      setView('week');
     }
   }, [opened, initialDiscordUserId]);
 
-  const { data: days = [], isFetching } = useWeeklyHoursRecap(
-    weekBounds,
-    discordUserId,
-    opened,
+  const { data, isFetching } = useWeeklyHoursRecap(weekBounds, discordUserId, opened);
+  const days = data?.days ?? [];
+  const doctors = data?.doctors ?? [];
+
+  useEffect(() => {
+    if (days.length === 0) return;
+    const weekDates = days.map((d) => d.date);
+    setSelectedDate((current) =>
+      current && weekDates.includes(current) ? current : defaultDayInWeek(weekDates),
+    );
+  }, [days]);
+
+  const daySelectData = useMemo(
+    () =>
+      days.map((d) => ({
+        value: d.date,
+        label: formatParisDayLabel(d.date),
+      })),
+    [days],
   );
+
+  const doctorRowsForDay = useMemo(() => {
+    if (!selectedDate) return [];
+    return doctors
+      .map((doctor) => {
+        const day = doctor.days.find((d) => d.date === selectedDate);
+        if (!day) return null;
+        const hasSignal =
+          day.openAt != null ||
+          day.closeAt != null ||
+          (day.afternoonPatientsCount != null && day.afternoonPatientsCount > 0);
+        return { doctor, day, hasSignal };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null)
+      .sort((a, b) => {
+        if (a.hasSignal !== b.hasSignal) return a.hasSignal ? -1 : 1;
+        return a.doctor.displayName.localeCompare(b.doctor.displayName, 'fr');
+      });
+  }, [doctors, selectedDate]);
+
+  const openDayView = (date: string) => {
+    setSelectedDate(date);
+    setView('day');
+  };
 
   return (
     <AppModal
@@ -94,6 +145,16 @@ export function WeeklyHoursRecapModal({
       description="Ouverture / fermeture dérivées de l’historique (patients et présences)."
       size="xl"
     >
+      <SegmentedControl
+        fullWidth
+        value={view}
+        onChange={(value) => setView(value as RecapView)}
+        data={[
+          { label: 'Semaine', value: 'week' },
+          { label: 'Jour', value: 'day' },
+        ]}
+      />
+
       <Select
         label="Médecin"
         placeholder="Tous les médecins"
@@ -105,11 +166,23 @@ export function WeeklyHoursRecapModal({
         nothingFoundMessage="Aucun résultat"
       />
 
+      {view === 'day' ? (
+        <Select
+          label="Jour"
+          data={daySelectData}
+          value={selectedDate || null}
+          onChange={(value) => {
+            if (value) setSelectedDate(value);
+          }}
+          searchable
+        />
+      ) : null}
+
       {isFetching && days.length === 0 ? (
         <Text c="dimmed" size="sm">
           Chargement…
         </Text>
-      ) : (
+      ) : view === 'week' ? (
         <Stack gap="sm">
           <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
@@ -125,9 +198,11 @@ export function WeeklyHoursRecapModal({
               {days.map((day) => (
                 <Table.Tr key={day.date}>
                   <Table.Td>
-                    <Text size="sm" tt="capitalize">
-                      {formatParisDayLabel(day.date)}
-                    </Text>
+                    <UnstyledButton onClick={() => openDayView(day.date)}>
+                      <Text size="sm" tt="capitalize" c="sage" td="underline">
+                        {formatParisDayLabel(day.date)}
+                      </Text>
+                    </UnstyledButton>
                   </Table.Td>
                   <Table.Td>
                     <HistoryLink
@@ -166,8 +241,71 @@ export function WeeklyHoursRecapModal({
             </Table.Tbody>
           </Table>
           <Text size="xs" c="dimmed">
-            Aprem = patients entre 12h00 et 20h00 inclus (hors ouverture). Fermeture = dernier
-            patient du jour. Patients 0h–6h rattachés au jour précédent.
+            Clique un jour pour voir le détail par médecin. Aprem = 12h00–20h00 inclus.
+          </Text>
+        </Stack>
+      ) : (
+        <Stack gap="sm">
+          <Table striped highlightOnHover withTableBorder>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Médecin</Table.Th>
+                <Table.Th>Ouverture</Table.Th>
+                <Table.Th>Fermeture</Table.Th>
+                <Table.Th>Aprem</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {doctorRowsForDay.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={4}>
+                    <Text c="dimmed" size="sm">
+                      Aucun médecin pour cette semaine.
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                doctorRowsForDay.map(({ doctor, day }) => (
+                  <Table.Tr key={doctor.activityId}>
+                    <Table.Td>
+                      <HistoryLink
+                        label={doctor.displayName}
+                        activityId={doctor.activityId}
+                        title={doctor.displayName}
+                        onOpenHistory={onOpenHistory}
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <HistoryLink
+                        label={formatParisTime(day.openAt)}
+                        activityId={day.openByActivityId}
+                        title={doctor.displayName}
+                        onOpenHistory={onOpenHistory}
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <HistoryLink
+                        label={formatParisTime(day.closeAt)}
+                        activityId={day.closeByActivityId}
+                        title={doctor.displayName}
+                        onOpenHistory={onOpenHistory}
+                      />
+                    </Table.Td>
+                    <Table.Td>
+                      <HistoryLink
+                        label={afternoonLabel(day)}
+                        activityId={day.afternoonActivityId}
+                        title={doctor.displayName}
+                        onOpenHistory={onOpenHistory}
+                      />
+                    </Table.Td>
+                  </Table.Tr>
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
+          <Text size="xs" c="dimmed">
+            Vue jour : horaires de chaque médecin pour la date sélectionnée.
           </Text>
         </Stack>
       )}

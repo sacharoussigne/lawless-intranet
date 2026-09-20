@@ -43,6 +43,18 @@ export type WeekHoursRecapDay = {
   afternoonHistoryEntryId: string | null;
 };
 
+export type WeekHoursRecapDoctor = {
+  activityId: string;
+  discordUserId: string;
+  displayName: string;
+  days: WeekHoursRecapDay[];
+};
+
+export type WeekHoursRecapBundle = {
+  days: WeekHoursRecapDay[];
+  doctors: WeekHoursRecapDoctor[];
+};
+
 type TimedSignal = {
   at: Date;
   activityId: string;
@@ -165,6 +177,38 @@ function pickEarliest(a: TimedSignal | null, b: TimedSignal | null): TimedSignal
  * Builds Mon→Sun hours recap from weekly activities + relevant history rows.
  */
 export function buildWeekHoursRecap(options: {
+  periodStart: Date;
+  activities: WeekHoursRecapActivityInput[];
+  history: WeekHoursRecapHistoryInput[];
+}): WeekHoursRecapDay[] {
+  return buildWeekHoursRecapBundle(options).days;
+}
+
+/**
+ * Aggregate week days plus per-doctor day breakdown.
+ */
+export function buildWeekHoursRecapBundle(options: {
+  periodStart: Date;
+  activities: WeekHoursRecapActivityInput[];
+  history: WeekHoursRecapHistoryInput[];
+}): WeekHoursRecapBundle {
+  const days = buildWeekHoursRecapForScope(options);
+  const doctors = [...options.activities]
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, 'fr'))
+    .map((activity) => ({
+      activityId: activity.id,
+      discordUserId: activity.discordUserId,
+      displayName: activity.displayName,
+      days: buildWeekHoursRecapForScope({
+        periodStart: options.periodStart,
+        activities: [activity],
+        history: options.history.filter((h) => h.activityId === activity.id),
+      }),
+    }));
+  return { days, doctors };
+}
+
+function buildWeekHoursRecapForScope(options: {
   periodStart: Date;
   activities: WeekHoursRecapActivityInput[];
   history: WeekHoursRecapHistoryInput[];

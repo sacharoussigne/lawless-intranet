@@ -54,7 +54,7 @@ import {
   BotDayEditError,
 } from '@/lib/dispensaryWeeklyActivity/botDayEdit';
 import { parseWeekdayFlagsJson } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import { buildWeekHoursRecap } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
+import { buildWeekHoursRecapBundle } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import type { WeeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 
@@ -238,7 +238,7 @@ export async function getDispensaryWeeklyHoursRecap(
     if (activities.length === 0) {
       return {
         status: 200 as const,
-        data: { days: buildWeekHoursRecap({ periodStart, activities: [], history: [] }) },
+        data: buildWeekHoursRecapBundle({ periodStart, activities: [], history: [] }),
       };
     }
 
@@ -253,7 +253,7 @@ export async function getDispensaryWeeklyHoursRecap(
       orderBy: { createdAt: 'asc' },
     });
 
-    const days = buildWeekHoursRecap({
+    const data = buildWeekHoursRecapBundle({
       periodStart,
       activities: withNames.map((a) => ({
         id: a.id,
@@ -273,7 +273,7 @@ export async function getDispensaryWeeklyHoursRecap(
         })),
     });
 
-    return { status: 200 as const, data: { days } };
+    return { status: 200 as const, data };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement du récap horaires');
   }

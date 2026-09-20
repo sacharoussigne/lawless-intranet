@@ -25,7 +25,7 @@ import {
   type WeeklyActivityWeekBounds,
 } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import type { SerializedDispensaryWeeklyActivityRow } from '@/lib/dispensaryWeeklyActivity/apiRow';
-import type { WeekHoursRecapDay } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
+import type { WeekHoursRecapBundle, WeekHoursRecapDay } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
 import { useOptionalWeeklyActivityRealtimeClientId } from '@/lib/dispensaryWeeklyActivity/realtime/client/WeeklyActivityRealtimeProvider';
 import { weeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/client/mutationMeta';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
@@ -51,6 +51,7 @@ export type WeeklyActivityTargetUser = {
 };
 
 export type WeeklyHoursRecapDayDto = WeekHoursRecapDay;
+export type WeeklyHoursRecapBundleDto = WeekHoursRecapBundle;
 
 export const weeklyActivityKeys = {
   all: (slug: string) => ['weeklyActivity', slug] as const,
@@ -86,13 +87,13 @@ async function fetchWeeklyHoursRecap(
   dispensarySlug: string,
   periodStart: Date,
   discordUserId: string | null,
-): Promise<WeeklyHoursRecapDayDto[]> {
+): Promise<WeeklyHoursRecapBundleDto> {
   const result = await getDispensaryWeeklyHoursRecap(dispensarySlug, {
     periodStart,
     discordUserId,
   });
-  const data = handleAction(result) as { days?: WeeklyHoursRecapDayDto[] } | undefined;
-  return data?.days ?? [];
+  const data = handleAction(result) as WeeklyHoursRecapBundleDto | undefined;
+  return data ?? { days: [], doctors: [] };
 }
 
 async function fetchWeeklyActivityTargets(

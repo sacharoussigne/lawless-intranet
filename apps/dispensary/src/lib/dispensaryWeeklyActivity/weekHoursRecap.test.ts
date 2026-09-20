@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import dayjs from '@/lib/dayjs';
 import {
   buildWeekHoursRecap,
+  buildWeekHoursRecapBundle,
   isParisAfternoonSlot,
   patientBusinessDate,
 } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
@@ -209,6 +210,37 @@ describe('buildWeekHoursRecap', () => {
       ],
     });
     expect(onlyAlice.find((d) => d.date === '2026-05-12')?.openByName).toBe('Alice');
+  });
+
+  it('exposes per-doctor day breakdown in the bundle', () => {
+    const bundle = buildWeekHoursRecapBundle({
+      periodStart,
+      activities: [activityA, activityB],
+      history: [
+        {
+          id: 'h1',
+          activityId: 'act-b',
+          action: 'INCREMENT_PATIENTS',
+          createdAt: parisDate('2026-05-12 08:00:00'),
+          previousValues: { patientsCount: 0 },
+          nextValues: { patientsCount: 1 },
+        },
+        {
+          id: 'h2',
+          activityId: 'act-a',
+          action: 'INCREMENT_PATIENTS',
+          createdAt: parisDate('2026-05-12 14:00:00'),
+          previousValues: { patientsCount: 0 },
+          nextValues: { patientsCount: 1 },
+        },
+      ],
+    });
+    expect(bundle.doctors).toHaveLength(2);
+    const alice = bundle.doctors.find((d) => d.discordUserId === 'd-a');
+    const bob = bundle.doctors.find((d) => d.discordUserId === 'd-b');
+    expect(alice?.days.find((d) => d.date === '2026-05-12')?.afternoonPatientsCount).toBe(1);
+    expect(alice?.days.find((d) => d.date === '2026-05-12')?.openAt).toBeNull();
+    expect(bob?.days.find((d) => d.date === '2026-05-12')?.openByName).toBe('Bob');
   });
 
   it('counts intranet UPDATE patient deltas', () => {
