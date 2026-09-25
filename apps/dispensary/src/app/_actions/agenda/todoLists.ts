@@ -50,6 +50,7 @@ function mapTodoTask(task: AgendaTodoTaskRecord) {
     completed: task.completed,
     completedAt: task.completedAt ? new Date(task.completedAt) : null,
     order: task.order,
+    updatedAt: task.updatedAt ? new Date(task.updatedAt) : null,
   };
 }
 
@@ -295,6 +296,7 @@ export async function updateAgendaTodoTask(
     description?: string | null;
     completed?: boolean;
     categoryId?: string;
+    expectedUpdatedAt?: string;
   },
   meta?: AgendaMutationMeta,
 ) {
@@ -311,6 +313,7 @@ export async function updateAgendaTodoTask(
         description: validated.description,
         completed: validated.completed,
         categoryId: validated.categoryId,
+        expectedUpdatedAt: validated.expectedUpdatedAt,
       },
       { ...(await agendaCookie()), meta },
     );

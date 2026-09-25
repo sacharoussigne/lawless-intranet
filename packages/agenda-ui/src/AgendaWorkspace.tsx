@@ -15,6 +15,7 @@ import {
 } from './calendarNavigation';
 import { useAgendaRealtime } from './realtime/useAgendaRealtime';
 import { isRelevantAgendaRealtimeEvent } from './realtime/isRelevantAgendaEvent';
+import { useRealtimeReconnect } from '@lawless-intranet/realtime/client';
 import {
   removeCalendarEvent,
   upsertCalendarEvent,
@@ -246,6 +247,14 @@ export function AgendaWorkspace({
       }
       setRemoteEventTodosToken((token) => token + 1);
     },
+  });
+
+  useRealtimeReconnect(() => {
+    void fetchEventsRef.current();
+    setRemoteTodosToken((token) => token + 1);
+    if (openEventIdRef.current) {
+      setRemoteEventTodosToken((token) => token + 1);
+    }
   });
 
   useEffect(() => {

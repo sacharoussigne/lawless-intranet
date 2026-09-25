@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAgendaUi } from '../AgendaUiProvider';
 import { runAgendaAction } from '../runAgendaAction';
 import { runAsyncEffect } from '../runAsyncEffect';
+import { shouldApplyRemoteLists } from '../todoListsSync';
 import type { AgendaTodoListDTO } from '../types';
 import { notifications } from '@mantine/notifications';
 
@@ -33,6 +34,9 @@ export function useAgendaTodoLists({
   const { actions } = useAgendaUi();
   const skipInitialFetchRef = useRef(skipInitialFetch);
   const pendingRemoteReloadRef = useRef(false);
+  const listsEpochRef = useRef(0);
+  const pendingMutationsRef = useRef(0);
+  const [mutationGate, setMutationGate] = useState(0);
   const [lists, setLists] = useState<AgendaTodoListDTO[]>(initialLists);
   const [selectedListId, setSelectedListId] = useState<string | null>(
     initialLists[0]?.id ?? null,
@@ -58,6 +62,22 @@ export function useAgendaTodoLists({
     );
   }, []);
 
+  const bumpListsEpoch = useCallback(() => {
+    listsEpochRef.current += 1;
+  }, []);
+
+  const beginLocalMutation = useCallback(() => {
+    pendingMutationsRef.current += 1;
+    bumpListsEpoch();
+  }, [bumpListsEpoch]);
+
+  const endLocalMutation = useCallback(() => {
+    pendingMutationsRef.current = Math.max(0, pendingMutationsRef.current - 1);
+    if (pendingMutationsRef.current === 0 && pendingRemoteReloadRef.current) {
+      setMutationGate((value) => value + 1);
+    }
+  }, []);
+
   const fetchTodoLists = useCallback(async () => {
     if (!agendaId) return null;
     const result = await actions.listTodoLists(agendaId);
@@ -66,9 +86,12 @@ export function useAgendaTodoLists({
 
   const reload = useCallback(async () => {
     if (!agendaId) return;
+    const epochAtStart = listsEpochRef.current;
     try {
       const data = await fetchTodoLists();
-      if (data) applyLists(data);
+      if (!data) return;
+      if (!shouldApplyRemoteLists(epochAtStart, listsEpochRef.current)) return;
+      applyLists(data);
     } catch (error: unknown) {
       showListsLoadError(error);
     }
@@ -76,16 +99,21 @@ export function useAgendaTodoLists({
 
   const fetchListsIntoState = useCallback(
     (isCancelled: () => boolean) => {
+      const epochAtStart = listsEpochRef.current;
       runAsyncEffect(fetchTodoLists, {
         isCancelled,
         onSuccess: (data) => {
-          if (data) applyLists(data);
+          if (!data) return;
+          if (!shouldApplyRemoteLists(epochAtStart, listsEpochRef.current)) return;
+          applyLists(data);
         },
         onError: showListsLoadError,
       });
     },
     [applyLists, fetchTodoLists],
   );
+
+  const shouldDeferRemoteReload = isDragging || pendingMutationsRef.current > 0;
 
   useEffect(() => {
     if (!agendaId) return;
@@ -106,7 +134,7 @@ export function useAgendaTodoLists({
   useEffect(() => {
     if (remoteTodosToken === 0) return;
 
-    if (isDragging) {
+    if (isDragging || pendingMutationsRef.current > 0) {
       pendingRemoteReloadRef.current = true;
       return;
     }
@@ -120,7 +148,8 @@ export function useAgendaTodoLists({
   }, [remoteTodosToken, fetchListsIntoState, isDragging]);
 
   useEffect(() => {
-    if (isDragging || !pendingRemoteReloadRef.current) return;
+    if (isDragging || pendingMutationsRef.current > 0) return;
+    if (!pendingRemoteReloadRef.current) return;
 
     pendingRemoteReloadRef.current = false;
 
@@ -130,7 +159,7 @@ export function useAgendaTodoLists({
     return () => {
       cancelled = true;
     };
-  }, [isDragging, fetchListsIntoState]);
+  }, [isDragging, mutationGate, fetchListsIntoState]);
 
   return {
     lists,
@@ -140,5 +169,8 @@ export function useAgendaTodoLists({
     selectedList,
     reload,
     applyLists,
+    beginLocalMutation,
+    endLocalMutation,
+    bumpListsEpoch,
   };
 }

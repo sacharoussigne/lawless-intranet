@@ -30,7 +30,15 @@ export function AgendaTodoArchivesDrawer({
     <Drawer
       opened={opened}
       onClose={onClose}
-      title={<Title order={4} className="disp-display-title">Archives</Title>}
+      title={
+        <Stack gap={4}>
+          <Title order={4} className="disp-display-title">Archives</Title>
+          <Text size="xs" c="dimmed" fw={400}>
+            Tâches cochées depuis plus d&apos;une heure. Toujours terminées —
+            pas décochées.
+          </Text>
+        </Stack>
+      }
       position="right"
       size="md"
     >
@@ -47,7 +55,13 @@ export function AgendaTodoArchivesDrawer({
               <Stack key={category.id} gap="xs" pl="sm">
                 <Text size="sm" c="dimmed">{category.name}</Text>
                 {category.tasks.map((task) => (
-                  <Group key={task.id} justify="space-between" wrap="nowrap">
+                  <Group
+                    key={task.id}
+                    justify="space-between"
+                    wrap="nowrap"
+                    data-todo-task-id={task.id}
+                    title={`id: ${task.id}`}
+                  >
                     <Text size="sm" className="line-through" c="dimmed" style={{ flex: 1 }}>
                       {task.title}
                     </Text>
