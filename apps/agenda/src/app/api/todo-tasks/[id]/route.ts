@@ -9,6 +9,7 @@ import prisma from '@/lib/prisma';
 import { requireAgendaWrite } from '@/lib/access';
 import { serializeDates } from '@/lib/serialize';
 import { emitAgendaTodosChange } from '@/lib/realtime/broadcast';
+import { todoUpdatedAtMatches } from '@/lib/todoConcurrency';
 import {
   deleteWithMetaSchema,
   updateTodoTaskSchema,
@@ -83,6 +84,26 @@ export async function PATCH(request: Request, context: RouteContext) {
         request,
         'La catégorie doit appartenir à la même liste',
         400,
+      );
+    }
+  }
+
+  if (
+    parsed.data.completed !== undefined &&
+    parsed.data.expectedUpdatedAt !== undefined
+  ) {
+    const current = await prisma.agendaTodoTask.findUnique({
+      where: { id },
+      select: { updatedAt: true },
+    });
+    if (!current) {
+      return errorResponse(request, 'Tâche introuvable', 404);
+    }
+    if (!todoUpdatedAtMatches(parsed.data.expectedUpdatedAt, current.updatedAt)) {
+      return errorResponse(
+        request,
+        'La tâche a été modifiée ailleurs. Rechargez la liste.',
+        409,
       );
     }
   }

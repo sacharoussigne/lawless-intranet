@@ -6,7 +6,7 @@ import { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { speciesActionAuth } from '@/lib/species/auth';
+import { speciesActionAuth, createVariantActionAuth } from '@/lib/species/auth';
 import { tenantRoutes } from '@/types/routes';
 
 const speciesNameSchema = z
@@ -356,7 +356,7 @@ export async function createVariant(
   data: { breedId: string; label: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(shelterSlug, speciesActionAuth);
+    const ctx = await requireTenantServerActionContext(shelterSlug, createVariantActionAuth);
     if (!ctx.ok) return ctx.response;
     const { shelterId } = ctx.tenant;
     const breedId = z.string().uuid().parse(data.breedId);

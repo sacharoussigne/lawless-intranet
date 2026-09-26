@@ -426,6 +426,7 @@ export async function updateAgendaTodoTask(
     description?: string | null;
     completed?: boolean;
     categoryId?: string;
+    expectedUpdatedAt?: string;
   },
   options: MetaOptions = {},
 ): Promise<AgendaTodoTaskRecord> {

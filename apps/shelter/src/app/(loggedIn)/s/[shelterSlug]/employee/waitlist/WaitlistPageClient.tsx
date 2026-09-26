@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ActionIcon,
   Button,
@@ -121,7 +121,6 @@ export function WaitlistPageClient({
   initialRequests,
   speciesOptions,
 }: WaitlistPageClientProps) {
-  const router = useRouter();
   const t = useTenantRoutes();
   const realtimeClientId = useOptionalRealtimeClientId();
   const mutationMeta = realtimeMutationMeta(realtimeClientId);
@@ -370,10 +369,11 @@ export function WaitlistPageClient({
     <Container size="xl">
       <Group mb="md">
         <Button
+          component={Link}
+          href={t.employee.index}
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(t.employee.index)}
         >
           Retour
         </Button>

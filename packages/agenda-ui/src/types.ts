@@ -63,6 +63,7 @@ export type AgendaTodoTaskDTO = {
   completed: boolean;
   completedAt: Date | null;
   order: number;
+  updatedAt: Date | null;
 };
 
 export type AgendaTodoCategoryDTO = {

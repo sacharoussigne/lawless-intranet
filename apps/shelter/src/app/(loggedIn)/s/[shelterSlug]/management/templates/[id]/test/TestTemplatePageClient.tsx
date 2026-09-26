@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Button,
   Container,
@@ -33,7 +33,6 @@ export default function TestTemplatePageClient({
   template,
 }: TestTemplatePageClientProps) {
   const routes = useTenantRoutes();
-  const router = useRouter();
   const preview = useTemplatePreviewActions(
     template.content,
     SAMPLE_ANIMAL_TEMPLATE_VARIABLES,
@@ -44,10 +43,11 @@ export default function TestTemplatePageClient({
       <Stack gap="md">
         <Group justify="space-between">
           <Button
+            component={Link}
+            href={routes.management.templates}
             variant="subtle"
             color="terracotta"
             leftSection={<IconArrowLeft size={16} />}
-            onClick={() => router.push(routes.management.templates)}
           >
             Retour
           </Button>
@@ -111,9 +111,10 @@ export default function TestTemplatePageClient({
             </Paper>
             <Group justify="flex-end">
               <Button
+                component={Link}
+                href={routes.management.templates}
                 variant="subtle"
                 color="terracotta"
-                onClick={() => router.push(routes.management.templates)}
               >
                 Fermer
               </Button>

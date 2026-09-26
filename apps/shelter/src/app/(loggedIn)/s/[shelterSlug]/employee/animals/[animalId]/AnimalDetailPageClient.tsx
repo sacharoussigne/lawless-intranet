@@ -20,7 +20,6 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  Textarea,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -34,6 +33,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   deleteAnimal,
   listAnimalHistory,
@@ -41,7 +41,10 @@ import {
   listSpeciesOptions,
   updateAnimal,
 } from '@/app/_actions/animals';
+import { BreedVariantSelect } from '@/app/_components/BreedVariantSelect';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
+import { MarkdownContent } from '@/app/_components/MarkdownContent';
+import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { ANIMAL_STATUS_LABELS, ANIMAL_STATUS_OPTIONS } from '@/lib/animals/labels';
 import { formatRpDate } from '@/lib/rpCalendar';
@@ -131,11 +134,28 @@ function animalToForm(animal: AnimalDTO): FormState {
   };
 }
 
-function FieldReadout({ label, value }: { label: string; value: ReactNode }) {
+function FieldReadout({
+  label,
+  value,
+  markdown = false,
+}: {
+  label: string;
+  value: ReactNode;
+  markdown?: boolean;
+}) {
+  const empty =
+    value == null || value === '' || (typeof value === 'string' && value.trim() === '');
+
   return (
     <div className={classes.readout}>
       <div className={classes.fieldLabel}>{label}</div>
-      <Text component="div">{value || '—'}</Text>
+      {empty ? (
+        <Text component="div">—</Text>
+      ) : markdown && typeof value === 'string' ? (
+        <MarkdownContent source={value} />
+      ) : (
+        <Text component="div">{value}</Text>
+      )}
     </div>
   );
 }
@@ -307,6 +327,22 @@ export function AnimalDetailPageClient({
     }));
   };
 
+  const handleVariantsChange = (next: { id: string; label: string }[]) => {
+    if (!form.speciesId || !form.breedId) return;
+    setSpeciesOptions((prev) =>
+      prev.map((species) =>
+        species.id !== form.speciesId
+          ? species
+          : {
+              ...species,
+              breeds: species.breeds.map((breed) =>
+                breed.id !== form.breedId ? breed : { ...breed, variants: next },
+              ),
+            },
+      ),
+    );
+  };
+
   const handleSave = () => {
     if (canUpdateCore) {
       if (!form.name.trim() || !form.speciesId || !form.breedId || !form.arrivalDate || !form.caseManagerUserId) {
@@ -456,10 +492,11 @@ export function AnimalDetailPageClient({
     <Container size="xl">
       <Group mb="md">
         <Button
+          component={Link}
+          href={t.employee.animals}
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(t.employee.animals)}
         >
           Retour
         </Button>
@@ -586,14 +623,14 @@ export function AnimalDetailPageClient({
                 searchable
                 disabled={pending || !optionsLoaded || !form.speciesId}
               />
-              <Select
-                label="Variante"
-                data={breedVariants.map((v) => ({ value: v.id, label: v.label }))}
+              <BreedVariantSelect
+                shelterSlug={shelterSlug}
+                breedId={form.breedId}
+                variants={breedVariants}
+                onVariantsChange={handleVariantsChange}
                 value={form.variantId}
                 onChange={(v) => patchForm('variantId', v)}
-                clearable
-                searchable
-                disabled={pending || !optionsLoaded || !form.breedId}
+                disabled={pending || !optionsLoaded}
               />
               <RpDateInput
                 label="Date d’arrivée"
@@ -659,29 +696,26 @@ export function AnimalDetailPageClient({
           {editing && canUpdate ? (
             <Grid>
               <Grid.Col span={12}>
-                <Textarea
+                <MarkdownTextarea
                   label="Biographie"
-                  minRows={3}
                   value={form.biography}
-                  onChange={(e) => patchForm('biography', e.currentTarget.value)}
+                  onChange={(next) => patchForm('biography', next)}
                   disabled={pending}
                 />
               </Grid.Col>
               <Grid.Col span={12}>
-                <Textarea
+                <MarkdownTextarea
                   label="Soins prodigués"
-                  minRows={3}
                   value={form.careProvided}
-                  onChange={(e) => patchForm('careProvided', e.currentTarget.value)}
+                  onChange={(next) => patchForm('careProvided', next)}
                   disabled={pending}
                 />
               </Grid.Col>
               <Grid.Col span={12}>
-                <Textarea
+                <MarkdownTextarea
                   label="Notes"
-                  minRows={3}
                   value={form.notes}
-                  onChange={(e) => patchForm('notes', e.currentTarget.value)}
+                  onChange={(next) => patchForm('notes', next)}
                   disabled={pending}
                 />
               </Grid.Col>
@@ -706,13 +740,13 @@ export function AnimalDetailPageClient({
           ) : (
             <Grid>
               <Grid.Col span={12}>
-                <FieldReadout label="Biographie" value={animal.biography} />
+                <FieldReadout label="Biographie" value={animal.biography} markdown />
               </Grid.Col>
               <Grid.Col span={12}>
-                <FieldReadout label="Soins prodigués" value={animal.careProvided} />
+                <FieldReadout label="Soins prodigués" value={animal.careProvided} markdown />
               </Grid.Col>
               <Grid.Col span={12}>
-                <FieldReadout label="Notes" value={animal.notes} />
+                <FieldReadout label="Notes" value={animal.notes} markdown />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <FieldReadout label="Adoptant(s)" value={animal.adopterName} />

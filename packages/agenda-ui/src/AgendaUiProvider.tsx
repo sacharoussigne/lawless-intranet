@@ -108,6 +108,7 @@ export type AgendaUiActions = {
       description?: string | null;
       completed?: boolean;
       categoryId?: string;
+      expectedUpdatedAt?: string;
     },
     meta?: AgendaMutationMeta,
   ) => Promise<AgendaActionResult<AgendaTodoTaskDTO>>;

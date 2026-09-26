@@ -95,6 +95,8 @@ export const updateTodoTaskSchema = z.object({
   description: z.string().trim().max(2000).optional().nullable(),
   completed: z.boolean().optional(),
   categoryId: z.string().uuid().optional(),
+  /** ISO timestamp; when set with completed, rejects stale overwrites (409). */
+  expectedUpdatedAt: z.string().datetime().optional(),
 });
 
 export const deleteTodoTaskSchema = z.object({

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { ActionIcon, Badge, Group, MultiSelect, Paper, Select, Stack, Text, TextInput } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
@@ -11,6 +12,7 @@ import {
   FOLLOW_UP_STATUS_OPTIONS,
 } from '@/lib/animals/followUpLabels';
 import { formatRpDate } from '@/lib/rpCalendar';
+import classes from './AnimalsPage.module.scss';
 import { parseIsoDateOnly, type AnimalDTO } from './types';
 
 export type SelectOption = { value: string; label: string };
@@ -63,7 +65,7 @@ type AnimalsTableProps = {
   onFollowUpStatusFilterChange: (value: string[]) => void;
   onSortStatusChange: (status: DataTableSortStatus<AnimalDTO>) => void;
   onPageChange: (page: number) => void;
-  onRowClick: (animal: AnimalDTO) => void;
+  getRowHref: (animal: AnimalDTO) => string;
   onDelete: (animal: AnimalDTO) => void | Promise<void>;
 };
 
@@ -91,7 +93,7 @@ export function AnimalsTable({
   onFollowUpStatusFilterChange,
   onSortStatusChange,
   onPageChange,
-  onRowClick,
+  getRowHref,
   onDelete,
 }: AnimalsTableProps) {
   return (
@@ -100,7 +102,7 @@ export function AnimalsTable({
         records={animals}
         highlightOnHover
         rowStyle={() => ({ cursor: 'pointer' })}
-        onRowClick={({ record }) => onRowClick(record)}
+        customRowAttributes={() => ({ style: { position: 'relative' } })}
         sortStatus={sortStatus}
         onSortStatusChange={onSortStatusChange}
         columns={[
@@ -108,6 +110,11 @@ export function AnimalsTable({
             accessor: 'name',
             title: 'Nom',
             sortable: true,
+            render: (animal) => (
+              <Link href={getRowHref(animal)} className={classes.rowLink}>
+                {animal.name}
+              </Link>
+            ),
             filter: (
               <TextInput
                 placeholder="Rechercher un nom..."
@@ -244,6 +251,7 @@ export function AnimalsTable({
                       gap="xs"
                       justify="flex-end"
                       wrap="nowrap"
+                      className={classes.rowActions}
                       onClick={(event) => event.stopPropagation()}
                     >
                       <DeleteConfirmPopover

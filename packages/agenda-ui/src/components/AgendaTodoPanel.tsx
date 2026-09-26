@@ -199,6 +199,8 @@ export function AgendaTodoPanel({
     setSelectedListId,
     selectedList,
     reload,
+    beginLocalMutation,
+    endLocalMutation,
   } = useAgendaTodoLists({
     agendaId,
     initialLists,
@@ -330,6 +332,9 @@ export function AgendaTodoPanel({
     categoryFilterIds,
     setCategoryFilterIds,
     persistCategoryFilter,
+    beginLocalMutation,
+    endLocalMutation,
+    reload,
   });
 
   const sensors = useSensors(
@@ -657,8 +662,14 @@ export function AgendaTodoPanel({
 
   return (
     <div ref={todoPanelRef} className={classes.todoPanel}>
-      <Group justify="space-between" mb="md" align="flex-start">
-        <Title order={4} className="disp-display-title">To-Do</Title>
+      <Group justify="space-between" mb="xs" align="flex-start">
+        <div>
+          <Title order={4} className="disp-display-title">To-Do</Title>
+          <Text size="xs" c="dimmed" mt={4}>
+            Les tâches cochées restent visibles 1 h, puis passent dans Archives
+            (elles ne sont pas décochées).
+          </Text>
+        </div>
         <Button
           variant="subtle"
           color="slate"

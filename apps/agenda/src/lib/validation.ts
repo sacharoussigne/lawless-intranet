@@ -124,6 +124,7 @@ export const updateTodoTaskSchema = z.object({
   description: z.string().trim().max(2000).optional().nullable(),
   completed: z.boolean().optional(),
   categoryId: z.string().uuid().optional(),
+  expectedUpdatedAt: z.string().datetime().optional(),
   meta: mutationMetaSchema,
 });
 

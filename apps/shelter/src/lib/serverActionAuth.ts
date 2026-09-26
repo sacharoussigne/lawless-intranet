@@ -50,6 +50,12 @@ export type ServerActionGuardOptions = {
     action: string;
     message?: string;
   };
+  /** Pass if the user has at least one of these permissions. */
+  anyOfPermissions?: Array<{
+    resource: string;
+    action: string;
+  }>;
+  anyOfPermissionsMessage?: string;
 };
 
 export async function requireTenantServerActionContext(
@@ -72,7 +78,20 @@ export async function requireTenantServerActionContext(
     if (!featureResult.ok) return featureResult;
   }
 
-  if (options.permission) {
+  if (options.anyOfPermissions && options.anyOfPermissions.length > 0) {
+    const allowed = options.anyOfPermissions.some((permission) =>
+      can(tenantResult.ctx.effectivePermissions, permission.resource, permission.action),
+    );
+    if (!allowed) {
+      return {
+        ok: false,
+        response: {
+          status: 403,
+          error: options.anyOfPermissionsMessage ?? 'Permission refusée',
+        },
+      };
+    }
+  } else if (options.permission) {
     const permResult = requireEffectivePermission(
       tenantResult.ctx.effectivePermissions,
       options.permission.resource,

@@ -25,6 +25,7 @@ import {
   listSpeciesOptions,
 } from '@/app/_actions/animals';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
+import { BreedVariantSelect } from '@/app/_components/BreedVariantSelect';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
@@ -192,6 +193,22 @@ function CreateAnimalForm({
     }
   };
 
+  const handleVariantsChange = (next: { id: string; label: string }[]) => {
+    if (!speciesId || !breedId) return;
+    setSpeciesOptions((prev) =>
+      prev.map((species) =>
+        species.id !== speciesId
+          ? species
+          : {
+              ...species,
+              breeds: species.breeds.map((breed) =>
+                breed.id !== breedId ? breed : { ...breed, variants: next },
+              ),
+            },
+      ),
+    );
+  };
+
   const handleSubmit = () => {
     if (!name.trim()) {
       notifications.show({ title: 'Erreur', message: 'Le nom est requis', color: 'danger' });
@@ -278,15 +295,14 @@ function CreateAnimalForm({
         />
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-        <Select
-          label="Variante"
-          data={variants.map((v) => ({ value: v.id, label: v.label }))}
+        <BreedVariantSelect
+          shelterSlug={shelterSlug}
+          breedId={breedId}
+          variants={variants}
+          onVariantsChange={handleVariantsChange}
           value={variantId}
           onChange={setVariantId}
-          clearable
-          searchable
-          disabled={pending || loadingOptions || !breedId || variants.length === 0}
-          placeholder={variants.length === 0 ? 'Aucune variante' : undefined}
+          disabled={pending || loadingOptions}
         />
         <div>
           <NumberInput
@@ -668,7 +684,7 @@ export function AnimalsPageClient({
             }}
             onSortStatusChange={setSortStatus}
             onPageChange={setPage}
-            onRowClick={(animal) => router.push(t.employee.animal(animal.id))}
+            getRowHref={(animal) => t.employee.animal(animal.id)}
             onDelete={handleDelete}
           />
         </>

@@ -51,6 +51,8 @@ export function SortableTodoTask({
       style={style}
       className={`${classes.todoTaskRow} ${canDrag && !editing ? classes.todoTaskRowDraggable : ''}`}
       data-dragging={isDragging || undefined}
+      data-todo-task-id={task.id}
+      title={`id: ${task.id}`}
       {...(canDrag && !editing ? { ...attributes, ...listeners } : {})}
     >
       <Checkbox

@@ -14,6 +14,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus } from '@tabler/icons-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { listCaseManagerOptions } from '@/app/_actions/animals';
 import { createAnimalFollowUp, listAnimalFollowUps } from '@/app/_actions/followUps';
@@ -126,10 +127,6 @@ export function AnimalFollowUpsSection({
     setDate(new Date());
     setRecipientName(defaultRecipientName?.trim() ?? '');
     setCreateOpen(true);
-  };
-
-  const openFollowUp = (followUpId: string) => {
-    router.push(t.employee.animalFollowUp(animalId, followUpId));
   };
 
   const handleCreate = () => {
@@ -257,11 +254,10 @@ export function AnimalFollowUpsSection({
       ) : (
         <Stack gap="sm">
           {sortedFollowUps.map((followUp) => (
-            <button
+            <Link
               key={followUp.id}
-              type="button"
+              href={t.employee.animalFollowUp(animalId, followUp.id)}
               className={classes.followUpCard}
-              onClick={() => openFollowUp(followUp.id)}
             >
               <div className={classes.followUpCardTop}>
                 <Text fw={700}>{followUp.motif}</Text>
@@ -289,7 +285,7 @@ export function AnimalFollowUpsSection({
                   Clôture : {followUp.closureNote}
                 </Text>
               ) : null}
-            </button>
+            </Link>
           ))}
         </Stack>
       )}

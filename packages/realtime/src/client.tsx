@@ -13,6 +13,7 @@ import { getOrCreateRealtimeClientId } from './clientId';
 import type { RealtimeEnvelope } from './types';
 
 type RealtimeHandler = (event: RealtimeEnvelope) => void;
+type RealtimeReconnectHandler = () => void;
 
 type RealtimeSubscription = {
   enabled: boolean;
@@ -24,6 +25,7 @@ type RealtimeSubscription = {
 type RealtimeContextValue = {
   clientId: string;
   subscribe: (subscription: RealtimeSubscription) => () => void;
+  subscribeReconnect: (handler: RealtimeReconnectHandler) => () => void;
 };
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -42,6 +44,8 @@ export function RealtimeProvider({
   const [clientId] = useState(() => getOrCreateRealtimeClientId(clientIdKey));
   const subscriptionsRef = useRef(new Map<number, RealtimeSubscription>());
   const nextSubscriptionIdRef = useRef(0);
+  const reconnectHandlersRef = useRef(new Map<number, RealtimeReconnectHandler>());
+  const nextReconnectIdRef = useRef(0);
 
   const subscribe = useCallback((subscription: RealtimeSubscription) => {
     const id = nextSubscriptionIdRef.current++;
@@ -52,10 +56,19 @@ export function RealtimeProvider({
     };
   }, []);
 
+  const subscribeReconnect = useCallback((handler: RealtimeReconnectHandler) => {
+    const id = nextReconnectIdRef.current++;
+    reconnectHandlersRef.current.set(id, handler);
+    return () => {
+      reconnectHandlersRef.current.delete(id);
+    };
+  }, []);
+
   useEffect(() => {
     if (!streamUrl) return;
 
     const eventSource = new EventSource(streamUrl);
+    let openedOnce = false;
 
     const handleChange = (message: MessageEvent<string>) => {
       try {
@@ -87,16 +100,28 @@ export function RealtimeProvider({
       }
     };
 
+    const handleOpen = () => {
+      if (!openedOnce) {
+        openedOnce = true;
+        return;
+      }
+      for (const handler of reconnectHandlersRef.current.values()) {
+        handler();
+      }
+    };
+
     eventSource.addEventListener('change', handleChange);
+    eventSource.addEventListener('open', handleOpen);
 
     return () => {
       eventSource.removeEventListener('change', handleChange);
+      eventSource.removeEventListener('open', handleOpen);
       eventSource.close();
     };
   }, [clientId, streamUrl]);
 
   return (
-    <RealtimeContext.Provider value={{ clientId, subscribe }}>
+    <RealtimeContext.Provider value={{ clientId, subscribe, subscribeReconnect }}>
       {children}
     </RealtimeContext.Provider>
   );
@@ -112,6 +137,23 @@ export function useRealtimeContext(): RealtimeContextValue {
 
 export function useOptionalRealtimeClientId(): string | undefined {
   return useContext(RealtimeContext)?.clientId;
+}
+
+export function useRealtimeReconnect(
+  onReconnect: () => void,
+  enabled = true,
+): void {
+  const context = useContext(RealtimeContext);
+  const handlerRef = useRef(onReconnect);
+
+  useEffect(() => {
+    handlerRef.current = onReconnect;
+  }, [onReconnect]);
+
+  useEffect(() => {
+    if (!context || !enabled) return;
+    return context.subscribeReconnect(() => handlerRef.current());
+  }, [context, enabled]);
 }
 
 export function useRealtimeSubscription(options: {
