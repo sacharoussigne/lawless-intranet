@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ActionIcon,
   Button,
@@ -59,7 +59,6 @@ export function AnimalDocumentTemplatesPageClient({
   shelterSlug,
   initialTemplates,
 }: AnimalDocumentTemplatesPageClientProps) {
-  const router = useRouter();
   const t = useTenantRoutes();
   const [templates, setTemplates] = useState(initialTemplates);
   const [nameFilter, setNameFilter] = useState('');
@@ -130,10 +129,11 @@ export function AnimalDocumentTemplatesPageClient({
     <Container size="xl">
       <Group mb="md">
         <Button
+          component={Link}
+          href={t.management.index}
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(t.management.index)}
         >
           Retour
         </Button>
@@ -147,9 +147,10 @@ export function AnimalDocumentTemplatesPageClient({
       <Stack gap="md">
         <Group justify="flex-end">
           <Button
+            component={Link}
+            href={t.management.templateNew}
             leftSection={<IconPlus size={16} />}
             color="terracotta"
-            onClick={() => router.push(t.management.templateNew)}
           >
             Nouveau modèle
           </Button>
@@ -236,18 +237,20 @@ export function AnimalDocumentTemplatesPageClient({
                 render: (template) => (
                   <Group gap="xs" justify="flex-end" wrap="nowrap">
                     <ActionIcon
+                      component={Link}
+                      href={t.management.templateTest(template.id)}
                       variant="light"
                       color="moss"
-                      onClick={() => router.push(t.management.templateTest(template.id))}
                       title="Tester le modèle"
                       aria-label={`Tester ${template.name}`}
                     >
                       <IconFlask size={16} />
                     </ActionIcon>
                     <ActionIcon
+                      component={Link}
+                      href={t.management.templateEdit(template.id)}
                       variant="light"
                       color="terracotta"
-                      onClick={() => router.push(t.management.templateEdit(template.id))}
                       aria-label={`Modifier ${template.name}`}
                     >
                       <IconPencil size={16} />

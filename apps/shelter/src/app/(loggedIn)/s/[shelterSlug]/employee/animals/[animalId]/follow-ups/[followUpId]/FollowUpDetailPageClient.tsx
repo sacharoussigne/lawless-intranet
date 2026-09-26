@@ -3,7 +3,7 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import { Badge, Button, Container, Group, Text, Title } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { MarkdownContent } from '@/app/_components/MarkdownContent';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { buildAnimalTemplateVariables } from '@/lib/animals/documents';
@@ -58,7 +58,6 @@ export function FollowUpDetailPageClient({
   initialFollowUp: FollowUpDTO;
   availableTemplates: AnimalDocumentTemplateListItem[];
 }) {
-  const router = useRouter();
   const t = useTenantRoutes();
   const { permissions } = usePermissions();
   const canUpdate = Boolean(permissions?.animals.update);
@@ -91,10 +90,11 @@ export function FollowUpDetailPageClient({
     <Container size="xl">
       <Group mb="md">
         <Button
+          component={Link}
+          href={t.employee.animal(animal.id)}
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(t.employee.animal(animal.id))}
         >
           Retour
         </Button>

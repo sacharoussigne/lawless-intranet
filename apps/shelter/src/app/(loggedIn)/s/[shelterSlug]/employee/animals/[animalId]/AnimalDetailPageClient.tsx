@@ -33,6 +33,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   deleteAnimal,
   listAnimalHistory,
@@ -491,10 +492,11 @@ export function AnimalDetailPageClient({
     <Container size="xl">
       <Group mb="md">
         <Button
+          component={Link}
+          href={t.employee.animals}
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(t.employee.animals)}
         >
           Retour
         </Button>

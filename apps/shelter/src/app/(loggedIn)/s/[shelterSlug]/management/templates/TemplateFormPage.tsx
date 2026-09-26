@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Container, Grid, Group, Stack, Tabs, TextInput, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -120,10 +121,11 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
     <Container size="xl">
       <Group mb="md">
         <Button
+          component={Link}
+          href={routes.management.templates}
           variant="subtle"
           color="terracotta"
           leftSection={<IconArrowLeft size={16} />}
-          onClick={() => router.push(routes.management.templates)}
         >
           Retour aux modèles
         </Button>

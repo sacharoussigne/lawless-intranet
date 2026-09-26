@@ -684,7 +684,7 @@ export function AnimalsPageClient({
             }}
             onSortStatusChange={setSortStatus}
             onPageChange={setPage}
-            onRowClick={(animal) => router.push(t.employee.animal(animal.id))}
+            getRowHref={(animal) => t.employee.animal(animal.id)}
             onDelete={handleDelete}
           />
         </>

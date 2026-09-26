@@ -6,6 +6,22 @@
   }
 }
 
+.rowLink {
+  color: inherit;
+  text-decoration: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+}
+
+.rowActions {
+  position: relative;
+  z-index: 1;
+}
+
 .fieldLabel {
   font-size: 0.75rem;
   font-weight: 700;
