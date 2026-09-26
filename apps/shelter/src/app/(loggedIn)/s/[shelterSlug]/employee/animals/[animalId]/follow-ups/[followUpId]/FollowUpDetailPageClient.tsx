@@ -4,6 +4,7 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { Badge, Button, Container, Group, Text, Title } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { MarkdownContent } from '@/app/_components/MarkdownContent';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { buildAnimalTemplateVariables } from '@/lib/animals/documents';
 import { ANIMAL_STATUS_LABELS } from '@/lib/animals/labels';
@@ -14,13 +15,32 @@ import { FollowUpThread } from '../../FollowUpThread';
 import classes from '../../FollowUps.module.scss';
 import type { FollowUpDTO } from '../../followUpTypes';
 
-function SideField({ label, value }: { label: string; value: ReactNode }) {
+function SideField({
+  label,
+  value,
+  markdown = false,
+}: {
+  label: string;
+  value: ReactNode;
+  markdown?: boolean;
+}) {
+  const empty =
+    value == null || value === '' || (typeof value === 'string' && value.trim() === '');
+
   return (
     <div className={classes.sideField}>
       <div className={classes.sideFieldLabel}>{label}</div>
-      <Text className={classes.sideFieldValue} size="sm">
-        {value || '—'}
-      </Text>
+      {empty ? (
+        <Text className={classes.sideFieldValue} size="sm">
+          —
+        </Text>
+      ) : markdown && typeof value === 'string' ? (
+        <MarkdownContent source={value} className={classes.sideFieldValue} />
+      ) : (
+        <Text className={classes.sideFieldValue} size="sm">
+          {value}
+        </Text>
+      )}
     </div>
   );
 }
@@ -105,9 +125,9 @@ export function FollowUpDetailPageClient({
           <SideField label="Espèce" value={animal.species.name} />
           <SideField label="Race" value={animal.breed.name} />
           <SideField label="Responsable" value={animal.caseManagerName} />
-          <SideField label="Biographie" value={animal.biography} />
-          <SideField label="Soins prodigués" value={animal.careProvided} />
-          <SideField label="Notes" value={animal.notes} />
+          <SideField label="Biographie" value={animal.biography} markdown />
+          <SideField label="Soins prodigués" value={animal.careProvided} markdown />
+          <SideField label="Notes" value={animal.notes} markdown />
         </aside>
       </div>
     </Container>

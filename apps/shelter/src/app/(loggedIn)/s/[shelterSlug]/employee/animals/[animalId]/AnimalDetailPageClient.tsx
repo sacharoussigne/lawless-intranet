@@ -20,7 +20,6 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  Textarea,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -42,6 +41,8 @@ import {
   updateAnimal,
 } from '@/app/_actions/animals';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
+import { MarkdownContent } from '@/app/_components/MarkdownContent';
+import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { ANIMAL_STATUS_LABELS, ANIMAL_STATUS_OPTIONS } from '@/lib/animals/labels';
 import { formatRpDate } from '@/lib/rpCalendar';
@@ -131,11 +132,28 @@ function animalToForm(animal: AnimalDTO): FormState {
   };
 }
 
-function FieldReadout({ label, value }: { label: string; value: ReactNode }) {
+function FieldReadout({
+  label,
+  value,
+  markdown = false,
+}: {
+  label: string;
+  value: ReactNode;
+  markdown?: boolean;
+}) {
+  const empty =
+    value == null || value === '' || (typeof value === 'string' && value.trim() === '');
+
   return (
     <div className={classes.readout}>
       <div className={classes.fieldLabel}>{label}</div>
-      <Text component="div">{value || '—'}</Text>
+      {empty ? (
+        <Text component="div">—</Text>
+      ) : markdown && typeof value === 'string' ? (
+        <MarkdownContent source={value} />
+      ) : (
+        <Text component="div">{value}</Text>
+      )}
     </div>
   );
 }
@@ -659,29 +677,26 @@ export function AnimalDetailPageClient({
           {editing && canUpdate ? (
             <Grid>
               <Grid.Col span={12}>
-                <Textarea
+                <MarkdownTextarea
                   label="Biographie"
-                  minRows={3}
                   value={form.biography}
-                  onChange={(e) => patchForm('biography', e.currentTarget.value)}
+                  onChange={(next) => patchForm('biography', next)}
                   disabled={pending}
                 />
               </Grid.Col>
               <Grid.Col span={12}>
-                <Textarea
+                <MarkdownTextarea
                   label="Soins prodigués"
-                  minRows={3}
                   value={form.careProvided}
-                  onChange={(e) => patchForm('careProvided', e.currentTarget.value)}
+                  onChange={(next) => patchForm('careProvided', next)}
                   disabled={pending}
                 />
               </Grid.Col>
               <Grid.Col span={12}>
-                <Textarea
+                <MarkdownTextarea
                   label="Notes"
-                  minRows={3}
                   value={form.notes}
-                  onChange={(e) => patchForm('notes', e.currentTarget.value)}
+                  onChange={(next) => patchForm('notes', next)}
                   disabled={pending}
                 />
               </Grid.Col>
@@ -706,13 +721,13 @@ export function AnimalDetailPageClient({
           ) : (
             <Grid>
               <Grid.Col span={12}>
-                <FieldReadout label="Biographie" value={animal.biography} />
+                <FieldReadout label="Biographie" value={animal.biography} markdown />
               </Grid.Col>
               <Grid.Col span={12}>
-                <FieldReadout label="Soins prodigués" value={animal.careProvided} />
+                <FieldReadout label="Soins prodigués" value={animal.careProvided} markdown />
               </Grid.Col>
               <Grid.Col span={12}>
-                <FieldReadout label="Notes" value={animal.notes} />
+                <FieldReadout label="Notes" value={animal.notes} markdown />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <FieldReadout label="Adoptant(s)" value={animal.adopterName} />
