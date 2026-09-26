@@ -40,6 +40,7 @@ import {
   listSpeciesOptions,
   updateAnimal,
 } from '@/app/_actions/animals';
+import { BreedVariantSelect } from '@/app/_components/BreedVariantSelect';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import { MarkdownContent } from '@/app/_components/MarkdownContent';
 import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
@@ -325,6 +326,22 @@ export function AnimalDetailPageClient({
     }));
   };
 
+  const handleVariantsChange = (next: { id: string; label: string }[]) => {
+    if (!form.speciesId || !form.breedId) return;
+    setSpeciesOptions((prev) =>
+      prev.map((species) =>
+        species.id !== form.speciesId
+          ? species
+          : {
+              ...species,
+              breeds: species.breeds.map((breed) =>
+                breed.id !== form.breedId ? breed : { ...breed, variants: next },
+              ),
+            },
+      ),
+    );
+  };
+
   const handleSave = () => {
     if (canUpdateCore) {
       if (!form.name.trim() || !form.speciesId || !form.breedId || !form.arrivalDate || !form.caseManagerUserId) {
@@ -604,14 +621,14 @@ export function AnimalDetailPageClient({
                 searchable
                 disabled={pending || !optionsLoaded || !form.speciesId}
               />
-              <Select
-                label="Variante"
-                data={breedVariants.map((v) => ({ value: v.id, label: v.label }))}
+              <BreedVariantSelect
+                shelterSlug={shelterSlug}
+                breedId={form.breedId}
+                variants={breedVariants}
+                onVariantsChange={handleVariantsChange}
                 value={form.variantId}
                 onChange={(v) => patchForm('variantId', v)}
-                clearable
-                searchable
-                disabled={pending || !optionsLoaded || !form.breedId}
+                disabled={pending || !optionsLoaded}
               />
               <RpDateInput
                 label="Date d’arrivée"
