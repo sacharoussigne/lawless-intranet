@@ -480,6 +480,3 @@ export async function moveAgendaTodoTask(
   return parseJsonResponse(response);
 }
 
-export function getAgendaStreamUrl(params: AgendaScopeParams): string {
-  return `${getAgendaUrl()}/api/stream${toQuery(params)}`;
-}
