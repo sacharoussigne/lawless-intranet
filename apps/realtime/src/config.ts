@@ -1,20 +1,29 @@
 import { z } from 'zod';
+import { REALTIME_DEV_DEFAULTS } from '@lawless-intranet/realtime';
 
 const portSchema = z.coerce.number().int().min(0).max(65535);
+
+/** Optional secret; an empty value (`KEY=` in .env) counts as unset. */
+function optionalSecret(name: string) {
+  return z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(16, `${name} must be at least 16 characters`).optional(),
+  );
+}
 
 const envSchema = z.object({
   NODE_ENV: z.string().default('development'),
   HOST: z.string().default('0.0.0.0'),
   /** Public websocket port (routed by nginx-proxy in production). */
-  WS_PORT: portSchema.default(3007),
+  WS_PORT: portSchema.default(REALTIME_DEV_DEFAULTS.wsPort),
   /** Internal HTTP port for services (/publish, /revoke). Never routed publicly. */
-  INTERNAL_PORT: portSchema.default(3008),
+  INTERNAL_PORT: portSchema.default(REALTIME_DEV_DEFAULTS.internalPort),
   /** Comma-separated browser origins allowed to connect. Empty = any (dev only). */
   ALLOWED_ORIGINS: z.string().default(''),
-  /** Verifies tokens signed by host apps (dispensary, shelter). */
-  REALTIME_TOKEN_SECRET: z.string().min(16, 'REALTIME_TOKEN_SECRET must be at least 16 characters'),
-  /** Authenticates services calling the internal port. */
-  REALTIME_INTERNAL_SECRET: z.string().min(16, 'REALTIME_INTERNAL_SECRET must be at least 16 characters'),
+  /** Verifies tokens signed by host apps (dispensary, shelter). Dev default outside production. */
+  REALTIME_TOKEN_SECRET: optionalSecret('REALTIME_TOKEN_SECRET'),
+  /** Authenticates services calling the internal port. Dev default outside production. */
+  REALTIME_INTERNAL_SECRET: optionalSecret('REALTIME_INTERNAL_SECRET'),
 });
 
 export type RealtimeServerConfig = {
@@ -46,8 +55,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RealtimeServer
   const data = parsed.data;
   const production = data.NODE_ENV === 'production';
   const allowedOrigins = parseOrigins(data.ALLOWED_ORIGINS);
-  if (production && allowedOrigins.length === 0) {
-    throw new Error('Invalid realtime configuration: ALLOWED_ORIGINS is required in production');
+  if (production) {
+    const missing = ['ALLOWED_ORIGINS', 'REALTIME_TOKEN_SECRET', 'REALTIME_INTERNAL_SECRET'].filter(
+      (key) => (key === 'ALLOWED_ORIGINS' ? allowedOrigins.length === 0 : !data[key as keyof typeof data]),
+    );
+    if (missing.length > 0) {
+      throw new Error(`Invalid realtime configuration: ${missing.join(', ')} required in production`);
+    }
   }
 
   return {
@@ -55,8 +69,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RealtimeServer
     wsPort: data.WS_PORT,
     internalPort: data.INTERNAL_PORT,
     allowedOrigins,
-    tokenSecret: data.REALTIME_TOKEN_SECRET,
-    internalSecret: data.REALTIME_INTERNAL_SECRET,
+    tokenSecret: data.REALTIME_TOKEN_SECRET ?? REALTIME_DEV_DEFAULTS.tokenSecret,
+    internalSecret: data.REALTIME_INTERNAL_SECRET ?? REALTIME_DEV_DEFAULTS.internalSecret,
     production,
   };
 }

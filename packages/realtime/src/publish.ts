@@ -4,6 +4,7 @@ import {
   type RealtimeRevokeRequest,
 } from './protocol';
 import type { RealtimeEnvelope } from './types';
+import { REALTIME_DEV_DEFAULTS, realtimeEnvOrDevDefault } from './devDefaults';
 
 /**
  * Server-side helpers for services publishing to the realtime server
@@ -13,9 +14,9 @@ import type { RealtimeEnvelope } from './types';
  * Clients resync on reconnect, so a lost notification is only a delay.
  */
 type PublishOptions = {
-  /** Defaults to REALTIME_INTERNAL_URL. */
+  /** Defaults to REALTIME_INTERNAL_URL (localhost:3008 outside production). */
   baseUrl?: string;
-  /** Defaults to REALTIME_INTERNAL_SECRET. */
+  /** Defaults to REALTIME_INTERNAL_SECRET (dev secret outside production). */
   secret?: string;
   timeoutMs?: number;
   logLabel?: string;
@@ -23,16 +24,31 @@ type PublishOptions = {
 
 const DEFAULT_TIMEOUT_MS = 2000;
 
+let missingConfigWarned = false;
+
+function warnMissingConfig(label: string): void {
+  if (missingConfigWarned) return;
+  missingConfigWarned = true;
+  console.warn(
+    `[${label}] REALTIME_INTERNAL_URL / REALTIME_INTERNAL_SECRET not set: realtime notifications are disabled`,
+  );
+}
+
 async function postInternal(
   path: string,
   body: unknown,
   options: PublishOptions,
 ): Promise<boolean> {
-  const baseUrl = options.baseUrl ?? process.env.REALTIME_INTERNAL_URL;
-  const secret = options.secret ?? process.env.REALTIME_INTERNAL_SECRET;
+  const baseUrl =
+    options.baseUrl ??
+    realtimeEnvOrDevDefault(process.env.REALTIME_INTERNAL_URL, REALTIME_DEV_DEFAULTS.internalUrl);
+  const secret =
+    options.secret ??
+    realtimeEnvOrDevDefault(process.env.REALTIME_INTERNAL_SECRET, REALTIME_DEV_DEFAULTS.internalSecret);
   const label = options.logLabel ?? 'realtime';
 
   if (!baseUrl || !secret) {
+    warnMissingConfig(label);
     return false;
   }
 

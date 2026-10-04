@@ -7,6 +7,7 @@ import { actionErrorParser } from '@/lib/action';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { agendaCookie, agendaScope, AGENDA_SCOPE_TYPE } from '@/lib/agenda/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
+import { getRealtimeTokenSecret } from '@/lib/realtime/socketConfig';
 
 /**
  * Signs a short-lived token listing the realtime topics the current user may
@@ -18,7 +19,7 @@ export async function getRealtimeToken(dispensarySlug: string) {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
 
-    const secret = process.env.REALTIME_TOKEN_SECRET;
+    const secret = getRealtimeTokenSecret();
     if (!secret) {
       return { status: 503, error: 'Temps réel non configuré' };
     }

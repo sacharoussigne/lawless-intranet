@@ -8,10 +8,10 @@ function loadConfigOrIdle(): RealtimeServerConfig | null {
     if (process.env.NODE_ENV === 'production') {
       throw error;
     }
-    // In `pnpm dev`, a missing apps/realtime/.env must not stop the other apps.
+    // In `pnpm dev`, an invalid apps/realtime/.env must not stop the other apps.
     console.error(
       `[realtime] ${error instanceof Error ? error.message : String(error)}\n` +
-        '[realtime] Server disabled: copy apps/realtime/.env.example to apps/realtime/.env (same secrets as dispensary and agenda).',
+        '[realtime] Server disabled: fix or remove the REALTIME_* values in apps/realtime/.env (none are needed in dev).',
     );
     return null;
   }
@@ -20,7 +20,7 @@ function loadConfigOrIdle(): RealtimeServerConfig | null {
 const config = loadConfigOrIdle();
 
 if (!config) {
-  // Keep the dev task alive; restart `pnpm dev` once .env is created.
+  // Keep the dev task alive; restart `pnpm dev` once .env is fixed.
   setInterval(() => {}, 1 << 30);
 } else {
   const server = createRealtimeServer(config);

@@ -17,3 +17,8 @@ export {
   type RealtimePublishRequest,
   type RealtimeRevokeRequest,
 } from './protocol';
+export {
+  REALTIME_DEV_DEFAULTS,
+  isRealtimeProduction,
+  realtimeEnvOrDevDefault,
+} from './devDefaults';

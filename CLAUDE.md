@@ -51,7 +51,7 @@ Migration progressive SSE → WebSocket ; l'agenda et les todos sont déjà sur 
 
 ```bash
 pnpm install
-pnpm dev                                  # toutes les apps (turbo), serveur realtime compris (apps/realtime/.env requis)
+pnpm dev                                  # toutes les apps (turbo), serveur realtime compris (aucune config en dev)
 pnpm --filter dispensary dev              # une seule app
 pnpm --filter <app> typecheck             # tsc --noEmit
 pnpm --filter <app> lint

@@ -20,6 +20,7 @@ import { userHasAnyCabinetAccess, listAccessibleCabinetIds } from '@/lib/cabinet
 import { userHasAccessibleChests } from '@/lib/chests/access';
 import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
 import { DispensaryRealtimeSocketShell } from './DispensaryRealtimeSocketShell';
+import { getRealtimePublicUrl } from '@/lib/realtime/socketConfig';
 import { OrdersRealtimeBridge } from './OrdersRealtimeBridge';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
@@ -115,7 +116,7 @@ export default async function DispensaryLayout({
       <DispensaryRealtimeShell>
         <DispensaryRealtimeSocketShell
           dispensarySlug={dispensarySlug}
-          url={process.env.REALTIME_PUBLIC_URL ?? ''}
+          url={getRealtimePublicUrl()}
         >
         <QueryProvider>
           <OrdersRealtimeBridge />

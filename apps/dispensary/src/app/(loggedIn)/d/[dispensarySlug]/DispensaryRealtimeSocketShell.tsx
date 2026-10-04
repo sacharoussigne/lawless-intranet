@@ -40,7 +40,7 @@ export function DispensaryRealtimeSocketShell({
   children,
 }: {
   dispensarySlug: string;
-  /** REALTIME_PUBLIC_URL, read at runtime by the server layout. Empty disables. */
+  /** REALTIME_PUBLIC_URL (ws://localhost:3007 in dev), read at runtime by the server layout. Empty disables. */
   url: string;
   children: ReactNode;
 }) {
