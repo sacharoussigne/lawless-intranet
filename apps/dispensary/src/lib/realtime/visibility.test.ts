@@ -3,7 +3,7 @@ import { REALTIME_DOMAIN } from '@lawless-intranet/realtime';
 import { isDispensaryRealtimeVisibleToViewer } from '@/lib/realtime/visibility';
 
 describe('isDispensaryRealtimeVisibleToViewer', () => {
-  it('allows agenda when enabled', () => {
+  it('ignores agenda events (delivered over the realtime websocket)', () => {
     expect(
       isDispensaryRealtimeVisibleToViewer(
         {
@@ -11,9 +11,9 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
           type: 'todos',
           payload: { agendaId: 'a1' },
         },
-        { agenda: true, weeklyActivity: null, sales: null, orders: false },
+        { weeklyActivity: null, sales: null, orders: true },
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('hides sales without sales filter', () => {
@@ -29,7 +29,7 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
             periodEnd: '2026-01-07',
           },
         },
-        { agenda: true, weeklyActivity: null, sales: null, orders: false },
+        { weeklyActivity: null, sales: null, orders: false },
       ),
     ).toBe(false);
   });
@@ -42,7 +42,7 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
           type: 'orders',
           payload: { orderId: 'o1' },
         },
-        { agenda: false, weeklyActivity: null, sales: null, orders: true },
+        { weeklyActivity: null, sales: null, orders: true },
       ),
     ).toBe(true);
   });
@@ -62,7 +62,6 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
           },
         },
         {
-          agenda: false,
           weeklyActivity: {
             canEditAll: false,
             viewerUserId: 'u2',

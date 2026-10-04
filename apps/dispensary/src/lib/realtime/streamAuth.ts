@@ -1,6 +1,5 @@
 import { can } from '@lawless-intranet/auth-permissions';
 import { getRequestAuthSession } from '@/lib/authSession';
-import { userHasAnyAgendaAccess } from '@/lib/agenda/access';
 import { getAppFeatureActionBlock, getAppSettings } from '@/lib/appSettings';
 import {
   canEditAllWeeklyDispensaryActivity,
@@ -34,19 +33,6 @@ export async function requireDispensaryRealtimeStreamAccess(
       dispensarySlug,
     );
     const settings = await getAppSettings(dispensary.id);
-
-    let agenda = false;
-    if (settings.featureAgendaEnabled) {
-      const featureBlock = await getAppFeatureActionBlock(dispensary.id, 'agenda');
-      if (!featureBlock) {
-        agenda = await userHasAnyAgendaAccess(
-          dispensary.id,
-          session.user.id,
-          session.user.role,
-          effectiveRole,
-        );
-      }
-    }
 
     let weeklyActivity: DispensaryRealtimeViewerFilter['weeklyActivity'] = null;
     if (settings.featureWeeklyDispensaryActivityEnabled) {
@@ -85,7 +71,7 @@ export async function requireDispensaryRealtimeStreamAccess(
       }
     }
 
-    if (!agenda && !weeklyActivity && !sales && !orders) {
+    if (!weeklyActivity && !sales && !orders) {
       return { ok: false, status: 403, error: 'Aucun flux temps réel autorisé' };
     }
 
@@ -93,7 +79,7 @@ export async function requireDispensaryRealtimeStreamAccess(
       ok: true,
       dispensaryId: dispensary.id,
       userId: session.user.id,
-      filter: { agenda, weeklyActivity, sales, orders },
+      filter: { weeklyActivity, sales, orders },
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '';

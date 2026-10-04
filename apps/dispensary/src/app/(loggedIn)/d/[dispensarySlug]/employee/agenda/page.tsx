@@ -1,4 +1,4 @@
-import dayjs from '@/lib/dayjs';
+import { getAgendaCalendarRange } from '@lawless-intranet/agenda-ui';
 import { getAgendaPageBootstrap } from '@/app/_actions/agenda/agendas';
 import { listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaTodoLists } from '@/app/_actions/agenda/todoLists';
@@ -30,14 +30,13 @@ export default async function AgendaPage({
   const { agendas, isAdmin } = bootstrap;
   const firstAgendaId = agendas[0]?.id;
 
-  const rangeStart = dayjs().startOf('month').subtract(1, 'week').toDate();
-  const rangeEnd = dayjs().endOf('month').add(1, 'week').toDate();
+  // Same range as the calendar's default month view, so the client reuses this data.
+  const initialEventsRange = getAgendaCalendarRange('month', new Date());
 
   const [eventsResult, todosResult] = await Promise.all([
     listAgendaEvents(dispensarySlug, {
       agendaId: firstAgendaId,
-      rangeStart: rangeStart.toISOString(),
-      rangeEnd: rangeEnd.toISOString(),
+      ...initialEventsRange,
     }),
     firstAgendaId
       ? listAgendaTodoLists(dispensarySlug, firstAgendaId)
@@ -54,6 +53,7 @@ export default async function AgendaPage({
           ? eventsResult.data ?? []
           : []
       }
+      initialEventsRange={initialEventsRange}
       initialTodoLists={
         todosResult.status === 200 && 'data' in todosResult
           ? todosResult.data ?? []
