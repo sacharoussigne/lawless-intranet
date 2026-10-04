@@ -8,7 +8,8 @@ function createClientId(prefix: string): string {
 }
 
 export function getOrCreateRealtimeClientId(storageKey = 'default'): string {
-  if (typeof window === 'undefined') {
+  // globalThis lookup keeps this module type-safe for non-DOM (server) consumers.
+  if (typeof (globalThis as { window?: unknown }).window === 'undefined') {
     return '';
   }
 
