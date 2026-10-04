@@ -567,6 +567,37 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  apps/realtime:
+    dependencies:
+      '@lawless-intranet/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
+      ws:
+        specifier: ^8.18.3
+        version: 8.22.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.2
+      esbuild:
+        specifier: ^0.28.1
+        version: 0.28.1
+      tsx:
+        specifier: ^4.21.0
+        version: 4.22.4
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
+
   apps/shelter:
     dependencies:
       '@dnd-kit/core':
@@ -1012,6 +1043,9 @@ importers:
 
   packages/realtime:
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
       '@types/pg':
         specifier: ^8.16.0
         version: 8.20.0
@@ -2580,6 +2614,9 @@ packages:
 
   '@types/warning@3.0.4':
     resolution: {integrity: sha512-CqN8MnISMwQbLJXO3doBAV4Yw9hx9/Pyr2rZ78+NfaCnhyRA/nKrpyk6E7mKw17ZOaQdLpK9GiUjrqLzBlN3sg==}
+
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
 
   '@typescript-eslint/eslint-plugin@8.61.0':
     resolution: {integrity: sha512-bFNvl9ZczlVb+wR2Akszf3gHfKVj/8WanXaGJ3UstTA7brNKg0cNdk6X1Psu5V7MZ2oQtzZKOEzIUehaoxbDGw==}
@@ -5268,6 +5305,18 @@ packages:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
 
+  ws@8.22.0:
+    resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
@@ -6519,6 +6568,10 @@ snapshots:
   '@types/use-sync-external-store@0.0.6': {}
 
   '@types/warning@3.0.4': {}
+
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 20.19.43
 
   '@typescript-eslint/eslint-plugin@8.61.0(@typescript-eslint/parser@8.61.0(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)':
     dependencies:
@@ -9856,6 +9909,8 @@ snapshots:
       stackback: 0.0.2
 
   word-wrap@1.2.5: {}
+
+  ws@8.22.0: {}
 
   xtend@4.0.2: {}
 

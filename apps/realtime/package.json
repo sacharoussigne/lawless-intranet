@@ -1,0 +1,26 @@
+{
+  "name": "realtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/server.mjs --external:bufferutil --external:utf-8-validate --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "start": "node dist/server.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@lawless-intranet/realtime": "workspace:*",
+    "ws": "^8.18.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^2.1.9"
+  }
+}
