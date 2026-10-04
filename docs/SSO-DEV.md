@@ -12,6 +12,7 @@ Add to your hosts file (required for SSO cookie sharing on `.localhost`):
 127.0.0.1 agenda.localhost
 127.0.0.1 bank.localhost
 127.0.0.1 inventory.localhost
+127.0.0.1 realtime.localhost
 ```
 
 On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
@@ -29,6 +30,7 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 | agenda (API) | http://agenda.localhost:3003 | 3003 |
 | bank (API) | http://bank.localhost:3004 | 3004 |
 | inventory (API) | http://inventory.localhost:3005 | 3005 |
+| realtime (WebSocket) | ws://realtime.localhost:3007 (interne : 3008) | 3007 / 3008 |
 
 ## Environment
 
@@ -59,6 +61,10 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
    - `INVENTORY_URL=http://localhost:3005`
 15. Point shelter at bank: `BANK_URL=http://localhost:3004`
 16. In auth `.env`, set `SHELTER_URL` / `NEXT_PUBLIC_SHELTER_URL` to `http://localhost:3006` (or `http://shelter.localhost:3006`)
+17. Realtime websocket (agenda/todos): run `apps/realtime` (Docker, or `pnpm --filter realtime dev:server` with `apps/realtime/.env`), then
+   - same `REALTIME_TOKEN_SECRET` in realtime + dispensary, and `REALTIME_PUBLIC_URL=ws://realtime.localhost:3007` in dispensary
+   - same `REALTIME_INTERNAL_SECRET` in realtime + agenda, and `REALTIME_INTERNAL_URL=http://localhost:3008` in agenda
+   - `ALLOWED_ORIGINS` in realtime must contain the dispensary origin (e.g. `http://dispensary.localhost:3000`)
 
 Optional root `.env` for one-shot migration scripts:
 

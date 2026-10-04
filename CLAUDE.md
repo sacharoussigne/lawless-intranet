@@ -19,10 +19,11 @@ Toutes les apps sont en Next.js 16 (App Router), React 19, Prisma 7 (`@prisma/ad
 | `apps/dispensary` | 3000 | Front du dispensaire (Mantine) |
 | `apps/auth` | 3001 | Fournisseur d'identité SSO (Better Auth, Discord OAuth) |
 | `apps/documents` | 3002 | API des documents et templates |
-| `apps/agenda` | 3003 | API agenda et todos (+ SSE temps réel) |
+| `apps/agenda` | 3003 | API agenda et todos (publie ses changements vers `realtime`) |
 | `apps/bank` | 3004 | API banque (semaines, transactions, transactions planifiées) |
 | `apps/inventory` | 3005 | API inventaire |
 | `apps/shelter` | 3006 | Front du refuge (Mantine) |
+| `apps/realtime` | 3007 / 3008 | Serveur WebSocket temps réel (Node + `ws`, sans Next ni base) |
 
 Les **services** (documents, agenda, bank, inventory) n'exposent que des route handlers `src/app/api/**/route.ts`. Leurs données sont cloisonnées par `scopeType` / `scopeId` (par exemple le dispensaire X ou le refuge Y). Ils authentifient l'appelant de deux façons :
 - le cookie de session SSO, transmis tel quel (`getSession(cookieHeader)` de `@lawless-intranet/auth-client/server`) ;
@@ -33,10 +34,18 @@ Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, san
 - `*-client` (`agenda`, `bank`, `documents`, `inventory`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
 - `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
-- `realtime` : hub SSE avec bus `pg LISTEN/NOTIFY` (`./server`, `./client`).
+- `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services), et l'ancien SSE (`./server`, `./client`) encore utilisé par weeklyActivity, sales, orders et waitlist.
 - `mail-template-engine` : parseur et moteur de rendu des templates (variables, conditions).
 
-SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir `docs/SSO-DEV.md`. Docker et déploiement : `docs/DOCKER.md`.
+SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir `docs/SSO-DEV.md`. Docker et déploiement : `docs/DOCKER.md` (le serveur `realtime` a son propre `docker/realtime.Dockerfile`).
+
+## Temps réel
+
+Migration progressive SSE → WebSocket ; l'agenda et les todos sont déjà sur `apps/realtime`.
+- Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`getRealtimeToken` dans `apps/dispensary/src/app/_actions/realtime.ts`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
+- Les services publient après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Exemple : `apps/agenda/src/lib/realtime/broadcast.ts`.
+- Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query**, jamais de patch d'état à partir du message. Après chaque (re)connexion, `useRealtimeSocketResync` recharge tout.
+- Pour migrer un domaine : définir ses topics (`packages/realtime/src/topics.ts`), les ajouter au jeton, publier depuis le service, puis consommer avec `useRealtimeSocketEvents`.
 
 ## Commandes
 
@@ -50,6 +59,7 @@ pnpm --filter <app> test                  # vitest (dispensary, shelter, documen
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate
+pnpm --filter realtime dev:server        # serveur WebSocket hors Docker (exclu de `pnpm dev`)
 ```
 
 Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage.
