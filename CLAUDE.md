@@ -51,7 +51,7 @@ Migration progressive SSE → WebSocket ; l'agenda et les todos sont déjà sur 
 
 ```bash
 pnpm install
-pnpm dev                                  # toutes les apps (turbo)
+pnpm dev                                  # toutes les apps (turbo), serveur realtime compris (apps/realtime/.env requis)
 pnpm --filter dispensary dev              # une seule app
 pnpm --filter <app> typecheck             # tsc --noEmit
 pnpm --filter <app> lint
@@ -59,7 +59,6 @@ pnpm --filter <app> test                  # vitest (dispensary, shelter, documen
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate
-pnpm --filter realtime dev:server        # serveur WebSocket hors Docker (exclu de `pnpm dev`)
 ```
 
 Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage.
