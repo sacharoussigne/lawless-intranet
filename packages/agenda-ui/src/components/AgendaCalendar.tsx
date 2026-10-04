@@ -1,18 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
 import { Calendar, type View } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import dayjs from '../dayjs';
 import type { AgendaEventDTO } from '../types';
-import { useAgendaUi } from '../AgendaUiProvider';
-import { runAgendaAction } from '../runAgendaAction';
-import {
-  isAgendaCalendarView,
-  parseAgendaCalendarDateParam,
-} from '../calendarNavigation';
-import { formatAgendaDateInput } from '../dates';
 import { agendaCalendarLocalizer, agendaCalendarTimeBounds } from '../calendarLocalizer';
 import classes from '../agenda.module.scss';
 
@@ -26,95 +18,29 @@ type CalendarEvent = {
 };
 
 interface AgendaCalendarProps {
-  agendaId: string | null;
   events: AgendaEventDTO[];
-  onEventsChange: (events: AgendaEventDTO[]) => void;
+  view: View;
+  date: Date;
+  onViewChange: (view: View) => void;
+  onNavigate: (date: Date) => void;
   canWrite: boolean;
   panelHeightPx: number;
-  skipInitialRangeFetch?: boolean;
   onSelectEvent: (event: AgendaEventDTO) => void;
   onSelectSlot: (start: Date, end: Date, view: View) => void;
 }
 
+/** Controlled calendar: the workspace owns view/date and loads the visible range. */
 export function AgendaCalendar({
-  agendaId,
   events,
-  onEventsChange,
+  view,
+  date,
+  onViewChange,
+  onNavigate,
   canWrite,
   panelHeightPx,
-  skipInitialRangeFetch = false,
   onSelectEvent,
   onSelectSlot,
 }: AgendaCalendarProps) {
-  const { actions } = useAgendaUi();
-  const skipInitialRangeRef = useRef(skipInitialRangeFetch);
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const searchParamsKey = searchParams.toString();
-
-  const viewParam = searchParams.get('view');
-  const urlView = isAgendaCalendarView(viewParam) ? viewParam : null;
-  const urlDate = parseAgendaCalendarDateParam(searchParams.get('date'));
-
-  const [view, setView] = useState<View>(urlView ?? 'month');
-  const [date, setDate] = useState(urlDate ?? new Date());
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParamsKey);
-    const nextView = params.get('view');
-    const nextDate = params.get('date');
-
-    if (isAgendaCalendarView(nextView)) {
-      setView(nextView);
-    }
-    const parsedDate = parseAgendaCalendarDateParam(nextDate);
-    if (parsedDate) {
-      setDate(parsedDate);
-    }
-  }, [searchParamsKey]);
-
-  const replaceSearchParams = useCallback(
-    (mutate: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
-      mutate(params);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-
-  const handleViewChange = useCallback(
-    (nextView: View) => {
-      setView(nextView);
-      replaceSearchParams((params) => {
-        if (nextView === 'month') {
-          params.delete('view');
-          params.delete('date');
-          return;
-        }
-        params.set('view', nextView);
-        if (nextView === 'day' || nextView === 'week' || nextView === 'work_week') {
-          params.set('date', formatAgendaDateInput(date));
-        }
-      });
-    },
-    [date, replaceSearchParams],
-  );
-
-  const handleNavigate = useCallback(
-    (nextDate: Date) => {
-      setDate(nextDate);
-      replaceSearchParams((params) => {
-        const currentView = params.get('view');
-        if (isAgendaCalendarView(currentView) && currentView !== 'month') {
-          params.set('date', formatAgendaDateInput(nextDate));
-        }
-      });
-    },
-    [replaceSearchParams],
-  );
-
   const isTimeView = view === 'week' || view === 'day' || view === 'work_week';
 
   const calendarEvents = useMemo<CalendarEvent[]>(
@@ -146,41 +72,6 @@ export function AgendaCalendar({
     [events, isTimeView],
   );
 
-  const loadRange = useCallback(
-    async (rangeStart: Date, rangeEnd: Date) => {
-      const result = await actions.listEvents({
-        agendaId: agendaId ?? undefined,
-        rangeStart: rangeStart.toISOString(),
-        rangeEnd: rangeEnd.toISOString(),
-      });
-      const data = runAgendaAction(result);
-      if (data) onEventsChange(data);
-    },
-    [actions, agendaId, onEventsChange],
-  );
-
-  const handleRangeChange = useCallback(
-    (range: Date[] | { start: Date; end: Date }) => {
-      if (skipInitialRangeRef.current) {
-        skipInitialRangeRef.current = false;
-        return;
-      }
-
-      if (Array.isArray(range)) {
-        if (range.length === 0) return;
-        const start = range[0];
-        const end = range[range.length - 1];
-        void loadRange(
-          dayjs(start).startOf('day').toDate(),
-          dayjs(end).endOf('day').toDate(),
-        );
-        return;
-      }
-      void loadRange(range.start, range.end);
-    },
-    [loadRange],
-  );
-
   const eventPropGetter = useCallback((event: CalendarEvent) => {
     const className = event.resource.isParticipant
       ? 'agenda-event-participant'
@@ -200,10 +91,9 @@ export function AgendaCalendar({
         allDayMaxRows={0}
         events={calendarEvents}
         view={view}
-        onView={handleViewChange}
+        onView={onViewChange}
         date={date}
-        onNavigate={handleNavigate}
-        onRangeChange={handleRangeChange}
+        onNavigate={onNavigate}
         startAccessor="start"
         endAccessor="end"
         allDayAccessor="allDay"

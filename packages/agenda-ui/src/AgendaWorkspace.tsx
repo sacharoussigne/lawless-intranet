@@ -1,27 +1,29 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { notifications } from '@mantine/notifications';
+import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAgendaUi } from './AgendaUiProvider';
 import { runAgendaAction } from './runAgendaAction';
 import { ActionIcon, Button, Container, Group, Stack, Text, Title } from '@mantine/core';
 import { IconPlus, IconUsers } from '@tabler/icons-react';
 import Link from 'next/link';
-import dayjs from './dayjs';
 import { buildDefaultTimedSlotForDay } from './dates';
 import {
   AGENDA_CALENDAR_FOCUS_PARAM,
   isAgendaCalendarFocusParam,
 } from './calendarNavigation';
 import { useAgendaRealtime } from './realtime/useAgendaRealtime';
-import { isRelevantAgendaRealtimeEvent } from './realtime/isRelevantAgendaEvent';
-import { useRealtimeReconnect } from '@lawless-intranet/realtime/client';
+import { agendaKeys } from './queryKeys';
+import { getAgendaCalendarRange, type AgendaCalendarRange } from './calendarRange';
+import { useAgendaCalendarNavigation } from './hooks/useAgendaCalendarNavigation';
 import {
   removeCalendarEvent,
   upsertCalendarEvent,
   type AgendaEventChange,
 } from './eventState';
-import { notifyUpcomingEventsLocalRefresh } from './upcomingEventsLocalRefresh';
 import {
   canOwnAgenda,
   canWriteAgenda,
@@ -45,10 +47,14 @@ import {
 } from './constants';
 import classes from './agenda.module.scss';
 
+const EMPTY_EVENTS: AgendaEventDTO[] = [];
+
 interface AgendaWorkspaceProps {
   agendas: AgendaSummaryDTO[];
   initialAgendaId: string | null;
   initialEvents: AgendaEventDTO[];
+  /** Range used to load initialEvents (SSR), see getAgendaCalendarRange. */
+  initialEventsRange?: AgendaCalendarRange;
   initialTodoLists: AgendaTodoListDTO[];
   isAdmin: boolean;
   onManageMembers?: (agenda: { id: string; name: string }) => void;
@@ -84,31 +90,30 @@ function AgendaPageHeader({
 }
 
 export function AgendaWorkspace({
-  agendas: initialAgendas,
+  agendas,
   initialAgendaId,
   initialEvents,
+  initialEventsRange,
   initialTodoLists,
   isAdmin,
   onManageMembers,
 }: AgendaWorkspaceProps) {
-  const { actions, adminHref } = useAgendaUi();
+  const { actions, adminHref, scopeKey } = useAgendaUi();
+  const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const agendaIdFromUrl = searchParams.get('agendaId');
 
-  const [agendas] = useState(initialAgendas);
   const [manualAgendaId, setManualAgendaId] = useState<string | null>(null);
   const [lastUrlAgendaId, setLastUrlAgendaId] = useState(agendaIdFromUrl);
-  const [events, setEvents] = useState(initialEvents);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AgendaEventDTO | null>(null);
   const [slotStart, setSlotStart] = useState<Date | null>(null);
   const [slotEnd, setSlotEnd] = useState<Date | null>(null);
-  const [remoteTodosToken, setRemoteTodosToken] = useState(0);
   const [remoteEventTodosToken, setRemoteEventTodosToken] = useState(0);
 
-  const participantOnly = agendas.length === 0 && events.length > 0;
+  const participantOnly = agendas.length === 0 && initialEvents.length > 0;
 
   const urlAgendaId = useMemo(() => {
     if (participantOnly || !agendaIdFromUrl) return null;
@@ -121,8 +126,11 @@ export function AgendaWorkspace({
     setManualAgendaId(null);
   }
 
+  // The agenda list can change live (access granted/revoked): drop a stale selection.
+  const manualAgendaStillVisible =
+    manualAgendaId !== null && agendas.some((agenda) => agenda.id === manualAgendaId);
   const selectedAgendaId =
-    manualAgendaId ?? urlAgendaId ?? agendas[0]?.id ?? null;
+    (manualAgendaStillVisible ? manualAgendaId : null) ?? urlAgendaId ?? agendas[0]?.id ?? null;
 
   const selectedAgenda = useMemo(
     () => agendas.find((a) => a.id === selectedAgendaId) ?? agendas[0] ?? null,
@@ -183,107 +191,80 @@ export function AgendaWorkspace({
     [panelHeightPx, todoColumnWidthPx],
   );
 
-  const fetchEventsRef = useRef<() => Promise<void>>(async () => {});
-  const selectedAgendaIdRef = useRef(selectedAgendaId);
+  // --- Events of the visible calendar range ---
+  const calendarNavigation = useAgendaCalendarNavigation();
+  const { rangeStart, rangeEnd } = getAgendaCalendarRange(
+    calendarNavigation.view,
+    calendarNavigation.date,
+  );
+  const eventsQueryKey = useMemo(
+    () => agendaKeys.events(scopeKey, selectedAgendaId, { rangeStart, rangeEnd }),
+    [scopeKey, selectedAgendaId, rangeStart, rangeEnd],
+  );
+  const usesInitialEvents =
+    selectedAgendaId === initialAgendaId &&
+    initialEventsRange?.rangeStart === rangeStart &&
+    initialEventsRange?.rangeEnd === rangeEnd;
+
+  const eventsQuery = useQuery({
+    queryKey: eventsQueryKey,
+    queryFn: async () =>
+      runAgendaAction(
+        await actions.listEvents({
+          agendaId: selectedAgendaId ?? undefined,
+          rangeStart,
+          rangeEnd,
+        }),
+      ) ?? [],
+    initialData: usesInitialEvents ? initialEvents : undefined,
+    // Keep showing the previous range while the next one loads.
+    placeholderData: keepPreviousData,
+  });
+  const events = eventsQuery.data ?? EMPTY_EVENTS;
+
+  useEffect(() => {
+    if (!eventsQuery.error) return;
+    notifications.show({
+      title: 'Erreur',
+      message:
+        eventsQuery.error instanceof Error ? eventsQuery.error.message : 'Chargement impossible',
+      color: 'danger',
+    });
+  }, [eventsQuery.error]);
+
   const openEventIdRef = useRef<string | null>(null);
 
-  const fetchEvents = useCallback(
-    async (agendaId: string | null = selectedAgendaId) => {
-      const rangeStart = dayjs().startOf('month').subtract(1, 'week').toDate();
-      const rangeEnd = dayjs().endOf('month').add(1, 'week').toDate();
-      const result = await actions.listEvents({
-        agendaId: agendaId ?? undefined,
-        rangeStart: rangeStart.toISOString(),
-        rangeEnd: rangeEnd.toISOString(),
-      });
-      const data = runAgendaAction(result);
-      if (data) setEvents(data);
-    },
-    [actions, selectedAgendaId],
-  );
-
   useEffect(() => {
-    selectedAgendaIdRef.current = selectedAgendaId;
-  }, [selectedAgendaId]);
+    openEventIdRef.current = eventModalOpen ? (selectedEvent?.id ?? null) : null;
+  }, [eventModalOpen, selectedEvent?.id]);
 
-  useEffect(() => {
-    openEventIdRef.current = selectedEvent?.id ?? null;
-  }, [selectedEvent?.id]);
-
-  useEffect(() => {
-    fetchEventsRef.current = () => fetchEvents();
-  }, [fetchEvents]);
+  const invalidateEvents = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: agendaKeys.eventsAll(scopeKey) });
+  }, [queryClient, scopeKey]);
 
   const { clientId } = useAgendaRealtime({
-    onEventsChange: (event) => {
-      if (
-        !isRelevantAgendaRealtimeEvent(event, {
-          selectedAgendaId: selectedAgendaIdRef.current,
-        })
-      ) {
-        return;
-      }
-      void fetchEventsRef.current();
-    },
-    onTodosChange: (event) => {
-      if (
-        !isRelevantAgendaRealtimeEvent(event, {
-          selectedAgendaId: selectedAgendaIdRef.current,
-        })
-      ) {
-        return;
-      }
-      setRemoteTodosToken((token) => token + 1);
-    },
+    onEventsChange: invalidateEvents,
     onEventTodosChange: (payload) => {
-      const openEventId = openEventIdRef.current;
-      if (!openEventId || payload.eventId !== openEventId) return;
-      if (
-        !isRelevantAgendaRealtimeEvent(payload, {
-          selectedAgendaId: selectedAgendaIdRef.current,
-        })
-      ) {
-        return;
+      if (payload.eventId && payload.eventId === openEventIdRef.current) {
+        setRemoteEventTodosToken((token) => token + 1);
       }
-      setRemoteEventTodosToken((token) => token + 1);
     },
+    // The agenda list comes from the server component: refresh it.
+    onAgendasChange: () => router.refresh(),
+    onAccessChange: () => router.refresh(),
   });
 
-  useRealtimeReconnect(() => {
-    void fetchEventsRef.current();
-    setRemoteTodosToken((token) => token + 1);
+  useRealtimeSocketResync(() => {
+    invalidateEvents();
     if (openEventIdRef.current) {
       setRemoteEventTodosToken((token) => token + 1);
     }
+    router.refresh();
   });
-
-  useEffect(() => {
-    if (!urlAgendaId || urlAgendaId === initialAgendaId) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      const rangeStart = dayjs().startOf('month').subtract(1, 'week').toDate();
-      const rangeEnd = dayjs().endOf('month').add(1, 'week').toDate();
-      const result = await actions.listEvents({
-        agendaId: urlAgendaId,
-        rangeStart: rangeStart.toISOString(),
-        rangeEnd: rangeEnd.toISOString(),
-      });
-      if (cancelled) return;
-      const data = runAgendaAction(result);
-      if (data) setEvents(data);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [actions, urlAgendaId, initialAgendaId]);
 
   const handleAgendaChange = useCallback(
     (agendaId: string) => {
       setManualAgendaId(agendaId);
-      void fetchEvents(agendaId);
 
       const params = new URLSearchParams(searchParams.toString());
       if (params.get('agendaId') && params.get('agendaId') !== agendaId) {
@@ -292,17 +273,21 @@ export function AgendaWorkspace({
         router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
       }
     },
-    [fetchEvents, pathname, router, searchParams],
+    [pathname, router, searchParams],
   );
 
-  const handleEventChange = useCallback((change: AgendaEventChange) => {
-    setEvents((current) =>
-      change.type === 'delete'
-        ? removeCalendarEvent(current, change.id)
-        : upsertCalendarEvent(current, change.event),
-    );
-    notifyUpcomingEventsLocalRefresh();
-  }, []);
+  const handleEventChange = useCallback(
+    (change: AgendaEventChange) => {
+      // Instant local feedback, then refetch every event list (calendar + header).
+      queryClient.setQueryData<AgendaEventDTO[]>(eventsQueryKey, (current = []) =>
+        change.type === 'delete'
+          ? removeCalendarEvent(current, change.id)
+          : upsertCalendarEvent(current, change.event),
+      );
+      invalidateEvents();
+    },
+    [queryClient, eventsQueryKey, invalidateEvents],
+  );
 
   const handleSelectEvent = async (event: AgendaEventDTO) => {
     setSelectedEvent(event);
@@ -436,12 +421,13 @@ export function AgendaWorkspace({
         {renderCalendar && (
           <AgendaCalendar
             key={renderTodo ? 'calendar-with-todo' : 'calendar-solo'}
-            agendaId={selectedAgendaId}
             events={events}
-            onEventsChange={setEvents}
+            view={calendarNavigation.view}
+            date={calendarNavigation.date}
+            onViewChange={calendarNavigation.changeView}
+            onNavigate={calendarNavigation.navigate}
             canWrite={canWrite && !participantOnly}
             panelHeightPx={panelHeightPx}
-            skipInitialRangeFetch
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}
           />
@@ -457,7 +443,6 @@ export function AgendaWorkspace({
             skipInitialFetch={selectedAgendaId === initialAgendaId && initialTodoLists.length > 0}
             wideLayout={!renderCalendar}
             clientId={clientId}
-            remoteTodosToken={remoteTodosToken}
           />
         )}
       </div>

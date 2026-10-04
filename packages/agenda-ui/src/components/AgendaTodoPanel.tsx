@@ -156,7 +156,6 @@ interface AgendaTodoPanelProps {
   skipInitialFetch?: boolean;
   wideLayout?: boolean;
   clientId?: string;
-  remoteTodosToken?: number;
 }
 
 function getCategoriesGridClass(wideLayout: boolean, categoryCount: number) {
@@ -177,7 +176,6 @@ export function AgendaTodoPanel({
   skipInitialFetch = false,
   wideLayout = false,
   clientId,
-  remoteTodosToken = 0,
 }: AgendaTodoPanelProps) {
   const { actions, scopeKey } = useAgendaUi();
   const [archivesOpen, setArchivesOpen] = useState(false);
@@ -205,7 +203,6 @@ export function AgendaTodoPanel({
     agendaId,
     initialLists,
     skipInitialFetch,
-    remoteTodosToken,
     isDragging: activeDrag !== null,
   });
 
@@ -586,6 +583,8 @@ export function AgendaTodoPanel({
       }
     };
 
+    // Defers remote refreshes until the new order is saved, then resyncs.
+    beginLocalMutation();
     try {
       if (activeType === 'category') {
         if (!over || active.id === over.id) return;
@@ -638,7 +637,6 @@ export function AgendaTodoPanel({
       await persistTaskDragChanges(nextCategories, taskId, dragStart.categoryId);
     } catch (error: unknown) {
       restoreTaskDragSnapshot();
-      void reload();
       notifications.show({
         title: 'Erreur',
         message:
@@ -649,6 +647,7 @@ export function AgendaTodoPanel({
       });
     } finally {
       resetTaskDragState();
+      endLocalMutation();
     }
   };
 
