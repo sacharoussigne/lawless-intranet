@@ -12,6 +12,7 @@ import {
 } from '@/lib/access';
 import { serializeDates } from '@/lib/serialize';
 import { scopeWhere } from '@/lib/scope';
+import { emitAgendaAccessChange } from '@/lib/realtime/broadcast';
 import {
   isAgendaInternalAuthorized,
   resolveScopeAdmin,
@@ -195,6 +196,10 @@ export async function POST(request: Request) {
     });
 
     return created;
+  });
+
+  await emitAgendaAccessChange(scopeType, scopeId, agenda.id, {
+    grantedUserIds: [ownerUserId],
   });
 
   return jsonResponse(request, serializeDates(agenda), 201);

@@ -16,6 +16,10 @@ import { resolveScopeAdmin } from '@/lib/internalAuth';
 import { serializeDates } from '@/lib/serialize';
 import { scopeWhere } from '@/lib/scope';
 import {
+  emitAgendaAccessChange,
+  emitAgendaListChange,
+} from '@/lib/realtime/broadcast';
+import {
   deleteAgendaSchema,
   scopeQuerySchema,
   updateAgendaSchema,
@@ -149,6 +153,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     },
   });
 
+  await emitAgendaListChange(agenda.scopeType, agenda.scopeId, id);
+
   return jsonResponse(request, serializeDates(updated));
 }
 
@@ -191,7 +197,16 @@ export async function DELETE(request: Request, context: RouteContext) {
     }
   }
 
+  const members = await prisma.agendaMember.findMany({
+    where: { agendaId: id },
+    select: { userId: true },
+  });
+
   await prisma.agenda.delete({ where: { id } });
+
+  await emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, id, {
+    revokedUserIds: members.map((member) => member.userId),
+  });
 
   return jsonResponse(request, { success: true });
 }

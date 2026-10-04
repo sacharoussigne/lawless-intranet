@@ -1,6 +1,8 @@
 # Déploiement Docker (monorepo)
 
-Une image par app (`auth`, `dispensary`, `shelter`, `documents`, `agenda`, `bank`, `inventory`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
+Une image par app (`auth`, `dispensary`, `shelter`, `documents`, `agenda`, `bank`, `inventory`, `realtime`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
+
+Les apps Next.js utilisent le `Dockerfile` racine ; le serveur WebSocket `realtime` (Node pur, sans Prisma) a son propre `docker/realtime.Dockerfile` (voir [Serveur temps réel](#serveur-temps-réel-websocket)).
 
 ## Principe
 
@@ -17,6 +19,7 @@ docker build (context: .)
 
 - Docker + Docker Compose
 - Réseau `proxy` externe (nginx-proxy / letsencrypt-companion), comme avant
+- Un enregistrement DNS pour `REALTIME_VIRTUAL_HOST` (ex. `realtime.example.com`), couvert par `AUTH_COOKIE_DOMAIN`
 - Sept bases PostgreSQL (auth + dispensary + shelter + documents + agenda + bank + inventory)
 - Discord redirect URI : `https://<AUTH_VIRTUAL_HOST>/api/auth/callback/discord`
 
@@ -174,6 +177,29 @@ docker build \
 | `BANK_BOT_API_SECRET` | bank + dispensary | Secret bot materialize-planned |
 | `INVENTORY_INTERNAL_SECRET` | inventory + dispensary | Secret host→inventory (purge-scope) |
 | `DOCUMENTS_INTERNAL_SECRET` | documents + dispensary | Secret host→documents (toutes les routes API sauf health) |
+| `REALTIME_PUBLIC_URL` | dispensary | URL WebSocket navigateur (`wss://realtime.example.com`), lue **au runtime** (pas de rebuild) |
+| `REALTIME_VIRTUAL_HOST` | realtime | Hôte nginx-proxy du WebSocket |
+| `REALTIME_TOKEN_SECRET` | realtime + dispensary | Signature des jetons d'abonnement (dispensary signe, realtime vérifie) |
+| `REALTIME_INTERNAL_SECRET` | realtime + agenda | Publication service→realtime sur le port interne |
+
+## Serveur temps réel (WebSocket)
+
+`apps/realtime` est un serveur Node + `ws` (bundle esbuild, image `docker/realtime.Dockerfile`). Il remplace progressivement les flux SSE ; l'agenda et les todos passent déjà par lui.
+
+```
+navigateur ──wss://REALTIME_VIRTUAL_HOST──▶ nginx-proxy ──▶ realtime:3007   (WebSocket, seul port routé)
+agenda ──http://realtime:3008/publish (réseau privé « realtime »)──▶ realtime:3008
+```
+
+- **Port 3007** : WebSocket navigateur. Contrôle de l'`Origin` (`ALLOWED_ORIGINS`), puis authentification par un jeton court signé par le dispensary (`REALTIME_TOKEN_SECRET`) qui liste les topics autorisés (`agenda:<id>`, `agendas:<scope>`, `user:<id>`).
+- **Port 3008** : API interne (`/publish`, `/revoke`, `/health`), joignable uniquement sur le réseau Docker privé `realtime` (`internal: true`) et protégée par `REALTIME_INTERNAL_SECRET`. nginx ne la route pas et aucun port n'est publié sur l'hôte.
+- Ping toutes les 25 s (sous le `proxy_read_timeout` de 60 s de nginx-proxy) ; nginx-proxy gère l'upgrade WebSocket par défaut.
+- Une seule instance (hub en mémoire). Si le serveur redémarre, les clients se reconnectent et rechargent leurs données.
+
+```bash
+make service SERVICE=realtime          # build + (re)déploiement du seul serveur temps réel
+docker logs lawless-realtime           # « [realtime] websocket on :3007, internal API on :3008 »
+```
 
 ## Migration bank depuis l’ancien stockage dispensary
 
@@ -256,7 +282,7 @@ Résumé :
 ## Notes
 
 - Les migrations Prisma s’exécutent au **démarrage** du conteneur (`docker/docker-entrypoint.sh`), pas au build — pas besoin d’accès DB pendant `docker build`.
-- Au runtime : image **standalone** Next.js (`node apps/<app>/server.js`) — `node_modules` tracés, build **webpack** (pas turbopack).
+- Au runtime : image **standalone** Next.js (`node apps/<app>/server.js`) — `node_modules` tracés, build **webpack** (pas turbopack). Exception : `realtime` tourne en `node server.mjs` (bundle unique).
 - Migrations via `prisma` CLI global dans l’image.
 - **Important** : les variables `NEXT_PUBLIC_*` sont **inlinées au build** (logout, login client, etc.). Les mettre dans `docker-compose.yml` `environment:` seul ne suffit pas — il faut rebuild après changement d’URL (`build.args` dans compose).
 - `DATABASE_URL` factice est utilisée uniquement pour `prisma generate` pendant le build.

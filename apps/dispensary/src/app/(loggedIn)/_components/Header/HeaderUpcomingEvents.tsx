@@ -2,12 +2,13 @@
 
 import { listAgendaEvents } from '@/app/_actions/agenda/events';
 import {
+  agendaKeys,
   buildAgendaDayViewHref,
   formatAgendaTimeInput,
-  isRelevantAgendaRealtimeEvent,
-  subscribeUpcomingEventsLocalRefresh,
   useAgendaRealtime,
 } from '@lawless-intranet/agenda-ui';
+import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Dayjs } from 'dayjs';
 import dayjs from '@/lib/dayjs';
 import type { AgendaEventDTO } from '@/types/agenda';
@@ -25,12 +26,17 @@ import {
 import { IconCalendarEvent } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import classes from './Header.module.scss';
-import { usePermissions } from '@/app/_contexts/PermissionsContext';
 
-function getTodayTomorrowBounds() {
-  const todayStart = dayjs().tz('Europe/Paris').startOf('day');
+const EMPTY_EVENTS: AgendaEventDTO[] = [];
+
+function getParisTodayKey(): string {
+  return dayjs().tz('Europe/Paris').format('YYYY-MM-DD');
+}
+
+function getTodayTomorrowBounds(todayKey: string) {
+  const todayStart = dayjs.tz(todayKey, 'Europe/Paris').startOf('day');
   return {
     rangeStart: todayStart.toISOString(),
     rangeEnd: todayStart.add(2, 'day').toISOString(),
@@ -129,90 +135,52 @@ export function HeaderUpcomingEvents({
   agendaHref: string;
 }) {
   const router = useRouter();
-  const { accessibleAgendaIds } = usePermissions();
-  const accessibleAgendaIdsRef = useRef(accessibleAgendaIds);
+  const queryClient = useQueryClient();
   const [opened, setOpened] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState<AgendaEventDTO[]>([]);
+  const [todayKey, setTodayKey] = useState(getParisTodayKey);
 
-  const bounds = useMemo(() => getTodayTomorrowBounds(), []);
-
-  const queryRange = useMemo(
-    () => ({
-      rangeStart: bounds.rangeStart,
-      rangeEnd: bounds.rangeEnd,
-    }),
-    [bounds.rangeEnd, bounds.rangeStart],
-  );
-
-  const fetchUpcomingEvents = useCallback(async () => {
-    const result = await listAgendaEvents(dispensarySlug, queryRange);
-    if (result.status === 200 && 'data' in result) {
-      return result.data;
-    }
-    return null;
-  }, [dispensarySlug, queryRange]);
-
-  const fetchUpcomingEventsRef = useRef(fetchUpcomingEvents);
-
+  // "Today" and "tomorrow" move at midnight: re-evaluate the day every minute.
   useEffect(() => {
-    fetchUpcomingEventsRef.current = fetchUpcomingEvents;
-  }, [fetchUpcomingEvents]);
-
-  useEffect(() => {
-    accessibleAgendaIdsRef.current = accessibleAgendaIds;
-  }, [accessibleAgendaIds]);
-
-  useAgendaRealtime({
-    onEventsChange: (event) => {
-      if (
-        !isRelevantAgendaRealtimeEvent(event, {
-          accessibleAgendaIds: accessibleAgendaIdsRef.current,
-        })
-      ) {
-        return;
-      }
-      void fetchUpcomingEventsRef.current().then((data) => {
-        if (data) setEvents(data);
-        setLoading(false);
-      });
-    },
-  });
-
-  useEffect(() => {
-    return subscribeUpcomingEventsLocalRefresh(() => {
-      void fetchUpcomingEventsRef.current().then((data) => {
-        if (data) setEvents(data);
-        setLoading(false);
-      });
-    });
+    const timer = setInterval(() => {
+      const next = getParisTodayKey();
+      setTodayKey((current) => (current === next ? current : next));
+    }, 60_000);
+    return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const bounds = useMemo(() => getTodayTomorrowBounds(todayKey), [todayKey]);
 
-    void (async () => {
-      const data = await fetchUpcomingEvents();
-      if (cancelled) return;
-      if (data) setEvents(data);
-      setLoading(false);
-    })();
+  const eventsQuery = useQuery({
+    queryKey: agendaKeys.upcoming(dispensarySlug, bounds),
+    queryFn: async () => {
+      const result = await listAgendaEvents(dispensarySlug, {
+        rangeStart: bounds.rangeStart,
+        rangeEnd: bounds.rangeEnd,
+      });
+      if (result.status === 200 && 'data' in result) {
+        return result.data ?? [];
+      }
+      throw new Error('Chargement des événements impossible');
+    },
+  });
+  const events = eventsQuery.data ?? EMPTY_EVENTS;
+  const loading = eventsQuery.isPending;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchUpcomingEvents]);
+  const invalidateEvents = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: agendaKeys.eventsAll(dispensarySlug) });
+  }, [dispensarySlug, queryClient]);
 
+  // Only topics the user may see reach this client (agenda membership or participation).
+  useAgendaRealtime({ onEventsChange: invalidateEvents });
+  useRealtimeSocketResync(invalidateEvents);
+
+  const { refetch } = eventsQuery;
   const handlePopoverChange = useCallback(
     (value: boolean) => {
       setOpened(value);
-      if (!value) return;
-
-      void fetchUpcomingEvents().then((data) => {
-        if (data) setEvents(data);
-      });
+      if (value) void refetch();
     },
-    [fetchUpcomingEvents],
+    [refetch],
   );
 
   const { today, tomorrow } = useMemo(

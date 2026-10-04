@@ -82,6 +82,9 @@ services:
       BANK_BOT_API_SECRET: "${BANK_BOT_API_SECRET:-}"
       INVENTORY_URL: "${INVENTORY_PUBLIC_URL:-http://inventory:3005}"
       INVENTORY_INTERNAL_SECRET: "${INVENTORY_INTERNAL_SECRET:?err}"
+      # Browser websocket URL (read at runtime) + secret to sign realtime tokens
+      REALTIME_PUBLIC_URL: "${REALTIME_PUBLIC_URL:?err}"
+      REALTIME_TOKEN_SECRET: "${REALTIME_TOKEN_SECRET:?err}"
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
@@ -139,6 +142,9 @@ services:
       AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       AGENDA_INTERNAL_SECRET: "${AGENDA_INTERNAL_SECRET:?err}"
+      # Publishes changes to the realtime server over the private network
+      REALTIME_INTERNAL_URL: "http://realtime:3008"
+      REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
       VIRTUAL_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
       VIRTUAL_PORT: "3003"
       LETSENCRYPT_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
@@ -147,6 +153,7 @@ services:
     networks:
       - proxy
       - db
+      - realtime
 
   bank:
     restart: unless-stopped
@@ -238,8 +245,42 @@ services:
       - proxy
       - db
 
+  # Realtime websocket server (plain Node, own Dockerfile).
+  # - Port 3007: browser websocket, the only port routed by nginx-proxy (wss://REALTIME_VIRTUAL_HOST).
+  # - Port 3008: internal API (/publish, /revoke) for services, reachable only on the
+  #   private "realtime" network and protected by REALTIME_INTERNAL_SECRET.
+  # No port is published on the host.
+  realtime:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-realtime"
+    build:
+      context: .
+      dockerfile: docker/realtime.Dockerfile
+    environment:
+      NODE_ENV: production
+      WS_PORT: "3007"
+      INTERNAL_PORT: "3008"
+      ALLOWED_ORIGINS: "${DISPENSARY_PUBLIC_URL:?err}"
+      REALTIME_TOKEN_SECRET: "${REALTIME_TOKEN_SECRET:?err}"
+      REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
+      TZ: "${TZ:-UTC}"
+      VIRTUAL_HOST: "${REALTIME_VIRTUAL_HOST:?err}"
+      VIRTUAL_PORT: "3007"
+      LETSENCRYPT_HOST: "${REALTIME_VIRTUAL_HOST:?err}"
+      LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
+      SELF_SIGNED_HOST: "${REALTIME_VIRTUAL_HOST:?err}"
+    expose:
+      - "3007"
+      - "3008"
+    networks:
+      - proxy
+      - realtime
+
 networks:
   proxy:
     external: true
   db:
     external: true
+  # Private network between services and the realtime internal API (no outside access).
+  realtime:
+    internal: true

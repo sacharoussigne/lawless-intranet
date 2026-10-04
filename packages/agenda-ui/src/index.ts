@@ -13,10 +13,6 @@ export {
 export { AgendaWorkspace } from './AgendaWorkspace';
 export { runAgendaAction } from './runAgendaAction';
 
-export {
-  AgendaRealtimeProvider,
-  useAgendaRealtimeContext,
-} from './realtime/AgendaRealtimeProvider';
 export { useAgendaRealtime } from './realtime/useAgendaRealtime';
 export { getOrCreateAgendaClientId } from './realtime/clientId';
 export {
@@ -24,7 +20,8 @@ export {
   type AgendaMutationMeta,
 } from './realtime/mutationMeta';
 export type { AgendaRealtimeEvent } from './realtime/types';
-export { isRelevantAgendaRealtimeEvent } from './realtime/isRelevantAgendaEvent';
+export { agendaKeys } from './queryKeys';
+export { getAgendaCalendarRange, type AgendaCalendarRange } from './calendarRange';
 
 export type {
   AgendaAccessLevel,
@@ -67,11 +64,6 @@ export {
   parseAgendaCalendarDateParam,
   buildAgendaDayViewHref,
 } from './calendarNavigation';
-
-export {
-  notifyUpcomingEventsLocalRefresh,
-  subscribeUpcomingEventsLocalRefresh,
-} from './upcomingEventsLocalRefresh';
 
 export {
   DEFAULT_AGENDA_LAYOUT,

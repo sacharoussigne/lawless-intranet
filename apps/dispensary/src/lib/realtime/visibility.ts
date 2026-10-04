@@ -8,10 +8,6 @@ export function isDispensaryRealtimeVisibleToViewer(
   event: RealtimeEnvelope,
   filter: DispensaryRealtimeViewerFilter,
 ): boolean {
-  if (event.domain === REALTIME_DOMAIN.agenda) {
-    return filter.agenda;
-  }
-
   if (event.domain === REALTIME_DOMAIN.weeklyActivity) {
     if (!filter.weeklyActivity) return false;
     const payload = event.payload as {

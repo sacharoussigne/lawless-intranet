@@ -9,6 +9,7 @@ import prisma from '@/lib/prisma';
 import { canManageAgendaMembers } from '@/lib/access';
 import { resolveScopeAdmin } from '@/lib/internalAuth';
 import { serializeDates } from '@/lib/serialize';
+import { emitAgendaAccessChange } from '@/lib/realtime/broadcast';
 import {
   upsertAgendaMemberSchema,
   zodErrorMessage,
@@ -55,7 +56,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const agenda = await prisma.agenda.findUnique({
     where: { id: agendaId },
-    select: { id: true },
+    select: { id: true, scopeType: true, scopeId: true },
   });
   if (!agenda) {
     return errorResponse(request, 'Agenda introuvable', 404);
@@ -99,6 +100,10 @@ export async function POST(request: Request, context: RouteContext) {
       accessLevel: parsed.data.accessLevel,
     },
     update: { accessLevel: parsed.data.accessLevel },
+  });
+
+  await emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, agendaId, {
+    grantedUserIds: [parsed.data.userId],
   });
 
   return jsonResponse(request, serializeDates(member));

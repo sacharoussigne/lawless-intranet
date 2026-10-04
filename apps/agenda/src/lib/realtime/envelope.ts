@@ -19,15 +19,3 @@ export function toAgendaRealtimeEnvelope(
     },
   };
 }
-
-export function fromAgendaRealtimeEnvelope(
-  envelope: RealtimeEnvelope,
-): AgendaRealtimeEvent {
-  const payload = envelope.payload as AgendaRealtimePayload;
-  return {
-    type: envelope.type as AgendaRealtimeEvent['type'],
-    agendaId: payload.agendaId,
-    eventId: payload.eventId,
-    originClientId: envelope.originClientId,
-  };
-}

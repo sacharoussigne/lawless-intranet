@@ -1,176 +1,146 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAgendaUi } from '../AgendaUiProvider';
-import { runAgendaAction } from '../runAgendaAction';
-import { runAsyncEffect } from '../runAsyncEffect';
-import { shouldApplyRemoteLists } from '../todoListsSync';
-import type { AgendaTodoListDTO } from '../types';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
 import { notifications } from '@mantine/notifications';
+import { useAgendaUi } from '../AgendaUiProvider';
+import { agendaKeys } from '../queryKeys';
+import { useAgendaRealtime } from '../realtime/useAgendaRealtime';
+import { runAgendaAction } from '../runAgendaAction';
+import type { AgendaTodoListDTO } from '../types';
 
 type UseAgendaTodoListsOptions = {
   agendaId: string | null;
   initialLists: AgendaTodoListDTO[];
+  /** True when `initialLists` (SSR) are the lists of `agendaId`. */
   skipInitialFetch?: boolean;
-  remoteTodosToken?: number;
   isDragging?: boolean;
 };
 
-function showListsLoadError(error: unknown) {
-  notifications.show({
-    title: 'Erreur',
-    message: error instanceof Error ? error.message : 'Chargement impossible',
-    color: 'danger',
-  });
-}
+const EMPTY_LISTS: AgendaTodoListDTO[] = [];
 
+/**
+ * Todo lists of an agenda, cached in React Query.
+ *
+ * Local mutations update the cache optimistically between
+ * `beginLocalMutation` / `endLocalMutation`; in-flight fetches are cancelled
+ * at the start and the lists are refetched once the last mutation settles,
+ * so the cache always converges to the server state. Remote changes arriving
+ * while a mutation or a drag is in progress are deferred, never dropped.
+ */
 export function useAgendaTodoLists({
   agendaId,
   initialLists,
   skipInitialFetch = false,
-  remoteTodosToken = 0,
   isDragging = false,
 }: UseAgendaTodoListsOptions) {
-  const { actions } = useAgendaUi();
-  const skipInitialFetchRef = useRef(skipInitialFetch);
-  const pendingRemoteReloadRef = useRef(false);
-  const listsEpochRef = useRef(0);
+  const { actions, scopeKey } = useAgendaUi();
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => agendaKeys.todos(scopeKey, agendaId ?? ''), [scopeKey, agendaId]);
+
   const pendingMutationsRef = useRef(0);
-  const [mutationGate, setMutationGate] = useState(0);
-  const [lists, setLists] = useState<AgendaTodoListDTO[]>(initialLists);
+  const pendingRemoteRefreshRef = useRef(false);
+  const isDraggingRef = useRef(isDragging);
+  const agendaIdRef = useRef(agendaId);
   const [selectedListId, setSelectedListId] = useState<string | null>(
     initialLists[0]?.id ?? null,
   );
-  const [syncedAgendaId, setSyncedAgendaId] = useState(agendaId);
 
-  if (agendaId !== syncedAgendaId) {
-    setSyncedAgendaId(agendaId);
-    if (!agendaId) {
-      setLists([]);
-      setSelectedListId(null);
-    }
-  }
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const result = await actions.listTodoLists(agendaId as string);
+      return runAgendaAction(result) ?? [];
+    },
+    enabled: Boolean(agendaId),
+    initialData: skipInitialFetch ? initialLists : undefined,
+  });
 
+  const lists = agendaId ? (query.data ?? EMPTY_LISTS) : EMPTY_LISTS;
   const selectedList = lists.find((list) => list.id === selectedListId) ?? lists[0] ?? null;
 
-  const applyLists = useCallback((data: AgendaTodoListDTO[]) => {
-    setLists(data);
-    setSelectedListId((current) =>
-      current && data.some((list) => list.id === current)
-        ? current
-        : (data[0]?.id ?? null),
-    );
-  }, []);
+  useEffect(() => {
+    if (!query.error) return;
+    notifications.show({
+      title: 'Erreur',
+      message: query.error instanceof Error ? query.error.message : 'Chargement impossible',
+      color: 'danger',
+    });
+  }, [query.error]);
 
-  const bumpListsEpoch = useCallback(() => {
-    listsEpochRef.current += 1;
-  }, []);
+  const setLists = useCallback<Dispatch<SetStateAction<AgendaTodoListDTO[]>>>(
+    (update) => {
+      queryClient.setQueryData<AgendaTodoListDTO[]>(queryKey, (previous) =>
+        typeof update === 'function' ? update(previous ?? EMPTY_LISTS) : update,
+      );
+    },
+    [queryClient, queryKey],
+  );
+
+  const refetchLists = useCallback(async () => {
+    pendingRemoteRefreshRef.current = false;
+    await queryClient.invalidateQueries({ queryKey });
+  }, [queryClient, queryKey]);
+
+  const requestRemoteRefresh = useCallback(() => {
+    if (pendingMutationsRef.current > 0 || isDraggingRef.current) {
+      pendingRemoteRefreshRef.current = true;
+      return;
+    }
+    void refetchLists();
+  }, [refetchLists]);
 
   const beginLocalMutation = useCallback(() => {
     pendingMutationsRef.current += 1;
-    bumpListsEpoch();
-  }, [bumpListsEpoch]);
+    // A fetch started before the optimistic update must not overwrite it.
+    void queryClient.cancelQueries({ queryKey });
+  }, [queryClient, queryKey]);
 
   const endLocalMutation = useCallback(() => {
     pendingMutationsRef.current = Math.max(0, pendingMutationsRef.current - 1);
-    if (pendingMutationsRef.current === 0 && pendingRemoteReloadRef.current) {
-      setMutationGate((value) => value + 1);
+    if (pendingMutationsRef.current === 0 && !isDraggingRef.current) {
+      void refetchLists();
     }
-  }, []);
+  }, [refetchLists]);
 
-  const fetchTodoLists = useCallback(async () => {
-    if (!agendaId) return null;
-    const result = await actions.listTodoLists(agendaId);
-    return runAgendaAction(result) ?? null;
-  }, [actions, agendaId]);
+  useEffect(() => {
+    agendaIdRef.current = agendaId;
+  }, [agendaId]);
 
-  const reload = useCallback(async () => {
-    if (!agendaId) return;
-    const epochAtStart = listsEpochRef.current;
-    try {
-      const data = await fetchTodoLists();
-      if (!data) return;
-      if (!shouldApplyRemoteLists(epochAtStart, listsEpochRef.current)) return;
-      applyLists(data);
-    } catch (error: unknown) {
-      showListsLoadError(error);
+  useEffect(() => {
+    isDraggingRef.current = isDragging;
+    if (!isDragging && pendingRemoteRefreshRef.current && pendingMutationsRef.current === 0) {
+      void refetchLists();
     }
-  }, [agendaId, applyLists, fetchTodoLists]);
+  }, [isDragging, refetchLists]);
 
-  const fetchListsIntoState = useCallback(
-    (isCancelled: () => boolean) => {
-      const epochAtStart = listsEpochRef.current;
-      runAsyncEffect(fetchTodoLists, {
-        isCancelled,
-        onSuccess: (data) => {
-          if (!data) return;
-          if (!shouldApplyRemoteLists(epochAtStart, listsEpochRef.current)) return;
-          applyLists(data);
-        },
-        onError: showListsLoadError,
-      });
+  useAgendaRealtime({
+    enabled: Boolean(agendaId),
+    onTodosChange: (event) => {
+      if (event.agendaId && event.agendaId !== agendaIdRef.current) return;
+      requestRemoteRefresh();
     },
-    [applyLists, fetchTodoLists],
-  );
+  });
 
-  const shouldDeferRemoteReload = isDragging || pendingMutationsRef.current > 0;
-
-  useEffect(() => {
-    if (!agendaId) return;
-
-    if (skipInitialFetchRef.current) {
-      skipInitialFetchRef.current = false;
-      return;
-    }
-
-    let cancelled = false;
-    fetchListsIntoState(() => cancelled);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [agendaId, fetchListsIntoState]);
-
-  useEffect(() => {
-    if (remoteTodosToken === 0) return;
-
-    if (isDragging || pendingMutationsRef.current > 0) {
-      pendingRemoteReloadRef.current = true;
-      return;
-    }
-
-    let cancelled = false;
-    fetchListsIntoState(() => cancelled);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [remoteTodosToken, fetchListsIntoState, isDragging]);
-
-  useEffect(() => {
-    if (isDragging || pendingMutationsRef.current > 0) return;
-    if (!pendingRemoteReloadRef.current) return;
-
-    pendingRemoteReloadRef.current = false;
-
-    let cancelled = false;
-    fetchListsIntoState(() => cancelled);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isDragging, mutationGate, fetchListsIntoState]);
+  useRealtimeSocketResync(requestRemoteRefresh, Boolean(agendaId));
 
   return {
     lists,
     setLists,
-    selectedListId,
+    selectedListId: selectedList?.id ?? null,
     setSelectedListId,
     selectedList,
-    reload,
-    applyLists,
+    reload: refetchLists,
     beginLocalMutation,
     endLocalMutation,
-    bumpListsEpoch,
   };
 }

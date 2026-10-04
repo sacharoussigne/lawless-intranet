@@ -2,7 +2,6 @@ import type { WeeklyActivityRealtimeViewerFilter } from '@/lib/dispensaryWeeklyA
 import type { WeeklySalesRealtimeViewerFilter } from '@/lib/sales/realtime/types';
 
 export type DispensaryRealtimeViewerFilter = {
-  agenda: boolean;
   weeklyActivity: WeeklyActivityRealtimeViewerFilter | null;
   sales: WeeklySalesRealtimeViewerFilter | null;
   orders: boolean;
