@@ -23,16 +23,17 @@ Toutes les apps sont en Next.js 16 (App Router), React 19, Prisma 7 (`@prisma/ad
 | `apps/bank` | 3004 | API banque (semaines, transactions, transactions planifiées) |
 | `apps/inventory` | 3005 | API inventaire |
 | `apps/shelter` | 3006 | Front du refuge (Mantine) |
+| `apps/media` | 3009 | API médiathèque (dossiers, fichiers dans S3), appelée uniquement par l'hôte. Voir `docs/MEDIA.md` |
 | `apps/realtime` | 3007 / 3008 | Serveur WebSocket temps réel (Node + `ws`, sans Next ni base) |
 
-Les **services** (documents, agenda, bank, inventory) n'exposent que des route handlers `src/app/api/**/route.ts`. Leurs données sont cloisonnées par `scopeType` / `scopeId` (par exemple le dispensaire X ou le refuge Y). Ils authentifient l'appelant de deux façons :
+Les **services** (documents, agenda, bank, inventory, media) n'exposent que des route handlers `src/app/api/**/route.ts`. Leurs données sont cloisonnées par `scopeType` / `scopeId` (par exemple le dispensaire X ou le refuge Y). Ils authentifient l'appelant de deux façons :
 - le cookie de session SSO, transmis tel quel (`getSession(cookieHeader)` de `@lawless-intranet/auth-client/server`) ;
 - un header de secret interne (`x-<service>-internal-secret`) pour les opérations hôte.
 
 Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, sans build) :
 - `types` : DTO partagés entre les services et leurs clients.
-- `*-client` (`agenda`, `bank`, `documents`, `inventory`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
-- `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
+- `*-client` (`agenda`, `bank`, `documents`, `inventory`, `media`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
+- `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
 - `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services), et l'ancien SSE (`./server`, `./client`) encore utilisé par weeklyActivity, sales, orders et waitlist.
 - `mail-template-engine` : parseur et moteur de rendu des templates (variables, conditions).
@@ -41,8 +42,8 @@ SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir 
 
 ## Temps réel
 
-Migration progressive SSE → WebSocket ; l'agenda et les todos sont déjà sur `apps/realtime`.
-- Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`getRealtimeToken` dans `apps/dispensary/src/app/_actions/realtime.ts`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
+Migration progressive SSE → WebSocket ; l'agenda, les todos (dispensary) et la médiathèque (refuge) sont déjà sur `apps/realtime`.
+- Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`getRealtimeToken` dans `apps/<dispensary|shelter>/src/app/_actions/realtime.ts`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
 - Les services publient après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Exemple : `apps/agenda/src/lib/realtime/broadcast.ts`.
 - Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query**, jamais de patch d'état à partir du message. Après chaque (re)connexion, `useRealtimeSocketResync` recharge tout.
 - Pour migrer un domaine : définir ses topics (`packages/realtime/src/topics.ts`), les ajouter au jeton, publier depuis le service, puis consommer avec `useRealtimeSocketEvents`.
@@ -55,7 +56,7 @@ pnpm dev                                  # toutes les apps (turbo), serveur rea
 pnpm --filter dispensary dev              # une seule app
 pnpm --filter <app> typecheck             # tsc --noEmit
 pnpm --filter <app> lint
-pnpm --filter <app> test                  # vitest (dispensary, shelter, documents, agenda-ui, realtime, mail-template-engine)
+pnpm --filter <app> test                  # vitest (dispensary, shelter, documents, media, agenda-ui, media-ui, realtime, mail-template-engine)
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate
