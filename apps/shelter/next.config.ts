@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
       '@lawless-intranet/bank-ui',
       '@lawless-intranet/mail-template-engine',
       '@lawless-intranet/mail-template-ui',
+      '@lawless-intranet/media-ui',
       '@mantine/core',
       '@mantine/hooks',
       '@mantine/dates',

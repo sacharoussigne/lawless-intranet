@@ -7,6 +7,7 @@ export const applicationPermissionCatalog = {
   animals: ['access', 'update', 'create', 'updateCore', 'delete'],
   documentTemplates: ['manage'],
   waitlist: ['manage'],
+  media: ['access'],
 } as const;
 
 export type ApplicationResource = keyof typeof applicationPermissionCatalog;
@@ -70,6 +71,7 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
     animals: [...applicationPermissionCatalog.animals],
     documentTemplates: [...applicationPermissionCatalog.documentTemplates],
     waitlist: [...applicationPermissionCatalog.waitlist],
+    media: [...applicationPermissionCatalog.media],
   },
   direction: {
     application: ['access'],
@@ -78,6 +80,7 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
     animals: [...applicationPermissionCatalog.animals],
     documentTemplates: [...applicationPermissionCatalog.documentTemplates],
     waitlist: [...applicationPermissionCatalog.waitlist],
+    media: [...applicationPermissionCatalog.media],
   },
   employee: {
     application: ['access'],
@@ -219,6 +222,9 @@ export type ShelterPermissionsObject = {
   waitlist: {
     manage: boolean;
   };
+  media: {
+    access: boolean;
+  };
 };
 
 export function toPermissionsObject(
@@ -251,6 +257,9 @@ export function toPermissionsObject(
     },
     waitlist: {
       manage: has('waitlist', 'manage'),
+    },
+    media: {
+      access: has('media', 'access'),
     },
   };
 }
