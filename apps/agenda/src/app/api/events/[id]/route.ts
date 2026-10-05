@@ -13,7 +13,10 @@ import {
   parseAgendaEndDateInput,
 } from '@/lib/dates';
 import { serializeDates } from '@/lib/serialize';
-import { emitAgendaEventsChange } from '@/lib/realtime/broadcast';
+import {
+  emitAgendaEventsChange,
+  listEventParticipantIds,
+} from '@/lib/realtime/broadcast';
 import {
   deleteWithMetaSchema,
   updateAgendaEventSchema,
@@ -239,6 +242,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     existing.agenda.scopeId,
     existing.agendaId,
     validated.meta,
+    {
+      eventId: id,
+      // Removed participants must also refetch so the event disappears for them.
+      participantUserIds: [...existingParticipantIds, ...nextParticipantIds],
+    },
   );
 
   return jsonResponse(
@@ -279,6 +287,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     return errorResponse(request, guard.error, guard.status);
   }
 
+  const participantUserIds = await listEventParticipantIds(id);
   await prisma.agendaEvent.delete({ where: { id } });
 
   await emitAgendaEventsChange(
@@ -286,6 +295,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     resolved.scopeId,
     resolved.agendaId,
     parsed.data.meta,
+    { eventId: id, participantUserIds },
   );
 
   return jsonResponse(request, { success: true });

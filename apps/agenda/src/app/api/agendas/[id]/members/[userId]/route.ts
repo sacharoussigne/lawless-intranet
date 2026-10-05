@@ -8,6 +8,7 @@ import {
 import prisma from '@/lib/prisma';
 import { canManageAgendaMembers } from '@/lib/access';
 import { resolveScopeAdmin } from '@/lib/internalAuth';
+import { emitAgendaAccessChange } from '@/lib/realtime/broadcast';
 import {
   removeAgendaMemberSchema,
   zodErrorMessage,
@@ -99,6 +100,16 @@ export async function DELETE(request: Request, context: RouteContext) {
       },
     },
   });
+
+  const agenda = await prisma.agenda.findUnique({
+    where: { id: agendaId },
+    select: { scopeType: true, scopeId: true },
+  });
+  if (agenda) {
+    await emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, agendaId, {
+      revokedUserIds: [userId],
+    });
+  }
 
   return jsonResponse(request, { success: true });
 }

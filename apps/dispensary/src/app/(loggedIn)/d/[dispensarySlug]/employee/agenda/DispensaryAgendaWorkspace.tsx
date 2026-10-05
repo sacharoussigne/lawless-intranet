@@ -6,6 +6,7 @@ import { tenantRoutes } from '@/types/routes';
 import {
   AgendaUiProvider,
   AgendaWorkspace,
+  type AgendaCalendarRange,
   type AgendaEventDTO,
   type AgendaSummaryDTO,
   type AgendaTodoListDTO,
@@ -17,6 +18,7 @@ type DispensaryAgendaWorkspaceProps = {
   agendas: AgendaSummaryDTO[];
   initialAgendaId: string | null;
   initialEvents: AgendaEventDTO[];
+  initialEventsRange: AgendaCalendarRange;
   initialTodoLists: AgendaTodoListDTO[];
   isAdmin: boolean;
 };
@@ -26,6 +28,7 @@ export function DispensaryAgendaWorkspace({
   agendas,
   initialAgendaId,
   initialEvents,
+  initialEventsRange,
   initialTodoLists,
   isAdmin,
 }: DispensaryAgendaWorkspaceProps) {
@@ -50,6 +53,7 @@ export function DispensaryAgendaWorkspace({
         agendas={agendas}
         initialAgendaId={initialAgendaId}
         initialEvents={initialEvents}
+        initialEventsRange={initialEventsRange}
         initialTodoLists={initialTodoLists}
         isAdmin={isAdmin}
         onManageMembers={(agenda) => {

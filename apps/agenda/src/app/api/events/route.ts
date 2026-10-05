@@ -262,6 +262,7 @@ export async function POST(request: Request) {
     agenda.scopeId,
     validated.agendaId,
     validated.meta,
+    { eventId: event.id, participantUserIds: validated.participantUserIds },
   );
 
   return jsonResponse(

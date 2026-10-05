@@ -19,6 +19,8 @@ import { userHasAnyAgendaAccess, listAccessibleAgendaIds } from '@/lib/agenda/ac
 import { userHasAnyCabinetAccess, listAccessibleCabinetIds } from '@/lib/cabinet/access';
 import { userHasAccessibleChests } from '@/lib/chests/access';
 import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
+import { DispensaryRealtimeSocketShell } from './DispensaryRealtimeSocketShell';
+import { getRealtimePublicUrl } from '@/lib/realtime/socketConfig';
 import { OrdersRealtimeBridge } from './OrdersRealtimeBridge';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
@@ -112,6 +114,10 @@ export default async function DispensaryLayout({
       hasAccessibleChests={hasAccessibleChests}
     >
       <DispensaryRealtimeShell>
+        <DispensaryRealtimeSocketShell
+          dispensarySlug={dispensarySlug}
+          url={getRealtimePublicUrl()}
+        >
         <QueryProvider>
           <OrdersRealtimeBridge />
           <MailTemplateProvider
@@ -132,6 +138,7 @@ export default async function DispensaryLayout({
         </LoggedInShell>
           </MailTemplateProvider>
         </QueryProvider>
+        </DispensaryRealtimeSocketShell>
       </DispensaryRealtimeShell>
     </PermissionsProvider>
   );

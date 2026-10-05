@@ -5,8 +5,7 @@ import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import type { ReactNode } from 'react';
 
 export function DispensaryRealtimeShell({ children }: { children: ReactNode }) {
-  const { dispensarySlug, agendaModuleAccess, permissions, appSettings } =
-    usePermissions();
+  const { dispensarySlug, permissions, appSettings } = usePermissions();
 
   const weeklyActivityRealtimeEnabled =
     Boolean(dispensarySlug) &&
@@ -25,10 +24,7 @@ export function DispensaryRealtimeShell({ children }: { children: ReactNode }) {
 
   const streamEnabled =
     Boolean(dispensarySlug) &&
-    (Boolean(agendaModuleAccess) ||
-      weeklyActivityRealtimeEnabled ||
-      salesRealtimeEnabled ||
-      ordersRealtimeEnabled);
+    (weeklyActivityRealtimeEnabled || salesRealtimeEnabled || ordersRealtimeEnabled);
 
   if (!streamEnabled || !dispensarySlug) {
     return children;
