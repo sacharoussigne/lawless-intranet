@@ -151,3 +151,14 @@ export type {
   StockStatsRecord,
   WeeklySalesRecord,
 } from './inventory';
+export type {
+  MediaBreadcrumbItem,
+  MediaDownloadUrlRecord,
+  MediaFileRecord,
+  MediaFolderContentsRecord,
+  MediaFolderRecord,
+  MediaLimitsRecord,
+  MediaScopeParams,
+  MediaTreeFolderRecord,
+  MediaUploadTicketRecord,
+} from './media';
