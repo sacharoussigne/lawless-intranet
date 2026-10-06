@@ -1,128 +1,161 @@
 'use client';
 
 import Link from 'next/link';
-import { ActionIcon, Card, Center, Group, Image, Menu, Stack, Text, UnstyledButton } from '@mantine/core';
 import {
-  IconArrowsMove,
-  IconDots,
-  IconDownload,
-  IconEye,
-  IconFileTypePdf,
-  IconFolder,
-  IconPencil,
-  IconPhoto,
-  IconTrash,
-} from '@tabler/icons-react';
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
+import { ActionIcon, Box, Card, Center, Group, Image, Menu, Text } from '@mantine/core';
+import { IconDotsVertical, IconFileTypePdf, IconFolderFilled, IconPhoto } from '@tabler/icons-react';
 import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
 import { formatBytes, getFileKind } from '../format';
 import { useMediaUi } from '../MediaUiProvider';
 
-const THUMB_HEIGHT = 120;
+const THUMB_HEIGHT = 150;
 
-type ItemActions = {
-  onRename: () => void;
-  onMove: () => void;
-  onDelete: () => void;
+/** Drive-like interactions: click selects, double-click / Enter opens, right-click opens the menu. */
+export type TileInteractions = {
+  selected: boolean;
+  /** Touch screens: a single tap opens (double-tap is unreliable). */
+  openOnClick: boolean;
+  onSelect: () => void;
+  onOpen: () => void;
+  onDeleteKey: () => void;
+  onContextMenu: (event: MouseEvent) => void;
+  /** Entries of the ⋮ menu (same as the right-click menu). */
+  menu: ReactNode;
 };
 
-function ItemMenu({
-  label,
-  children,
-  onRename,
-  onMove,
-  onDelete,
-}: ItemActions & { label: string; children?: React.ReactNode }) {
+function tileStyle(selected: boolean): CSSProperties {
+  return {
+    position: 'relative',
+    cursor: 'default',
+    userSelect: 'none',
+    backgroundColor: selected ? 'var(--mantine-primary-color-light)' : 'var(--mantine-color-default-hover)',
+    borderColor: selected ? 'var(--mantine-primary-color-filled)' : 'transparent',
+  };
+}
+
+const stop = (event: MouseEvent) => event.stopPropagation();
+
+function KebabMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Menu position="bottom-end" withinPortal>
-      <Menu.Target>
-        <ActionIcon variant="subtle" color="slate" aria-label={`Actions pour ${label}`}>
-          <IconDots size={16} />
-        </ActionIcon>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {children}
-        <Menu.Item leftSection={<IconPencil size={14} />} onClick={onRename}>
-          Renommer
-        </Menu.Item>
-        <Menu.Item leftSection={<IconArrowsMove size={14} />} onClick={onMove}>
-          Déplacer
-        </Menu.Item>
-        <Menu.Divider />
-        <Menu.Item color="danger" leftSection={<IconTrash size={14} />} onClick={onDelete}>
-          Supprimer
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
+    <Box onClick={stop} onDoubleClick={stop} style={{ pointerEvents: 'auto' }}>
+      <Menu position="bottom-end" width={230} shadow="md" withinPortal>
+        <Menu.Target>
+          <ActionIcon variant="subtle" color="slate" radius="xl" aria-label={`Actions pour ${label}`}>
+            <IconDotsVertical size={16} />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>{children}</Menu.Dropdown>
+      </Menu>
+    </Box>
   );
+}
+
+function handleTileClick(event: MouseEvent, interactions: TileInteractions) {
+  // `detail === 0`: click synthesized by the keyboard (Enter on a link).
+  if (interactions.openOnClick || event.detail === 0) interactions.onOpen();
+  else interactions.onSelect();
+}
+
+function handleTileKeyDown(event: KeyboardEvent, interactions: TileInteractions, enterOpens: boolean) {
+  if (event.key === 'Delete') {
+    event.preventDefault();
+    interactions.onDeleteKey();
+  } else if (enterOpens && event.key === 'Enter') {
+    event.preventDefault();
+    interactions.onOpen();
+  }
 }
 
 export function FolderCard({
   folder,
   href,
-  ...actions
-}: ItemActions & { folder: MediaFolderRecord; href: string }) {
+  ...interactions
+}: TileInteractions & { folder: MediaFolderRecord; href: string }) {
   return (
-    <Card withBorder padding="sm" radius="md">
-      <Group justify="space-between" wrap="nowrap" gap="xs">
-        <UnstyledButton component={Link} href={href} style={{ flex: 1, minWidth: 0 }}>
-          <Group gap="sm" wrap="nowrap">
-            <IconFolder size={28} stroke={1.5} color="var(--mantine-primary-color-filled)" />
-            <Text size="sm" fw={500} lineClamp={2}>
-              {folder.name}
-            </Text>
-          </Group>
-        </UnstyledButton>
-        <ItemMenu label={folder.name} {...actions} />
+    <Card
+      withBorder
+      radius="lg"
+      padding="xs"
+      pl="md"
+      style={tileStyle(interactions.selected)}
+      onClick={stop}
+      onContextMenu={interactions.onContextMenu}
+    >
+      {/* Stretched real link: middle-click / Ctrl+click open a new tab. */}
+      <Link
+        href={href}
+        aria-label={folder.name}
+        draggable={false}
+        style={{ position: 'absolute', inset: 0, borderRadius: 'inherit' }}
+        onClick={(event) => {
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          handleTileClick(event, interactions);
+        }}
+        onDoubleClick={interactions.onOpen}
+        onKeyDown={(event) => handleTileKeyDown(event, interactions, false)}
+      />
+      <Group gap="sm" wrap="nowrap" style={{ position: 'relative', pointerEvents: 'none' }}>
+        <IconFolderFilled size={22} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
+        <Text size="sm" fw={500} truncate="end" style={{ flex: 1, minWidth: 0 }} title={folder.name}>
+          {folder.name}
+        </Text>
+        <KebabMenu label={folder.name}>{interactions.menu}</KebabMenu>
       </Group>
     </Card>
   );
 }
 
-export function FileCard({
-  file,
-  onPreview,
-  onDownload,
-  ...actions
-}: ItemActions & { file: MediaFileRecord; onPreview: () => void; onDownload: () => void }) {
+export function FileCard({ file, ...interactions }: TileInteractions & { file: MediaFileRecord }) {
   const { formatDate } = useMediaUi();
   const kind = getFileKind(file.mimeType);
+  const TypeIcon = kind === 'pdf' ? IconFileTypePdf : IconPhoto;
+  const typeColor = kind === 'pdf' ? 'var(--mantine-color-danger-6)' : 'var(--mantine-primary-color-filled)';
 
   return (
-    <Card withBorder padding="sm" radius="md">
-      <Card.Section>
-        <UnstyledButton onClick={onPreview} style={{ display: 'block', width: '100%' }} aria-label={`Aperçu de ${file.name}`}>
-          {kind === 'image' && file.previewUrl ? (
-            <Image src={file.previewUrl} alt={file.name} h={THUMB_HEIGHT} fit="cover" loading="lazy" />
-          ) : (
-            <Center h={THUMB_HEIGHT} bg="var(--mantine-color-default-hover)">
-              {kind === 'pdf' ? (
-                <IconFileTypePdf size={44} stroke={1.25} color="var(--mantine-color-danger-6)" />
-              ) : (
-                <IconPhoto size={44} stroke={1.25} color="var(--mantine-color-dimmed)" />
-              )}
-            </Center>
-          )}
-        </UnstyledButton>
-      </Card.Section>
-      <Group justify="space-between" wrap="nowrap" gap="xs" mt="sm" align="flex-start">
-        <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-          <Text size="sm" fw={500} lineClamp={2} title={file.name}>
-            {file.name}
-          </Text>
-          <Text size="xs" c="dimmed">
-            {formatBytes(file.size)} · {formatDate(file.createdAt)}
-          </Text>
-        </Stack>
-        <ItemMenu label={file.name} {...actions}>
-          <Menu.Item leftSection={<IconEye size={14} />} onClick={onPreview}>
-            Aperçu
-          </Menu.Item>
-          <Menu.Item leftSection={<IconDownload size={14} />} onClick={onDownload}>
-            Télécharger
-          </Menu.Item>
-          <Menu.Divider />
-        </ItemMenu>
+    <Card
+      withBorder
+      radius="lg"
+      padding="xs"
+      tabIndex={0}
+      role="button"
+      aria-label={file.name}
+      aria-pressed={interactions.selected}
+      title={`${file.name}\n${formatBytes(file.size)} · ${formatDate(file.createdAt)}`}
+      style={tileStyle(interactions.selected)}
+      onClick={(event: MouseEvent) => {
+        event.stopPropagation();
+        handleTileClick(event, interactions);
+      }}
+      onDoubleClick={interactions.onOpen}
+      onKeyDown={(event: KeyboardEvent) => handleTileKeyDown(event, interactions, true)}
+      onContextMenu={interactions.onContextMenu}
+    >
+      <Group gap="sm" wrap="nowrap" pl={6} mb="xs">
+        <TypeIcon size={18} color={typeColor} style={{ flexShrink: 0 }} />
+        <Text size="sm" fw={500} truncate="end" style={{ flex: 1, minWidth: 0 }}>
+          {file.name}
+        </Text>
+        <KebabMenu label={file.name}>{interactions.menu}</KebabMenu>
       </Group>
+      <Box
+        h={THUMB_HEIGHT}
+        style={{ borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
+        bg="var(--mantine-color-body)"
+      >
+        {kind === 'image' && file.previewUrl ? (
+          <Image src={file.previewUrl} alt={file.name} h="100%" w="100%" fit="cover" loading="lazy" draggable={false} />
+        ) : (
+          <Center h="100%">
+            <TypeIcon size={56} stroke={1.25} color={typeColor} />
+          </Center>
+        )}
+      </Box>
     </Card>
   );
 }

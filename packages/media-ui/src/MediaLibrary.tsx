@@ -1,30 +1,34 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Alert,
   Anchor,
+  Box,
   Breadcrumbs,
-  Button,
   Center,
-  FileButton,
   Group,
   Loader,
+  Menu,
   SimpleGrid,
   Stack,
   Text,
+  UnstyledButton,
 } from '@mantine/core';
 import { Dropzone } from '@mantine/dropzone';
-import { IconAlertTriangle, IconFolderPlus, IconUpload } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
+import { IconAlertTriangle, IconChevronDown, IconUpload } from '@tabler/icons-react';
 import type {
   MediaFileRecord,
   MediaFolderContentsRecord,
   MediaFolderRecord,
 } from '@lawless-intranet/types';
+import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { DeleteModal } from './components/DeleteModal';
 import { FileCard, FolderCard } from './components/MediaItemCards';
+import { BackgroundMenuItems, FileMenuItems, FolderMenuItems } from './components/MediaMenus';
 import { MoveModal } from './components/MoveModal';
 import { NameModal } from './components/NameModal';
 import { PreviewModal } from './components/PreviewModal';
@@ -35,6 +39,9 @@ import { useMediaUploads } from './hooks/useMediaUploads';
 import { useMediaUi } from './MediaUiProvider';
 
 export const MEDIA_FOLDER_PARAM = 'folder';
+
+/** Same columns for folders and files so both grids line up, like Drive. */
+const GRID_COLS = { base: 1, xs: 2, sm: 3, md: 4, xl: 5 };
 
 type Target =
   | { kind: 'folder'; item: MediaFolderRecord }
@@ -53,9 +60,13 @@ export type MediaLibraryProps = {
   initialFolderId?: string | null;
 };
 
-/** Drive-like library: folders, upload (drag & drop), rename, move, delete, preview. */
+/**
+ * Drive-like library: right-click menus (background and items), click to select,
+ * double-click to open, drag & drop upload, rename, move, delete, preview.
+ */
 export function MediaLibrary({ initialContents, initialFolderId = null }: MediaLibraryProps) {
   const { limits } = useMediaUi();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const folderId = searchParams.get(MEDIA_FOLDER_PARAM);
@@ -68,8 +79,12 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const download = useMediaDownload();
   const uploads = useMediaUploads();
   useMediaRealtime();
+  const contextMenu = useContextMenu();
+  const openOnClick = useMediaQuery('(hover: none)') ?? false;
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [preview, setPreview] = useState<MediaFileRecord | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const folderHref = useCallback(
     (id: string | null) => {
@@ -84,6 +99,8 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
 
   const closeDialog = () => setDialog(null);
   const contents = contentsQuery.data;
+  const breadcrumb = contents?.breadcrumb ?? [];
+  const currentFolderName = breadcrumb.at(-1)?.name ?? 'Médiathèque';
 
   const handleRename = (target: Target, name: string) => {
     const mutation =
@@ -109,14 +126,52 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     void mutation.then(closeDialog, () => undefined);
   };
 
+  const startUpload = (files: File[]) => {
+    if (files.length > 0) void uploads.upload(files, folderId);
+  };
+
+  const backgroundMenu = (
+    <BackgroundMenuItems
+      onCreateFolder={() => setDialog({ type: 'create' })}
+      onUpload={() => fileInputRef.current?.click()}
+      uploadDisabled={!limits.storageConfigured}
+    />
+  );
+
   const itemActions = (target: Target) => ({
     onRename: () => setDialog({ type: 'rename', target }),
     onMove: () => setDialog({ type: 'move', target }),
     onDelete: () => setDialog({ type: 'delete', target }),
   });
 
-  const startUpload = (files: File[]) => {
-    if (files.length > 0) void uploads.upload(files, folderId);
+  const tileInteractions = (id: string, onOpen: () => void, target: Target, menu: ReactNode) => ({
+    selected: selectedId === id,
+    openOnClick,
+    onSelect: () => setSelectedId(id),
+    onOpen,
+    onDeleteKey: () => setDialog({ type: 'delete', target }),
+    onContextMenu: (event: MouseEvent) => {
+      setSelectedId(id);
+      contextMenu.open(event, menu);
+    },
+    menu,
+  });
+
+  const folderTile = (folder: MediaFolderRecord) => {
+    const target: Target = { kind: 'folder', item: folder };
+    const href = folderHref(folder.id);
+    const open = () => router.push(href);
+    const menu = <FolderMenuItems onOpen={open} {...itemActions(target)} />;
+    return <FolderCard key={folder.id} folder={folder} href={href} {...tileInteractions(folder.id, open, target, menu)} />;
+  };
+
+  const fileTile = (file: MediaFileRecord) => {
+    const target: Target = { kind: 'file', item: file };
+    const open = () => setPreview(file);
+    const menu = (
+      <FileMenuItems onPreview={open} onDownload={() => void download(file.id)} {...itemActions(target)} />
+    );
+    return <FileCard key={file.id} file={file} {...tileInteractions(file.id, open, target, menu)} />;
   };
 
   const updating = mutations.updateFolder.isPending || mutations.updateFile.isPending;
@@ -125,34 +180,32 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" wrap="wrap" gap="sm">
-        <Breadcrumbs separatorMargin={6}>
-          <Anchor component={Link} href={folderHref(null)} size="sm">
+      <Breadcrumbs separatorMargin={6}>
+        {breadcrumb.length > 0 ? (
+          <Anchor component={Link} href={folderHref(null)} size="lg" c="dimmed">
             Médiathèque
           </Anchor>
-          {(contents?.breadcrumb ?? []).map((crumb) => (
-            <Anchor key={crumb.id} component={Link} href={folderHref(crumb.id)} size="sm">
-              {crumb.name}
-            </Anchor>
-          ))}
-        </Breadcrumbs>
-        <Group gap="sm">
-          <Button
-            variant="light"
-            leftSection={<IconFolderPlus size={16} />}
-            onClick={() => setDialog({ type: 'create' })}
-          >
-            Nouveau dossier
-          </Button>
-          <FileButton onChange={startUpload} accept={limits.allowedMimeTypes.join(',')} multiple>
-            {(props) => (
-              <Button {...props} leftSection={<IconUpload size={16} />} disabled={!limits.storageConfigured}>
-                Importer
-              </Button>
-            )}
-          </FileButton>
-        </Group>
-      </Group>
+        ) : null}
+        {breadcrumb.slice(0, -1).map((crumb) => (
+          <Anchor key={crumb.id} component={Link} href={folderHref(crumb.id)} size="lg" c="dimmed">
+            {crumb.name}
+          </Anchor>
+        ))}
+        {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
+        <Menu position="bottom-start" width={230} shadow="md" withinPortal>
+          <Menu.Target>
+            <UnstyledButton px="xs" py={4} style={{ borderRadius: 'var(--mantine-radius-xl)' }}>
+              <Group gap={4} wrap="nowrap">
+                <Text size="lg" fw={500}>
+                  {currentFolderName}
+                </Text>
+                <IconChevronDown size={18} />
+              </Group>
+            </UnstyledButton>
+          </Menu.Target>
+          <Menu.Dropdown>{backgroundMenu}</Menu.Dropdown>
+        </Menu>
+      </Breadcrumbs>
 
       {!limits.storageConfigured ? (
         <Alert color="amber" icon={<IconAlertTriangle size={16} />}>
@@ -166,60 +219,78 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
         </Alert>
       ) : null}
 
-      <Dropzone
-        onDrop={startUpload}
-        activateOnClick={false}
-        disabled={!limits.storageConfigured}
-        multiple
-        // Validation (type, size) is done by the upload queue for clear per-file errors.
-        styles={{ root: { border: 0, padding: 0, background: 'transparent' } }}
+      <Box
+        onClick={() => setSelectedId(null)}
+        onContextMenu={(event) => {
+          setSelectedId(null);
+          contextMenu.open(event, backgroundMenu);
+        }}
       >
-        <Stack gap="lg" mih={240}>
-          {!contents ? (
-            <Center py="xl">
-              <Loader />
-            </Center>
-          ) : null}
+        <Dropzone
+          onDrop={startUpload}
+          activateOnClick={false}
+          disabled={!limits.storageConfigured}
+          multiple
+          // Validation (type, size) is done by the upload queue for clear per-file errors.
+          styles={{ root: { border: 0, padding: 0, background: 'transparent', cursor: 'default' } }}
+        >
+          <Stack gap="lg" mih="60vh">
+            {!contents ? (
+              <Center py="xl">
+                <Loader />
+              </Center>
+            ) : null}
 
-          {contents && contents.folders.length > 0 ? (
-            <SimpleGrid cols={{ base: 1, xs: 2, md: 3, lg: 4 }} spacing="sm">
-              {contents.folders.map((folder) => (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  href={folderHref(folder.id)}
-                  {...itemActions({ kind: 'folder', item: folder })}
-                />
-              ))}
-            </SimpleGrid>
-          ) : null}
-
-          {contents && contents.files.length > 0 ? (
-            <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing="sm">
-              {contents.files.map((file) => (
-                <FileCard
-                  key={file.id}
-                  file={file}
-                  onPreview={() => setPreview(file)}
-                  onDownload={() => void download(file.id)}
-                  {...itemActions({ kind: 'file', item: file })}
-                />
-              ))}
-            </SimpleGrid>
-          ) : null}
-
-          {isEmpty ? (
-            <Center py="xl">
-              <Stack gap={4} align="center">
-                <IconUpload size={32} stroke={1.25} color="var(--mantine-color-dimmed)" />
-                <Text c="dimmed" size="sm">
-                  Ce dossier est vide. Glissez des fichiers ici ou utilisez « Importer ».
+            {contents && contents.folders.length > 0 ? (
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>
+                  Dossiers
                 </Text>
+                <SimpleGrid cols={GRID_COLS} spacing="sm">
+                  {contents.folders.map(folderTile)}
+                </SimpleGrid>
               </Stack>
-            </Center>
-          ) : null}
-        </Stack>
-      </Dropzone>
+            ) : null}
+
+            {contents && contents.files.length > 0 ? (
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>
+                  Fichiers
+                </Text>
+                <SimpleGrid cols={GRID_COLS} spacing="sm">
+                  {contents.files.map(fileTile)}
+                </SimpleGrid>
+              </Stack>
+            ) : null}
+
+            {isEmpty ? (
+              <Center py={80}>
+                <Stack gap={4} align="center">
+                  <IconUpload size={40} stroke={1.25} color="var(--mantine-color-dimmed)" />
+                  <Text fw={500}>Ce dossier est vide</Text>
+                  <Text c="dimmed" size="sm">
+                    Faites un clic droit pour créer un dossier ou importer, ou glissez des fichiers ici.
+                  </Text>
+                </Stack>
+              </Center>
+            ) : null}
+          </Stack>
+        </Dropzone>
+      </Box>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        hidden
+        multiple
+        accept={limits.allowedMimeTypes.join(',')}
+        onChange={(event) => {
+          startUpload(Array.from(event.currentTarget.files ?? []));
+          event.currentTarget.value = '';
+        }}
+      />
+
+      <ContextMenu state={contextMenu.state} onClose={contextMenu.close} />
 
       <NameModal
         opened={dialog?.type === 'create'}
