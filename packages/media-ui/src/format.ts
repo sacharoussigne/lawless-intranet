@@ -61,3 +61,9 @@ export function splitExtension(name: string): { base: string; extension: string 
   if (index <= 0) return { base: name, extension: '' };
   return { base: name.slice(0, index), extension: name.slice(index) };
 }
+
+/** Previous / next item of the viewer, without wrapping (like Drive). Null when out of range. */
+export function stepIndex(index: number, delta: number, length: number): number | null {
+  const next = index + delta;
+  return next >= 0 && next < length ? next : null;
+}

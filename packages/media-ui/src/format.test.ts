@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flattenFolderTree, formatBytes, getFileKind, splitExtension } from './format';
+import { flattenFolderTree, formatBytes, getFileKind, splitExtension, stepIndex } from './format';
 
 describe('formatBytes', () => {
   it('formats sizes in French units', () => {
@@ -46,5 +46,14 @@ describe('splitExtension', () => {
     expect(splitExtension('affiche.finale.png')).toEqual({ base: 'affiche.finale', extension: '.png' });
     expect(splitExtension('.env')).toEqual({ base: '.env', extension: '' });
     expect(splitExtension('sans')).toEqual({ base: 'sans', extension: '' });
+  });
+});
+
+describe('stepIndex', () => {
+  it('moves within bounds without wrapping', () => {
+    expect(stepIndex(0, 1, 3)).toBe(1);
+    expect(stepIndex(2, 1, 3)).toBeNull();
+    expect(stepIndex(0, -1, 3)).toBeNull();
+    expect(stepIndex(2, -1, 3)).toBe(1);
   });
 });

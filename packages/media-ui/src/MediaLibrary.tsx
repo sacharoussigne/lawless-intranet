@@ -31,9 +31,14 @@ import { FileCard, FolderCard } from './components/MediaItemCards';
 import { BackgroundMenuItems, FileMenuItems, FolderMenuItems } from './components/MediaMenus';
 import { MoveModal } from './components/MoveModal';
 import { NameModal } from './components/NameModal';
-import { PreviewModal } from './components/PreviewModal';
+import { MediaViewer } from './components/MediaViewer';
 import { UploadQueue } from './components/UploadQueue';
-import { useMediaDownload, useMediaFolderContents, useMediaMutations } from './hooks/useMediaQueries';
+import {
+  useInvalidateMedia,
+  useMediaDownload,
+  useMediaFolderContents,
+  useMediaMutations,
+} from './hooks/useMediaQueries';
 import { useMediaRealtime } from './hooks/useMediaRealtime';
 import { useMediaUploads } from './hooks/useMediaUploads';
 import { useMediaUi } from './MediaUiProvider';
@@ -83,7 +88,8 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const openOnClick = useMediaQuery('(hover: none)') ?? false;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [preview, setPreview] = useState<MediaFileRecord | null>(null);
+  const invalidate = useInvalidateMedia();
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const folderHref = useCallback(
@@ -100,6 +106,9 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const closeDialog = () => setDialog(null);
   const contents = contentsQuery.data;
   const breadcrumb = contents?.breadcrumb ?? [];
+  const files = contents?.files ?? [];
+  // Derived from the live list: a deleted file closes the viewer, a refetch refreshes its URL.
+  const previewIndex = previewId ? files.findIndex((file) => file.id === previewId) : -1;
   const currentFolderName = breadcrumb.at(-1)?.name ?? 'Médiathèque';
 
   const handleRename = (target: Target, name: string) => {
@@ -167,7 +176,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
 
   const fileTile = (file: MediaFileRecord) => {
     const target: Target = { kind: 'file', item: file };
-    const open = () => setPreview(file);
+    const open = () => setPreviewId(file.id);
     const menu = (
       <FileMenuItems onPreview={open} onDownload={() => void download(file.id)} {...itemActions(target)} />
     );
@@ -341,7 +350,20 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
         onConfirm={() => dialog?.type === 'delete' && handleDelete(dialog.target)}
       />
 
-      <PreviewModal file={preview} onDownload={(id) => void download(id)} onClose={() => setPreview(null)} />
+      <MediaViewer
+        files={files}
+        index={previewIndex >= 0 ? previewIndex : null}
+        onIndexChange={(index) => {
+          const file = files[index];
+          if (file) {
+            setPreviewId(file.id);
+            setSelectedId(file.id);
+          }
+        }}
+        onDownload={(id) => void download(id)}
+        onExpired={() => void invalidate()}
+        onClose={() => setPreviewId(null)}
+      />
       <UploadQueue items={uploads.items} onClear={uploads.clearFinished} />
     </Stack>
   );
