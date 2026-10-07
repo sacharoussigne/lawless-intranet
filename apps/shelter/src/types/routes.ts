@@ -4,6 +4,11 @@ export function shelterBase(slug: string): string {
   return `/s/${encodeURIComponent(slug)}`;
 }
 
+/** Public share link of a media file (no login, outside the middleware matcher). */
+export function mediaShareRoute(token: string, fileName: string): string {
+  return `/partage/${encodeURIComponent(token)}/${encodeURIComponent(fileName)}`;
+}
+
 export function tenantRoutes(slug: string) {
   const base = shelterBase(slug);
   const employeeBase = `${base}/employee`;

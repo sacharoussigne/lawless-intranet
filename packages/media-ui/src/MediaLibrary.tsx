@@ -47,6 +47,7 @@ import {
   useMediaDownload,
   useMediaFolderContents,
   useMediaMutations,
+  useMediaShare,
 } from './hooks/useMediaQueries';
 import { useMediaRealtime } from './hooks/useMediaRealtime';
 import { useMediaUploads } from './hooks/useMediaUploads';
@@ -114,6 +115,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   );
   const mutations = useMediaMutations();
   const download = useMediaDownload();
+  const share = useMediaShare();
   const uploads = useMediaUploads();
   useMediaRealtime();
   const contextMenu = useContextMenu();
@@ -235,7 +237,20 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     const target: Target = { kind: 'file', item: file };
     const open = () => setPreviewId(file.id);
     const menu = (
-      <FileMenuItems onPreview={open} onDownload={() => void download(file.id)} {...itemActions(target)} />
+      <FileMenuItems
+        onPreview={open}
+        onDownload={() => void download(file.id)}
+        share={
+          share.enabled
+            ? {
+                shared: file.shareToken !== null,
+                onCopyLink: () => share.copyLink(file),
+                onRevokeLink: () => share.revoke(file),
+              }
+            : undefined
+        }
+        {...itemActions(target)}
+      />
     );
     return <FileCard key={file.id} file={file} {...tileInteractions(file.id, open, target, menu)} />;
   };

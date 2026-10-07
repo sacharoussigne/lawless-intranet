@@ -2,7 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import type { MediaFolderContentsRecord } from '@lawless-intranet/types';
+import type { MediaFileRecord, MediaFolderContentsRecord } from '@lawless-intranet/types';
 import { useMediaUi } from '../MediaUiProvider';
 import { mediaKeys } from '../queryKeys';
 import { runMediaAction } from '../runMediaAction';
@@ -111,5 +111,54 @@ export function useMediaDownload() {
     } catch (error) {
       notifyError(error, 'Téléchargement impossible');
     }
+  };
+}
+
+/**
+ * Public share links: « copy » creates the link on first use (then always the same),
+ * « revoke » kills it (sharing again gives a new link).
+ */
+export function useMediaShare() {
+  const { actions, buildShareUrl } = useMediaUi();
+  const invalidate = useInvalidateMedia();
+
+  const share = useMutation({
+    mutationFn: async (id: string) => runMediaAction(await actions.shareFile(id)),
+    onError: (error) => notifyError(error, 'Partage impossible'),
+    onSettled: invalidate,
+  });
+
+  const unshare = useMutation({
+    mutationFn: async (id: string) => runMediaAction(await actions.unshareFile(id)),
+    onSuccess: (file) => notifySuccess(`Lien de partage de « ${file.name} » désactivé`),
+    onError: (error) => notifyError(error, 'Désactivation impossible'),
+    onSettled: invalidate,
+  });
+
+  const copyLink = async (file: MediaFileRecord) => {
+    if (!buildShareUrl) return;
+    let token = file.shareToken;
+    if (!token) {
+      try {
+        token = (await share.mutateAsync(file.id)).shareToken;
+      } catch {
+        return;
+      }
+    }
+    if (!token) return;
+    const url = buildShareUrl(token, file.name);
+    try {
+      await navigator.clipboard.writeText(url);
+      notifySuccess('Lien de partage copié');
+    } catch {
+      // Clipboard refused (permissions, focus): show the link so it can be copied by hand.
+      notifications.show({ title: 'Lien de partage', message: url, color: 'moss', autoClose: false });
+    }
+  };
+
+  return {
+    enabled: buildShareUrl !== undefined,
+    copyLink: (file: MediaFileRecord) => void copyLink(file),
+    revoke: (file: MediaFileRecord) => unshare.mutate(file.id),
   };
 }

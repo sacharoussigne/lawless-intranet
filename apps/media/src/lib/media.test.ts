@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { getMaxFileSizeBytes, validateUpload } from './limits';
-import { buildContentDisposition, buildStorageKey, normalizeMediaName } from './names';
+import {
+  buildContentDisposition,
+  buildStorageKey,
+  generateShareToken,
+  isShareToken,
+  normalizeMediaName,
+} from './names';
 import { buildBreadcrumb, collectSubtreeIds, isSameOrDescendant } from './tree';
 
 const MB = 1024 * 1024;
@@ -81,5 +87,21 @@ describe('folder tree', () => {
     ];
     expect(isSameOrDescendant(cyclic, 'z', 'x')).toBe(false);
     expect(buildBreadcrumb(cyclic, 'x')).toHaveLength(2);
+  });
+});
+
+describe('share tokens', () => {
+  it('generates unique URL-safe tokens that pass validation', () => {
+    const a = generateShareToken();
+    const b = generateShareToken();
+    expect(a).not.toBe(b);
+    expect(isShareToken(a)).toBe(true);
+    expect(encodeURIComponent(a)).toBe(a);
+  });
+
+  it('rejects malformed tokens', () => {
+    expect(isShareToken('')).toBe(false);
+    expect(isShareToken('short')).toBe(false);
+    expect(isShareToken('a'.repeat(31) + '/')).toBe(false);
   });
 });

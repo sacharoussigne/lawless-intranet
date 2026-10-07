@@ -23,6 +23,8 @@ export type MediaFileRecord = {
   updatedAt: string;
   /** Short-lived signed URL to display the file inline (images, PDF). */
   previewUrl: string | null;
+  /** Public share link token; null when the file is not shared. */
+  shareToken: string | null;
 };
 
 export type MediaBreadcrumbItem = {
@@ -63,4 +65,15 @@ export type MediaLimitsRecord = {
 export type MediaDownloadUrlRecord = {
   url: string;
   expiresAt: string;
+};
+
+/** Target of a public share link (resolved server-side by the host). */
+export type MediaShareTargetRecord = {
+  /** Fresh signed URL (inline). */
+  url: string;
+  expiresAt: string;
+  scopeType: string;
+  scopeId: string;
+  name: string;
+  mimeType: string;
 };

@@ -44,6 +44,8 @@ model MediaFile {
   size         Int
   status       MediaFileStatus @default(UPLOADING)
   uploadedById String
+  /// Public share link token (null = not shared). Revoking clears it, sharing again issues a new one.
+  shareToken   String?         @unique
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   folder       MediaFolder?    @relation(fields: [folderId], references: [id], onDelete: Cascade)

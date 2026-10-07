@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 export const MEDIA_NAME_MAX_LENGTH = 255;
 
@@ -33,4 +33,15 @@ export function buildContentDisposition(
     (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
   );
   return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+}
+
+/** Share link token: 24 random bytes (192 bits), URL-safe. */
+export function generateShareToken(): string {
+  return randomBytes(24).toString('base64url');
+}
+
+const SHARE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32}$/;
+
+export function isShareToken(value: string): boolean {
+  return SHARE_TOKEN_PATTERN.test(value);
 }

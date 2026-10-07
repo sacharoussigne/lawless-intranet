@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
-import { ActionIcon, Box, Card, Center, Group, Image, Menu, Text } from '@mantine/core';
-import { IconDotsVertical, IconFileTypePdf, IconFolderFilled, IconPhoto } from '@tabler/icons-react';
+import { ActionIcon, Box, Card, Center, Group, Image, Menu, Text, Tooltip } from '@mantine/core';
+import { IconDotsVertical, IconFileTypePdf, IconFolderFilled, IconLink, IconPhoto } from '@tabler/icons-react';
 import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
 import { canDrop, dragId, dropId, type DragItem } from '../dnd';
 import { formatBytes, getFileKind } from '../format';
@@ -168,6 +168,11 @@ export function FileCard({ file, ...interactions }: TileInteractions & { file: M
         <Text size="sm" fw={500} truncate="end" style={{ flex: 1, minWidth: 0 }}>
           {file.name}
         </Text>
+        {file.shareToken ? (
+          <Tooltip label="Partagé par lien" withinPortal>
+            <IconLink size={16} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} aria-label="Partagé par lien" />
+          </Tooltip>
+        ) : null}
         <KebabMenu label={file.name}>{interactions.menu}</KebabMenu>
       </Group>
       <Box

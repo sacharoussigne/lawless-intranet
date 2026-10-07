@@ -8,6 +8,8 @@ import {
   getMediaLibraryDownloadUrl,
   getMediaTree,
   requestMediaUpload,
+  shareMediaLibraryFile,
+  unshareMediaLibraryFile,
   updateMediaLibraryFile,
   updateMediaLibraryFolder,
 } from '@/app/_actions/media';
@@ -37,5 +39,7 @@ export function createShelterMediaActions(shelterSlug: string): MediaUiActions {
     updateFile: (input) => asMediaResult(updateMediaLibraryFile(shelterSlug, input)),
     deleteFile: (id) => asMediaResult(deleteMediaLibraryFile(shelterSlug, id)),
     getDownloadUrl: (id) => asMediaResult(getMediaLibraryDownloadUrl(shelterSlug, id)),
+    shareFile: (id) => asMediaResult(shareMediaLibraryFile(shelterSlug, id)),
+    unshareFile: (id) => asMediaResult(unshareMediaLibraryFile(shelterSlug, id)),
   };
 }

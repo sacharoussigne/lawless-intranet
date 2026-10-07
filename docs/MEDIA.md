@@ -25,6 +25,18 @@ navigateur ──server actions──▶ shelter ──HTTP + MEDIA_INTERNAL_SEC
 
 Chaque modification publie `media:<scopeType>:<scopeId>` sur le serveur WebSocket (`apps/realtime`). Les autres personnes qui ont la médiathèque ouverte voient le changement sans rafraîchir. Le refuge signe le jeton (topic ajouté si la feature et la permission sont actives). Le service publie par le réseau privé `realtime`.
 
+## Liens de partage
+
+Clic droit sur un fichier, puis « Copier le lien de partage » : on obtient un lien public qui **n'expire pas**, par exemple pour Discord. Ce lien a la forme `https://<refuge>/partage/<jeton>/<nom>`.
+- **Le jeton** fait 192 bits aléatoires et il est stocké sur le fichier (`MediaFile.shareToken`). La partie `<nom>` de l'URL est décorative.
+- **À l'ouverture du lien**, la route publique du refuge (`app/partage/[token]/[[...name]]`, hors middleware, sans connexion) fait trois choses :
+  1. elle résout le jeton via le service (`GET /api/shares/:token`, secret interne) ;
+  2. elle vérifie que la feature `media` du refuge est active ;
+  3. elle redirige (302, `no-store`) vers une URL S3 signée **fraîche**.
+- **Le bucket reste privé** : aucun réglage AWS supplémentaire.
+- **« Désactiver le lien »** oublie le jeton, et le lien renvoie 404 immédiatement. Repartager le fichier donne un **nouveau** lien. Supprimer le fichier, ou désactiver la feature, coupe aussi le lien.
+- **Limite** : Discord peut garder en cache une image déjà affichée. La désactivation coupe le lien, mais pas forcément une copie que Discord aurait déjà gardée.
+
 ## Créer le bucket (dev et prod)
 
 Un bucket par environnement, par exemple `lawless-media-dev` et `lawless-media-prod`.

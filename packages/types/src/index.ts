@@ -159,6 +159,7 @@ export type {
   MediaFolderRecord,
   MediaLimitsRecord,
   MediaScopeParams,
+  MediaShareTargetRecord,
   MediaTreeFolderRecord,
   MediaUploadTicketRecord,
 } from './media';

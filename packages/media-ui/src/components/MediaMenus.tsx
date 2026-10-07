@@ -7,6 +7,8 @@ import {
   IconEye,
   IconFolderOpen,
   IconFolderPlus,
+  IconLink,
+  IconLinkOff,
   IconPencil,
   IconTrash,
   IconUpload,
@@ -69,11 +71,18 @@ export function FolderMenuItems({ onOpen, ...actions }: ItemMenuActions & { onOp
   );
 }
 
+export type ShareMenuActions = {
+  shared: boolean;
+  onCopyLink: () => void;
+  onRevokeLink: () => void;
+};
+
 export function FileMenuItems({
   onPreview,
   onDownload,
+  share,
   ...actions
-}: ItemMenuActions & { onPreview: () => void; onDownload: () => void }) {
+}: ItemMenuActions & { onPreview: () => void; onDownload: () => void; share?: ShareMenuActions }) {
   return (
     <>
       <Menu.Item leftSection={<IconEye size={16} />} onClick={onPreview}>
@@ -82,6 +91,19 @@ export function FileMenuItems({
       <Menu.Item leftSection={<IconDownload size={16} />} onClick={onDownload}>
         Télécharger
       </Menu.Item>
+      {share ? (
+        <>
+          <Menu.Divider />
+          <Menu.Item leftSection={<IconLink size={16} />} onClick={share.onCopyLink}>
+            Copier le lien de partage
+          </Menu.Item>
+          {share.shared ? (
+            <Menu.Item leftSection={<IconLinkOff size={16} />} onClick={share.onRevokeLink}>
+              Désactiver le lien
+            </Menu.Item>
+          ) : null}
+        </>
+      ) : null}
       <Menu.Divider />
       <CommonItems {...actions} />
     </>

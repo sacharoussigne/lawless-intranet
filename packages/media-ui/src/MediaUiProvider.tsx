@@ -40,6 +40,8 @@ export type MediaUiActions = {
   }) => Promise<MediaActionResult<MediaFileRecord>>;
   deleteFile: (id: string) => Promise<MediaActionResult<{ success: true }>>;
   getDownloadUrl: (id: string) => Promise<MediaActionResult<MediaDownloadUrlRecord>>;
+  shareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;
+  unshareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;
 };
 
 export type MediaUiContextValue = {
@@ -49,6 +51,8 @@ export type MediaUiContextValue = {
   limits: MediaLimitsRecord;
   /** Date display (hosts may use the RP calendar). */
   formatDate: (iso: string) => string;
+  /** Absolute public URL of a share token; sharing is hidden when the host gives none. */
+  buildShareUrl?: (token: string, fileName: string) => string;
 };
 
 const MediaUiContext = createContext<MediaUiContextValue | null>(null);
@@ -61,6 +65,7 @@ export type MediaUiProviderProps = {
   actions: MediaUiActions;
   limits: MediaLimitsRecord;
   formatDate?: (iso: string) => string;
+  buildShareUrl?: (token: string, fileName: string) => string;
   children: ReactNode;
 };
 
@@ -69,11 +74,12 @@ export function MediaUiProvider({
   actions,
   limits,
   formatDate = defaultFormatDate,
+  buildShareUrl,
   children,
 }: MediaUiProviderProps) {
   const value = useMemo<MediaUiContextValue>(
-    () => ({ scopeKey, actions, limits, formatDate }),
-    [scopeKey, actions, limits, formatDate],
+    () => ({ scopeKey, actions, limits, formatDate, buildShareUrl }),
+    [scopeKey, actions, limits, formatDate, buildShareUrl],
   );
   return <MediaUiContext.Provider value={value}>{children}</MediaUiContext.Provider>;
 }

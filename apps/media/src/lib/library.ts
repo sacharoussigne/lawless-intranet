@@ -5,13 +5,14 @@ import type {
   MediaFolderRecord,
   MediaLimitsRecord,
   MediaScopeParams,
+  MediaShareTargetRecord,
   MediaTreeFolderRecord,
   MediaUploadTicketRecord,
 } from '@lawless-intranet/types';
 import type { MediaFile, MediaFolder } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getMaxFileSizeBytes, MEDIA_ALLOWED_MIME_TYPES, validateUpload } from '@/lib/limits';
-import { buildScopePrefix, buildStorageKey } from '@/lib/names';
+import { buildScopePrefix, buildStorageKey, generateShareToken, isShareToken } from '@/lib/names';
 import {
   createUploadTicket,
   deleteObjects,
@@ -57,6 +58,7 @@ async function serializeFile(file: MediaFile): Promise<MediaFileRecord> {
     createdAt: file.createdAt.toISOString(),
     updatedAt: file.updatedAt.toISOString(),
     previewUrl,
+    shareToken: file.shareToken,
   };
 }
 
@@ -324,6 +326,61 @@ export async function deleteFile(
   await notifyMediaChange(scope);
   await deleteObjects([file.storageKey]);
   return { ok: true, data: { success: true } };
+}
+
+// --- Share links ---
+
+/** Issues a share token (kept if the file is already shared: the link stays the same). */
+export async function shareFile(
+  scope: MediaScopeParams,
+  fileId: string,
+): Promise<LibraryResult<MediaFileRecord>> {
+  const file = await prisma.mediaFile.findFirst({
+    where: { id: fileId, ...scopeWhere(scope), status: 'READY' },
+  });
+  if (!file) return notFound('Fichier introuvable');
+  if (file.shareToken) return { ok: true, data: await serializeFile(file) };
+
+  const shared = await prisma.mediaFile.update({
+    where: { id: file.id },
+    data: { shareToken: generateShareToken() },
+  });
+  await notifyMediaChange(scope);
+  return { ok: true, data: await serializeFile(shared) };
+}
+
+/** Revokes the link: the token is forgotten, sharing again gives a new link. */
+export async function unshareFile(
+  scope: MediaScopeParams,
+  fileId: string,
+): Promise<LibraryResult<MediaFileRecord>> {
+  const file = await prisma.mediaFile.findFirst({ where: { id: fileId, ...scopeWhere(scope) } });
+  if (!file) return notFound('Fichier introuvable');
+  if (!file.shareToken) return { ok: true, data: await serializeFile(file) };
+
+  const unshared = await prisma.mediaFile.update({ where: { id: file.id }, data: { shareToken: null } });
+  await notifyMediaChange(scope);
+  return { ok: true, data: await serializeFile(unshared) };
+}
+
+/** Public link resolution (host-only): a fresh signed URL for a shared, ready file. */
+export async function resolveShare(token: string): Promise<LibraryResult<MediaShareTargetRecord>> {
+  if (!isShareToken(token)) return notFound('Lien de partage invalide');
+  const file = await prisma.mediaFile.findUnique({ where: { shareToken: token } });
+  if (!file || file.status !== 'READY') return notFound('Lien de partage invalide');
+
+  const signed = await signReadUrl({ key: file.storageKey, fileName: file.name });
+  return {
+    ok: true,
+    data: {
+      url: signed.url,
+      expiresAt: signed.expiresAt.toISOString(),
+      scopeType: file.scopeType,
+      scopeId: file.scopeId,
+      name: file.name,
+      mimeType: file.mimeType,
+    },
+  };
 }
 
 /** Removes everything of a tenant (host deleted), including orphan objects. */

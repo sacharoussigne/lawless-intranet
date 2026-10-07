@@ -5,6 +5,7 @@ import { MediaLibrary, MediaUiProvider } from '@lawless-intranet/media-ui';
 import type { MediaFolderContentsRecord, MediaLimitsRecord } from '@lawless-intranet/types';
 import { createShelterMediaActions } from '@/lib/media/mediaUiActions';
 import { formatRpDate } from '@/lib/rpCalendar';
+import { mediaShareRoute } from '@/types/routes';
 
 type ShelterMediaWorkspaceProps = {
   shelterSlug: string;
@@ -16,6 +17,10 @@ type ShelterMediaWorkspaceProps = {
 /** Dates follow the RP calendar like the rest of the shelter. */
 const formatMediaDate = (iso: string) => formatRpDate(new Date(iso), 'dd MMM yyyy');
 
+/** Absolute public link, built in the browser so it uses the address the user reached us at. */
+const buildShareUrl = (token: string, fileName: string) =>
+  `${window.location.origin}${mediaShareRoute(token, fileName)}`;
+
 export function ShelterMediaWorkspace({
   shelterSlug,
   limits,
@@ -25,7 +30,13 @@ export function ShelterMediaWorkspace({
   const actions = useMemo(() => createShelterMediaActions(shelterSlug), [shelterSlug]);
 
   return (
-    <MediaUiProvider scopeKey={shelterSlug} actions={actions} limits={limits} formatDate={formatMediaDate}>
+    <MediaUiProvider
+      scopeKey={shelterSlug}
+      actions={actions}
+      limits={limits}
+      formatDate={formatMediaDate}
+      buildShareUrl={buildShareUrl}
+    >
       <MediaLibrary initialFolderId={initialFolderId} initialContents={initialContents} />
     </MediaUiProvider>
   );

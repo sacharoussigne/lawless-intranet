@@ -11,6 +11,8 @@ import {
   getMediaFolderContents,
   getMediaFolderTree,
   getMediaLimits,
+  shareMediaFile,
+  unshareMediaFile,
   updateMediaFile,
   updateMediaFolder,
 } from '@lawless-intranet/media-client/server';
@@ -134,5 +136,17 @@ export async function deleteMediaLibraryFile(shelterSlug: string, id: string) {
 export async function getMediaLibraryDownloadUrl(shelterSlug: string, id: string) {
   return withMedia(shelterSlug, 'Erreur lors du téléchargement', (scope, options) =>
     getMediaDownloadUrl(scope, idSchema.parse(id), options),
+  );
+}
+
+export async function shareMediaLibraryFile(shelterSlug: string, id: string) {
+  return withMedia(shelterSlug, 'Erreur lors du partage du fichier', (scope, options) =>
+    shareMediaFile(scope, idSchema.parse(id), options),
+  );
+}
+
+export async function unshareMediaLibraryFile(shelterSlug: string, id: string) {
+  return withMedia(shelterSlug, 'Erreur lors de la désactivation du lien', (scope, options) =>
+    unshareMediaFile(scope, idSchema.parse(id), options),
   );
 }

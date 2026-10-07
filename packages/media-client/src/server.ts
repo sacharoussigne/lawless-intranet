@@ -5,6 +5,7 @@ import type {
   MediaFolderRecord,
   MediaLimitsRecord,
   MediaScopeParams,
+  MediaShareTargetRecord,
   MediaTreeFolderRecord,
   MediaUploadTicketRecord,
 } from '@lawless-intranet/types';
@@ -142,6 +143,40 @@ export async function getMediaDownloadUrl(
       options,
     ),
   );
+}
+
+/** Creates the file's share link (or returns the existing one). */
+export async function shareMediaFile(
+  scope: MediaScopeParams,
+  fileId: string,
+  options: ClientOptions = {},
+): Promise<MediaFileRecord> {
+  return parseJsonResponse(
+    await mediaFetch(`/api/files/${encodeURIComponent(fileId)}/share`, {
+      method: 'POST',
+      cookieHeader: options.cookieHeader,
+      body: JSON.stringify(scope),
+    }),
+  );
+}
+
+/** Revokes the file's share link. */
+export async function unshareMediaFile(
+  scope: MediaScopeParams,
+  fileId: string,
+  options: ClientOptions = {},
+): Promise<MediaFileRecord> {
+  return parseJsonResponse(
+    await mediaFetch(`/api/files/${encodeURIComponent(fileId)}/share${toQuery({ ...scope })}`, {
+      method: 'DELETE',
+      cookieHeader: options.cookieHeader,
+    }),
+  );
+}
+
+/** Host-only (no user): resolves a public share token to a fresh signed URL. */
+export async function resolveMediaShare(token: string): Promise<MediaShareTargetRecord> {
+  return parseJsonResponse(await mediaFetch(`/api/shares/${encodeURIComponent(token)}`));
 }
 
 /** Host-only (no user): deletes every folder, file and S3 object of a tenant. */
