@@ -7,9 +7,11 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react';
+import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import { ActionIcon, Box, Card, Center, Group, Image, Menu, Text } from '@mantine/core';
 import { IconDotsVertical, IconFileTypePdf, IconFolderFilled, IconPhoto } from '@tabler/icons-react';
 import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
+import { canDrop, dragId, dropId, type DragItem } from '../dnd';
 import { formatBytes, getFileKind } from '../format';
 import { useMediaUi } from '../MediaUiProvider';
 
@@ -26,15 +28,29 @@ export type TileInteractions = {
   onContextMenu: (event: MouseEvent) => void;
   /** Entries of the ⋮ menu (same as the right-click menu). */
   menu: ReactNode;
+  /** Position of the item, used to drag it into another folder. */
+  dragItem: DragItem;
 };
 
-function tileStyle(selected: boolean): CSSProperties {
+function tileStyle(highlighted: boolean, dragging: boolean): CSSProperties {
   return {
     position: 'relative',
     cursor: 'default',
     userSelect: 'none',
-    backgroundColor: selected ? 'var(--mantine-primary-color-light)' : 'var(--mantine-color-default-hover)',
-    borderColor: selected ? 'var(--mantine-primary-color-filled)' : 'transparent',
+    opacity: dragging ? 0.4 : 1,
+    backgroundColor: highlighted ? 'var(--mantine-primary-color-light)' : 'var(--mantine-color-default-hover)',
+    borderColor: highlighted ? 'var(--mantine-primary-color-filled)' : 'transparent',
+  };
+}
+
+/** The dragged item, when it may be dropped into `folderId`. */
+export function useDropHighlight(folderId: string | null) {
+  const droppable = useDroppable({ id: dropId(folderId) });
+  const { active } = useDndContext();
+  const item = active?.data.current as DragItem | undefined;
+  return {
+    setNodeRef: droppable.setNodeRef,
+    highlighted: droppable.isOver && item !== undefined && canDrop(item, folderId),
   };
 }
 
@@ -76,13 +92,21 @@ export function FolderCard({
   href,
   ...interactions
 }: TileInteractions & { folder: MediaFolderRecord; href: string }) {
+  const draggable = useDraggable({ id: dragId(interactions.dragItem), data: interactions.dragItem });
+  const drop = useDropHighlight(folder.id);
+
   return (
     <Card
+      ref={(node: HTMLDivElement | null) => {
+        draggable.setNodeRef(node);
+        drop.setNodeRef(node);
+      }}
+      {...draggable.listeners}
       withBorder
       radius="lg"
       padding="xs"
       pl="md"
-      style={tileStyle(interactions.selected)}
+      style={tileStyle(interactions.selected || drop.highlighted, draggable.isDragging)}
       onClick={stop}
       onContextMenu={interactions.onContextMenu}
     >
@@ -116,9 +140,12 @@ export function FileCard({ file, ...interactions }: TileInteractions & { file: M
   const kind = getFileKind(file.mimeType);
   const TypeIcon = kind === 'pdf' ? IconFileTypePdf : IconPhoto;
   const typeColor = kind === 'pdf' ? 'var(--mantine-color-danger-6)' : 'var(--mantine-primary-color-filled)';
+  const draggable = useDraggable({ id: dragId(interactions.dragItem), data: interactions.dragItem });
 
   return (
     <Card
+      ref={draggable.setNodeRef}
+      {...draggable.listeners}
       withBorder
       radius="lg"
       padding="xs"
@@ -127,7 +154,7 @@ export function FileCard({ file, ...interactions }: TileInteractions & { file: M
       aria-label={file.name}
       aria-pressed={interactions.selected}
       title={`${file.name}\n${formatBytes(file.size)} · ${formatDate(file.createdAt)}`}
-      style={tileStyle(interactions.selected)}
+      style={tileStyle(interactions.selected, draggable.isDragging)}
       onClick={(event: MouseEvent) => {
         event.stopPropagation();
         handleTileClick(event, interactions);
@@ -156,6 +183,24 @@ export function FileCard({ file, ...interactions }: TileInteractions & { file: M
           </Center>
         )}
       </Box>
+    </Card>
+  );
+}
+
+/** Label following the cursor while dragging. */
+export function DragChip({ name, kind }: { name: string; kind: DragItem['kind'] }) {
+  return (
+    <Card withBorder shadow="md" radius="lg" padding="xs" px="md" maw={260} style={{ cursor: 'grabbing' }}>
+      <Group gap="sm" wrap="nowrap">
+        {kind === 'folder' ? (
+          <IconFolderFilled size={18} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
+        ) : (
+          <IconPhoto size={18} color="var(--mantine-primary-color-filled)" style={{ flexShrink: 0 }} />
+        )}
+        <Text size="sm" fw={500} truncate="end">
+          {name}
+        </Text>
+      </Group>
     </Card>
   );
 }

@@ -68,6 +68,9 @@ export function useMediaMutations() {
   const updateFolder = useMutation({
     mutationFn: async (input: { id: string; name?: string; parentId?: string | null }) =>
       runMediaAction(await actions.updateFolder(input)),
+    onSuccess: (folder, input) => {
+      if (input.parentId !== undefined) notifySuccess(`« ${folder.name} » déplacé`);
+    },
     onError: (error) => notifyError(error, 'Modification impossible'),
     onSettled: invalidate,
   });
@@ -82,6 +85,9 @@ export function useMediaMutations() {
   const updateFile = useMutation({
     mutationFn: async (input: { id: string; name?: string; folderId?: string | null }) =>
       runMediaAction(await actions.updateFile(input)),
+    onSuccess: (file, input) => {
+      if (input.folderId !== undefined) notifySuccess(`« ${file.name} » déplacé`);
+    },
     onError: (error) => notifyError(error, 'Modification impossible'),
     onSettled: invalidate,
   });

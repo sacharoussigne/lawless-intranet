@@ -2,6 +2,15 @@
 
 import { useCallback, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import Link from 'next/link';
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Alert,
@@ -27,7 +36,7 @@ import type {
 } from '@lawless-intranet/types';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { DeleteModal } from './components/DeleteModal';
-import { FileCard, FolderCard } from './components/MediaItemCards';
+import { DragChip, FileCard, FolderCard, useDropHighlight } from './components/MediaItemCards';
 import { BackgroundMenuItems, FileMenuItems, FolderMenuItems } from './components/MediaMenus';
 import { MoveModal } from './components/MoveModal';
 import { NameModal } from './components/NameModal';
@@ -42,6 +51,7 @@ import {
 import { useMediaRealtime } from './hooks/useMediaRealtime';
 import { useMediaUploads } from './hooks/useMediaUploads';
 import { useMediaUi } from './MediaUiProvider';
+import { canDrop, parseDropId, type DragItem } from './dnd';
 
 export const MEDIA_FOLDER_PARAM = 'folder';
 
@@ -58,6 +68,28 @@ type Dialog =
   | { type: 'move'; target: Target }
   | { type: 'delete'; target: Target }
   | null;
+
+/** Breadcrumb link that also accepts dropped items (move up to a parent or the root). */
+function DropCrumb({ folderId, href, label }: { folderId: string | null; href: string; label: string }) {
+  const drop = useDropHighlight(folderId);
+  return (
+    <Anchor
+      ref={drop.setNodeRef}
+      component={Link}
+      href={href}
+      size="lg"
+      c={drop.highlighted ? undefined : 'dimmed'}
+      px="xs"
+      py={4}
+      style={{
+        borderRadius: 'var(--mantine-radius-xl)',
+        backgroundColor: drop.highlighted ? 'var(--mantine-primary-color-light)' : undefined,
+      }}
+    >
+      {label}
+    </Anchor>
+  );
+}
 
 export type MediaLibraryProps = {
   /** Contents loaded by the server component for `initialFolderId`. */
@@ -91,6 +123,9 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const invalidate = useInvalidateMedia();
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dragged, setDragged] = useState<{ item: DragItem; name: string } | null>(null);
+  // Mouse only: on touch screens a drag would fight with scrolling, « Déplacer » covers it.
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }));
 
   const folderHref = useCallback(
     (id: string | null) => {
@@ -135,6 +170,23 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     void mutation.then(closeDialog, () => undefined);
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const item = event.active.data.current as DragItem | undefined;
+    if (!item) return;
+    const source = item.kind === 'folder' ? contents?.folders : contents?.files;
+    setDragged({ item, name: source?.find((entry) => entry.id === item.id)?.name ?? '' });
+    setSelectedId(item.id);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setDragged(null);
+    const item = event.active.data.current as DragItem | undefined;
+    const destination = event.over ? parseDropId(String(event.over.id)) : undefined;
+    if (!item || destination === undefined || !canDrop(item, destination)) return;
+    if (item.kind === 'folder') mutations.updateFolder.mutate({ id: item.id, parentId: destination });
+    else mutations.updateFile.mutate({ id: item.id, folderId: destination });
+  };
+
   const startUpload = (files: File[]) => {
     if (files.length > 0) void uploads.upload(files, folderId);
   };
@@ -154,6 +206,11 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   });
 
   const tileInteractions = (id: string, onOpen: () => void, target: Target, menu: ReactNode) => ({
+    dragItem: {
+      kind: target.kind,
+      id,
+      parentId: target.kind === 'folder' ? target.item.parentId : target.item.folderId,
+    },
     selected: selectedId === id,
     openOnClick,
     onSelect: () => setSelectedId(id),
@@ -188,183 +245,187 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const isEmpty = contents && contents.folders.length === 0 && contents.files.length === 0;
 
   return (
-    <Stack gap="md">
-      <Breadcrumbs separatorMargin={6}>
-        {breadcrumb.length > 0 ? (
-          <Anchor component={Link} href={folderHref(null)} size="lg" c="dimmed">
-            Médiathèque
-          </Anchor>
-        ) : null}
-        {breadcrumb.slice(0, -1).map((crumb) => (
-          <Anchor key={crumb.id} component={Link} href={folderHref(crumb.id)} size="lg" c="dimmed">
-            {crumb.name}
-          </Anchor>
-        ))}
-        {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
-        <Menu position="bottom-start" width={230} shadow="md" withinPortal>
-          <Menu.Target>
-            <UnstyledButton px="xs" py={4} style={{ borderRadius: 'var(--mantine-radius-xl)' }}>
-              <Group gap={4} wrap="nowrap">
-                <Text size="lg" fw={500}>
-                  {currentFolderName}
-                </Text>
-                <IconChevronDown size={18} />
-              </Group>
-            </UnstyledButton>
-          </Menu.Target>
-          <Menu.Dropdown>{backgroundMenu}</Menu.Dropdown>
-        </Menu>
-      </Breadcrumbs>
-
-      {!limits.storageConfigured ? (
-        <Alert color="amber" icon={<IconAlertTriangle size={16} />}>
-          Le stockage n&apos;est pas configuré : l&apos;import et l&apos;aperçu des fichiers sont indisponibles.
-        </Alert>
-      ) : null}
-
-      {contentsQuery.isError && !contents ? (
-        <Alert color="danger" icon={<IconAlertTriangle size={16} />}>
-          {contentsQuery.error instanceof Error ? contentsQuery.error.message : 'Chargement impossible'}
-        </Alert>
-      ) : null}
-
-      <Box
-        onClick={() => setSelectedId(null)}
-        onContextMenu={(event) => {
-          setSelectedId(null);
-          contextMenu.open(event, backgroundMenu);
-        }}
-      >
-        <Dropzone
-          onDrop={startUpload}
-          activateOnClick={false}
-          disabled={!limits.storageConfigured}
-          multiple
-          // Validation (type, size) is done by the upload queue for clear per-file errors.
-          styles={{ root: { border: 0, padding: 0, background: 'transparent', cursor: 'default' } }}
-        >
-          <Stack gap="lg" mih="60vh">
-            {!contents ? (
-              <Center py="xl">
-                <Loader />
-              </Center>
-            ) : null}
-
-            {contents && contents.folders.length > 0 ? (
-              <Stack gap="xs">
-                <Text size="sm" fw={500}>
-                  Dossiers
-                </Text>
-                <SimpleGrid cols={GRID_COLS} spacing="sm">
-                  {contents.folders.map(folderTile)}
-                </SimpleGrid>
-              </Stack>
-            ) : null}
-
-            {contents && contents.files.length > 0 ? (
-              <Stack gap="xs">
-                <Text size="sm" fw={500}>
-                  Fichiers
-                </Text>
-                <SimpleGrid cols={GRID_COLS} spacing="sm">
-                  {contents.files.map(fileTile)}
-                </SimpleGrid>
-              </Stack>
-            ) : null}
-
-            {isEmpty ? (
-              <Center py={80}>
-                <Stack gap={4} align="center">
-                  <IconUpload size={40} stroke={1.25} color="var(--mantine-color-dimmed)" />
-                  <Text fw={500}>Ce dossier est vide</Text>
-                  <Text c="dimmed" size="sm">
-                    Faites un clic droit pour créer un dossier ou importer, ou glissez des fichiers ici.
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setDragged(null)}
+    >
+      <Stack gap="md">
+        <Breadcrumbs separatorMargin={2}>
+          {breadcrumb.length > 0 ? <DropCrumb folderId={null} href={folderHref(null)} label="Médiathèque" /> : null}
+          {breadcrumb.slice(0, -1).map((crumb) => (
+            <DropCrumb key={crumb.id} folderId={crumb.id} href={folderHref(crumb.id)} label={crumb.name} />
+          ))}
+          {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
+          <Menu position="bottom-start" width={230} shadow="md" withinPortal>
+            <Menu.Target>
+              <UnstyledButton px="xs" py={4} style={{ borderRadius: 'var(--mantine-radius-xl)' }}>
+                <Group gap={4} wrap="nowrap">
+                  <Text size="lg" fw={500}>
+                    {currentFolderName}
                   </Text>
+                  <IconChevronDown size={18} />
+                </Group>
+              </UnstyledButton>
+            </Menu.Target>
+            <Menu.Dropdown>{backgroundMenu}</Menu.Dropdown>
+          </Menu>
+        </Breadcrumbs>
+
+        {!limits.storageConfigured ? (
+          <Alert color="amber" icon={<IconAlertTriangle size={16} />}>
+            Le stockage n&apos;est pas configuré : l&apos;import et l&apos;aperçu des fichiers sont indisponibles.
+          </Alert>
+        ) : null}
+
+        {contentsQuery.isError && !contents ? (
+          <Alert color="danger" icon={<IconAlertTriangle size={16} />}>
+            {contentsQuery.error instanceof Error ? contentsQuery.error.message : 'Chargement impossible'}
+          </Alert>
+        ) : null}
+
+        <Box
+          onClick={() => setSelectedId(null)}
+          onContextMenu={(event) => {
+            setSelectedId(null);
+            contextMenu.open(event, backgroundMenu);
+          }}
+        >
+          <Dropzone
+            onDrop={startUpload}
+            activateOnClick={false}
+            disabled={!limits.storageConfigured}
+            multiple
+            // Validation (type, size) is done by the upload queue for clear per-file errors.
+            styles={{ root: { border: 0, padding: 0, background: 'transparent', cursor: 'default' } }}
+          >
+            <Stack gap="lg" mih="60vh">
+              {!contents ? (
+                <Center py="xl">
+                  <Loader />
+                </Center>
+              ) : null}
+
+              {contents && contents.folders.length > 0 ? (
+                <Stack gap="xs">
+                  <Text size="sm" fw={500}>
+                    Dossiers
+                  </Text>
+                  <SimpleGrid cols={GRID_COLS} spacing="sm">
+                    {contents.folders.map(folderTile)}
+                  </SimpleGrid>
                 </Stack>
-              </Center>
-            ) : null}
-          </Stack>
-        </Dropzone>
-      </Box>
+              ) : null}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        hidden
-        multiple
-        accept={limits.allowedMimeTypes.join(',')}
-        onChange={(event) => {
-          startUpload(Array.from(event.currentTarget.files ?? []));
-          event.currentTarget.value = '';
-        }}
-      />
+              {contents && contents.files.length > 0 ? (
+                <Stack gap="xs">
+                  <Text size="sm" fw={500}>
+                    Fichiers
+                  </Text>
+                  <SimpleGrid cols={GRID_COLS} spacing="sm">
+                    {contents.files.map(fileTile)}
+                  </SimpleGrid>
+                </Stack>
+              ) : null}
 
-      <ContextMenu state={contextMenu.state} onClose={contextMenu.close} />
+              {isEmpty ? (
+                <Center py={80}>
+                  <Stack gap={4} align="center">
+                    <IconUpload size={40} stroke={1.25} color="var(--mantine-color-dimmed)" />
+                    <Text fw={500}>Ce dossier est vide</Text>
+                    <Text c="dimmed" size="sm">
+                      Faites un clic droit pour créer un dossier ou importer, ou glissez des fichiers ici.
+                    </Text>
+                  </Stack>
+                </Center>
+              ) : null}
+            </Stack>
+          </Dropzone>
+        </Box>
 
-      <NameModal
-        opened={dialog?.type === 'create'}
-        title="Nouveau dossier"
-        label="Nom du dossier"
-        submitLabel="Créer"
-        loading={mutations.createFolder.isPending}
-        onClose={closeDialog}
-        onSubmit={(name) =>
-          void mutations.createFolder.mutateAsync({ parentId: folderId, name }).then(closeDialog, () => undefined)
-        }
-      />
+        <input
+          ref={fileInputRef}
+          type="file"
+          hidden
+          multiple
+          accept={limits.allowedMimeTypes.join(',')}
+          onChange={(event) => {
+            startUpload(Array.from(event.currentTarget.files ?? []));
+            event.currentTarget.value = '';
+          }}
+        />
 
-      <NameModal
-        opened={dialog?.type === 'rename'}
-        title="Renommer"
-        label="Nouveau nom"
-        submitLabel="Renommer"
-        initialValue={dialog?.type === 'rename' ? dialog.target.item.name : ''}
-        selectBaseName={dialog?.type === 'rename' && dialog.target.kind === 'file'}
-        loading={updating}
-        onClose={closeDialog}
-        onSubmit={(name) => dialog?.type === 'rename' && handleRename(dialog.target, name)}
-      />
+        <ContextMenu state={contextMenu.state} onClose={contextMenu.close} />
 
-      <MoveModal
-        opened={dialog?.type === 'move'}
-        itemName={dialog?.type === 'move' ? dialog.target.item.name : ''}
-        currentParentId={
-          dialog?.type === 'move'
-            ? dialog.target.kind === 'folder'
-              ? dialog.target.item.parentId
-              : dialog.target.item.folderId
-            : null
-        }
-        excludeFolderId={dialog?.type === 'move' && dialog.target.kind === 'folder' ? dialog.target.item.id : undefined}
-        loading={updating}
-        onClose={closeDialog}
-        onSubmit={(destination) => dialog?.type === 'move' && handleMove(dialog.target, destination)}
-      />
-
-      <DeleteModal
-        opened={dialog?.type === 'delete'}
-        itemName={dialog?.type === 'delete' ? dialog.target.item.name : ''}
-        isFolder={dialog?.type === 'delete' && dialog.target.kind === 'folder'}
-        loading={deleting}
-        onClose={closeDialog}
-        onConfirm={() => dialog?.type === 'delete' && handleDelete(dialog.target)}
-      />
-
-      <MediaViewer
-        files={files}
-        index={previewIndex >= 0 ? previewIndex : null}
-        onIndexChange={(index) => {
-          const file = files[index];
-          if (file) {
-            setPreviewId(file.id);
-            setSelectedId(file.id);
+        <NameModal
+          opened={dialog?.type === 'create'}
+          title="Nouveau dossier"
+          label="Nom du dossier"
+          submitLabel="Créer"
+          loading={mutations.createFolder.isPending}
+          onClose={closeDialog}
+          onSubmit={(name) =>
+            void mutations.createFolder.mutateAsync({ parentId: folderId, name }).then(closeDialog, () => undefined)
           }
-        }}
-        onDownload={(id) => void download(id)}
-        onExpired={() => void invalidate()}
-        onClose={() => setPreviewId(null)}
-      />
-      <UploadQueue items={uploads.items} onClear={uploads.clearFinished} />
-    </Stack>
+        />
+
+        <NameModal
+          opened={dialog?.type === 'rename'}
+          title="Renommer"
+          label="Nouveau nom"
+          submitLabel="Renommer"
+          initialValue={dialog?.type === 'rename' ? dialog.target.item.name : ''}
+          selectBaseName={dialog?.type === 'rename' && dialog.target.kind === 'file'}
+          loading={updating}
+          onClose={closeDialog}
+          onSubmit={(name) => dialog?.type === 'rename' && handleRename(dialog.target, name)}
+        />
+
+        <MoveModal
+          opened={dialog?.type === 'move'}
+          itemName={dialog?.type === 'move' ? dialog.target.item.name : ''}
+          currentParentId={
+            dialog?.type === 'move'
+              ? dialog.target.kind === 'folder'
+                ? dialog.target.item.parentId
+                : dialog.target.item.folderId
+              : null
+          }
+          excludeFolderId={dialog?.type === 'move' && dialog.target.kind === 'folder' ? dialog.target.item.id : undefined}
+          loading={updating}
+          onClose={closeDialog}
+          onSubmit={(destination) => dialog?.type === 'move' && handleMove(dialog.target, destination)}
+        />
+
+        <DeleteModal
+          opened={dialog?.type === 'delete'}
+          itemName={dialog?.type === 'delete' ? dialog.target.item.name : ''}
+          isFolder={dialog?.type === 'delete' && dialog.target.kind === 'folder'}
+          loading={deleting}
+          onClose={closeDialog}
+          onConfirm={() => dialog?.type === 'delete' && handleDelete(dialog.target)}
+        />
+
+        <MediaViewer
+          files={files}
+          index={previewIndex >= 0 ? previewIndex : null}
+          onIndexChange={(index) => {
+            const file = files[index];
+            if (file) {
+              setPreviewId(file.id);
+              setSelectedId(file.id);
+            }
+          }}
+          onDownload={(id) => void download(id)}
+          onExpired={() => void invalidate()}
+          onClose={() => setPreviewId(null)}
+        />
+        <UploadQueue items={uploads.items} onClear={uploads.clearFinished} />
+      </Stack>
+      <DragOverlay dropAnimation={null}>
+        {dragged ? <DragChip name={dragged.name} kind={dragged.item.kind} /> : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
