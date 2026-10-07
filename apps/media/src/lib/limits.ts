@@ -39,3 +39,10 @@ export function validateUpload(
   }
   return { ok: true };
 }
+
+/** Upload tickets live 15 min: an UPLOADING file older than a day was abandoned. */
+export const ABANDONED_UPLOAD_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export function abandonedUploadsCutoff(now: Date, maxAgeMs = ABANDONED_UPLOAD_MAX_AGE_MS): Date {
+  return new Date(now.getTime() - maxAgeMs);
+}

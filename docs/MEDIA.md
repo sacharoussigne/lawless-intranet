@@ -25,6 +25,12 @@ navigateur ──server actions──▶ shelter ──HTTP + MEDIA_INTERNAL_SEC
 
 Chaque modification publie `media:<scopeType>:<scopeId>` sur le serveur WebSocket (`apps/realtime`). Les autres personnes qui ont la médiathèque ouverte voient le changement sans rafraîchir. Le refuge signe le jeton (topic ajouté si la feature et la permission sont actives). Le service publie par le réseau privé `realtime`.
 
+## Imports abandonnés
+
+Quand l'onglet est fermé ou que le réseau coupe avant la finalisation, un import abandonné laisse une ligne `UPLOADING` en base, et parfois un objet orphelin dans S3.
+- **Nettoyage automatique** : le service lance le nettoyage au démarrage, puis **toutes les heures** (`src/instrumentation.ts`, sans cron externe). Il supprime les fichiers `UPLOADING` de plus de 24 h, en base puis dans S3. Comme le ticket d'import ne vit que 15 min, aucun import en cours n'est touché.
+- **Déclenchement manuel** : `POST /api/maintenance/cleanup-uploads`, avec le header `x-media-internal-secret`. Le service écrit `[media] cleaned N abandoned upload(s)` dans les logs.
+
 ## Liens de partage
 
 Clic droit sur un fichier, puis « Copier le lien de partage » : on obtient un lien public qui **n'expire pas**, par exemple pour Discord. Ce lien a la forme `https://<refuge>/partage/<jeton>/<nom>`.
@@ -100,6 +106,5 @@ Penser à ajouter l'URL publique du refuge dans le **CORS du bucket de prod**.
 
 ## Plus tard
 
-- Nettoyer les fichiers `UPLOADING` jamais finalisés (upload abandonné) avec une tâche planifiée.
 - Gérer des droits fins par dossier.
 - Relier les fichiers à des modèles de données (par exemple la photo d'un animal), via un sélecteur `MediaPicker` dans `media-ui`. Les `id` de fichiers sont stables.

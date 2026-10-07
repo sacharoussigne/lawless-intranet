@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getMaxFileSizeBytes, validateUpload } from './limits';
+import { abandonedUploadsCutoff, getMaxFileSizeBytes, validateUpload } from './limits';
+import { UPLOAD_TICKET_TTL_SECONDS } from './s3';
 import {
   buildContentDisposition,
   buildStorageKey,
@@ -119,5 +120,18 @@ describe('share tokens', () => {
     expect(isShareToken('')).toBe(false);
     expect(isShareToken('short')).toBe(false);
     expect(isShareToken('a'.repeat(31) + '/')).toBe(false);
+  });
+});
+
+describe('abandoned uploads', () => {
+  it('only targets uploads older than a day', () => {
+    const now = new Date('2026-10-08T12:00:00Z');
+    expect(abandonedUploadsCutoff(now).toISOString()).toBe('2026-10-07T12:00:00.000Z');
+  });
+
+  it('never reaches an upload whose ticket is still valid', () => {
+    const now = new Date();
+    const ticketStart = now.getTime() - UPLOAD_TICKET_TTL_SECONDS * 1000;
+    expect(abandonedUploadsCutoff(now).getTime()).toBeLessThan(ticketStart);
   });
 });
