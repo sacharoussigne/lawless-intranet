@@ -16,6 +16,7 @@ type ShelterMediaWorkspaceProps = {
 
 /** Dates follow the RP calendar like the rest of the shelter. */
 const formatMediaDate = (iso: string) => formatRpDate(new Date(iso), 'dd MMM yyyy');
+const formatMediaDateTime = (iso: string) => formatRpDate(new Date(iso), "dd MMMM yyyy 'à' HH:mm");
 
 /** Absolute public link, built in the browser so it uses the address the user reached us at. */
 const buildShareUrl = (token: string, fileName: string) =>
@@ -35,6 +36,7 @@ export function ShelterMediaWorkspace({
       actions={actions}
       limits={limits}
       formatDate={formatMediaDate}
+      formatDateTime={formatMediaDateTime}
       buildShareUrl={buildShareUrl}
     >
       <MediaLibrary initialFolderId={initialFolderId} initialContents={initialContents} />

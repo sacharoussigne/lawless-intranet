@@ -34,6 +34,19 @@ export function useMediaFolderTree(enabled: boolean) {
   });
 }
 
+/** Uploader name for « Informations »: null when the host cannot resolve it. */
+export function useMediaUserName(userId: string | null) {
+  const { actions, scopeKey } = useMediaUi();
+  const getUserName = actions.getUserName;
+  return useQuery({
+    queryKey: mediaKeys.userName(scopeKey, userId ?? ''),
+    queryFn: async () => (getUserName && userId ? runMediaAction(await getUserName(userId)) : null),
+    enabled: Boolean(getUserName && userId),
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
 export function useInvalidateMedia() {
   const queryClient = useQueryClient();
   const { scopeKey } = useMediaUi();

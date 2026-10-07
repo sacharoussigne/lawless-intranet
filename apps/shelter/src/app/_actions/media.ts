@@ -19,6 +19,7 @@ import {
   updateMediaFolder,
 } from '@lawless-intranet/media-client/server';
 import { actionErrorParser } from '@/lib/action';
+import { fetchUserProfile } from '@/lib/authUsers';
 import { mediaActionAuth } from '@/lib/media/auth';
 import { mediaActionError, mediaCookie, mediaScope } from '@/lib/media/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -174,4 +175,17 @@ export async function deleteMediaLibraryItems(
   return withMedia(shelterSlug, 'Erreur lors de la suppression', (scope, options) =>
     deleteMediaItems(scope, itemsSchema.parse(input), options),
   );
+}
+
+/** Uploader name for « Informations » (null when the account no longer exists). */
+export async function getMediaUserName(shelterSlug: string, userId: string) {
+  try {
+    const ctx = await requireTenantServerActionContext(shelterSlug, mediaActionAuth);
+    if (!ctx.ok) return ctx.response;
+    const id = z.string().min(1).max(255).parse(userId);
+    const profile = await fetchUserProfile(id);
+    return { status: 200, data: profile?.name ?? null };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du chargement de l’utilisateur');
+  }
 }

@@ -5,7 +5,8 @@ import {
   flattenFolderTree,
   nextSort,
   parseMediaSort,
-  sortItems, formatBytes, getFileKind, splitExtension, stepIndex } from './format';
+  describeFileType,
+  sortItems, formatBytes, getFileKind, splitExtension, stepIndex, wasModified } from './format';
 
 describe('formatBytes', () => {
   it('formats sizes in French units', () => {
@@ -118,5 +119,23 @@ describe('parseMediaSort', () => {
     expect(parseMediaSort({ key: 'date', direction: 'asc' })).toEqual({ key: 'date', direction: 'asc' });
     expect(parseMediaSort({ key: 'size', direction: 'asc' })).toEqual(DEFAULT_MEDIA_SORT);
     expect(parseMediaSort(null)).toEqual(DEFAULT_MEDIA_SORT);
+  });
+});
+
+describe('describeFileType', () => {
+  it('labels known types and falls back to the MIME type', () => {
+    expect(describeFileType('image/png')).toBe('Image PNG');
+    expect(describeFileType('application/pdf')).toBe('Document PDF');
+    expect(describeFileType('text/plain')).toBe('text/plain');
+  });
+});
+
+describe('wasModified', () => {
+  it('ignores the upload completion right after creation', () => {
+    expect(wasModified('2026-10-07T10:00:00.000Z', '2026-10-07T10:00:05.000Z')).toBe(false);
+  });
+
+  it('detects a later change', () => {
+    expect(wasModified('2026-10-07T10:00:00.000Z', '2026-10-08T09:00:00.000Z')).toBe(true);
   });
 });

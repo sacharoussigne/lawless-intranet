@@ -7,6 +7,7 @@ import {
   IconEye,
   IconFolderOpen,
   IconFolderPlus,
+  IconInfoCircle,
   IconLink,
   IconLinkOff,
   IconPencil,
@@ -37,14 +38,18 @@ export function BackgroundMenuItems({ onCreateFolder, onUpload, uploadDisabled }
 }
 
 export type ItemMenuActions = {
+  onInfo: () => void;
   onRename: () => void;
   onMove: () => void;
   onDelete: () => void;
 };
 
-function CommonItems({ onRename, onMove, onDelete }: ItemMenuActions) {
+function CommonItems({ onInfo, onRename, onMove, onDelete }: ItemMenuActions) {
   return (
     <>
+      <Menu.Item leftSection={<IconInfoCircle size={16} />} onClick={onInfo}>
+        Informations
+      </Menu.Item>
       <Menu.Item leftSection={<IconPencil size={16} />} onClick={onRename}>
         Renommer
       </Menu.Item>

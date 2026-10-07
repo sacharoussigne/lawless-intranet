@@ -132,3 +132,25 @@ export function parseMediaSort(value: unknown): MediaSort {
   }
   return DEFAULT_MEDIA_SORT;
 }
+
+const TYPE_LABELS: Record<string, string> = {
+  'image/jpeg': 'Image JPEG',
+  'image/png': 'Image PNG',
+  'image/webp': 'Image WebP',
+  'image/gif': 'Image GIF',
+  'image/svg+xml': 'Image SVG',
+  'image/avif': 'Image AVIF',
+  'application/pdf': 'Document PDF',
+};
+
+/** Human file type (« Image PNG »), the raw MIME type when unknown. */
+export function describeFileType(mimeType: string): string {
+  return TYPE_LABELS[mimeType] ?? mimeType;
+}
+
+/** Below this gap, `updatedAt` only reflects the upload completion, not a real change. */
+const MODIFIED_THRESHOLD_MS = 60 * 1000;
+
+export function wasModified(createdAt: string, updatedAt: string): boolean {
+  return new Date(updatedAt).getTime() - new Date(createdAt).getTime() > MODIFIED_THRESHOLD_MS;
+}

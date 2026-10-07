@@ -36,6 +36,7 @@ import type {
 } from '@lawless-intranet/types';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { DeleteModal } from './components/DeleteModal';
+import { InfoModal } from './components/InfoModal';
 import {
   DraggedItemsContext,
   SELECTION_KEY_ATTRIBUTE,
@@ -108,6 +109,7 @@ type Target =
 type Dialog =
   | { type: 'create' }
   | { type: 'rename'; target: Target }
+  | { type: 'info'; target: Target }
   | { type: 'move'; keys: string[] }
   | { type: 'delete'; keys: string[] }
   | null;
@@ -362,6 +364,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   );
 
   const itemActions = (key: string, target: Target) => ({
+    onInfo: () => setDialog({ type: 'info', target }),
     onRename: () => setDialog({ type: 'rename', target }),
     onMove: () => setDialog({ type: 'move', keys: [key] }),
     onDelete: () => setDialog({ type: 'delete', keys: [key] }),
@@ -649,6 +652,12 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
             loading={mutations.deleteItems.isPending}
             onClose={closeDialog}
             onConfirm={() => void deleteKeys(dialogKeys).then(closeDialog, () => undefined)}
+          />
+
+          <InfoModal
+            target={dialog?.type === 'info' ? dialog.target : null}
+            location={['Médiathèque', ...breadcrumb.map((crumb) => crumb.name)].join(' / ')}
+            onClose={closeDialog}
           />
 
           <MediaViewer

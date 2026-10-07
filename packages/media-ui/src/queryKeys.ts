@@ -3,4 +3,5 @@ export const mediaKeys = {
   folder: (scopeKey: string, folderId: string | null) =>
     ['media', scopeKey, 'folder', folderId ?? 'root'] as const,
   tree: (scopeKey: string) => ['media', scopeKey, 'tree'] as const,
+  userName: (scopeKey: string, userId: string) => ['media', scopeKey, 'user', userId] as const,
 };

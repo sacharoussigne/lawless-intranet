@@ -8,6 +8,7 @@ import {
   getMediaContents,
   getMediaLibraryDownloadUrl,
   getMediaTree,
+  getMediaUserName,
   moveMediaLibraryItems,
   requestMediaUpload,
   shareMediaLibraryFile,
@@ -45,5 +46,6 @@ export function createShelterMediaActions(shelterSlug: string): MediaUiActions {
     deleteItems: (input) => asMediaResult(deleteMediaLibraryItems(shelterSlug, input)),
     shareFile: (id) => asMediaResult(shareMediaLibraryFile(shelterSlug, id)),
     unshareFile: (id) => asMediaResult(unshareMediaLibraryFile(shelterSlug, id)),
+    getUserName: (userId) => asMediaResult(getMediaUserName(shelterSlug, userId)),
   };
 }

@@ -52,6 +52,8 @@ export type MediaUiActions = {
   }) => Promise<MediaActionResult<{ deletedFiles: number }>>;
   shareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;
   unshareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;
+  /** Display name of a user (uploader in « Informations »); hidden when absent or null. */
+  getUserName?: (userId: string) => Promise<MediaActionResult<string | null>>;
 };
 
 export type MediaUiContextValue = {
@@ -61,6 +63,8 @@ export type MediaUiContextValue = {
   limits: MediaLimitsRecord;
   /** Date display (hosts may use the RP calendar). */
   formatDate: (iso: string) => string;
+  /** Date and time display (« Informations »). */
+  formatDateTime: (iso: string) => string;
   /** Absolute public URL of a share token; sharing is hidden when the host gives none. */
   buildShareUrl?: (token: string, fileName: string) => string;
 };
@@ -70,11 +74,15 @@ const MediaUiContext = createContext<MediaUiContextValue | null>(null);
 const defaultFormatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 
+const defaultFormatDateTime = (iso: string) =>
+  new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+
 export type MediaUiProviderProps = {
   scopeKey: string;
   actions: MediaUiActions;
   limits: MediaLimitsRecord;
   formatDate?: (iso: string) => string;
+  formatDateTime?: (iso: string) => string;
   buildShareUrl?: (token: string, fileName: string) => string;
   children: ReactNode;
 };
@@ -84,12 +92,13 @@ export function MediaUiProvider({
   actions,
   limits,
   formatDate = defaultFormatDate,
+  formatDateTime = defaultFormatDateTime,
   buildShareUrl,
   children,
 }: MediaUiProviderProps) {
   const value = useMemo<MediaUiContextValue>(
-    () => ({ scopeKey, actions, limits, formatDate, buildShareUrl }),
-    [scopeKey, actions, limits, formatDate, buildShareUrl],
+    () => ({ scopeKey, actions, limits, formatDate, formatDateTime, buildShareUrl }),
+    [scopeKey, actions, limits, formatDate, formatDateTime, buildShareUrl],
   );
   return <MediaUiContext.Provider value={value}>{children}</MediaUiContext.Provider>;
 }
