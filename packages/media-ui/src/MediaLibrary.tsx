@@ -310,6 +310,8 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
           <Dropzone
             onDrop={startUpload}
             activateOnClick={false}
+            // Mantine disables pointer events on the content by default: the cards need them (click, drag, menu).
+            enablePointerEvents
             disabled={!limits.storageConfigured}
             multiple
             // Validation (type, size) is done by the upload queue for clear per-file errors.
