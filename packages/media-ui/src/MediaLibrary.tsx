@@ -435,6 +435,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
             }
           }}
           onDownload={(id) => void download(id)}
+          onCopyShareLink={share.enabled ? share.copyLink : undefined}
           onExpired={() => void invalidate()}
           onClose={() => setPreviewId(null)}
         />
