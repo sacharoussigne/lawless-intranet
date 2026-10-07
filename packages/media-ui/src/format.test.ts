@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { describeDeletion, flattenFolderTree, formatBytes, getFileKind, splitExtension, stepIndex } from './format';
+import {
+  DEFAULT_MEDIA_SORT,
+  describeDeletion,
+  flattenFolderTree,
+  nextSort,
+  parseMediaSort,
+  sortItems, formatBytes, getFileKind, splitExtension, stepIndex } from './format';
 
 describe('formatBytes', () => {
   it('formats sizes in French units', () => {
@@ -72,5 +78,45 @@ describe('describeDeletion', () => {
         { name: 'c.png', isFolder: false },
       ]),
     ).toBe('Supprimer 1 dossier (avec tout son contenu) et 2 fichiers ?');
+  });
+});
+
+describe('sortItems', () => {
+  const items = [
+    { name: 'Photo 10', createdAt: '2026-01-03T00:00:00Z' },
+    { name: 'photo 2', createdAt: '2026-01-01T00:00:00Z' },
+    { name: 'Écurie', createdAt: '2026-01-02T00:00:00Z' },
+  ];
+
+  it('sorts names naturally, ignoring case and accents', () => {
+    expect(sortItems(items, { key: 'name', direction: 'asc' }).map((i) => i.name)).toEqual([
+      'Écurie',
+      'photo 2',
+      'Photo 10',
+    ]);
+  });
+
+  it('sorts by upload date in both directions', () => {
+    expect(sortItems(items, { key: 'date', direction: 'desc' }).map((i) => i.name)).toEqual([
+      'Photo 10',
+      'Écurie',
+      'photo 2',
+    ]);
+    expect(sortItems(items, { key: 'date', direction: 'asc' })[0]?.name).toBe('photo 2');
+  });
+});
+
+describe('nextSort', () => {
+  it('flips the direction on the same key, starts dates with the newest', () => {
+    expect(nextSort(DEFAULT_MEDIA_SORT, 'name')).toEqual({ key: 'name', direction: 'desc' });
+    expect(nextSort(DEFAULT_MEDIA_SORT, 'date')).toEqual({ key: 'date', direction: 'desc' });
+  });
+});
+
+describe('parseMediaSort', () => {
+  it('falls back to the default on invalid values', () => {
+    expect(parseMediaSort({ key: 'date', direction: 'asc' })).toEqual({ key: 'date', direction: 'asc' });
+    expect(parseMediaSort({ key: 'size', direction: 'asc' })).toEqual(DEFAULT_MEDIA_SORT);
+    expect(parseMediaSort(null)).toEqual(DEFAULT_MEDIA_SORT);
   });
 });

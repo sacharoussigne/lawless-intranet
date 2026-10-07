@@ -92,3 +92,43 @@ export function describeDeletion(items: readonly DeleteModalItem[]): string {
   ].filter(Boolean);
   return `Supprimer ${parts.join(' et ')} ?`;
 }
+
+export type MediaSortKey = 'name' | 'date';
+export type MediaSortDirection = 'asc' | 'desc';
+export type MediaSort = { key: MediaSortKey; direction: MediaSortDirection };
+
+export const DEFAULT_MEDIA_SORT: MediaSort = { key: 'name', direction: 'asc' };
+
+/** Natural, accent-insensitive order (« Photo 2 » before « Photo 10 »). */
+const nameCollator = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
+
+/** Sorts by name or upload date; ties fall back to the name so the order is stable. */
+export function sortItems<T extends { name: string; createdAt: string }>(
+  items: readonly T[],
+  sort: MediaSort,
+): T[] {
+  const factor = sort.direction === 'asc' ? 1 : -1;
+  return [...items].sort((a, b) => {
+    const byKey =
+      sort.key === 'date'
+        ? Date.parse(a.createdAt) - Date.parse(b.createdAt)
+        : nameCollator.compare(a.name, b.name);
+    return byKey !== 0 ? byKey * factor : nameCollator.compare(a.name, b.name);
+  });
+}
+
+/** Header click: same key flips the direction; a new key starts in its natural direction. */
+export function nextSort(current: MediaSort, key: MediaSortKey): MediaSort {
+  if (current.key === key) return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+  return { key, direction: key === 'date' ? 'desc' : 'asc' };
+}
+
+/** Validates a stored preference (localStorage can hold anything). */
+export function parseMediaSort(value: unknown): MediaSort {
+  if (typeof value !== 'object' || value === null) return DEFAULT_MEDIA_SORT;
+  const { key, direction } = value as Record<string, unknown>;
+  if ((key === 'name' || key === 'date') && (direction === 'asc' || direction === 'desc')) {
+    return { key, direction };
+  }
+  return DEFAULT_MEDIA_SORT;
+}

@@ -27,7 +27,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { Dropzone } from '@mantine/dropzone';
-import { useMediaQuery, useWindowEvent } from '@mantine/hooks';
+import { useLocalStorage, useMediaQuery, useWindowEvent } from '@mantine/hooks';
 import { IconAlertTriangle, IconChevronDown, IconUpload } from '@tabler/icons-react';
 import type {
   MediaFileRecord,
@@ -37,14 +37,14 @@ import type {
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { DeleteModal } from './components/DeleteModal';
 import {
-  DragChip,
   DraggedItemsContext,
-  FileCard,
-  FolderCard,
   SELECTION_KEY_ATTRIBUTE,
   useDropHighlight,
+  type ItemInteractions,
   type SelectModifiers,
-} from './components/MediaItemCards';
+} from './components/itemInteractions';
+import { DragChip, FileCard, FolderCard } from './components/MediaItemCards';
+import { MediaList, type MediaListRow } from './components/MediaList';
 import {
   BackgroundMenuItems,
   FileMenuItems,
@@ -55,6 +55,7 @@ import { MoveModal } from './components/MoveModal';
 import { NameModal } from './components/NameModal';
 import { MediaViewer } from './components/MediaViewer';
 import { SelectionBar } from './components/SelectionBar';
+import { SortControl, ViewToggle, type MediaView } from './components/ViewControls';
 import { UploadQueue } from './components/UploadQueue';
 import {
   useInvalidateMedia,
@@ -67,6 +68,7 @@ import { useMediaRealtime } from './hooks/useMediaRealtime';
 import { useMediaUploads } from './hooks/useMediaUploads';
 import { useMediaUi } from './MediaUiProvider';
 import { canDrop, parseDropId, type DragItem } from './dnd';
+import { DEFAULT_MEDIA_SORT, nextSort, parseMediaSort, sortItems, type MediaSort } from './format';
 import {
   applyClick,
   EMPTY_SELECTION,
@@ -84,6 +86,18 @@ export const MEDIA_FOLDER_PARAM = 'folder';
 
 /** Same columns for folders and files so both grids line up, like Drive. */
 const GRID_COLS = { base: 1, xs: 2, sm: 3, md: 4, xl: 5 };
+/** Per-browser display preferences (fall back to defaults when storage is unavailable). */
+const SORT_STORAGE_KEY = 'lawless-media:sort';
+const VIEW_STORAGE_KEY = 'lawless-media:view';
+
+function readJson(value: string | undefined): unknown {
+  try {
+    return value ? (JSON.parse(value) as unknown) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Pointer travel before a background press becomes a rectangle selection. */
 const LASSO_THRESHOLD_PX = 4;
 
@@ -179,6 +193,18 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const [selectionState, setSelection] = useState<Selection>(EMPTY_SELECTION);
   const [lassoRect, setLassoRect] = useState<Rect | null>(null);
   const [dragged, setDragged] = useState<{ items: DragItem[]; name: string } | null>(null);
+  const [sort, setSort] = useLocalStorage<MediaSort>({
+    key: SORT_STORAGE_KEY,
+    defaultValue: DEFAULT_MEDIA_SORT,
+    serialize: JSON.stringify,
+    deserialize: (value) => parseMediaSort(readJson(value)),
+  });
+  const [view, setView] = useLocalStorage<MediaView>({
+    key: VIEW_STORAGE_KEY,
+    defaultValue: 'grid',
+    serialize: (value) => value,
+    deserialize: (value) => (value === 'list' ? 'list' : 'grid'),
+  });
   // Mouse only: on touch screens a drag would fight with scrolling, « Déplacer » covers it.
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }));
 
@@ -195,17 +221,23 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
 
   const contents = contentsQuery.data;
   const breadcrumb = contents?.breadcrumb ?? [];
-  const files = contents?.files ?? [];
   const currentFolderName = breadcrumb.at(-1)?.name ?? 'Médiathèque';
 
-  /** Display order (folders then files) and lookup by selection key. */
-  const { order, targets } = useMemo(() => {
+  /** Sorted folders then files (display, Shift ranges and viewer order) and lookup by selection key. */
+  const { folders, files, order, targets } = useMemo(() => {
+    const sortedFolders = sortItems(contents?.folders ?? [], sort);
+    const sortedFiles = sortItems(contents?.files ?? [], sort);
     const entries: [string, Target][] = [
-      ...(contents?.folders ?? []).map((item): [string, Target] => [itemKey('folder', item.id), { kind: 'folder', item }]),
-      ...(contents?.files ?? []).map((item): [string, Target] => [itemKey('file', item.id), { kind: 'file', item }]),
+      ...sortedFolders.map((item): [string, Target] => [itemKey('folder', item.id), { kind: 'folder', item }]),
+      ...sortedFiles.map((item): [string, Target] => [itemKey('file', item.id), { kind: 'file', item }]),
     ];
-    return { order: entries.map(([key]) => key), targets: new Map(entries) };
-  }, [contents]);
+    return {
+      folders: sortedFolders,
+      files: sortedFiles,
+      order: entries.map(([key]) => key),
+      targets: new Map(entries),
+    };
+  }, [contents, sort]);
 
   // Items removed by someone else (realtime) or after a folder change drop out of the selection.
   const selection = pruneSelection(selectionState, order);
@@ -335,7 +367,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     onDelete: () => setDialog({ type: 'delete', keys: [key] }),
   });
 
-  const tileInteractions = (key: string, target: Target, onOpen: () => void, menu: ReactNode) => ({
+  const tileInteractions = (key: string, target: Target, onOpen: () => void, menu: ReactNode): ItemInteractions => ({
     dragItem: toDragItem(target),
     selected: selection.keys.has(key),
     openOnClick,
@@ -359,16 +391,16 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     menu,
   });
 
-  const folderTile = (folder: MediaFolderRecord) => {
+  const folderRow = (folder: MediaFolderRecord): Extract<MediaListRow, { kind: 'folder' }> => {
     const key = itemKey('folder', folder.id);
     const target: Target = { kind: 'folder', item: folder };
     const href = folderHref(folder.id);
     const open = () => router.push(href);
     const menu = <FolderMenuItems onOpen={open} {...itemActions(key, target)} />;
-    return <FolderCard key={key} folder={folder} href={href} {...tileInteractions(key, target, open, menu)} />;
+    return { kind: 'folder', item: folder, href, interactions: tileInteractions(key, target, open, menu) };
   };
 
-  const fileTile = (file: MediaFileRecord) => {
+  const fileRow = (file: MediaFileRecord): Extract<MediaListRow, { kind: 'file' }> => {
     const key = itemKey('file', file.id);
     const target: Target = { kind: 'file', item: file };
     const open = () => setPreviewId(file.id);
@@ -388,15 +420,18 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
         {...itemActions(key, target)}
       />
     );
-    return <FileCard key={key} file={file} {...tileInteractions(key, target, open, menu)} />;
+    return { kind: 'file', item: file, interactions: tileInteractions(key, target, open, menu) };
   };
+
+  const folderRows = folders.map(folderRow);
+  const fileRows = files.map(fileRow);
 
   const dialogKeys = dialog?.type === 'move' || dialog?.type === 'delete' ? dialog.keys : [];
   const dialogTargets = dialogKeys.flatMap((key) => {
     const target = targets.get(key);
     return target ? [target] : [];
   });
-  const isEmpty = contents && contents.folders.length === 0 && contents.files.length === 0;
+  const isEmpty = contents && folders.length === 0 && files.length === 0;
 
   return (
     <DndContext
@@ -429,15 +464,21 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
               </Menu>
             </Breadcrumbs>
 
-            {selectedKeys.length > 0 ? (
-              <SelectionBar
-                count={selectedKeys.length}
-                onClear={clearSelection}
-                onMove={() => setDialog({ type: 'move', keys: selectedKeys })}
-                onDelete={() => setDialog({ type: 'delete', keys: selectedKeys })}
-              />
-            ) : null}
+            <Group gap="sm" wrap="nowrap">
+              {selectedKeys.length > 0 ? (
+                <SelectionBar
+                  count={selectedKeys.length}
+                  onClear={clearSelection}
+                  onMove={() => setDialog({ type: 'move', keys: selectedKeys })}
+                  onDelete={() => setDialog({ type: 'delete', keys: selectedKeys })}
+                />
+              ) : null}
+              <ViewToggle value={view} onChange={setView} />
+            </Group>
           </Group>
+
+          {/* Grid only: the list view sorts from its column headers. */}
+          {view === 'grid' && !isEmpty ? <SortControl sort={sort} onChange={setSort} /> : null}
 
           {!limits.storageConfigured ? (
             <Alert color="amber" icon={<IconAlertTriangle size={16} />}>
@@ -483,24 +524,36 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                   </Center>
                 ) : null}
 
-                {contents && contents.folders.length > 0 ? (
+                {view === 'list' && !isEmpty && contents ? (
+                  <MediaList
+                    rows={[...folderRows, ...fileRows]}
+                    sort={sort}
+                    onSortChange={(key) => setSort(nextSort(sort, key))}
+                  />
+                ) : null}
+
+                {view === 'grid' && folderRows.length > 0 ? (
                   <Stack gap="xs">
                     <Text size="sm" fw={500}>
                       Dossiers
                     </Text>
                     <SimpleGrid cols={GRID_COLS} spacing="sm">
-                      {contents.folders.map(folderTile)}
+                      {folderRows.map((row) => (
+                        <FolderCard key={itemKey('folder', row.item.id)} folder={row.item} href={row.href} {...row.interactions} />
+                      ))}
                     </SimpleGrid>
                   </Stack>
                 ) : null}
 
-                {contents && contents.files.length > 0 ? (
+                {view === 'grid' && fileRows.length > 0 ? (
                   <Stack gap="xs">
                     <Text size="sm" fw={500}>
                       Fichiers
                     </Text>
                     <SimpleGrid cols={GRID_COLS} spacing="sm">
-                      {contents.files.map(fileTile)}
+                      {fileRows.map((row) => (
+                        <FileCard key={itemKey('file', row.item.id)} file={row.item} {...row.interactions} />
+                      ))}
                     </SimpleGrid>
                   </Stack>
                 ) : null}
