@@ -21,6 +21,21 @@ export function isSameOrDescendant(
   return false;
 }
 
+/** True when moving `folderIds` into `destinationId` would put a folder inside itself. */
+export function wouldCreateCycle(
+  folders: readonly FolderNode[],
+  folderIds: readonly string[],
+  destinationId: string | null,
+): boolean {
+  if (!destinationId) return false;
+  return folderIds.some((folderId) => isSameOrDescendant(folders, folderId, destinationId));
+}
+
+/** All folder ids of the subtrees rooted at `rootIds` (roots included, no duplicates). */
+export function collectSubtreesIds(folders: readonly FolderNode[], rootIds: readonly string[]): string[] {
+  return [...new Set(rootIds.flatMap((rootId) => collectSubtreeIds(folders, rootId)))];
+}
+
 /** All folder ids of the subtree rooted at `rootId` (root included). */
 export function collectSubtreeIds(folders: readonly FolderNode[], rootId: string): string[] {
   const childrenByParent = new Map<string, string[]>();

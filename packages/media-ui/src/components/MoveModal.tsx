@@ -8,11 +8,12 @@ import { useMediaFolderTree } from '../hooks/useMediaQueries';
 
 type MoveModalProps = {
   opened: boolean;
-  itemName: string;
+  /** « Déplacer « X » » or « Déplacer 3 éléments ». */
+  title: string;
   /** Current parent (null = root): moving there is a no-op. */
   currentParentId: string | null;
-  /** For folders: the folder and its subtree are not valid targets. */
-  excludeFolderId?: string;
+  /** Moved folders: they and their subtrees are not valid targets. */
+  excludeFolderIds?: readonly string[];
   loading?: boolean;
   onSubmit: (targetFolderId: string | null) => void;
   onClose: () => void;
@@ -20,18 +21,18 @@ type MoveModalProps = {
 
 export function MoveModal(props: MoveModalProps) {
   return (
-    <Modal opened={props.opened} onClose={props.onClose} title={`Déplacer « ${props.itemName} »`} centered>
+    <Modal opened={props.opened} onClose={props.onClose} title={props.title} centered>
       {props.opened ? <MoveForm {...props} /> : null}
     </Modal>
   );
 }
 
-function MoveForm({ currentParentId, excludeFolderId, loading, onSubmit, onClose }: MoveModalProps) {
+function MoveForm({ currentParentId, excludeFolderIds, loading, onSubmit, onClose }: MoveModalProps) {
   const treeQuery = useMediaFolderTree(true);
   const [target, setTarget] = useState<string | null>(currentParentId);
   const options = useMemo(
-    () => flattenFolderTree(treeQuery.data ?? [], excludeFolderId),
-    [treeQuery.data, excludeFolderId],
+    () => flattenFolderTree(treeQuery.data ?? [], excludeFolderIds),
+    [treeQuery.data, excludeFolderIds],
   );
 
   return (

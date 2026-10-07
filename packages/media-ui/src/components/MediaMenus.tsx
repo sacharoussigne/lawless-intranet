@@ -109,3 +109,27 @@ export function FileMenuItems({
     </>
   );
 }
+
+/** Right-click on an item of a multiple selection. */
+export function SelectionMenuItems({
+  count,
+  onMove,
+  onDelete,
+}: {
+  count: number;
+  onMove: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      <Menu.Label>{count} éléments sélectionnés</Menu.Label>
+      <Menu.Item leftSection={<IconArrowsMove size={16} />} onClick={onMove}>
+        Déplacer
+      </Menu.Item>
+      <Menu.Divider />
+      <Menu.Item color="danger" leftSection={<IconTrash size={16} />} onClick={onDelete}>
+        Supprimer
+      </Menu.Item>
+    </>
+  );
+}

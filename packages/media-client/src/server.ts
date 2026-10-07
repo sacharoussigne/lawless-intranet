@@ -145,6 +145,36 @@ export async function getMediaDownloadUrl(
   );
 }
 
+/** Moves several folders and files at once (all or nothing). */
+export async function moveMediaItems(
+  scope: MediaScopeParams,
+  input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
+  options: ClientOptions = {},
+): Promise<{ moved: number }> {
+  return parseJsonResponse(
+    await mediaFetch('/api/items/move', {
+      method: 'POST',
+      cookieHeader: options.cookieHeader,
+      body: JSON.stringify({ ...scope, ...input }),
+    }),
+  );
+}
+
+/** Deletes several folders (with their content) and files at once. */
+export async function deleteMediaItems(
+  scope: MediaScopeParams,
+  input: { folderIds: string[]; fileIds: string[] },
+  options: ClientOptions = {},
+): Promise<{ deletedFiles: number }> {
+  return parseJsonResponse(
+    await mediaFetch('/api/items/delete', {
+      method: 'POST',
+      cookieHeader: options.cookieHeader,
+      body: JSON.stringify({ ...scope, ...input }),
+    }),
+  );
+}
+
 /** Creates the file's share link (or returns the existing one). */
 export async function shareMediaFile(
   scope: MediaScopeParams,

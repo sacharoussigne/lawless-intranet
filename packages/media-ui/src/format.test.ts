@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flattenFolderTree, formatBytes, getFileKind, splitExtension, stepIndex } from './format';
+import { describeDeletion, flattenFolderTree, formatBytes, getFileKind, splitExtension, stepIndex } from './format';
 
 describe('formatBytes', () => {
   it('formats sizes in French units', () => {
@@ -36,8 +36,9 @@ describe('flattenFolderTree', () => {
     ]);
   });
 
-  it('excludes the moved folder and its subtree', () => {
-    expect(flattenFolderTree(folders, 'a1').map((f) => f.id)).toEqual(['a', 'a2', 'b']);
+  it('excludes the moved folders and their subtrees', () => {
+    expect(flattenFolderTree(folders, ['a1']).map((f) => f.id)).toEqual(['a', 'a2', 'b']);
+    expect(flattenFolderTree(folders, ['a1', 'b']).map((f) => f.id)).toEqual(['a', 'a2']);
   });
 });
 
@@ -55,5 +56,21 @@ describe('stepIndex', () => {
     expect(stepIndex(2, 1, 3)).toBeNull();
     expect(stepIndex(0, -1, 3)).toBeNull();
     expect(stepIndex(2, -1, 3)).toBe(1);
+  });
+});
+
+describe('describeDeletion', () => {
+  it('names a single item', () => {
+    expect(describeDeletion([{ name: 'a.png', isFolder: false }])).toBe('Supprimer le fichier « a.png » ?');
+  });
+
+  it('counts folders and files', () => {
+    expect(
+      describeDeletion([
+        { name: 'A', isFolder: true },
+        { name: 'b.png', isFolder: false },
+        { name: 'c.png', isFolder: false },
+      ]),
+    ).toBe('Supprimer 1 dossier (avec tout son contenu) et 2 fichiers ?');
   });
 });

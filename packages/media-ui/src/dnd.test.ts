@@ -14,17 +14,22 @@ describe('canDrop', () => {
   const folder = { kind: 'folder' as const, id: 'b', parentId: 'a' };
 
   it('refuses dropping into the current folder', () => {
-    expect(canDrop(file, 'a')).toBe(false);
-    expect(canDrop(folder, 'a')).toBe(false);
+    expect(canDrop([file], 'a')).toBe(false);
+    expect(canDrop([file, folder], 'a')).toBe(false);
   });
 
-  it('refuses dropping a folder into itself', () => {
-    expect(canDrop(folder, 'b')).toBe(false);
+  it('refuses dropping a folder into itself, even with other items', () => {
+    expect(canDrop([folder], 'b')).toBe(false);
+    expect(canDrop([file, folder], 'b')).toBe(false);
   });
 
   it('accepts other folders and the root', () => {
-    expect(canDrop(file, 'b')).toBe(true);
-    expect(canDrop(file, null)).toBe(true);
-    expect(canDrop(folder, 'c')).toBe(true);
+    expect(canDrop([file], 'b')).toBe(true);
+    expect(canDrop([file, folder], null)).toBe(true);
+    expect(canDrop([folder], 'c')).toBe(true);
+  });
+
+  it('refuses an empty drag', () => {
+    expect(canDrop([], 'b')).toBe(false);
   });
 });

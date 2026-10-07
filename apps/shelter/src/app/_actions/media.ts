@@ -7,10 +7,12 @@ import {
   createMediaUpload,
   deleteMediaFile,
   deleteMediaFolder,
+  deleteMediaItems,
   getMediaDownloadUrl,
   getMediaFolderContents,
   getMediaFolderTree,
   getMediaLimits,
+  moveMediaItems,
   shareMediaFile,
   unshareMediaFile,
   updateMediaFile,
@@ -25,6 +27,10 @@ import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 const idSchema = z.string().uuid();
 const nullableIdSchema = idSchema.nullable();
 const nameSchema = z.string().trim().min(1, 'Le nom est requis').max(255, 'Le nom est trop long');
+const itemsSchema = z.object({
+  folderIds: z.array(idSchema).max(1000),
+  fileIds: z.array(idSchema).max(1000),
+});
 
 /** Runs a media operation for the current shelter, with the shared guard and error mapping. */
 async function withMedia<T>(
@@ -148,5 +154,24 @@ export async function shareMediaLibraryFile(shelterSlug: string, id: string) {
 export async function unshareMediaLibraryFile(shelterSlug: string, id: string) {
   return withMedia(shelterSlug, 'Erreur lors de la désactivation du lien', (scope, options) =>
     unshareMediaFile(scope, idSchema.parse(id), options),
+  );
+}
+
+export async function moveMediaLibraryItems(
+  shelterSlug: string,
+  input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
+) {
+  return withMedia(shelterSlug, 'Erreur lors du déplacement', (scope, options) => {
+    const data = itemsSchema.extend({ destinationId: nullableIdSchema }).parse(input);
+    return moveMediaItems(scope, data, options);
+  });
+}
+
+export async function deleteMediaLibraryItems(
+  shelterSlug: string,
+  input: { folderIds: string[]; fileIds: string[] },
+) {
+  return withMedia(shelterSlug, 'Erreur lors de la suppression', (scope, options) =>
+    deleteMediaItems(scope, itemsSchema.parse(input), options),
   );
 }

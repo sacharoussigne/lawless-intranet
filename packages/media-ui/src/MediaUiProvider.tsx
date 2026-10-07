@@ -40,6 +40,16 @@ export type MediaUiActions = {
   }) => Promise<MediaActionResult<MediaFileRecord>>;
   deleteFile: (id: string) => Promise<MediaActionResult<{ success: true }>>;
   getDownloadUrl: (id: string) => Promise<MediaActionResult<MediaDownloadUrlRecord>>;
+  /** Batch operations of the multiple selection. */
+  moveItems: (input: {
+    folderIds: string[];
+    fileIds: string[];
+    destinationId: string | null;
+  }) => Promise<MediaActionResult<{ moved: number }>>;
+  deleteItems: (input: {
+    folderIds: string[];
+    fileIds: string[];
+  }) => Promise<MediaActionResult<{ deletedFiles: number }>>;
   shareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;
   unshareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;
 };

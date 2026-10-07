@@ -23,7 +23,13 @@ import {
   StorageNotConfiguredError,
 } from '@/lib/s3';
 import { notifyMediaChange } from '@/lib/realtime';
-import { buildBreadcrumb, collectSubtreeIds, isSameOrDescendant } from '@/lib/tree';
+import {
+  buildBreadcrumb,
+  collectSubtreeIds,
+  collectSubtreesIds,
+  isSameOrDescendant,
+  wouldCreateCycle,
+} from '@/lib/tree';
 
 export type LibraryResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
@@ -326,6 +332,74 @@ export async function deleteFile(
   await notifyMediaChange(scope);
   await deleteObjects([file.storageKey]);
   return { ok: true, data: { success: true } };
+}
+
+// --- Batch operations (multiple selection) ---
+
+/** Moves folders and files of the current view in one go (all or nothing). */
+export async function moveItems(
+  scope: MediaScopeParams,
+  input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
+): Promise<LibraryResult<{ moved: number }>> {
+  const target = await assertTargetFolder(scope, input.destinationId);
+  if (!target.ok) return target;
+
+  const nodes = await listScopeFolderNodes(scope);
+  const known = new Set(nodes.map((node) => node.id));
+  if (input.folderIds.some((id) => !known.has(id))) return notFound('Dossier introuvable');
+  if (wouldCreateCycle(nodes, input.folderIds, input.destinationId)) {
+    return badRequest('Impossible de déplacer un dossier dans lui-même ou dans un de ses sous-dossiers');
+  }
+
+  const fileIds = [...new Set(input.fileIds)];
+  const fileCount = await prisma.mediaFile.count({
+    where: { id: { in: fileIds }, ...scopeWhere(scope), status: 'READY' },
+  });
+  if (fileCount !== fileIds.length) return notFound('Fichier introuvable');
+
+  const [folders, files] = await prisma.$transaction([
+    prisma.mediaFolder.updateMany({
+      where: { id: { in: input.folderIds }, ...scopeWhere(scope) },
+      data: { parentId: input.destinationId },
+    }),
+    prisma.mediaFile.updateMany({
+      where: { id: { in: fileIds }, ...scopeWhere(scope) },
+      data: { folderId: input.destinationId },
+    }),
+  ]);
+  await notifyMediaChange(scope);
+  return { ok: true, data: { moved: folders.count + files.count } };
+}
+
+/**
+ * Deletes folders (with their content) and files in one go. Already deleted
+ * items are ignored, so concurrent deletions do not fail the whole batch.
+ */
+export async function deleteItems(
+  scope: MediaScopeParams,
+  input: { folderIds: string[]; fileIds: string[] },
+): Promise<LibraryResult<{ deletedFiles: number }>> {
+  const nodes = await listScopeFolderNodes(scope);
+  const known = new Set(nodes.map((node) => node.id));
+  const folderIds = input.folderIds.filter((id) => known.has(id));
+  const subtreeIds = collectSubtreesIds(nodes, folderIds);
+
+  const files = await prisma.mediaFile.findMany({
+    where: {
+      ...scopeWhere(scope),
+      OR: [{ id: { in: input.fileIds } }, { folderId: { in: subtreeIds } }],
+    },
+    select: { storageKey: true },
+  });
+
+  await prisma.$transaction([
+    prisma.mediaFile.deleteMany({ where: { id: { in: input.fileIds }, ...scopeWhere(scope) } }),
+    // Cascade removes subfolders and their files.
+    prisma.mediaFolder.deleteMany({ where: { id: { in: folderIds }, ...scopeWhere(scope) } }),
+  ]);
+  await notifyMediaChange(scope);
+  await deleteObjects(files.map((file) => file.storageKey));
+  return { ok: true, data: { deletedFiles: files.length } };
 }
 
 // --- Share links ---

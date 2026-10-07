@@ -46,6 +46,25 @@ export const updateFileSchema = scopeFieldsSchema.extend({
   folderId: optionalFolderIdSchema,
 });
 
+const idListSchema = z.array(z.string().uuid('Élément invalide')).max(1000, 'Trop d’éléments à la fois');
+
+const itemsSchema = scopeFieldsSchema.extend({
+  folderIds: idListSchema.default([]),
+  fileIds: idListSchema.default([]),
+});
+
+export const moveItemsSchema = itemsSchema
+  .extend({
+    /** null moves the items to the root. */
+    destinationId: z.string().uuid('Dossier invalide').nullable(),
+  })
+  .refine((input) => input.folderIds.length + input.fileIds.length > 0, 'Aucun élément sélectionné');
+
+export const deleteItemsSchema = itemsSchema.refine(
+  (input) => input.folderIds.length + input.fileIds.length > 0,
+  'Aucun élément sélectionné',
+);
+
 export function zodErrorMessage(error: z.ZodError): string {
   return error.issues[0]?.message ?? 'Données invalides';
 }

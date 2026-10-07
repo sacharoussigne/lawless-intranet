@@ -52,6 +52,14 @@ function notifySuccess(message: string) {
   notifications.show({ title: 'Médiathèque', message, color: 'moss' });
 }
 
+/** `name` (single item) only feeds the notification. */
+type BatchInput = { folderIds: string[]; fileIds: string[]; name: string };
+
+function batchMessage({ folderIds, fileIds, name }: BatchInput, verb: string): string {
+  const count = folderIds.length + fileIds.length;
+  return count > 1 ? `${count} éléments ${verb}s` : `« ${name} » ${verb}`;
+}
+
 /** Every mutation refreshes the whole library cache (contents + tree). */
 export function useMediaMutations() {
   const { actions } = useMediaUi();
@@ -68,38 +76,33 @@ export function useMediaMutations() {
   const updateFolder = useMutation({
     mutationFn: async (input: { id: string; name?: string; parentId?: string | null }) =>
       runMediaAction(await actions.updateFolder(input)),
-    onSuccess: (folder, input) => {
-      if (input.parentId !== undefined) notifySuccess(`« ${folder.name} » déplacé`);
-    },
     onError: (error) => notifyError(error, 'Modification impossible'),
-    onSettled: invalidate,
-  });
-
-  const deleteFolder = useMutation({
-    mutationFn: async (id: string) => runMediaAction(await actions.deleteFolder(id)),
-    onSuccess: () => notifySuccess('Dossier supprimé'),
-    onError: (error) => notifyError(error, 'Suppression impossible'),
     onSettled: invalidate,
   });
 
   const updateFile = useMutation({
     mutationFn: async (input: { id: string; name?: string; folderId?: string | null }) =>
       runMediaAction(await actions.updateFile(input)),
-    onSuccess: (file, input) => {
-      if (input.folderId !== undefined) notifySuccess(`« ${file.name} » déplacé`);
-    },
     onError: (error) => notifyError(error, 'Modification impossible'),
     onSettled: invalidate,
   });
 
-  const deleteFile = useMutation({
-    mutationFn: async (id: string) => runMediaAction(await actions.deleteFile(id)),
-    onSuccess: () => notifySuccess('Fichier supprimé'),
+  const moveItems = useMutation({
+    mutationFn: async ({ name: _name, ...input }: BatchInput & { destinationId: string | null }) =>
+      runMediaAction(await actions.moveItems(input)),
+    onSuccess: (_result, input) => notifySuccess(batchMessage(input, 'déplacé')),
+    onError: (error) => notifyError(error, 'Déplacement impossible'),
+    onSettled: invalidate,
+  });
+
+  const deleteItems = useMutation({
+    mutationFn: async ({ name: _name, ...input }: BatchInput) => runMediaAction(await actions.deleteItems(input)),
+    onSuccess: (_result, input) => notifySuccess(batchMessage(input, 'supprimé')),
     onError: (error) => notifyError(error, 'Suppression impossible'),
     onSettled: invalidate,
   });
 
-  return { createFolder, updateFolder, deleteFolder, updateFile, deleteFile };
+  return { createFolder, updateFolder, updateFile, moveItems, deleteItems };
 }
 
 export function useMediaDownload() {

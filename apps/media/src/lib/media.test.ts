@@ -7,7 +7,13 @@ import {
   isShareToken,
   normalizeMediaName,
 } from './names';
-import { buildBreadcrumb, collectSubtreeIds, isSameOrDescendant } from './tree';
+import {
+  buildBreadcrumb,
+  collectSubtreeIds,
+  collectSubtreesIds,
+  isSameOrDescendant,
+  wouldCreateCycle,
+} from './tree';
 
 const MB = 1024 * 1024;
 
@@ -69,6 +75,16 @@ describe('folder tree', () => {
     expect(isSameOrDescendant(folders, 'a', 'c')).toBe(true);
     expect(isSameOrDescendant(folders, 'b', 'd')).toBe(false);
     expect(isSameOrDescendant(folders, 'c', 'a')).toBe(false);
+  });
+
+  it('detects cycles when moving several folders', () => {
+    expect(wouldCreateCycle(folders, ['d', 'a'], 'c')).toBe(true);
+    expect(wouldCreateCycle(folders, ['b', 'd'], 'a')).toBe(false);
+    expect(wouldCreateCycle(folders, ['a'], null)).toBe(false);
+  });
+
+  it('collects several subtrees without duplicates', () => {
+    expect(collectSubtreesIds(folders, ['a', 'b', 'd']).sort()).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('collects a subtree', () => {

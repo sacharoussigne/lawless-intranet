@@ -25,11 +25,11 @@ export type TreeOption = { id: string; name: string; depth: number };
 
 /**
  * Flattens the folder tree depth-first (sorted by name) for the move picker.
- * `excludeSubtreeOf` hides a folder and its descendants (a folder cannot move into itself).
+ * `excludeSubtreesOf` hides folders and their descendants (a folder cannot move into itself).
  */
 export function flattenFolderTree(
   folders: readonly MediaTreeFolderRecord[],
-  excludeSubtreeOf?: string,
+  excludeSubtreesOf: readonly string[] = [],
 ): TreeOption[] {
   const childrenByParent = new Map<string | null, MediaTreeFolderRecord[]>();
   for (const folder of folders) {
@@ -41,11 +41,12 @@ export function flattenFolderTree(
     siblings.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   }
 
+  const excluded = new Set(excludeSubtreesOf);
   const result: TreeOption[] = [];
   const visited = new Set<string>();
   const walk = (parentId: string | null, depth: number) => {
     for (const folder of childrenByParent.get(parentId) ?? []) {
-      if (folder.id === excludeSubtreeOf || visited.has(folder.id)) continue;
+      if (excluded.has(folder.id) || visited.has(folder.id)) continue;
       visited.add(folder.id);
       result.push({ id: folder.id, name: folder.name, depth });
       walk(folder.id, depth + 1);
@@ -66,4 +67,28 @@ export function splitExtension(name: string): { base: string; extension: string 
 export function stepIndex(index: number, delta: number, length: number): number | null {
   const next = index + delta;
   return next >= 0 && next < length ? next : null;
+}
+
+export type DeleteModalItem = { name: string; isFolder: boolean };
+
+function plural(count: number, singular: string, pluralForm: string): string {
+  return `${count} ${count > 1 ? pluralForm : singular}`;
+}
+
+export function describeDeletion(items: readonly DeleteModalItem[]): string {
+  const [first] = items;
+  if (items.length === 1 && first) {
+    return first.isFolder
+      ? `Supprimer le dossier « ${first.name} » et tout son contenu (sous-dossiers et fichiers) ?`
+      : `Supprimer le fichier « ${first.name} » ?`;
+  }
+  const folders = items.filter((item) => item.isFolder).length;
+  const files = items.length - folders;
+  const parts = [
+    folders > 0
+      ? `${plural(folders, 'dossier', 'dossiers')} (avec tout ${folders > 1 ? 'leur' : 'son'} contenu)`
+      : null,
+    files > 0 ? plural(files, 'fichier', 'fichiers') : null,
+  ].filter(Boolean);
+  return `Supprimer ${parts.join(' et ')} ?`;
 }

@@ -25,11 +25,12 @@ export function parseDropId(id: string): string | null | undefined {
 }
 
 /**
- * A drop is useful when it changes the folder and does not put a folder into itself.
- * Deeper cycles (into a descendant) cannot be targeted from the grid and are refused by the service.
+ * A drop is useful when at least one item changes folder and no dragged folder
+ * would go into itself. Deeper cycles (into a descendant) cannot be targeted
+ * from the view and are refused by the service anyway.
  */
-export function canDrop(item: DragItem, destination: string | null): boolean {
-  if (destination === item.parentId) return false;
-  if (item.kind === 'folder' && destination === item.id) return false;
-  return true;
+export function canDrop(items: readonly DragItem[], destination: string | null): boolean {
+  if (items.length === 0) return false;
+  if (items.some((item) => item.kind === 'folder' && item.id === destination)) return false;
+  return items.some((item) => item.parentId !== destination);
 }
