@@ -1,0 +1,37 @@
+{
+  "name": "@lawless-intranet/host-kit",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./action": "./src/action.ts",
+    "./errors": "./src/errors.ts",
+    "./service-error": "./src/serviceError.ts",
+    "./query": "./src/QueryProvider.tsx",
+    "./realtime": "./src/realtime.ts",
+    "./middleware": "./src/middleware.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@lawless-intranet/realtime": "workspace:*",
+    "@lawless-intranet/service-client": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5",
+    "next": ">=15",
+    "react": "^19",
+    "zod": "^3.25"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.101.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "typescript": "^5",
+    "vitest": "^2.1.9",
+    "zod": "^3.25.76"
+  }
+}

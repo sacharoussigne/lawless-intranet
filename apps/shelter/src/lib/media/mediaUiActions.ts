@@ -1,4 +1,5 @@
 import type { MediaActionResult, MediaUiActions } from '@lawless-intranet/media-ui';
+import { toUiResult } from '@lawless-intranet/host-kit/action';
 import {
   completeMediaLibraryUpload,
   createMediaLibraryFolder,
@@ -17,35 +18,23 @@ import {
   updateMediaLibraryFolder,
 } from '@/app/_actions/media';
 
-type ActionResponse<T> =
-  | { status: number; data: T }
-  | { status: number; error?: string | { field: string | number; message: string }[] };
-
-async function asMediaResult<T>(promise: Promise<ActionResponse<T>>): Promise<MediaActionResult<T>> {
-  const result = await promise;
-  if ('data' in result) {
-    return { status: result.status, data: result.data };
-  }
-  return { status: result.status, error: result.error ?? 'Une erreur est survenue' };
-}
-
 /** Binds the shelter server actions to the media-ui action contract. */
 export function createShelterMediaActions(shelterSlug: string): MediaUiActions {
   return {
-    getFolderContents: (folderId) => asMediaResult(getMediaContents(shelterSlug, folderId)),
-    getFolderTree: () => asMediaResult(getMediaTree(shelterSlug)),
-    createFolder: (input) => asMediaResult(createMediaLibraryFolder(shelterSlug, input)),
-    updateFolder: (input) => asMediaResult(updateMediaLibraryFolder(shelterSlug, input)),
-    deleteFolder: (id) => asMediaResult(deleteMediaLibraryFolder(shelterSlug, id)),
-    requestUpload: (input) => asMediaResult(requestMediaUpload(shelterSlug, input)),
-    completeUpload: (fileId) => asMediaResult(completeMediaLibraryUpload(shelterSlug, fileId)),
-    updateFile: (input) => asMediaResult(updateMediaLibraryFile(shelterSlug, input)),
-    deleteFile: (id) => asMediaResult(deleteMediaLibraryFile(shelterSlug, id)),
-    getDownloadUrl: (id) => asMediaResult(getMediaLibraryDownloadUrl(shelterSlug, id)),
-    moveItems: (input) => asMediaResult(moveMediaLibraryItems(shelterSlug, input)),
-    deleteItems: (input) => asMediaResult(deleteMediaLibraryItems(shelterSlug, input)),
-    shareFile: (id) => asMediaResult(shareMediaLibraryFile(shelterSlug, id)),
-    unshareFile: (id) => asMediaResult(unshareMediaLibraryFile(shelterSlug, id)),
-    getUserName: (userId) => asMediaResult(getMediaUserName(shelterSlug, userId)),
+    getFolderContents: (folderId) => toUiResult(getMediaContents(shelterSlug, folderId)),
+    getFolderTree: () => toUiResult(getMediaTree(shelterSlug)),
+    createFolder: (input) => toUiResult(createMediaLibraryFolder(shelterSlug, input)),
+    updateFolder: (input) => toUiResult(updateMediaLibraryFolder(shelterSlug, input)),
+    deleteFolder: (id) => toUiResult(deleteMediaLibraryFolder(shelterSlug, id)),
+    requestUpload: (input) => toUiResult(requestMediaUpload(shelterSlug, input)),
+    completeUpload: (fileId) => toUiResult(completeMediaLibraryUpload(shelterSlug, fileId)),
+    updateFile: (input) => toUiResult(updateMediaLibraryFile(shelterSlug, input)),
+    deleteFile: (id) => toUiResult(deleteMediaLibraryFile(shelterSlug, id)),
+    getDownloadUrl: (id) => toUiResult(getMediaLibraryDownloadUrl(shelterSlug, id)),
+    moveItems: (input) => toUiResult(moveMediaLibraryItems(shelterSlug, input)),
+    deleteItems: (input) => toUiResult(deleteMediaLibraryItems(shelterSlug, input)),
+    shareFile: (id) => toUiResult(shareMediaLibraryFile(shelterSlug, id)),
+    unshareFile: (id) => toUiResult(unshareMediaLibraryFile(shelterSlug, id)),
+    getUserName: (userId) => toUiResult(getMediaUserName(shelterSlug, userId)),
   };
 }
