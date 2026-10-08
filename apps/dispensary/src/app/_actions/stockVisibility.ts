@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   getChestStockVisibility as getChestStockVisibilityClient,
   setChestCategoryHidden as setChestCategoryHiddenClient,
@@ -40,11 +40,7 @@ export async function getChestStockVisibility(
 
     return { status: 200, data };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du chargement de la visibilité du stock');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement de la visibilité du stock');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement de la visibilité du stock');
   }
 }
 
@@ -72,11 +68,7 @@ export async function setChestCategoryHidden(
 
     return { status: 200, data: { ok: true as const } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la mise à jour de la visibilité de la catégorie');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de la visibilité de la catégorie');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de la visibilité de la catégorie');
   }
 }
 
@@ -104,10 +96,6 @@ export async function setChestItemHidden(
 
     return { status: 200, data: { ok: true as const } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la mise à jour de la visibilité de l\'objet');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de la visibilité de l\'objet');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de la visibilité de l\'objet');
   }
 }

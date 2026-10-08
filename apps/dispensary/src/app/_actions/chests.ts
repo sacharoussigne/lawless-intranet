@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createChest as createChestClient,
   deleteChest as deleteChestClient,
@@ -64,11 +64,7 @@ export async function createChest(
 
     return { status: 201, data: chest };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création du coffre');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création du coffre');
-    }
+    return serviceActionError(error, 'Erreur lors de la création du coffre');
   }
 }
 
@@ -88,11 +84,7 @@ export async function getChests(dispensarySlug: string, onlyEnabled: boolean = f
 
     return { status: 200, data: chests };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des coffres');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des coffres');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des coffres');
   }
 }
 
@@ -118,11 +110,7 @@ export async function getChestsList(
 
     return { status: 200, data: chests };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des coffres');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des coffres');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des coffres');
   }
 }
 
@@ -148,11 +136,7 @@ export async function updateChest(
 
     return { status: 200, data: chest };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la modification du coffre');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification du coffre');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification du coffre');
   }
 }
 
@@ -173,11 +157,7 @@ export async function deleteChest(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression du coffre');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression du coffre');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression du coffre');
   }
 }
 
@@ -198,10 +178,6 @@ export async function reorderChests(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du réordonnancement des coffres');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du réordonnancement des coffres');
-    }
+    return serviceActionError(error, 'Erreur lors du réordonnancement des coffres');
   }
 }

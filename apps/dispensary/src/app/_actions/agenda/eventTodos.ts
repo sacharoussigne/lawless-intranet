@@ -1,6 +1,6 @@
 'use server';
 
-import { actionErrorParser } from '@/lib/action';
+import { serviceActionError } from '@/lib/serviceAction';
 import {
   createEventTodoTaskSchema,
   updateEventTodoTaskSchema,
@@ -8,7 +8,6 @@ import {
 } from '@/app/_actions/agenda/schemas';
 import { getAgendaSessionContext } from '@/app/_actions/agenda/internals';
 import {
-  agendaActionError,
   agendaCookie,
 } from '@/lib/agenda/client';
 import type { AgendaMutationMeta } from '@lawless-intranet/agenda-ui';
@@ -45,11 +44,7 @@ export async function listAgendaEventTodoTasks(
 
     return { status: 200, data: tasks.map(mapEventTodoTask) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement des tâches');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement des tâches');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement des tâches');
   }
 }
 
@@ -75,11 +70,7 @@ export async function createAgendaEventTodoTask(
 
     return { status: 201, data: mapEventTodoTask(task) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la création de la tâche');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la tâche');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la tâche');
   }
 }
 
@@ -111,11 +102,7 @@ export async function updateAgendaEventTodoTask(
 
     return { status: 200, data: mapEventTodoTask(task) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la mise à jour de la tâche');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de la tâche');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de la tâche');
   }
 }
 
@@ -137,10 +124,6 @@ export async function deleteAgendaEventTodoTask(
 
     return { status: 200 };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la suppression de la tâche');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la tâche');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la tâche');
   }
 }

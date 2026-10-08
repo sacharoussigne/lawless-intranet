@@ -8,7 +8,8 @@
     "./service-error": "./src/serviceError.ts",
     "./query": "./src/QueryProvider.tsx",
     "./realtime": "./src/realtime.ts",
-    "./middleware": "./src/middleware.ts"
+    "./middleware": "./src/middleware.ts",
+    "./service-host": "./src/serviceHost.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

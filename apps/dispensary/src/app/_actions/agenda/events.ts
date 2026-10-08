@@ -1,6 +1,6 @@
 'use server';
 
-import { actionErrorParser } from '@/lib/action';
+import { serviceActionError } from '@/lib/serviceAction';
 import type { AgendaEventDTO } from '@/types/agenda';
 import {
   createAgendaEventSchema,
@@ -13,7 +13,6 @@ import {
   validateDispensaryUserIds,
 } from '@/app/_actions/agenda/internals';
 import {
-  agendaActionError,
   agendaCookie,
   agendaScope,
 } from '@/lib/agenda/client';
@@ -107,11 +106,7 @@ export async function listAgendaEvents(
 
     return { status: 200, data: events.map(mapListEvent) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement des événements');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement des événements');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement des événements');
   }
 }
 
@@ -127,11 +122,7 @@ export async function getAgendaEvent(dispensarySlug: string, eventId: string) {
       data: await mapDetailEvent(event, ctx.session.user.id),
     };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement de l\'événement');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement de l\'événement');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement de l\'événement');
   }
 }
 
@@ -184,11 +175,7 @@ export async function createAgendaEvent(
       data: await mapDetailEvent(event, ctx.session.user.id),
     };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la création de l\'événement');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de l\'événement');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de l\'événement');
   }
 }
 
@@ -243,11 +230,7 @@ export async function updateAgendaEvent(
       data: await mapDetailEvent(event, ctx.session.user.id),
     };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la mise à jour de l\'événement');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de l\'événement');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de l\'événement');
   }
 }
 
@@ -269,10 +252,6 @@ export async function deleteAgendaEvent(
 
     return { status: 200 };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la suppression de l\'événement');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de l\'événement');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de l\'événement');
   }
 }

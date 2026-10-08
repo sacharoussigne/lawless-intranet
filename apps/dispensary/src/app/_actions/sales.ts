@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import type {
   SaleItemSource as SaleItemSourceType,
   SaleStatus as SaleStatusType,
@@ -13,13 +14,11 @@ import {
   listWeeklySales as listWeeklySalesApi,
 } from '@lawless-intranet/inventory-client/server';
 import { z } from 'zod';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { hasRole, can } from '@lawless-intranet/auth-permissions';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import {
-  inventoryActionError,
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
@@ -233,11 +232,7 @@ export async function createSale(
       ),
     };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création de la vente');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la vente');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la vente');
   }
 }
 
@@ -285,11 +280,7 @@ export async function cancelSale(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, "Erreur lors de l'annulation de la vente");
-    } catch (e) {
-      return actionErrorParser(e, "Erreur lors de l'annulation de la vente");
-    }
+    return serviceActionError(error, "Erreur lors de l'annulation de la vente");
   }
 }
 
@@ -338,11 +329,7 @@ export async function depositSaleInCashRegister(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du dépôt en caisse');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du dépôt en caisse');
-    }
+    return serviceActionError(error, 'Erreur lors du dépôt en caisse');
   }
 }
 
@@ -389,11 +376,7 @@ export async function deleteSale(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression de la vente');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la vente');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la vente');
   }
 }
 
@@ -458,14 +441,7 @@ export async function listWeeklySales(
 
     return { status: 200, data: summary };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la récupération des ventes',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des ventes');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des ventes');
   }
 }
 
@@ -492,16 +468,6 @@ export async function getSellableItems(dispensarySlug: string) {
       data: items,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la récupération des objets vendables',
-      );
-    } catch (e) {
-      return actionErrorParser(
-        e,
-        'Erreur lors de la récupération des objets vendables',
-      );
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des objets vendables');
   }
 }

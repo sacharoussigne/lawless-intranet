@@ -990,12 +990,28 @@ importers:
 
   packages/bank-client:
     dependencies:
+      '@lawless-intranet/host-kit':
+        specifier: workspace:*
+        version: link:../host-kit
       '@lawless-intranet/service-client':
         specifier: workspace:*
         version: link:../service-client
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
 
   packages/bank-ui:
     dependencies:

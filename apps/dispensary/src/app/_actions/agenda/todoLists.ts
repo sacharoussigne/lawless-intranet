@@ -1,6 +1,6 @@
 'use server';
 
-import { actionErrorParser } from '@/lib/action';
+import { serviceActionError } from '@/lib/serviceAction';
 import type { AgendaTodoListDTO } from '@/types/agenda';
 import {
   createTodoListSchema,
@@ -17,7 +17,6 @@ import {
 } from '@/app/_actions/agenda/schemas';
 import { getAgendaSessionContext } from '@/app/_actions/agenda/internals';
 import {
-  agendaActionError,
   agendaCookie,
 } from '@/lib/agenda/client';
 import type { AgendaMutationMeta } from '@lawless-intranet/agenda-ui';
@@ -90,11 +89,7 @@ export async function listAgendaTodoLists(
 
     return { status: 200, data: lists.map(mapTodoList) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement des listes');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement des listes');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement des listes');
   }
 }
 
@@ -117,11 +112,7 @@ export async function createAgendaTodoList(
 
     return { status: 201, data: mapTodoList(list) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la création de la liste');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la liste');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la liste');
   }
 }
 
@@ -144,11 +135,7 @@ export async function updateAgendaTodoList(
 
     return { status: 200, data: mapTodoList(list) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la mise à jour de la liste');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de la liste');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de la liste');
   }
 }
 
@@ -170,11 +157,7 @@ export async function deleteAgendaTodoList(
 
     return { status: 200 };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la suppression de la liste');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la liste');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la liste');
   }
 }
 
@@ -197,11 +180,7 @@ export async function createAgendaTodoCategory(
 
     return { status: 201, data: mapTodoCategory(category) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la création de la catégorie');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la catégorie');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la catégorie');
   }
 }
 
@@ -224,11 +203,7 @@ export async function updateAgendaTodoCategory(
 
     return { status: 200, data: mapTodoCategory(category) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la mise à jour de la catégorie');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de la catégorie');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de la catégorie');
   }
 }
 
@@ -250,11 +225,7 @@ export async function deleteAgendaTodoCategory(
 
     return { status: 200 };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la suppression de la catégorie');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la catégorie');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la catégorie');
   }
 }
 
@@ -280,11 +251,7 @@ export async function createAgendaTodoTask(
 
     return { status: 201, data: mapTodoTask(task) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la création de la tâche');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la tâche');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la tâche');
   }
 }
 
@@ -320,11 +287,7 @@ export async function updateAgendaTodoTask(
 
     return { status: 200, data: mapTodoTask(task) };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la mise à jour de la tâche');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de la tâche');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de la tâche');
   }
 }
 
@@ -346,11 +309,7 @@ export async function deleteAgendaTodoTask(
 
     return { status: 200 };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la suppression de la tâche');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la tâche');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la tâche');
   }
 }
 
@@ -375,11 +334,7 @@ export async function reorderAgendaTodoCategories(
 
     return { status: 200, data: result };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du réordonnancement');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du réordonnancement');
-    }
+    return serviceActionError(error, 'Erreur lors du réordonnancement');
   }
 }
 
@@ -407,10 +362,6 @@ export async function moveAgendaTodoTask(
 
     return { status: 200, data: result };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du déplacement de la tâche');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du déplacement de la tâche');
-    }
+    return serviceActionError(error, 'Erreur lors du déplacement de la tâche');
   }
 }

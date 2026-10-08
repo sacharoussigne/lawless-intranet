@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
@@ -8,7 +9,6 @@ import { requirePlatformAdminContext } from '@/lib/dispensary/serverActionContex
 import { slugifyDispensaryName } from '@/lib/dispensary/slug';
 import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
 import {
-  agendaActionError,
   agendaCookie,
   agendaScope,
 } from '@/lib/agenda/client';
@@ -148,17 +148,7 @@ export async function deleteDispensary(data: { id: string }) {
         await deleteAgendaApi(agenda.id, { scopeAdmin: true }, cookie);
       }
     } catch (error) {
-      try {
-        return agendaActionError(
-          error,
-          'Erreur lors de la suppression des agendas du dispensaire',
-        );
-      } catch (e) {
-        return actionErrorParser(
-          e,
-          'Erreur lors de la suppression des agendas du dispensaire',
-        );
-      }
+      return serviceActionError(error, 'Erreur lors de la suppression des agendas du dispensaire');
     }
 
     await prisma.$transaction(async (tx) => {

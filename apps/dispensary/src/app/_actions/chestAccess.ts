@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   listRoleChestAccesses,
   upsertRoleChestAccess as upsertRoleChestAccessClient,
@@ -67,11 +67,7 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
 
     return { status: 200, data };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des accès aux coffres');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des accès aux coffres');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des accès aux coffres');
   }
 }
 
@@ -122,10 +118,6 @@ export async function upsertRoleChestAccess(
       } satisfies RoleChestAccessRow,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la sauvegarde des accès aux coffres');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la sauvegarde des accès aux coffres');
-    }
+    return serviceActionError(error, 'Erreur lors de la sauvegarde des accès aux coffres');
   }
 }

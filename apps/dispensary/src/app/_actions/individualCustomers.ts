@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createCustomer,
   deleteCustomerByName,
@@ -46,11 +46,7 @@ export async function searchIndividualCustomers(
 
     return { status: 200, data: customers };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la recherche de clients');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la recherche de clients');
-    }
+    return serviceActionError(error, 'Erreur lors de la recherche de clients');
   }
 }
 
@@ -70,11 +66,7 @@ export async function getIndividualCustomers(dispensarySlug: string) {
 
     return { status: 200, data: customers };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des particuliers');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des particuliers');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des particuliers');
   }
 }
 
@@ -98,11 +90,7 @@ export async function createIndividualCustomer(
 
     return { status: 201, data: customer };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création du particulier');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création du particulier');
-    }
+    return serviceActionError(error, 'Erreur lors de la création du particulier');
   }
 }
 
@@ -126,10 +114,6 @@ export async function deleteIndividualCustomerByName(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression du particulier');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression du particulier');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression du particulier');
   }
 }

@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { actionErrorParser } from '@/lib/action';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
 import {
@@ -13,7 +14,6 @@ import {
   validateDispensaryUserIds,
 } from '@/app/_actions/agenda/internals';
 import {
-  agendaActionError,
   agendaCookie,
 } from '@/lib/agenda/client';
 import {
@@ -55,11 +55,7 @@ export async function upsertAgendaMember(
 
     return { status: 200, data: enriched };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la mise à jour du membre');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour du membre');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour du membre');
   }
 }
 
@@ -83,11 +79,7 @@ export async function removeAgendaMember(
 
     return { status: 200 };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la suppression du membre');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression du membre');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression du membre');
   }
 }
 

@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
   createTemplate,
@@ -8,17 +9,15 @@ import {
   listTemplates,
   updateTemplate,
 } from '@lawless-intranet/documents-client/server';
-import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import {
   getOrderById,
   getOrderMailAssignment,
 } from '@lawless-intranet/inventory-client/server';
 import { InventoryClientError } from '@lawless-intranet/inventory-client';
 import type { OrderStatus, OrderType } from '@lawless-intranet/types';
-import { actionErrorParser } from '@/lib/action';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import { renderTemplate, buildUserTemplateRenderContext } from '@lawless-intranet/mail-template-engine';
 import {
   buildOrderMailVariables,
@@ -73,15 +72,6 @@ const getUserMailTemplateByIdSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-function documentsActionError(error: unknown, fallback: string) {
-  if (error instanceof DocumentsClientError) {
-    return {
-      status: error.status,
-      error: error.message,
-    };
-  }
-  return actionErrorParser(error, fallback);
-}
 
 export async function createMailTemplate(
   dispensarySlug: string,
@@ -120,7 +110,7 @@ export async function createMailTemplate(
       data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la création du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la création du modèle de courrier');
   }
 }
 
@@ -148,7 +138,7 @@ export async function getMailTemplates(dispensarySlug: string) {
       data: result.items.map(templateToMailTemplate),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération des modèles de courriers');
+    return serviceActionError(error, 'Erreur lors de la récupération des modèles de courriers');
   }
 }
 
@@ -183,7 +173,7 @@ export async function getManagementMailTemplateById(
       data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la récupération du modèle de courrier');
   }
 }
 
@@ -241,7 +231,7 @@ export async function updateMailTemplate(
       data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la modification du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la modification du modèle de courrier');
   }
 }
 
@@ -281,7 +271,7 @@ export async function deleteMailTemplate(dispensarySlug: string, data: { id: str
       data: { success: true },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la suppression du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la suppression du modèle de courrier');
   }
 }
 
@@ -335,11 +325,7 @@ export async function generateOrderMailPreview(
             error: 'Commande introuvable',
           };
         }
-        try {
-          return inventoryActionError(error, 'Erreur lors de la récupération de la commande');
-        } catch (e) {
-          return documentsActionError(e, 'Erreur lors de la récupération de la commande');
-        }
+        return serviceActionError(error, 'Erreur lors de la récupération de la commande');
       }
     }
 
@@ -354,11 +340,7 @@ export async function generateOrderMailPreview(
         await inventoryCookie(),
       );
     } catch (error) {
-      try {
-        return inventoryActionError(error, 'Erreur lors de la récupération de l\'assignation de courrier');
-      } catch (e) {
-        return documentsActionError(e, 'Erreur lors de la récupération de l\'assignation de courrier');
-      }
+      return serviceActionError(error, 'Erreur lors de la récupération de l\'assignation de courrier');
     }
 
     if (!assignment) {
@@ -393,7 +375,7 @@ export async function generateOrderMailPreview(
       },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la génération de l\'aperçu du courrier');
+    return serviceActionError(error, 'Erreur lors de la génération de l\'aperçu du courrier');
   }
 }
 
@@ -449,7 +431,7 @@ export async function getUserMailTemplatesPage(
       },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération des modèles de courriers');
+    return serviceActionError(error, 'Erreur lors de la récupération des modèles de courriers');
   }
 }
 
@@ -480,7 +462,7 @@ export async function getUserMailTemplateById(
       data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la récupération du modèle de courrier');
   }
 }
 
@@ -515,7 +497,7 @@ export async function getUserMailTemplateOptions(dispensarySlug: string) {
       }),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération des modèles de courriers');
+    return serviceActionError(error, 'Erreur lors de la récupération des modèles de courriers');
   }
 }
 
@@ -556,7 +538,7 @@ export async function createUserMailTemplate(
       data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la création du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la création du modèle de courrier');
   }
 }
 
@@ -614,7 +596,7 @@ export async function updateUserMailTemplate(
       data: templateToMailTemplate(template),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la modification du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la modification du modèle de courrier');
   }
 }
 
@@ -654,6 +636,6 @@ export async function deleteUserMailTemplate(dispensarySlug: string, data: { id:
       data: { success: true },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la suppression du modèle de courrier');
+    return serviceActionError(error, 'Erreur lors de la suppression du modèle de courrier');
   }
 }

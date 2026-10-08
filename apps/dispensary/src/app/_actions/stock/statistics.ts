@@ -1,9 +1,8 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { getStockConsumptionStats as getStockConsumptionStatsApi } from '@lawless-intranet/inventory-client/server';
-import { actionErrorParser } from '@/lib/action';
 import {
-  inventoryActionError,
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
@@ -50,16 +49,6 @@ export async function getStockConsumptionStats(
       data: result satisfies StockConsumptionStatsResult,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la récupération des statistiques de stock',
-      );
-    } catch (e) {
-      return actionErrorParser(
-        e,
-        'Erreur lors de la récupération des statistiques de stock',
-      );
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des statistiques de stock');
   }
 }
