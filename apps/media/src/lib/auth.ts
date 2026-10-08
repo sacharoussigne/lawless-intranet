@@ -1,7 +1,6 @@
-import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { getSession } from '@lawless-intranet/auth-client/server';
-import type { AuthSession } from '@lawless-intranet/types';
+import { readSession, type AuthenticatedContext } from '@lawless-intranet/service-kit/http';
+import { hasInternalSecret } from '@lawless-intranet/service-kit/internal-secret';
 
 /**
  * The media service is only called server-side by host apps (never by the
@@ -10,18 +9,10 @@ import type { AuthSession } from '@lawless-intranet/types';
  */
 export const MEDIA_INTERNAL_SECRET_HEADER = 'x-media-internal-secret';
 
-export type AuthenticatedContext = {
-  session: AuthSession;
-  userId: string;
-};
+export type { AuthenticatedContext };
 
 export function isMediaInternalAuthorized(request: Request): boolean {
-  const secret = process.env.MEDIA_INTERNAL_SECRET;
-  const provided = request.headers.get(MEDIA_INTERNAL_SECRET_HEADER);
-  if (!secret || !provided) return false;
-  const a = Buffer.from(provided);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return hasInternalSecret(request, { env: 'MEDIA_INTERNAL_SECRET', header: MEDIA_INTERNAL_SECRET_HEADER });
 }
 
 export function jsonResponse(body: unknown, status = 200): NextResponse {
@@ -43,9 +34,5 @@ export async function requireSession(
   const forbidden = requireInternal(request);
   if (forbidden) return forbidden;
 
-  const session = await getSession(request.headers.get('cookie'));
-  if (!session) {
-    return errorResponse('Unauthorized', 401);
-  }
-  return { session, userId: session.user.id };
+  return (await readSession(request)) ?? errorResponse('Unauthorized', 401);
 }

@@ -1,7 +1,1 @@
-export function scopeWhere(scopeType: string, scopeId: string) {
-  return { scopeType, scopeId };
-}
-
-export function scopeKey(scopeType: string, scopeId: string) {
-  return `${scopeType}:${scopeId}`;
-}
+export { scopeKey, scopeWhere } from '@lawless-intranet/service-kit/scope';

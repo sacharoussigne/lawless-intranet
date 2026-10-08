@@ -1,8 +1,5 @@
-export function isInternalAuthAuthorized(request: Request): boolean {
-  const secret = process.env.AUTH_INTERNAL_SECRET;
-  if (!secret) {
-    return false;
-  }
+import { hasInternalSecret } from '@lawless-intranet/service-kit/internal-secret';
 
-  return request.headers.get('x-auth-internal-secret') === secret;
+export function isInternalAuthAuthorized(request: Request): boolean {
+  return hasInternalSecret(request, { env: 'AUTH_INTERNAL_SECRET', header: 'x-auth-internal-secret' });
 }
