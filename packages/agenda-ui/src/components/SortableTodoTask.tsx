@@ -18,6 +18,8 @@ interface SortableTodoTaskProps {
   onToggle: (id: string, completed: boolean) => void;
   onRename: (id: string, title: string) => void | Promise<void>;
   onDelete: (id: string) => void;
+  /** True while a change to this task awaits server confirmation. */
+  pending?: boolean;
 }
 
 export function SortableTodoTask({
@@ -28,6 +30,7 @@ export function SortableTodoTask({
   onToggle,
   onRename,
   onDelete,
+  pending = false,
 }: SortableTodoTaskProps) {
   const [editing, setEditing] = useState(false);
   const canDrag = canWrite && dragEnabled;
@@ -58,7 +61,7 @@ export function SortableTodoTask({
       <Checkbox
         checked={task.completed}
         onChange={(e) => onToggle(task.id, e.currentTarget.checked)}
-        disabled={!canWrite}
+        disabled={!canWrite || pending}
         onPointerDown={stopDragPointer}
       />
       <InlineEditableText
@@ -70,6 +73,7 @@ export function SortableTodoTask({
         }`}
         inputClassName={classes.todoTaskEditInput}
         onEditingChange={setEditing}
+        pending={pending}
       />
       {canWrite && task.completed && !editing && (
         <ActionIcon
@@ -78,6 +82,7 @@ export function SortableTodoTask({
           size="sm"
           onClick={() => onDelete(task.id)}
           onPointerDown={stopDragPointer}
+          loading={pending}
         >
           <IconTrash size={14} />
         </ActionIcon>

@@ -1,11 +1,13 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import { Loader } from '@mantine/core';
 import classes from '../agenda.module.scss';
 
 interface InlineNoteInputProps {
   placeholder: string;
-  onSubmit: (value: string) => void | Promise<void>;
+  /** Resolving to `false` keeps the typed value so it can be retried. */
+  onSubmit: (value: string) => void | boolean | Promise<void | boolean>;
   disabled?: boolean;
   className?: string;
 }
@@ -18,6 +20,7 @@ export function InlineNoteInput({
 }: InlineNoteInputProps) {
   const [active, setActive] = useState(false);
   const [value, setValue] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const skipBlurCommit = useRef(false);
 
@@ -29,10 +32,20 @@ export function InlineNoteInput({
 
   const commit = useCallback(async () => {
     const trimmed = value.trim();
-    setActive(false);
-    setValue('');
-    if (trimmed) {
-      await onSubmit(trimmed);
+    if (!trimmed) {
+      setActive(false);
+      return;
+    }
+    // Keep the typed value visible until the server confirms.
+    setSubmitting(true);
+    try {
+      const ok = await onSubmit(trimmed);
+      if (ok !== false) {
+        setActive(false);
+        setValue('');
+      }
+    } finally {
+      setSubmitting(false);
     }
   }, [value, onSubmit]);
 
@@ -51,6 +64,21 @@ export function InlineNoteInput({
       >
         {placeholder}
       </button>
+    );
+  }
+
+  if (submitting) {
+    return (
+      <div className={classes.inlineNoteSubmitting}>
+        <input
+          type="text"
+          className={`${classes.inlineNoteInput} ${className ?? ''}`}
+          value={value}
+          readOnly
+          aria-busy
+        />
+        <Loader size={12} aria-label="Enregistrement en cours" />
+      </div>
     );
   }
 

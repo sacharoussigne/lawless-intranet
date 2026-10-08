@@ -34,8 +34,8 @@ type UseAgendaTodoMutationsOptions = {
   categoryFilterIds: Set<string>;
   setCategoryFilterIds: Dispatch<SetStateAction<Set<string>>>;
   persistCategoryFilter: (next: Set<string>) => void;
-  beginLocalMutation: () => void;
-  endLocalMutation: () => void;
+  beginLocalMutation: (key: string) => void;
+  endLocalMutation: (key: string) => void;
   reload: () => Promise<void>;
 };
 
@@ -111,7 +111,8 @@ export function useAgendaTodoMutations({
         completedAt: completed ? new Date() : null,
       };
 
-      beginLocalMutation();
+      const pendingKey = `task:${id}`;
+      beginLocalMutation(pendingKey);
       setLists((prev) => patchTaskInLists(prev, id, optimisticPatch));
 
       try {
@@ -138,7 +139,7 @@ export function useAgendaTodoMutations({
           await reload();
         }
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [
@@ -155,7 +156,8 @@ export function useAgendaTodoMutations({
   const handleRenameTask = useCallback(
     async (id: string, title: string) => {
       const snapshot = lists;
-      beginLocalMutation();
+      const pendingKey = `task:${id}`;
+      beginLocalMutation(pendingKey);
       setLists((prev) => patchTaskInLists(prev, id, { title }));
 
       try {
@@ -168,7 +170,7 @@ export function useAgendaTodoMutations({
         setLists(snapshot);
         showMutationError(error, 'Renommage impossible');
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [actions, beginLocalMutation, endLocalMutation, lists, mutationMeta, setLists],
@@ -177,7 +179,8 @@ export function useAgendaTodoMutations({
   const handleRenameList = useCallback(
     async (id: string, name: string) => {
       const snapshot = lists;
-      beginLocalMutation();
+      const pendingKey = `list:${id}`;
+      beginLocalMutation(pendingKey);
       setLists((prev) => renameListInLists(prev, id, name));
 
       try {
@@ -187,7 +190,7 @@ export function useAgendaTodoMutations({
         setLists(snapshot);
         showMutationError(error, 'Renommage impossible');
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [actions, beginLocalMutation, endLocalMutation, lists, mutationMeta, setLists],
@@ -196,7 +199,8 @@ export function useAgendaTodoMutations({
   const handleRenameCategory = useCallback(
     async (id: string, name: string) => {
       const snapshot = lists;
-      beginLocalMutation();
+      const pendingKey = `category:${id}`;
+      beginLocalMutation(pendingKey);
       setLists((prev) => renameCategoryInLists(prev, id, name));
 
       try {
@@ -206,7 +210,7 @@ export function useAgendaTodoMutations({
         setLists(snapshot);
         showMutationError(error, 'Renommage impossible');
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [actions, beginLocalMutation, endLocalMutation, lists, mutationMeta, setLists],
@@ -215,7 +219,8 @@ export function useAgendaTodoMutations({
   const handleDeleteTask = useCallback(
     async (id: string) => {
       const snapshot = lists;
-      beginLocalMutation();
+      const pendingKey = `task:${id}`;
+      beginLocalMutation(pendingKey);
       setLists((prev) => removeTaskFromLists(prev, id));
 
       try {
@@ -228,7 +233,7 @@ export function useAgendaTodoMutations({
         setLists(snapshot);
         showMutationError(error, 'Suppression impossible');
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [
@@ -245,8 +250,9 @@ export function useAgendaTodoMutations({
 
   const handleCreateList = useCallback(
     async (name: string) => {
-      if (!agendaId) return;
-      beginLocalMutation();
+      if (!agendaId) return false;
+      const pendingKey = 'create:list';
+      beginLocalMutation(pendingKey);
       try {
         const result = await actions.createTodoList(
           { agendaId, name },
@@ -257,10 +263,12 @@ export function useAgendaTodoMutations({
           setLists((prev) => addListToLists(prev, data));
           setSelectedListId(data.id);
         }
+        return true;
       } catch (error: unknown) {
         showMutationError(error, 'Création impossible');
+        return false;
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [
@@ -276,8 +284,9 @@ export function useAgendaTodoMutations({
 
   const handleCreateCategory = useCallback(
     async (name: string) => {
-      if (!selectedList) return;
-      beginLocalMutation();
+      if (!selectedList) return false;
+      const pendingKey = `create:category:${selectedList.id}`;
+      beginLocalMutation(pendingKey);
       try {
         const result = await actions.createTodoCategory(
           { listId: selectedList.id, name },
@@ -300,10 +309,12 @@ export function useAgendaTodoMutations({
             persistCategoryFilter(next);
           }
         }
+        return true;
       } catch (error: unknown) {
         showMutationError(error, 'Création impossible');
+        return false;
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [
@@ -322,7 +333,8 @@ export function useAgendaTodoMutations({
 
   const handleAddTask = useCallback(
     async (categoryId: string, title: string) => {
-      beginLocalMutation();
+      const pendingKey = `create:task:${categoryId}`;
+      beginLocalMutation(pendingKey);
       try {
         const result = await actions.createTodoTask(
           { categoryId, title },
@@ -332,10 +344,12 @@ export function useAgendaTodoMutations({
         if (data) {
           setLists((prev) => insertTaskInLists(prev, categoryId, data));
         }
+        return true;
       } catch (error: unknown) {
         showMutationError(error, 'Ajout impossible');
+        return false;
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [actions, beginLocalMutation, endLocalMutation, mutationMeta, setLists],
@@ -344,7 +358,8 @@ export function useAgendaTodoMutations({
   const handleDeleteCategory = useCallback(
     async (id: string) => {
       const snapshot = lists;
-      beginLocalMutation();
+      const pendingKey = `category:${id}`;
+      beginLocalMutation(pendingKey);
       setLists((prev) => removeCategoryFromLists(prev, id));
 
       try {
@@ -354,7 +369,7 @@ export function useAgendaTodoMutations({
         setLists(snapshot);
         showMutationError(error, 'Suppression impossible');
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [actions, beginLocalMutation, endLocalMutation, lists, mutationMeta, setLists],
@@ -364,7 +379,8 @@ export function useAgendaTodoMutations({
     async (id: string) => {
       const snapshot = lists;
       const snapshotSelectedListId = selectedListId;
-      beginLocalMutation();
+      const pendingKey = `list:${id}`;
+      beginLocalMutation(pendingKey);
       setLists((prev) => {
         const next = removeListFromLists(prev, id);
         setSelectedListId((current) =>
@@ -381,7 +397,7 @@ export function useAgendaTodoMutations({
         setSelectedListId(snapshotSelectedListId);
         showMutationError(error, 'Suppression impossible');
       } finally {
-        endLocalMutation();
+        endLocalMutation(pendingKey);
       }
     },
     [

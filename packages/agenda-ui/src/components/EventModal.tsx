@@ -71,6 +71,8 @@ export function EventModal({
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [todoTasks, setTodoTasks] = useState(event?.todoTasks ?? []);
   const [submitting, setSubmitting] = useState(false);
+  const [addingTodo, setAddingTodo] = useState(false);
+  const [pendingTodoIds, setPendingTodoIds] = useState<ReadonlySet<string>>(() => new Set());
   const mutationMeta = agendaMutationMeta(clientId);
   const eventIdRef = useRef(event?.id);
 
@@ -254,8 +256,23 @@ export function EventModal({
     }
   };
 
+  /** Marks a prep task as pending while `run` awaits the server. */
+  const withPendingTodo = async (taskId: string, run: () => Promise<void>) => {
+    setPendingTodoIds((prev) => new Set(prev).add(taskId));
+    try {
+      await run();
+    } finally {
+      setPendingTodoIds((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  };
+
   const handleAddEventTodo = async () => {
     if (!event || !newTodoTitle.trim()) return;
+    setAddingTodo(true);
     try {
       const result = await actions.createEventTodoTask(
         {
@@ -275,67 +292,72 @@ export function EventModal({
         message: error instanceof Error ? error.message : 'Ajout impossible',
         color: 'danger',
       });
+    } finally {
+      setAddingTodo(false);
     }
   };
 
-  const renameEventTodo = async (taskId: string, title: string) => {
-    try {
-      const result = await actions.updateEventTodoTask(
-        { id: taskId, title },
-        mutationMeta,
-      );
-      const data = runAgendaAction(result);
-      if (data) {
-        setTodoTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)),
+  const renameEventTodo = (taskId: string, title: string) =>
+    withPendingTodo(taskId, async () => {
+      try {
+        const result = await actions.updateEventTodoTask(
+          { id: taskId, title },
+          mutationMeta,
         );
+        const data = runAgendaAction(result);
+        if (data) {
+          setTodoTasks((prev) =>
+            prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)),
+          );
+        }
+      } catch (error: unknown) {
+        notifications.show({
+          title: 'Erreur',
+          message: error instanceof Error ? error.message : 'Renommage impossible',
+          color: 'danger',
+        });
       }
-    } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Renommage impossible',
-        color: 'danger',
-      });
-    }
-  };
+    });
 
-  const toggleEventTodo = async (taskId: string, completed: boolean) => {
-    try {
-      const result = await actions.updateEventTodoTask(
-        {
-          id: taskId,
-          completed,
-        },
-        mutationMeta,
-      );
-      const data = runAgendaAction(result);
-      if (data) {
-        setTodoTasks((prev) =>
-          prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)),
+  const toggleEventTodo = (taskId: string, completed: boolean) =>
+    withPendingTodo(taskId, async () => {
+      try {
+        const result = await actions.updateEventTodoTask(
+          {
+            id: taskId,
+            completed,
+          },
+          mutationMeta,
         );
+        const data = runAgendaAction(result);
+        if (data) {
+          setTodoTasks((prev) =>
+            prev.map((t) => (t.id === taskId ? { ...t, ...data } : t)),
+          );
+        }
+      } catch (error: unknown) {
+        notifications.show({
+          title: 'Erreur',
+          message: error instanceof Error ? error.message : 'Mise à jour impossible',
+          color: 'danger',
+        });
       }
-    } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Mise à jour impossible',
-        color: 'danger',
-      });
-    }
-  };
+    });
 
-  const removeEventTodo = async (taskId: string) => {
-    try {
-      const result = await actions.deleteEventTodoTask(taskId, mutationMeta);
-      runAgendaAction(result);
-      setTodoTasks((prev) => prev.filter((t) => t.id !== taskId));
-    } catch (error: unknown) {
-      notifications.show({
-        title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Suppression impossible',
-        color: 'danger',
-      });
-    }
-  };
+  const removeEventTodo = (taskId: string) =>
+    withPendingTodo(taskId, async () => {
+      try {
+        const result = await actions.deleteEventTodoTask(taskId, mutationMeta);
+        runAgendaAction(result);
+        setTodoTasks((prev) => prev.filter((t) => t.id !== taskId));
+      } catch (error: unknown) {
+        notifications.show({
+          title: 'Erreur',
+          message: error instanceof Error ? error.message : 'Suppression impossible',
+          color: 'danger',
+        });
+      }
+    });
 
   const readOnly = !canWrite;
 
@@ -362,7 +384,7 @@ export function EventModal({
         )}
       </div>
       <Group gap="sm">
-        <Button variant="subtle" color="slate" onClick={onClose}>
+        <Button variant="subtle" color="slate" onClick={onClose} disabled={submitting}>
           Annuler
         </Button>
         <Button color="sage" loading={submitting} onClick={handleSave}>
@@ -465,7 +487,7 @@ export function EventModal({
                   onChange={(e) =>
                     void toggleEventTodo(task.id, e.currentTarget.checked)
                   }
-                  disabled={readOnly}
+                  disabled={readOnly || pendingTodoIds.has(task.id)}
                   mt={2}
                 />
                 <InlineEditableText
@@ -476,6 +498,7 @@ export function EventModal({
                     task.completed ? classes.todoTaskCompleted : ''
                   }`}
                   inputClassName={classes.todoTaskEditInput}
+                  pending={pendingTodoIds.has(task.id)}
                 />
                 {canWrite && (
                   <ActionIcon
@@ -483,6 +506,7 @@ export function EventModal({
                     color="danger"
                     size="sm"
                     onClick={() => void removeEventTodo(task.id)}
+                    loading={pendingTodoIds.has(task.id)}
                   >
                     <IconTrash size={14} />
                   </ActionIcon>
@@ -495,12 +519,14 @@ export function EventModal({
                   placeholder="Nouvelle tâche…"
                   value={newTodoTitle}
                   onChange={(e) => setNewTodoTitle(e.currentTarget.value)}
+                  readOnly={addingTodo}
                   style={{ flex: 1 }}
                 />
                 <Button
                   size="xs"
                   color="sage"
                   variant="light"
+                  loading={addingTodo}
                   onClick={() => void handleAddEventTodo()}
                 >
                   Ajouter

@@ -53,10 +53,12 @@ function SortableCategoryShell({
   children,
   onDelete,
   onRename,
+  pending,
 }: {
   category: AgendaTodoCategoryDTO;
   canWrite: boolean;
   canDrag: boolean;
+  pending: boolean;
   children: ReactNode;
   onDelete: () => void;
   onRename: (id: string, name: string) => void | Promise<void>;
@@ -93,6 +95,7 @@ function SortableCategoryShell({
           textClassName={classes.todoCategoryTitle}
           inputClassName={classes.todoCategoryEditInput}
           onEditingChange={setEditing}
+          pending={pending}
         />
         {canWrite && (
           <Popover
@@ -160,7 +163,9 @@ interface SortableTodoCategoryProps {
   onDeleteTask: (id: string) => void;
   onDeleteCategory: (id: string) => void;
   onRenameCategory: (id: string, name: string) => void | Promise<void>;
-  onAddTask: (categoryId: string, title: string) => void;
+  onAddTask: (categoryId: string, title: string) => Promise<boolean>;
+  /** Pending mutation keys (`task:<id>`, `category:<id>`), see `useAgendaTodoLists`. */
+  isPending: (key: string) => boolean;
 }
 
 export function SortableTodoCategory({
@@ -174,6 +179,7 @@ export function SortableTodoCategory({
   onDeleteCategory,
   onRenameCategory,
   onAddTask,
+  isPending,
 }: SortableTodoCategoryProps) {
   const canDragCategory = canWrite && (categoryDragEnabled ?? dragEnabled);
 
@@ -182,6 +188,7 @@ export function SortableTodoCategory({
       category={category}
       canWrite={canWrite}
       canDrag={canDragCategory}
+      pending={isPending(`category:${category.id}`)}
       onDelete={() => onDeleteCategory(category.id)}
       onRename={onRenameCategory}
     >
@@ -201,6 +208,7 @@ export function SortableTodoCategory({
                 onToggle={onToggleTask}
                 onRename={onRenameTask}
                 onDelete={onDeleteTask}
+                pending={isPending(`task:${task.id}`)}
               />
             ))}
           </Stack>
