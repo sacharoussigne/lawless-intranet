@@ -15,7 +15,9 @@ Le `QueryProvider` est monté dans le layout dispensary :
 - [`src/lib/react-query/QueryProvider.tsx`](../src/lib/react-query/QueryProvider.tsx)
 - [`src/app/(loggedIn)/d/[dispensarySlug]/layout.tsx`](../src/app/(loggedIn)/d/[dispensarySlug]/layout.tsx)
 
-Valeurs par défaut : `staleTime: 30s`, `refetchOnWindowFocus: false`.
+Valeurs par défaut : `staleTime: 5s`, `refetchOnWindowFocus: false`.
+
+Le `QueryClient` du navigateur survit aux navigations client, et `initialData` (SSR) est **ignoré** dès que la clé est déjà en cache. Le `staleTime` court garantit qu’en revenant sur une page (retour ou lien) les données sont rechargées en arrière-plan au lieu d’afficher l’ancien état. Ne pas le rallonger sans cette contrainte en tête.
 
 ## Pattern lecture (SSR + client)
 

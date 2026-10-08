@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const DEFAULT_STALE_TIME_MS = 30_000;
+/**
+ * Short on purpose: the browser QueryClient outlives client navigations and
+ * `initialData` from SSR is ignored once a key is cached, so returning to a
+ * page must refetch. 5 s only avoids a duplicate fetch right after SSR.
+ */
+const DEFAULT_STALE_TIME_MS = 5_000;
 
 function makeQueryClient() {
   return new QueryClient({
