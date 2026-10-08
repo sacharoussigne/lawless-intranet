@@ -863,6 +863,9 @@ importers:
 
   packages/agenda-client:
     dependencies:
+      '@lawless-intranet/service-client':
+        specifier: workspace:*
+        version: link:../service-client
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types
@@ -963,6 +966,9 @@ importers:
 
   packages/bank-client:
     dependencies:
+      '@lawless-intranet/service-client':
+        specifier: workspace:*
+        version: link:../service-client
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types
@@ -1021,12 +1027,18 @@ importers:
 
   packages/documents-client:
     dependencies:
+      '@lawless-intranet/service-client':
+        specifier: workspace:*
+        version: link:../service-client
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types
 
   packages/inventory-client:
     dependencies:
+      '@lawless-intranet/service-client':
+        specifier: workspace:*
+        version: link:../service-client
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types
@@ -1131,6 +1143,9 @@ importers:
 
   packages/media-client:
     dependencies:
+      '@lawless-intranet/service-client':
+        specifier: workspace:*
+        version: link:../service-client
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types
@@ -1204,6 +1219,15 @@ importers:
       react:
         specifier: 19.2.4
         version: 19.2.4
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
+
+  packages/service-client:
+    devDependencies:
       typescript:
         specifier: ^5
         version: 5.9.3
