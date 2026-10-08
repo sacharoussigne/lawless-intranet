@@ -35,6 +35,9 @@ importers:
       '@lawless-intranet/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime
+      '@lawless-intranet/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -99,6 +102,9 @@ importers:
       '@lawless-intranet/auth-permissions':
         specifier: workspace:*
         version: link:../../packages/auth-permissions
+      '@lawless-intranet/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -166,6 +172,9 @@ importers:
       '@lawless-intranet/auth-client':
         specifier: workspace:*
         version: link:../../packages/auth-client
+      '@lawless-intranet/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -438,6 +447,9 @@ importers:
       '@lawless-intranet/auth-client':
         specifier: workspace:*
         version: link:../../packages/auth-client
+      '@lawless-intranet/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -505,6 +517,9 @@ importers:
       '@lawless-intranet/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime
+      '@lawless-intranet/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -584,6 +599,9 @@ importers:
       '@lawless-intranet/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime
+      '@lawless-intranet/service-kit':
+        specifier: workspace:*
+        version: link:../../packages/service-kit
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -1228,6 +1246,31 @@ importers:
 
   packages/service-client:
     devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
+
+  packages/service-kit:
+    dependencies:
+      '@lawless-intranet/auth-client':
+        specifier: workspace:*
+        version: link:../auth-client
+      '@lawless-intranet/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@prisma/adapter-pg':
+        specifier: ^7.2.0
+        version: 7.8.0
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      next:
+        specifier: 16.2.9
+        version: 16.2.9(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.101.0)
       typescript:
         specifier: ^5
         version: 5.9.3

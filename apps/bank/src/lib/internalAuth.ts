@@ -1,9 +1,9 @@
+import { hasInternalSecret } from '@lawless-intranet/service-kit/internal-secret';
+
 export const BANK_INTERNAL_SECRET_HEADER = 'x-bank-internal-secret';
 
 export function isBankInternalAuthorized(request: Request): boolean {
-  const secret = process.env.BANK_INTERNAL_SECRET;
-  if (!secret) return false;
-  return request.headers.get(BANK_INTERNAL_SECRET_HEADER) === secret;
+  return hasInternalSecret(request, { env: 'BANK_INTERNAL_SECRET', header: BANK_INTERNAL_SECRET_HEADER });
 }
 
 /** Host-only ops (purge-scope) require the internal secret. */
