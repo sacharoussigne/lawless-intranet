@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
   createDocument,
@@ -9,8 +10,6 @@ import {
   listDocuments,
   updateDocument,
 } from '@lawless-intranet/documents-client/server';
-import { DocumentsClientError } from '@lawless-intranet/documents-client';
-import { actionErrorParser } from '@/lib/action';
 import {
   animalsAccessAuth,
   animalsUpdateAuth,
@@ -58,12 +57,6 @@ const getDocumentSchema = z.object({
   animalId: z.string().uuid('Animal invalide'),
 });
 
-function documentsActionError(error: unknown, fallback: string) {
-  if (error instanceof DocumentsClientError) {
-    return { status: error.status, error: error.message };
-  }
-  return actionErrorParser(error, fallback);
-}
 
 function mapDocument(
   document:
@@ -122,7 +115,7 @@ export async function listAnimalDocuments(shelterSlug: string, animalId: string)
 
     return { status: 200, data: items };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors du chargement des documents de l’animal',
     );
@@ -156,7 +149,7 @@ export async function getAnimalDocument(
 
     return { status: 200, data: mapDocument(document) };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors du chargement du document');
+    return serviceActionError(error, 'Erreur lors du chargement du document');
   }
 }
 
@@ -195,7 +188,7 @@ export async function createFreeTextAnimalDocument(
 
     return { status: 201, data: mapDocument(document) };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la création du document');
+    return serviceActionError(error, 'Erreur lors de la création du document');
   }
 }
 
@@ -246,7 +239,7 @@ export async function createAnimalDocumentFromTemplate(
 
     return { status: 201, data: mapDocument(document) };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la création du document depuis le modèle',
     );
@@ -295,7 +288,7 @@ export async function updateAnimalDocument(
 
     return { status: 200, data: mapDocument(document) };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la mise à jour du document');
+    return serviceActionError(error, 'Erreur lors de la mise à jour du document');
   }
 }
 
@@ -327,6 +320,6 @@ export async function deleteAnimalDocument(
     await deleteDocument(validated.id, { cookieHeader });
     return { status: 200, data: { success: true } };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la suppression du document');
+    return serviceActionError(error, 'Erreur lors de la suppression du document');
   }
 }

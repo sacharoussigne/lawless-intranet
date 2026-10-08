@@ -1,7 +1,7 @@
 'use client';
 
 import { Container, SimpleGrid, Text } from '@mantine/core';
-import { IconBuildingBank, IconDog } from '@tabler/icons-react';
+import { IconBuildingBank, IconDog, IconPhoto } from '@tabler/icons-react';
 import { ModuleCard } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
@@ -25,6 +25,14 @@ export default function EmployeeHubPage() {
       description: 'Comptes, semaines et transactions du refuge.',
       href: t.employee.bank,
       icon: IconBuildingBank,
+    });
+  }
+  if (permissions?.media.access && appSettings.featureMediaEnabled) {
+    cards.push({
+      title: 'Médiathèque',
+      description: 'Images et documents du refuge, rangés par dossiers.',
+      href: t.employee.media,
+      icon: IconPhoto,
     });
   }
 

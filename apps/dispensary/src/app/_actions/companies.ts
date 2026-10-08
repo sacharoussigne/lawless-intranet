@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createCompany as createCompanyClient,
   deleteCompany as deleteCompanyClient,
@@ -64,11 +64,7 @@ export async function createCompany(
 
     return { status: 201, data: company };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création de l\'entreprise');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de l\'entreprise');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de l\'entreprise');
   }
 }
 
@@ -85,11 +81,7 @@ export async function getCompaniesForSelect(dispensarySlug: string) {
 
     return { status: 200, data: companies };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des entreprises');
   }
 }
 
@@ -106,11 +98,7 @@ export async function getCompanies(dispensarySlug: string) {
 
     return { status: 200, data: companies };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des entreprises');
   }
 }
 
@@ -142,11 +130,7 @@ export async function updateCompany(
 
     return { status: 200, data: company };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la modification de l\'entreprise');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification de l\'entreprise');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification de l\'entreprise');
   }
 }
 
@@ -164,10 +148,6 @@ export async function deleteCompany(dispensarySlug: string, data: { id: string }
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression de l\'entreprise');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de l\'entreprise');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de l\'entreprise');
   }
 }

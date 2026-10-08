@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MediaFileStatus {
+  /// Ticket issued, the browser is uploading to S3.
+  UPLOADING
+  /// Object verified in S3, visible in the library.
+  READY
+}
+
+/// Folder of a media library scope (e.g. one shelter). Root folders have no parent.
+model MediaFolder {
+  id          String        @id @default(uuid())
+  scopeType   String
+  scopeId     String
+  parentId    String?
+  name        String
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  parent      MediaFolder?  @relation("MediaFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    MediaFolder[] @relation("MediaFolderTree")
+  files       MediaFile[]
+
+  @@index([scopeType, scopeId, parentId])
+  @@map("media_folder")
+}
+
+/// File stored in S3 under `storageKey`; `name` is the display name.
+model MediaFile {
+  id           String          @id @default(uuid())
+  scopeType    String
+  scopeId      String
+  folderId     String?
+  name         String
+  storageKey   String          @unique
+  mimeType     String
+  size         Int
+  status       MediaFileStatus @default(UPLOADING)
+  uploadedById String
+  /// Public share link token (null = not shared). Revoking clears it, sharing again issues a new one.
+  shareToken   String?         @unique
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  folder       MediaFolder?    @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@index([scopeType, scopeId, folderId, status])
+  @@map("media_file")
+}

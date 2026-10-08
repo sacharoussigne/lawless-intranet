@@ -31,6 +31,7 @@ const updateSchema = z.object({
     .max(120, 'Le nom est trop long'),
   slug: slugSchema,
   featureBankEnabled: z.boolean(),
+  featureMediaEnabled: z.boolean(),
 });
 
 export async function getAppSettingsForAdmin(
@@ -113,10 +114,12 @@ export async function updateAppSettings(
           shelterId,
           shelterName: parsed.data.shelterName,
           featureBankEnabled: parsed.data.featureBankEnabled,
+          featureMediaEnabled: parsed.data.featureMediaEnabled,
         },
         update: {
           shelterName: parsed.data.shelterName,
           featureBankEnabled: parsed.data.featureBankEnabled,
+          featureMediaEnabled: parsed.data.featureMediaEnabled,
         },
       }),
     ]);
@@ -132,6 +135,7 @@ export async function updateAppSettings(
       shelterName: row.shelterName,
       slug: newSlug,
       featureBankEnabled: row.featureBankEnabled,
+      featureMediaEnabled: row.featureMediaEnabled,
     };
 
     return { status: 200, data };

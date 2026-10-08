@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createCompanyGroup as createCompanyGroupClient,
   deleteCompanyGroup as deleteCompanyGroupClient,
@@ -51,11 +51,7 @@ export async function createCompanyGroup(
 
     return { status: 201, data: companyGroup };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création du groupe d\'entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création du groupe d\'entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la création du groupe d\'entreprises');
   }
 }
 
@@ -72,11 +68,7 @@ export async function getCompanyGroupsForSelect(dispensarySlug: string) {
 
     return { status: 200, data: companyGroups };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des groupes d\'entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
   }
 }
 
@@ -93,11 +85,7 @@ export async function getCompanyGroupsForOrders(dispensarySlug: string) {
 
     return { status: 200, data: companyGroups };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des groupes d\'entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
   }
 }
 
@@ -114,11 +102,7 @@ export async function getCompanyGroups(dispensarySlug: string) {
 
     return { status: 200, data: companyGroups };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des groupes d\'entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des groupes d\'entreprises');
   }
 }
 
@@ -150,11 +134,7 @@ export async function updateCompanyGroup(
 
     return { status: 200, data: companyGroup };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la modification du groupe d\'entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification du groupe d\'entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification du groupe d\'entreprises');
   }
 }
 
@@ -172,10 +152,6 @@ export async function deleteCompanyGroup(dispensarySlug: string, data: { id: str
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression du groupe d\'entreprises');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression du groupe d\'entreprises');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression du groupe d\'entreprises');
   }
 }

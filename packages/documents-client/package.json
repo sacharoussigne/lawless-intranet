@@ -9,6 +9,7 @@
     "./server": "./src/server.ts"
   },
   "dependencies": {
+    "@lawless-intranet/service-client": "workspace:*",
     "@lawless-intranet/types": "workspace:*"
   }
 }

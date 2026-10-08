@@ -1,3 +1,1 @@
-export function scopeWhere(scopeType: string, scopeId: string) {
-  return { scopeType, scopeId };
-}
+export { scopeWhere } from '@lawless-intranet/service-kit/scope';

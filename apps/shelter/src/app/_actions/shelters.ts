@@ -10,6 +10,8 @@ import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
 import { purgeBankScope } from '@lawless-intranet/bank-client/server';
 import { BankClientError } from '@lawless-intranet/bank-client';
 import { bankScope } from '@/lib/bank/client';
+import { purgeMediaScope } from '@lawless-intranet/media-client/server';
+import { mediaScope } from '@/lib/media/client';
 import { ensureShelterRolePermissions } from '@/lib/shelter/permissionsSeed';
 
 const createShelterSchema = z.object({
@@ -104,6 +106,13 @@ export async function deleteShelter(data: { id: string }) {
         return { status: error.status, error: error.message };
       }
       console.error('Failed to purge bank scope', error);
+    }
+
+    try {
+      await purgeMediaScope(mediaScope(shelter.id));
+    } catch (error) {
+      // Media files are not critical to the deletion: log and continue.
+      console.error('Failed to purge media scope', error);
     }
 
     await prisma.shelter.delete({ where: { id: shelter.id } });

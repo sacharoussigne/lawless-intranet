@@ -23,10 +23,12 @@ export {
 function mapFromDb(row: {
   shelterName: string;
   featureBankEnabled: boolean;
+  featureMediaEnabled: boolean;
 }): AppSettingsDTO {
   return {
     shelterName: row.shelterName?.trim() || APP_SETTINGS_DEFAULTS.shelterName,
     featureBankEnabled: row.featureBankEnabled,
+    featureMediaEnabled: row.featureMediaEnabled,
   };
 }
 

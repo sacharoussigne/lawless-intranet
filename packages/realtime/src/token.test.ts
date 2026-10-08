@@ -56,6 +56,7 @@ describe('realtime token', () => {
 describe('realtime topics', () => {
   it('builds and validates topic names', () => {
     expect(realtimeTopics.agendas('dispensary', 'd1')).toBe('agendas:dispensary:d1');
+    expect(realtimeTopics.media('shelter', 's1')).toBe('media:shelter:s1');
     expect(isValidRealtimeTopic('agenda:3f2a-b1')).toBe(true);
     expect(isValidRealtimeTopic('agenda')).toBe(false);
     expect(isValidRealtimeTopic('agenda:a b')).toBe(false);

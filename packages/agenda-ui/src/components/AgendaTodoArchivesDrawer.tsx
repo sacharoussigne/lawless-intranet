@@ -17,6 +17,7 @@ interface AgendaTodoArchivesDrawerProps {
   lists: AgendaTodoListDTO[];
   canWrite: boolean;
   onDeleteTask: (id: string) => void;
+  isPending: (key: string) => boolean;
 }
 
 export function AgendaTodoArchivesDrawer({
@@ -25,6 +26,7 @@ export function AgendaTodoArchivesDrawer({
   lists,
   canWrite,
   onDeleteTask,
+  isPending,
 }: AgendaTodoArchivesDrawerProps) {
   return (
     <Drawer
@@ -71,6 +73,7 @@ export function AgendaTodoArchivesDrawer({
                         color="danger"
                         size="sm"
                         onClick={() => onDeleteTask(task.id)}
+                        loading={isPending(`task:${task.id}`)}
                       >
                         <IconTrash size={14} />
                       </ActionIcon>

@@ -4,6 +4,11 @@ export function shelterBase(slug: string): string {
   return `/s/${encodeURIComponent(slug)}`;
 }
 
+/** Public share link of a media file (no login, outside the middleware matcher). */
+export function mediaShareRoute(token: string, fileName: string): string {
+  return `/partage/${encodeURIComponent(token)}/${encodeURIComponent(fileName)}`;
+}
+
 export function tenantRoutes(slug: string) {
   const base = shelterBase(slug);
   const employeeBase = `${base}/employee`;
@@ -12,6 +17,7 @@ export function tenantRoutes(slug: string) {
     employee: {
       index: employeeBase,
       bank: `${employeeBase}/bank`,
+      media: `${employeeBase}/media`,
       animals: `${employeeBase}/animals`,
       animal: (id: string) => `${employeeBase}/animals/${encodeURIComponent(id)}`,
       animalFollowUp: (animalId: string, followUpId: string) =>
@@ -29,6 +35,7 @@ export function tenantRoutes(slug: string) {
         `${managementBase}/templates/${encodeURIComponent(id)}/test`,
     },
     bank: { index: `${employeeBase}/bank` },
+    media: { index: `${employeeBase}/media` },
     species: { index: `${managementBase}/species` },
     animals: { index: `${employeeBase}/animals` },
     admin: {

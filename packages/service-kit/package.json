@@ -1,0 +1,30 @@
+{
+  "name": "@lawless-intranet/service-kit",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./prisma": "./src/prisma.ts",
+    "./http": "./src/http.ts",
+    "./internal-secret": "./src/internalSecret.ts",
+    "./scope": "./src/scope.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@lawless-intranet/auth-client": "workspace:*",
+    "@lawless-intranet/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "@prisma/adapter-pg": "^7",
+    "next": ">=15"
+  },
+  "devDependencies": {
+    "@prisma/adapter-pg": "^7.2.0",
+    "@types/node": "^20",
+    "next": "16.2.9",
+    "typescript": "^5",
+    "vitest": "^2.1.9"
+  }
+}

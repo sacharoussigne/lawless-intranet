@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
   createDocument,
@@ -8,8 +9,6 @@ import {
   listDocuments,
   updateDocument,
 } from '@lawless-intranet/documents-client/server';
-import { DocumentsClientError } from '@lawless-intranet/documents-client';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import {
   buildMailDocumentMetadata,
@@ -49,15 +48,6 @@ const getMailByIdSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-function documentsActionError(error: unknown, fallback: string) {
-  if (error instanceof DocumentsClientError) {
-    return {
-      status: error.status,
-      error: error.message,
-    };
-  }
-  return actionErrorParser(error, fallback);
-}
 
 export async function createMail(
   dispensarySlug: string,
@@ -93,7 +83,7 @@ export async function createMail(
       data: documentToMail(document),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la création du courrier');
+    return serviceActionError(error, 'Erreur lors de la création du courrier');
   }
 }
 
@@ -148,7 +138,7 @@ export async function getMailsPage(
       },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération des courriers');
+    return serviceActionError(error, 'Erreur lors de la récupération des courriers');
   }
 }
 
@@ -172,7 +162,7 @@ export async function getMailById(
       data: documentToMail(document),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération du courrier');
+    return serviceActionError(error, 'Erreur lors de la récupération du courrier');
   }
 }
 
@@ -209,7 +199,7 @@ export async function updateMail(
       data: documentToMail(document),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la modification du courrier');
+    return serviceActionError(error, 'Erreur lors de la modification du courrier');
   }
 }
 
@@ -230,6 +220,6 @@ export async function deleteMail(dispensarySlug: string, data: { id: string }) {
       data: { success: true },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la suppression du courrier');
+    return serviceActionError(error, 'Erreur lors de la suppression du courrier');
   }
 }

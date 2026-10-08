@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createItem as createItemClient,
   deleteItem as deleteItemClient,
@@ -78,11 +78,7 @@ export async function createItem(
 
     return { status: 201, data: item };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création de l\'objet');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de l\'objet');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de l\'objet');
   }
 }
 
@@ -105,11 +101,7 @@ export async function getItems(
 
     return { status: 200, data: items };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des objets');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des objets');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des objets');
   }
 }
 
@@ -142,11 +134,7 @@ export async function updateItem(
 
     return { status: 200, data: item };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la modification de l\'objet');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification de l\'objet');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification de l\'objet');
   }
 }
 
@@ -164,11 +152,7 @@ export async function deleteItem(dispensarySlug: string, data: { id: string }) {
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression de l\'objet');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de l\'objet');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de l\'objet');
   }
 }
 
@@ -189,10 +173,6 @@ export async function reorderItems(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du réordonnancement des objets');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du réordonnancement des objets');
-    }
+    return serviceActionError(error, 'Erreur lors du réordonnancement des objets');
   }
 }

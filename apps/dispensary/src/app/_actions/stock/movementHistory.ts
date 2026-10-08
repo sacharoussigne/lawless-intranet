@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod';
 import type { StockMovementKind as StockMovementKindType } from '@lawless-intranet/types';
 import {
@@ -8,10 +9,8 @@ import {
   listStockMovements,
   updateStockMovement as updateStockMovementApi,
 } from '@lawless-intranet/inventory-client/server';
-import { actionErrorParser } from '@/lib/action';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import {
-  inventoryActionError,
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
@@ -133,17 +132,7 @@ export async function getStockMovementsPage(
       } satisfies StockMovementsPageResult,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la récupération des mouvements de stock',
-      );
-    } catch (e) {
-      return actionErrorParser(
-        e,
-        'Erreur lors de la récupération des mouvements de stock',
-      );
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des mouvements de stock');
   }
 }
 
@@ -186,14 +175,7 @@ export async function updateStockMovement(
       data: updated,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la modification du mouvement',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification du mouvement');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification du mouvement');
   }
 }
 
@@ -237,14 +219,7 @@ export async function deleteStockMovements(
       data: { success: true, deletedCount: result.deleted },
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la suppression des mouvements',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression des mouvements');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression des mouvements');
   }
 }
 
@@ -289,16 +264,6 @@ export async function getStockMovementReconciliation(
 
     return { status: 200, data: result };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la réconciliation des mouvements',
-      );
-    } catch (e) {
-      return actionErrorParser(
-        e,
-        'Erreur lors de la réconciliation des mouvements',
-      );
-    }
+    return serviceActionError(error, 'Erreur lors de la réconciliation des mouvements');
   }
 }

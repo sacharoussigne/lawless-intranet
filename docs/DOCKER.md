@@ -1,6 +1,6 @@
 # Déploiement Docker (monorepo)
 
-Une image par app (`auth`, `dispensary`, `shelter`, `documents`, `agenda`, `bank`, `inventory`, `realtime`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
+Une image par app (`auth`, `dispensary`, `shelter`, `documents`, `agenda`, `bank`, `inventory`, `media`, `realtime`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
 
 Les apps Next.js utilisent le `Dockerfile` racine ; le serveur WebSocket `realtime` (Node pur, sans Prisma) a son propre `docker/realtime.Dockerfile` (voir [Serveur temps réel](#serveur-temps-réel-websocket)).
 
@@ -9,7 +9,7 @@ Les apps Next.js utilisent le `Dockerfile` racine ; le serveur WebSocket `realti
 ```
 docker build (context: .)
     │
-    ├─ turbo prune auth|dispensary|shelter|documents|agenda|bank|inventory --docker   → apps + packages nécessaires
+    ├─ turbo prune auth|dispensary|shelter|documents|agenda|bank|inventory|media --docker   → apps + packages nécessaires
     ├─ pnpm install
     ├─ pnpm turbo build --filter=<app>        → next build --webpack + standalone
     └─ entrypoint: prisma migrate deploy + node apps/<app>/server.js
@@ -20,7 +20,8 @@ docker build (context: .)
 - Docker + Docker Compose
 - Réseau `proxy` externe (nginx-proxy / letsencrypt-companion), comme avant
 - Un enregistrement DNS pour `REALTIME_VIRTUAL_HOST` (ex. `realtime.example.com`), couvert par `AUTH_COOKIE_DOMAIN`
-- Sept bases PostgreSQL (auth + dispensary + shelter + documents + agenda + bank + inventory)
+- Huit bases PostgreSQL (auth + dispensary + shelter + documents + agenda + bank + inventory + media)
+- Un bucket S3 pour la médiathèque, avec son CORS et un utilisateur IAM (voir [docs/MEDIA.md](MEDIA.md))
 - Discord redirect URI : `https://<AUTH_VIRTUAL_HOST>/api/auth/callback/discord`
 
 ## Démarrage rapide
@@ -46,7 +47,7 @@ Après un `git pull`, **ne pas** utiliser `make rebuild` en routine — cette co
 
 `make deploy` exécute `docker compose up -d --build` : Docker réutilise les couches inchangées (deps, lockfile, etc.) et ne reconstruit que ce qui a changé.
 
-Services disponibles pour `make service SERVICE=…` : `auth`, `dispensary`, `documents`, `agenda`, `bank`, `inventory`, `shelter`.
+Services disponibles pour `make service SERVICE=…` : `auth`, `dispensary`, `documents`, `agenda`, `bank`, `inventory`, `shelter`, `media`, `realtime`.
 
 ## Maintenance disque
 
@@ -171,6 +172,7 @@ docker build \
 | `AGENDA_DATABASE_URL` | agenda | DB agendas/events/todos |
 | `BANK_DATABASE_URL` | bank | DB ledger bancaire |
 | `INVENTORY_DATABASE_URL` | inventory | DB stock / commandes / ventes / entreprises |
+| `MEDIA_DATABASE_URL` | media | DB médiathèque (dossiers, fichiers) |
 | `AUTH_INTERNAL_SECRET` | auth + hosts | API interne service-to-service |
 | `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
 | `BANK_INTERNAL_SECRET` | bank + dispensary + shelter | Secret host→bank (purge-scope) |
@@ -181,14 +183,17 @@ docker build \
 | `REALTIME_VIRTUAL_HOST` | realtime | Hôte nginx-proxy du WebSocket |
 | `REALTIME_TOKEN_SECRET` | realtime + dispensary | Signature des jetons d'abonnement (dispensary signe, realtime vérifie) |
 | `REALTIME_INTERNAL_SECRET` | realtime + agenda | Publication service→realtime sur le port interne |
+| `MEDIA_INTERNAL_SECRET` | media + shelter | Secret hôte→media (toutes les routes) |
+| `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION` | media | Bucket S3 de la médiathèque |
+| `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY` | media | Clés de l'utilisateur IAM du bucket |
 
 ## Serveur temps réel (WebSocket)
 
-`apps/realtime` est un serveur Node + `ws` (bundle esbuild, image `docker/realtime.Dockerfile`). Il remplace progressivement les flux SSE ; l'agenda et les todos passent déjà par lui.
+`apps/realtime` est un serveur Node + `ws` (bundle esbuild, image `docker/realtime.Dockerfile`). Il remplace progressivement les flux SSE ; l'agenda, les todos et la médiathèque passent déjà par lui.
 
 ```
 navigateur ──wss://REALTIME_VIRTUAL_HOST──▶ nginx-proxy ──▶ realtime:3007   (WebSocket, seul port routé)
-agenda ──http://realtime:3008/publish (réseau privé « realtime »)──▶ realtime:3008
+agenda, media ──http://realtime:3008/publish (réseau privé « realtime »)──▶ realtime:3008
 ```
 
 - **Port 3007** : WebSocket navigateur. Contrôle de l'`Origin` (`ALLOWED_ORIGINS`), puis authentification par un jeton court signé par le dispensary (`REALTIME_TOKEN_SECRET`) qui liste les topics autorisés (`agenda:<id>`, `agendas:<scope>`, `user:<id>`).

@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
   completeOrder as completeOrderApi,
@@ -10,9 +11,7 @@ import {
   listOrdersPage,
   updateOrder as updateOrderApi,
 } from '@lawless-intranet/inventory-client/server';
-import { actionErrorParser } from '@/lib/action';
 import {
-  inventoryActionError,
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
@@ -109,11 +108,7 @@ export async function createOrder(
       data: order as unknown as OrderWithRelations,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création de la commande');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la commande');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la commande');
   }
 }
 
@@ -265,14 +260,7 @@ export async function getOrdersPage(
       data: pageResult,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la récupération des commandes',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des commandes');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des commandes');
   }
 }
 
@@ -294,14 +282,7 @@ export async function getOrderById(dispensarySlug: string, data: { id: string })
       data: order as unknown as OrderWithRelations,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la récupération de la commande',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération de la commande');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération de la commande');
   }
 }
 
@@ -326,17 +307,7 @@ export async function getActiveOrdersForCompanyGroup(
       data: orders as unknown as ActiveOrderSummary[],
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la récupération des commandes actives',
-      );
-    } catch (e) {
-      return actionErrorParser(
-        e,
-        'Erreur lors de la récupération des commandes actives',
-      );
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des commandes actives');
   }
 }
 
@@ -395,14 +366,7 @@ export async function updateOrder(
       data: order as unknown as OrderWithRelations,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la modification de la commande',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification de la commande');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification de la commande');
   }
 }
 
@@ -457,14 +421,7 @@ export async function completeOrder(
       data: order as unknown as OrderWithRelations,
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la finalisation de la commande',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la finalisation de la commande');
-    }
+    return serviceActionError(error, 'Erreur lors de la finalisation de la commande');
   }
 }
 
@@ -496,13 +453,6 @@ export async function deleteOrder(dispensarySlug: string, data: { id: string }) 
       data: { success: true },
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        'Erreur lors de la suppression de la commande',
-      );
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la commande');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la commande');
   }
 }

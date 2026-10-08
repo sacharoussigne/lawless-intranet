@@ -1,9 +1,8 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { transferStock } from '@lawless-intranet/inventory-client/server';
-import { actionErrorParser } from '@/lib/action';
 import {
-  inventoryActionError,
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
@@ -66,10 +65,6 @@ export async function transferMultipleStock(
       data: { success: true },
     };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du transfert des items');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du transfert des items');
-    }
+    return serviceActionError(error, 'Erreur lors du transfert des items');
   }
 }

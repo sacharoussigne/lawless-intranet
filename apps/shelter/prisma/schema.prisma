@@ -84,6 +84,7 @@ model AppSettings {
   shelter             Shelter  @relation(fields: [shelterId], references: [id], onDelete: Cascade)
   shelterName         String   @default("Refuge")
   featureBankEnabled  Boolean  @default(true)
+  featureMediaEnabled Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

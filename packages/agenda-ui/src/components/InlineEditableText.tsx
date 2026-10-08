@@ -2,6 +2,7 @@
 
 import type { MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Loader } from '@mantine/core';
 import { stopDragPointer } from './agendaDnd';
 import classes from '../agenda.module.scss';
 
@@ -12,6 +13,8 @@ interface InlineEditableTextProps {
   textClassName?: string;
   inputClassName?: string;
   onEditingChange?: (editing: boolean) => void;
+  /** Shows a spinner next to the text while the server confirms a change. */
+  pending?: boolean;
 }
 
 export function InlineEditableText({
@@ -21,6 +24,7 @@ export function InlineEditableText({
   textClassName,
   inputClassName,
   onEditingChange,
+  pending = false,
 }: InlineEditableTextProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -99,8 +103,11 @@ export function InlineEditableText({
   }
 
   return (
-    <span className={textClassName} onDoubleClick={startEditing}>
-      {value}
-    </span>
+    <>
+      <span className={textClassName} onDoubleClick={startEditing}>
+        {value}
+      </span>
+      {pending && <Loader size={12} aria-label="Enregistrement en cours" />}
+    </>
   );
 }

@@ -11,6 +11,7 @@ interface EditableTodoListTabProps {
   canWrite: boolean;
   onSelect: (id: string) => void;
   onRename: (id: string, name: string) => void | Promise<void>;
+  pending?: boolean;
 }
 
 export function EditableTodoListTab({
@@ -20,6 +21,7 @@ export function EditableTodoListTab({
   canWrite,
   onSelect,
   onRename,
+  pending = false,
 }: EditableTodoListTabProps) {
   const [editing, setEditing] = useState(false);
 
@@ -45,6 +47,7 @@ export function EditableTodoListTab({
         textClassName={classes.todoListTabLabel}
         inputClassName={classes.todoListTabEditInput}
         onEditingChange={setEditing}
+        pending={pending}
       />
     </div>
   );

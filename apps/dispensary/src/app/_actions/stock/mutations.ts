@@ -1,13 +1,12 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import {
   craftItem as craftItemApi,
   overwriteStockForDate as overwriteStockForDateApi,
   updateStock as updateStockApi,
 } from '@lawless-intranet/inventory-client/server';
-import { actionErrorParser } from '@/lib/action';
 import {
-  inventoryActionError,
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
@@ -51,11 +50,7 @@ export async function updateStock(
 
     return { status: 200, data: results };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la mise à jour du stock');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour du stock');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour du stock');
   }
 }
 
@@ -101,11 +96,7 @@ export async function craftItem(
 
     return { status: 200, data: result };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du craft');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du craft');
-    }
+    return serviceActionError(error, 'Erreur lors du craft');
   }
 }
 
@@ -136,10 +127,6 @@ export async function overwriteStockForDate(
 
     return { status: 200, data: result };
   } catch (error) {
-    try {
-      return inventoryActionError(error, "Erreur lors de l'écrasement des stocks");
-    } catch (e) {
-      return actionErrorParser(e, "Erreur lors de l'écrasement des stocks");
-    }
+    return serviceActionError(error, "Erreur lors de l'écrasement des stocks");
   }
 }

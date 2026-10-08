@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { AnimalSpotlightProvider } from '@/app/_contexts/AnimalSpotlightContext';
+import { QueryProvider } from '@/lib/react-query/QueryProvider';
 
 export function ShelterClientProviders({
   shelterSlug,
@@ -11,8 +12,10 @@ export function ShelterClientProviders({
   children: ReactNode;
 }) {
   return (
-    <AnimalSpotlightProvider shelterSlug={shelterSlug}>
-      {children}
-    </AnimalSpotlightProvider>
+    <QueryProvider>
+      <AnimalSpotlightProvider shelterSlug={shelterSlug}>
+        {children}
+      </AnimalSpotlightProvider>
+    </QueryProvider>
   );
 }

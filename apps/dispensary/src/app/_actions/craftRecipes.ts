@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createCraftRecipe as createCraftRecipeClient,
   deleteCraftRecipe as deleteCraftRecipeClient,
@@ -60,11 +60,7 @@ export async function getCraftRecipesByItemId(
 
     return { status: 200, data: craftRecipes };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des recettes de craft');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des recettes de craft');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des recettes de craft');
   }
 }
 
@@ -92,11 +88,7 @@ export async function createCraftRecipe(
 
     return { status: 201, data: craftRecipe };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création de la recette de craft');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la recette de craft');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la recette de craft');
   }
 }
 
@@ -124,11 +116,7 @@ export async function updateCraftRecipe(
 
     return { status: 200, data: craftRecipe };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la modification de la recette de craft');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification de la recette de craft');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification de la recette de craft');
   }
 }
 
@@ -146,10 +134,6 @@ export async function deleteCraftRecipe(dispensarySlug: string, data: { id: stri
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression de la recette de craft');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la recette de craft');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la recette de craft');
   }
 }
