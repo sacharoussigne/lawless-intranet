@@ -54,6 +54,8 @@ export function useAgendaTodoLists({
   const [selectedListId, setSelectedListId] = useState<string | null>(
     initialLists[0]?.id ?? null,
   );
+  /** In-flight local mutations per key (`task:<id>`, `reorder`…), for loading indicators. */
+  const [pendingKeys, setPendingKeys] = useState<ReadonlyMap<string, number>>(() => new Map());
 
   const query = useQuery({
     queryKey,
@@ -99,18 +101,34 @@ export function useAgendaTodoLists({
     void refetchLists();
   }, [refetchLists]);
 
-  const beginLocalMutation = useCallback(() => {
-    pendingMutationsRef.current += 1;
-    // A fetch started before the optimistic update must not overwrite it.
-    void queryClient.cancelQueries({ queryKey });
-  }, [queryClient, queryKey]);
+  const beginLocalMutation = useCallback(
+    (key: string) => {
+      pendingMutationsRef.current += 1;
+      setPendingKeys((prev) => new Map(prev).set(key, (prev.get(key) ?? 0) + 1));
+      // A fetch started before the optimistic update must not overwrite it.
+      void queryClient.cancelQueries({ queryKey });
+    },
+    [queryClient, queryKey],
+  );
 
-  const endLocalMutation = useCallback(() => {
-    pendingMutationsRef.current = Math.max(0, pendingMutationsRef.current - 1);
-    if (pendingMutationsRef.current === 0 && !isDraggingRef.current) {
-      void refetchLists();
-    }
-  }, [refetchLists]);
+  const endLocalMutation = useCallback(
+    (key: string) => {
+      pendingMutationsRef.current = Math.max(0, pendingMutationsRef.current - 1);
+      setPendingKeys((prev) => {
+        const next = new Map(prev);
+        const count = (next.get(key) ?? 0) - 1;
+        if (count > 0) next.set(key, count);
+        else next.delete(key);
+        return next;
+      });
+      if (pendingMutationsRef.current === 0 && !isDraggingRef.current) {
+        void refetchLists();
+      }
+    },
+    [refetchLists],
+  );
+
+  const isPending = useCallback((key: string) => pendingKeys.has(key), [pendingKeys]);
 
   useEffect(() => {
     agendaIdRef.current = agendaId;
@@ -142,5 +160,7 @@ export function useAgendaTodoLists({
     reload: refetchLists,
     beginLocalMutation,
     endLocalMutation,
+    isPending,
+    isSaving: pendingKeys.size > 0,
   };
 }

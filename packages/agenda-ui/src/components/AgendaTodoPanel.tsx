@@ -5,6 +5,7 @@ import {
   Button,
   Checkbox,
   Group,
+  Loader,
   Stack,
   Text,
   TextInput,
@@ -199,6 +200,8 @@ export function AgendaTodoPanel({
     reload,
     beginLocalMutation,
     endLocalMutation,
+    isPending,
+    isSaving,
   } = useAgendaTodoLists({
     agendaId,
     initialLists,
@@ -584,7 +587,7 @@ export function AgendaTodoPanel({
     };
 
     // Defers remote refreshes until the new order is saved, then resyncs.
-    beginLocalMutation();
+    beginLocalMutation('reorder');
     try {
       if (activeType === 'category') {
         if (!over || active.id === over.id) return;
@@ -647,7 +650,7 @@ export function AgendaTodoPanel({
       });
     } finally {
       resetTaskDragState();
-      endLocalMutation();
+      endLocalMutation('reorder');
     }
   };
 
@@ -663,7 +666,15 @@ export function AgendaTodoPanel({
     <div ref={todoPanelRef} className={classes.todoPanel}>
       <Group justify="space-between" mb="xs" align="flex-start">
         <div>
-          <Title order={4} className="disp-display-title">To-Do</Title>
+          <Group gap="xs" align="center">
+            <Title order={4} className="disp-display-title">To-Do</Title>
+            {isSaving && (
+              <Group gap={6} align="center" aria-live="polite">
+                <Loader size={12} />
+                <Text size="xs" c="dimmed">Enregistrement…</Text>
+              </Group>
+            )}
+          </Group>
           <Text size="xs" c="dimmed" mt={4}>
             Les tâches cochées restent visibles 1 h, puis passent dans Archives
             (elles ne sont pas décochées).
@@ -693,6 +704,7 @@ export function AgendaTodoPanel({
                   canWrite={canWrite}
                   onSelect={setSelectedListId}
                   onRename={handleRenameList}
+                  pending={isPending(`list:${list.id}`)}
                 />
               ))}
             </div>
@@ -786,6 +798,7 @@ export function AgendaTodoPanel({
                     onDeleteCategory={handleDeleteCategory}
                     onRenameCategory={handleRenameCategory}
                     onAddTask={handleAddTask}
+                    isPending={isPending}
                   />
                 ))}
               </Stack>
@@ -833,6 +846,7 @@ export function AgendaTodoPanel({
                         onDeleteCategory={handleDeleteCategory}
                         onRenameCategory={handleRenameCategory}
                         onAddTask={handleAddTask}
+                        isPending={isPending}
                       />
                     ),
                     )}
@@ -892,6 +906,7 @@ export function AgendaTodoPanel({
         lists={archiveLists}
         canWrite={canWrite}
         onDeleteTask={handleDeleteTask}
+        isPending={isPending}
       />
     </div>
   );
