@@ -1,0 +1,44 @@
+{
+  "name": "media",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "prisma generate && next dev -p 3009 --webpack",
+    "build": "prisma generate && next build --webpack",
+    "start": "next start -p 3009",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.900.0",
+    "@aws-sdk/s3-presigned-post": "^3.900.0",
+    "@aws-sdk/s3-request-presigner": "^3.900.0",
+    "@lawless-intranet/auth-client": "workspace:*",
+    "@lawless-intranet/realtime": "workspace:*",
+    "@lawless-intranet/types": "workspace:*",
+    "@prisma/adapter-pg": "^7.2.0",
+    "@prisma/client": "^7.2.0",
+    "@prisma/client-runtime-utils": "^7.2.0",
+    "dotenv": "^17.2.3",
+    "next": "16.2.9",
+    "pg": "^8.16.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "prisma": "^7.2.0",
+    "typescript": "^5",
+    "vitest": "^2.1.9"
+  }
+}

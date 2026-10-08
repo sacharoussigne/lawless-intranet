@@ -1,13 +1,15 @@
-export type AppFeatureKey = 'bank';
+export type AppFeatureKey = 'bank' | 'media';
 
 export type AppSettingsDTO = {
   shelterName: string;
   featureBankEnabled: boolean;
+  featureMediaEnabled: boolean;
 };
 
 export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   shelterName: 'Refuge',
   featureBankEnabled: true,
+  featureMediaEnabled: true,
 };
 
 export function normalizeAppSettings(
@@ -30,6 +32,8 @@ export function isAppFeatureEnabled(
   switch (feature) {
     case 'bank':
       return settings.featureBankEnabled;
+    case 'media':
+      return settings.featureMediaEnabled;
     default: {
       const _exhaustive: never = feature;
       return _exhaustive;

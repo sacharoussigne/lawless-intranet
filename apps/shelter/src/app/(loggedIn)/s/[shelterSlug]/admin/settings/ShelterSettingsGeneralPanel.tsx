@@ -18,6 +18,7 @@ export function ShelterSettingsGeneralPanel({
   const [name, setName] = useState(initial.shelterName);
   const [slug, setSlug] = useState(initial.slug);
   const [bankEnabled, setBankEnabled] = useState(initial.featureBankEnabled);
+  const [mediaEnabled, setMediaEnabled] = useState(initial.featureMediaEnabled);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -27,6 +28,7 @@ export function ShelterSettingsGeneralPanel({
         shelterName: name,
         slug,
         featureBankEnabled: bankEnabled,
+        featureMediaEnabled: mediaEnabled,
       });
       if (result.status !== 200 || !('data' in result) || !result.data) {
         notifications.show({
@@ -57,6 +59,11 @@ export function ShelterSettingsGeneralPanel({
           label="Module banque activé"
           checked={bankEnabled}
           onChange={(e) => setBankEnabled(e.currentTarget.checked)}
+        />
+        <Switch
+          label="Module médiathèque activé"
+          checked={mediaEnabled}
+          onChange={(e) => setMediaEnabled(e.currentTarget.checked)}
         />
         <Button color="terracotta" loading={saving} onClick={() => void handleSave()}>
           Enregistrer

@@ -4,6 +4,8 @@ export const realtimeTopics = {
   agenda: (agendaId: string) => `agenda:${agendaId}`,
   /** Agenda list changes for a scope (create, rename, delete). */
   agendas: (scopeType: string, scopeId: string) => `agendas:${scopeType}:${scopeId}`,
+  /** Media library of a scope (folders and files). */
+  media: (scopeType: string, scopeId: string) => `media:${scopeType}:${scopeId}`,
   /** Per-user notifications (participant events, access changes). */
   user: (userId: string) => `user:${userId}`,
 } as const;

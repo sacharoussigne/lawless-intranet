@@ -31,6 +31,7 @@ import {
   IconArrowBackUp,
   IconCashRegister,
   IconDog,
+  IconPhoto,
   IconLogout,
   IconPaw,
   IconSettings,
@@ -326,6 +327,17 @@ export default function Header({
                             <Group gap={6} wrap="nowrap" className={classes.linkInner}>
                               <IconCashRegister size={18} stroke={1.6} />
                               <span>Banque</span>
+                            </Group>
+                          </Link>
+                        )}
+                        {permissions?.media.access && appSettings.featureMediaEnabled && (
+                          <Link
+                            href={t.employee.media}
+                            className={`${classes.navLink} ${isActive(t.employee.media) ? classes.navLinkActive : ''}`}
+                          >
+                            <Group gap={6} wrap="nowrap" className={classes.linkInner}>
+                              <IconPhoto size={18} stroke={1.6} />
+                              <span>Médiathèque</span>
                             </Group>
                           </Link>
                         )}

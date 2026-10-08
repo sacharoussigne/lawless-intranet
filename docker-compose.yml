@@ -241,9 +241,51 @@ services:
       SELF_SIGNED_HOST: "${SHELTER_VIRTUAL_HOST:?err}"
       DOCUMENTS_URL: "${DOCUMENTS_PUBLIC_URL:?err}"
       DOCUMENTS_INTERNAL_SECRET: "${DOCUMENTS_INTERNAL_SECRET:?err}"
+      # Media library service (private network, see the media service)
+      MEDIA_URL: "http://media:3009"
+      MEDIA_INTERNAL_SECRET: "${MEDIA_INTERNAL_SECRET:?err}"
+      # Browser websocket URL (read at runtime) + secret to sign realtime tokens
+      REALTIME_PUBLIC_URL: "${REALTIME_PUBLIC_URL:?err}"
+      REALTIME_TOKEN_SECRET: "${REALTIME_TOKEN_SECRET:?err}"
     networks:
       - proxy
       - db
+      - media
+
+  # Media library API (files in S3). Not public: only called server-side by
+  # shelter over the private "media" network (no VIRTUAL_HOST). Browsers upload
+  # and download straight from S3 with presigned URLs.
+  media:
+    restart: unless-stopped
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-media"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: media
+        APP_PORT: "3009"
+        NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+    environment:
+      NODE_ENV: production
+      PORT: "3009"
+      DATABASE_URL: "${MEDIA_DATABASE_URL:?err}"
+      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      MEDIA_INTERNAL_SECRET: "${MEDIA_INTERNAL_SECRET:?err}"
+      S3_BUCKET: "${MEDIA_S3_BUCKET:?err}"
+      S3_REGION: "${MEDIA_S3_REGION:?err}"
+      AWS_ACCESS_KEY_ID: "${MEDIA_AWS_ACCESS_KEY_ID:?err}"
+      AWS_SECRET_ACCESS_KEY: "${MEDIA_AWS_SECRET_ACCESS_KEY:?err}"
+      S3_ENDPOINT: "${MEDIA_S3_ENDPOINT:-}"
+      S3_FORCE_PATH_STYLE: "${MEDIA_S3_FORCE_PATH_STYLE:-false}"
+      MEDIA_MAX_FILE_SIZE_MB: "${MEDIA_MAX_FILE_SIZE_MB:-20}"
+      # Publishes library changes to the realtime server over the private network
+      REALTIME_INTERNAL_URL: "http://realtime:3008"
+      REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
+      TZ: "${TZ:-UTC}"
+    networks:
+      - db
+      - media
+      - realtime
 
   # Realtime websocket server (plain Node, own Dockerfile).
   # - Port 3007: browser websocket, the only port routed by nginx-proxy (wss://REALTIME_VIRTUAL_HOST).
@@ -260,7 +302,7 @@ services:
       NODE_ENV: production
       WS_PORT: "3007"
       INTERNAL_PORT: "3008"
-      ALLOWED_ORIGINS: "${DISPENSARY_PUBLIC_URL:?err}"
+      ALLOWED_ORIGINS: "${DISPENSARY_PUBLIC_URL:?err},${SHELTER_PUBLIC_URL:?err}"
       REALTIME_TOKEN_SECRET: "${REALTIME_TOKEN_SECRET:?err}"
       REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
       TZ: "${TZ:-UTC}"
@@ -284,3 +326,6 @@ networks:
   # Private network between services and the realtime internal API (no outside access).
   realtime:
     internal: true
+  # Private network between shelter and the media service. Not "internal":
+  # the media service must reach S3.
+  media: {}

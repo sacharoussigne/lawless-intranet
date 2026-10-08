@@ -7,6 +7,7 @@ import { hasApplicationAccessMiddleware } from './middlewares/hasApplicationAcce
 import { hasPlatformAdminMiddleware } from './middlewares/hasPlatformAdminMiddleware';
 import { hasAdminRoleMiddleware } from './middlewares/hasAdminRoleMiddleware';
 import { hasBankAccessMiddleware } from './middlewares/hasBankAccessMiddleware';
+import { hasMediaAccessMiddleware } from './middlewares/hasMediaAccessMiddleware';
 import { hasSpeciesManageMiddleware } from './middlewares/hasSpeciesManageMiddleware';
 import { hasAnimalsAccessMiddleware } from './middlewares/hasAnimalsAccessMiddleware';
 import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatureEnabledMiddleware';
@@ -68,6 +69,11 @@ export async function middleware(req: NextRequest) {
       middlewares.push(hasBankAccessMiddleware);
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
         assertAppFeatureEnabledMiddleware(request, s, 'bank'),
+      );
+    } else if (pathname.startsWith(t.media.index)) {
+      middlewares.push(hasMediaAccessMiddleware);
+      middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
+        assertAppFeatureEnabledMiddleware(request, s, 'media'),
       );
     } else if (pathname.startsWith(t.species.index)) {
       middlewares.push(hasSpeciesManageMiddleware);
