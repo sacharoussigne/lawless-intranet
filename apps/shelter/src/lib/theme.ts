@@ -39,6 +39,19 @@ const comboboxOption = {
   color: c.ink,
 };
 
+/**
+ * Business fields: keep password managers (Dashlane, LastPass, 1Password,
+ * Bitwarden) from offering autofill. Dashlane ignores `autocomplete="off"`
+ * and only honours `data-form-type`. Not applied to PasswordInput.
+ */
+const noAutofillProps: Record<string, string> = {
+  autoComplete: 'off',
+  'data-form-type': 'other',
+  'data-lpignore': 'true',
+  'data-1p-ignore': 'true',
+  'data-bwignore': 'true',
+};
+
 const theme = createTheme({
   ...DEFAULT_THEME,
 
@@ -289,6 +302,7 @@ const theme = createTheme({
     },
 
     TextInput: {
+      defaultProps: noAutofillProps,
       styles: {
         input: {
           backgroundColor: c.surface,
@@ -300,6 +314,7 @@ const theme = createTheme({
 
     Select: {
       defaultProps: {
+        ...noAutofillProps,
         withAlignedLabels: true,
       },
       styles: {
@@ -327,6 +342,7 @@ const theme = createTheme({
     },
 
     Autocomplete: {
+      defaultProps: noAutofillProps,
       styles: {
         input: selectLikeInput,
         section: selectLikeSection,
@@ -337,6 +353,7 @@ const theme = createTheme({
 
     MultiSelect: {
       defaultProps: {
+        ...noAutofillProps,
         withAlignedLabels: true,
       },
       styles: {
@@ -352,6 +369,7 @@ const theme = createTheme({
     },
 
     Textarea: {
+      defaultProps: noAutofillProps,
       styles: {
         input: {
           backgroundColor: c.surface,
@@ -361,7 +379,12 @@ const theme = createTheme({
       },
     },
 
+    TagsInput: { defaultProps: noAutofillProps },
+    DateInput: { defaultProps: noAutofillProps },
+    DateTimePicker: { defaultProps: noAutofillProps },
+
     NumberInput: {
+      defaultProps: noAutofillProps,
       styles: {
         input: {
           backgroundColor: c.surface,
