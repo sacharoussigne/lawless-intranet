@@ -8,18 +8,9 @@ import {
 import { getRequestAuthSession } from './lib/authSession';
 import { hasToBeLoggedOutMiddleware } from './middlewares/hasToBeLoggedOutMiddleware';
 import { hasToBeLoggedInMiddleware } from './middlewares/hasToBeLoggedInMiddleware';
-import { hasApplicationAccessMiddleware } from './middlewares/hasApplicationAccessMiddleware';
-import { hasManagementAccessMiddleware } from './middlewares/hasManagementAccessMiddleware';
 import { hasPlatformAdminMiddleware } from './middlewares/hasPlatformAdminMiddleware';
 import { hasAdminRoleMiddleware } from './middlewares/hasAdminRoleMiddleware';
-import { hasPayrollReportsAccessMiddleware } from './middlewares/hasPayrollReportsAccessMiddleware';
-import { hasStockStatisticsAccessMiddleware } from './middlewares/hasStockStatisticsAccessMiddleware';
 import { hasStockViewAccessMiddleware } from './middlewares/hasStockViewAccessMiddleware';
-import { hasOrdersViewAccessMiddleware } from './middlewares/hasOrdersViewAccessMiddleware';
-import { hasSearchAccessMiddleware } from './middlewares/hasSearchAccessMiddleware';
-import { hasBankAccessMiddleware } from './middlewares/hasBankAccessMiddleware';
-import { hasWeeklyDispensaryActivityMiddleware } from './middlewares/hasWeeklyDispensaryActivityMiddleware';
-import { hasMailsAccessMiddleware } from './middlewares/hasMailsAccessMiddleware';
 import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatureEnabledMiddleware';
 import { hasTenantAccessMiddleware } from './middlewares/hasTenantAccessMiddleware';
 import { chain } from './middlewares/chain';
@@ -27,6 +18,17 @@ import type { AppMiddlewareSession } from '@/types/middlewareSession';
 import { enrichSessionWithTenant } from './lib/dispensary/middlewareSession';
 import { parseDispensarySlugFromPathname } from './lib/dispensary/slug';
 import { DEFAULT_DISPENSARY_SLUG } from './lib/dispensary/constants';
+import {
+  hasApplicationAccessMiddleware,
+  hasBankAccessMiddleware,
+  hasMailsAccessMiddleware,
+  hasManagementAccessMiddleware,
+  hasOrdersViewAccessMiddleware,
+  hasPayrollReportsAccessMiddleware,
+  hasSearchAccessMiddleware,
+  hasStockStatisticsAccessMiddleware,
+  hasWeeklyDispensaryActivityMiddleware,
+} from './middlewares/permissionMiddlewares';
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;

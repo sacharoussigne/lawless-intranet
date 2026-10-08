@@ -3,19 +3,21 @@ import { routes, tenantRoutes } from './types/routes';
 import { getRequestAuthSession } from './lib/authSession';
 import { hasToBeLoggedOutMiddleware } from './middlewares/hasToBeLoggedOutMiddleware';
 import { hasToBeLoggedInMiddleware } from './middlewares/hasToBeLoggedInMiddleware';
-import { hasApplicationAccessMiddleware } from './middlewares/hasApplicationAccessMiddleware';
 import { hasPlatformAdminMiddleware } from './middlewares/hasPlatformAdminMiddleware';
 import { hasAdminRoleMiddleware } from './middlewares/hasAdminRoleMiddleware';
-import { hasBankAccessMiddleware } from './middlewares/hasBankAccessMiddleware';
-import { hasMediaAccessMiddleware } from './middlewares/hasMediaAccessMiddleware';
-import { hasSpeciesManageMiddleware } from './middlewares/hasSpeciesManageMiddleware';
-import { hasAnimalsAccessMiddleware } from './middlewares/hasAnimalsAccessMiddleware';
 import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatureEnabledMiddleware';
 import { hasTenantAccessMiddleware } from './middlewares/hasTenantAccessMiddleware';
 import { chain } from './middlewares/chain';
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
 import { enrichSessionWithTenant } from './lib/shelter/middlewareSession';
 import { parseShelterSlugFromPathname } from './lib/shelter/slug';
+import {
+  hasAnimalsAccessMiddleware,
+  hasApplicationAccessMiddleware,
+  hasBankAccessMiddleware,
+  hasMediaAccessMiddleware,
+  hasSpeciesManageMiddleware,
+} from './middlewares/permissionMiddlewares';
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
