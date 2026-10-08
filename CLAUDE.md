@@ -33,7 +33,11 @@ Les **services** (documents, agenda, bank, inventory, media) n'exposent que des 
 Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, sans build) :
 - `types` : DTO partagés entre les services et leurs clients.
 - `*-client` (`agenda`, `bank`, `documents`, `inventory`, `media`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
+- `service-client` : couche fetch commune des `*-client` (`createServiceFetch` : URL et secret depuis l'env, cookie SSO transmis, parsing JSON, `ServiceClientError`). Chaque `XClientError` en hérite.
+- `service-kit` (services API uniquement) : `./prisma` (`createPrismaClient`), `./http` (`createCors`, `createRouteResponses`, `readSession`), `./internal-secret` (`hasInternalSecret`, comparaison en temps constant), `./scope`.
+- `host-kit` (apps hôtes dispensary / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
 - `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
+- Actions bank : la logique est partagée dans `@lawless-intranet/bank-client/host` (`createBankHostActions`). Chaque hôte ne fournit que `withBank` (`lib/bank/client.ts`) et ré-exporte les actions depuis `_actions/bankAccounts.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
 - `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services), et l'ancien SSE (`./server`, `./client`) encore utilisé par weeklyActivity, sales, orders et waitlist.
 - `mail-template-engine` : parseur et moteur de rendu des templates (variables, conditions).
@@ -136,8 +140,8 @@ Pour **tout nouveau code** et toute refonte : **React Query + server actions**. 
 Les modules historiques (auth, documents, agenda, bank, inventory) ont été extraits du dispensary vers des services. Le schéma à suivre est le suivant :
 1. une nouvelle app API, avec sa propre base, scopée par `scopeType` / `scopeId` ;
 2. les types dans `packages/types` ;
-3. un package client `packages/<x>-client` ;
-4. si besoin, un package UI `packages/<x>-ui` avec des actions injectées ;
+3. un package client `packages/<x>-client`, dont le `config.ts` instancie `createServiceFetch` (`service-client`) ; côté service, `lib/{prisma,cors,auth,internalAuth}.ts` s'appuient sur `service-kit` ;
+4. si besoin, un package UI `packages/<x>-ui` avec des actions injectées. Côté hôte : `lib/<x>/client.ts` (scope et cookie via `serviceHost`), erreurs avec `serviceActionError` ou `withTenantService` (`@/lib/serviceAction`), mapping UI avec `toUiResult` ;
 5. un script de migration de données dans `scripts/` (préserver les IDs), à exposer dans le `package.json` racine ;
 6. un secret interne partagé, plus les variables d'env dans `turbo.json`, `docker-compose.yml` et `docs/SSO-DEV.md`.
 

@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   getChestStockCheckConfigs as getChestStockCheckConfigsClient,
   getStockChecksSummary as getStockChecksSummaryClient,
@@ -60,11 +60,7 @@ export async function getChestStockCheckForm(dispensarySlug: string, chestId: st
 
     return { status: 200, data: payload };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du chargement de la configuration');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement de la configuration');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement de la configuration');
   }
 }
 
@@ -83,11 +79,7 @@ export async function getChestStockCheckConfigs(dispensarySlug: string) {
 
     return { status: 200, data: payload };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du chargement des vérifications de stock');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement des vérifications de stock');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement des vérifications de stock');
   }
 }
 
@@ -114,11 +106,7 @@ export async function upsertChestStockCheckConfig(
 
     return { status: 200, data: config };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la sauvegarde des vérifications de stock');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la sauvegarde des vérifications de stock');
-    }
+    return serviceActionError(error, 'Erreur lors de la sauvegarde des vérifications de stock');
   }
 }
 
@@ -142,10 +130,6 @@ export async function getStockChecksSummary(dispensarySlug: string) {
 
     return { status: 200, data: payload };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du chargement des vérifications de stock');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement des vérifications de stock');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement des vérifications de stock');
   }
 }

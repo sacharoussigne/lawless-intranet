@@ -21,8 +21,9 @@ import {
 import { actionErrorParser } from '@/lib/action';
 import { fetchUserProfile } from '@/lib/authUsers';
 import { mediaActionAuth } from '@/lib/media/auth';
-import { mediaActionError, mediaCookie, mediaScope } from '@/lib/media/client';
+import { mediaCookie, mediaScope } from '@/lib/media/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
+import { withTenantService } from '@/lib/serviceAction';
 
 // Names and limits are fully validated by the media service; the host only checks shapes.
 const idSchema = z.string().uuid();
@@ -34,23 +35,14 @@ const itemsSchema = z.object({
 });
 
 /** Runs a media operation for the current shelter, with the shared guard and error mapping. */
-async function withMedia<T>(
+function withMedia<T>(
   shelterSlug: string,
   fallback: string,
   run: (scope: ReturnType<typeof mediaScope>, options: Awaited<ReturnType<typeof mediaCookie>>) => Promise<T>,
 ) {
-  try {
-    const ctx = await requireTenantServerActionContext(shelterSlug, mediaActionAuth);
-    if (!ctx.ok) return ctx.response;
-    const data = await run(mediaScope(ctx.tenant.shelterId), await mediaCookie());
-    return { status: 200, data };
-  } catch (error) {
-    try {
-      return mediaActionError(error, fallback);
-    } catch (e) {
-      return actionErrorParser(e, fallback);
-    }
-  }
+  return withTenantService(shelterSlug, mediaActionAuth, fallback, async (shelterId) =>
+    run(mediaScope(shelterId), await mediaCookie()),
+  );
 }
 
 export async function getMediaLibraryLimits(shelterSlug: string) {

@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
   grantDocumentAccess,
@@ -9,8 +10,6 @@ import {
   revokeDocumentAccess,
   revokeTemplateAccess,
 } from '@lawless-intranet/documents-client/server';
-import { DocumentsClientError } from '@lawless-intranet/documents-client';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getServerCookieHeader } from '@/lib/documents/mailDocuments';
 import {
@@ -30,15 +29,6 @@ const revokeAccessSchema = z.object({
   userId: z.string().min(1),
 });
 
-function documentsActionError(error: unknown, fallback: string) {
-  if (error instanceof DocumentsClientError) {
-    return {
-      status: error.status,
-      error: error.message,
-    };
-  }
-  return actionErrorParser(error, fallback);
-}
 
 async function enrichAccessesWithUsers<T extends { userId: string }>(accesses: T[]) {
   const usersById = await fetchUserProfiles(accesses.map((access) => access.userId));
@@ -63,7 +53,7 @@ export async function listTemplateAccessesAction(
       data: await enrichAccessesWithUsers(accesses),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération des accès');
+    return serviceActionError(error, 'Erreur lors de la récupération des accès');
   }
 }
 
@@ -100,7 +90,7 @@ export async function grantTemplateAccessAction(
       data: access,
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de l\'ajout de l\'accès');
+    return serviceActionError(error, 'Erreur lors de l\'ajout de l\'accès');
   }
 }
 
@@ -129,7 +119,7 @@ export async function revokeTemplateAccessAction(
       data: { success: true },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la suppression de l\'accès');
+    return serviceActionError(error, 'Erreur lors de la suppression de l\'accès');
   }
 }
 
@@ -151,7 +141,7 @@ export async function listDocumentAccessesAction(
       data: await enrichAccessesWithUsers(accesses),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la récupération des accès');
+    return serviceActionError(error, 'Erreur lors de la récupération des accès');
   }
 }
 
@@ -188,7 +178,7 @@ export async function grantDocumentAccessAction(
       data: access,
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de l\'ajout de l\'accès');
+    return serviceActionError(error, 'Erreur lors de l\'ajout de l\'accès');
   }
 }
 
@@ -217,7 +207,7 @@ export async function revokeDocumentAccessAction(
       data: { success: true },
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la suppression de l\'accès');
+    return serviceActionError(error, 'Erreur lors de la suppression de l\'accès');
   }
 }
 
@@ -240,6 +230,6 @@ export async function searchUsersForDocumentAccess(dispensarySlug: string, query
       data: users.map((user) => ({ id: user.id, name: user.name })),
     };
   } catch (error) {
-    return documentsActionError(error, 'Erreur lors de la recherche des utilisateurs');
+    return serviceActionError(error, 'Erreur lors de la recherche des utilisateurs');
   }
 }

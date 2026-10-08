@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
   createDocument,
@@ -9,13 +10,11 @@ import {
   listDocuments,
   updateDocument,
 } from '@lawless-intranet/documents-client/server';
-import { DocumentsClientError } from '@lawless-intranet/documents-client';
 import {
   buildUserTemplateRenderContext,
   renderTemplate,
 } from '@lawless-intranet/mail-template-engine';
 import prisma from '@/lib/prisma';
-import { actionErrorParser } from '@/lib/action';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
 import {
@@ -60,12 +59,6 @@ const deleteDocumentSchema = z.object({
   consultationId: z.string().uuid('Consultation invalide'),
 });
 
-function documentsActionError(error: unknown, fallback: string) {
-  if (error instanceof DocumentsClientError) {
-    return { status: error.status, error: error.message };
-  }
-  return actionErrorParser(error, fallback);
-}
 
 type ConsultationDocumentSource = {
   consultationId: string;
@@ -202,7 +195,7 @@ export async function listConsultationDocuments(
 
     return { status: 200, data: items };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors du chargement des documents de la consultation',
     );
@@ -260,7 +253,7 @@ export async function createFreeTextConsultationDocument(
 
     return { status: 201, data: mapDocument(document) };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la création du document',
     );
@@ -337,7 +330,7 @@ export async function createConsultationDocumentFromTemplate(
 
     return { status: 201, data: mapDocument(document) };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la création du document depuis le template',
     );
@@ -399,7 +392,7 @@ export async function updateConsultationDocument(
 
     return { status: 200, data: mapDocument(document) };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la mise à jour du document',
     );
@@ -447,7 +440,7 @@ export async function deleteConsultationDocument(
     await deleteDocument(validated.id, { cookieHeader });
     return { status: 200, data: { success: true } };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la suppression du document',
     );
@@ -552,7 +545,7 @@ export async function generateConsultationDocumentPreview(
       },
     };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la génération de l’aperçu du document',
     );

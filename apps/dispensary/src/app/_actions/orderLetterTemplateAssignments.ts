@@ -1,11 +1,10 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { getTemplate } from '@lawless-intranet/documents-client/server';
-import { DocumentsClientError } from '@lawless-intranet/documents-client';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createOrderMailAssignment,
   deleteOrderMailAssignment,
@@ -31,15 +30,6 @@ const deleteAssignmentSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-function documentsActionError(error: unknown, fallback: string) {
-  if (error instanceof DocumentsClientError) {
-    return {
-      status: error.status,
-      error: error.message,
-    };
-  }
-  return actionErrorParser(error, fallback);
-}
 
 async function validateOrgTemplate(
   templateId: string,
@@ -69,13 +59,6 @@ function withTemplateSummary<T extends { templateId: string }>(
   };
 }
 
-function assignmentActionError(error: unknown, fallback: string) {
-  try {
-    return inventoryActionError(error, fallback);
-  } catch (e) {
-    return documentsActionError(e, fallback);
-  }
-}
 
 export async function createOrderLetterTemplateAssignment(
   dispensarySlug: string,
@@ -124,7 +107,7 @@ export async function createOrderLetterTemplateAssignment(
       }),
     };
   } catch (error) {
-    return assignmentActionError(error, 'Erreur lors de la création de l\'assignation');
+    return serviceActionError(error, 'Erreur lors de la création de l\'assignation');
   }
 }
 
@@ -165,7 +148,7 @@ export async function getOrderLetterTemplateAssignments(dispensarySlug: string) 
       ),
     };
   } catch (error) {
-    return assignmentActionError(error, 'Erreur lors de la récupération des assignations');
+    return serviceActionError(error, 'Erreur lors de la récupération des assignations');
   }
 }
 
@@ -213,7 +196,7 @@ export async function getOrderLetterTemplateAssignmentByTypeAndStatus(
       ),
     };
   } catch (error) {
-    return assignmentActionError(error, 'Erreur lors de la récupération de l\'assignation');
+    return serviceActionError(error, 'Erreur lors de la récupération de l\'assignation');
   }
 }
 
@@ -262,7 +245,7 @@ export async function updateOrderLetterTemplateAssignment(
       }),
     };
   } catch (error) {
-    return assignmentActionError(error, 'Erreur lors de la modification de l\'assignation');
+    return serviceActionError(error, 'Erreur lors de la modification de l\'assignation');
   }
 }
 
@@ -286,6 +269,6 @@ export async function deleteOrderLetterTemplateAssignment(
       data: { success: true },
     };
   } catch (error) {
-    return assignmentActionError(error, 'Erreur lors de la suppression de l\'assignation');
+    return serviceActionError(error, 'Erreur lors de la suppression de l\'assignation');
   }
 }

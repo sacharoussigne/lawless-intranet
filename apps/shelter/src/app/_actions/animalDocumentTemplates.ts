@@ -1,5 +1,6 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
   createTemplate,
@@ -8,8 +9,6 @@ import {
   listTemplates,
   updateTemplate,
 } from '@lawless-intranet/documents-client/server';
-import { DocumentsClientError } from '@lawless-intranet/documents-client';
-import { actionErrorParser } from '@/lib/action';
 import {
   animalsAccessAuth,
 } from '@/lib/animals/auth';
@@ -39,12 +38,6 @@ const templateIdSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-function documentsActionError(error: unknown, fallback: string) {
-  if (error instanceof DocumentsClientError) {
-    return { status: error.status, error: error.message };
-  }
-  return actionErrorParser(error, fallback);
-}
 
 function mapTemplate(
   template: Awaited<ReturnType<typeof getTemplate>>,
@@ -86,7 +79,7 @@ export async function listAnimalDocumentTemplates(shelterSlug: string) {
 
     return { status: 200, data: items };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors du chargement des modèles de documents',
     );
@@ -117,7 +110,7 @@ export async function getAnimalDocumentTemplate(
 
     return { status: 200, data: mapTemplate(template) };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors du chargement du modèle de document',
     );
@@ -160,7 +153,7 @@ export async function createAnimalDocumentTemplate(
 
     return { status: 201, data: mapTemplate(template) };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la création du modèle de document',
     );
@@ -210,7 +203,7 @@ export async function updateAnimalDocumentTemplate(
 
     return { status: 200, data: mapTemplate(template) };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la modification du modèle de document',
     );
@@ -242,7 +235,7 @@ export async function deleteAnimalDocumentTemplate(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    return documentsActionError(
+    return serviceActionError(
       error,
       'Erreur lors de la suppression du modèle de document',
     );

@@ -1,13 +1,12 @@
 'use server';
 
-import { actionErrorParser } from '@/lib/action';
+import { serviceActionError } from '@/lib/serviceAction';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
 import {
   canManageAgendaAsScopeAdmin,
   isDispensaryAdminRole,
 } from '@/lib/agenda/access';
 import {
-  agendaActionError,
   agendaCookie,
   agendaScope,
 } from '@/lib/agenda/client';
@@ -56,11 +55,7 @@ export async function listAgendasForAdmin(dispensarySlug: string) {
 
     return { status: 200, data: enriched };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement des agendas');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement des agendas');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement des agendas');
   }
 }
 
@@ -76,11 +71,7 @@ export async function listAccessibleAgendas(dispensarySlug: string) {
 
     return { status: 200, data };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement des agendas');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement des agendas');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement des agendas');
   }
 }
 
@@ -108,11 +99,7 @@ export async function getAgendaPageBootstrap(dispensarySlug: string) {
       },
     };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement de la page agenda');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement de la page agenda');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement de la page agenda');
   }
 }
 
@@ -136,11 +123,7 @@ export async function checkAgendaModuleAccess(dispensarySlug: string) {
       data: { hasAccess: access.hasAccess, isAdmin },
     };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la vérification d\'accès');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la vérification d\'accès');
-    }
+    return serviceActionError(error, 'Erreur lors de la vérification d\'accès');
   }
 }
 
@@ -180,11 +163,7 @@ export async function createAgenda(
 
     return { status: 201, data: agenda };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la création de l\'agenda');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de l\'agenda');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de l\'agenda');
   }
 }
 
@@ -211,11 +190,7 @@ export async function updateAgenda(
 
     return { status: 200, data: agenda };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la mise à jour de l\'agenda');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la mise à jour de l\'agenda');
-    }
+    return serviceActionError(error, 'Erreur lors de la mise à jour de l\'agenda');
   }
 }
 
@@ -236,11 +211,7 @@ export async function deleteAgenda(dispensarySlug: string, id: string) {
 
     return { status: 200 };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors de la suppression de l\'agenda');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de l\'agenda');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de l\'agenda');
   }
 }
 
@@ -268,10 +239,6 @@ export async function getAgendaWithMembers(dispensarySlug: string, agendaId: str
       },
     };
   } catch (error) {
-    try {
-      return agendaActionError(error, 'Erreur lors du chargement de l\'agenda');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du chargement de l\'agenda');
-    }
+    return serviceActionError(error, 'Erreur lors du chargement de l\'agenda');
   }
 }

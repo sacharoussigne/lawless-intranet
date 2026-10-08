@@ -1,9 +1,9 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
-import { actionErrorParser } from '@/lib/action';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { inventoryActionError, inventoryCookie, inventoryScope } from '@/lib/inventory/client';
+import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createCategory,
   deleteCategory,
@@ -54,11 +54,7 @@ export async function createCategoryItem(
 
     return { status: 201, data: categoryItem };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la création de la catégorie d\'objet');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la création de la catégorie d\'objet');
-    }
+    return serviceActionError(error, 'Erreur lors de la création de la catégorie d\'objet');
   }
 }
 
@@ -75,11 +71,7 @@ export async function getManagementCategoryItems(dispensarySlug: string) {
 
     return { status: 200, data: categoryItems };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la récupération des catégories d\'objets');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la récupération des catégories d\'objets');
-    }
+    return serviceActionError(error, 'Erreur lors de la récupération des catégories d\'objets');
   }
 }
 
@@ -104,11 +96,7 @@ export async function updateCategoryItem(
 
     return { status: 200, data: categoryItem };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la modification de la catégorie d\'objet');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la modification de la catégorie d\'objet');
-    }
+    return serviceActionError(error, 'Erreur lors de la modification de la catégorie d\'objet');
   }
 }
 
@@ -126,11 +114,7 @@ export async function deleteCategoryItem(dispensarySlug: string, data: { id: str
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors de la suppression de la catégorie d\'objet');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors de la suppression de la catégorie d\'objet');
-    }
+    return serviceActionError(error, 'Erreur lors de la suppression de la catégorie d\'objet');
   }
 }
 
@@ -151,10 +135,6 @@ export async function reorderCategoryItems(
 
     return { status: 200, data: { success: true } };
   } catch (error) {
-    try {
-      return inventoryActionError(error, 'Erreur lors du réordonnancement des catégories d\'objets');
-    } catch (e) {
-      return actionErrorParser(e, 'Erreur lors du réordonnancement des catégories d\'objets');
-    }
+    return serviceActionError(error, 'Erreur lors du réordonnancement des catégories d\'objets');
   }
 }

@@ -1,9 +1,8 @@
 'use server';
 
+import { serviceActionError } from '@/lib/serviceAction';
 import { moveItemsWithChests as moveItemsWithChestsApi } from '@lawless-intranet/inventory-client/server';
-import { actionErrorParser } from '@/lib/action';
 import {
-  inventoryActionError,
   inventoryCookie,
   inventoryScope,
 } from '@/lib/inventory/client';
@@ -56,21 +55,9 @@ export async function moveItemsWithChests(
       data: { success: true, count: validItems.length, mode: data.mode },
     };
   } catch (error) {
-    try {
-      return inventoryActionError(
-        error,
-        isTake
+    return serviceActionError(error, isTake
           ? "Erreur lors de la prise d'objets"
-          : "Erreur lors du dépôt d'objets",
-      );
-    } catch (e) {
-      return actionErrorParser(
-        e,
-        isTake
-          ? "Erreur lors de la prise d'objets"
-          : "Erreur lors du dépôt d'objets",
-      );
-    }
+          : "Erreur lors du dépôt d'objets");
   }
 }
 
