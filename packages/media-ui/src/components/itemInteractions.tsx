@@ -5,6 +5,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { ActionIcon, Box, Menu, Tooltip } from '@mantine/core';
 import { IconDotsVertical, IconFileTypePdf, IconLink, IconPhoto } from '@tabler/icons-react';
 import { canDrop, dragId, dropId, type DragItem } from '../dnd';
+import { fileDropFolderProps } from '../fileDrop';
 import { getFileKind } from '../format';
 
 /** Shared by grid tiles and list rows: same selection, opening, menus and drag & drop. */
@@ -34,13 +35,22 @@ export const SELECTION_KEY_ATTRIBUTE = 'data-media-key';
 /** Items being dragged (the whole selection when a selected item is dragged). */
 export const DraggedItemsContext = createContext<readonly DragItem[]>([]);
 
-/** Highlights `folderId` while hovered by a drag that may be dropped there. */
+/** Folder hovered by files dragged from the computer (null = root, undefined = none). */
+export const FileDropTargetContext = createContext<string | null | undefined>(undefined);
+
+/**
+ * Highlights `folderId` while hovered by a drag that may be dropped there:
+ * items moved in the app, or files from the computer (spread `fileDropProps`).
+ */
 export function useDropHighlight(folderId: string | null, disabled = false) {
   const droppable = useDroppable({ id: disabled ? `nodrop:${folderId}` : dropId(folderId), disabled });
   const dragged = useContext(DraggedItemsContext);
+  const fileTarget = useContext(FileDropTargetContext);
   return {
     setNodeRef: droppable.setNodeRef,
-    highlighted: !disabled && droppable.isOver && canDrop(dragged, folderId),
+    highlighted:
+      !disabled && ((droppable.isOver && canDrop(dragged, folderId)) || (fileTarget !== undefined && fileTarget === folderId)),
+    fileDropProps: disabled ? {} : fileDropFolderProps(folderId),
   };
 }
 
@@ -57,6 +67,7 @@ export function useItemDrag(item: DragItem) {
     listeners: draggable.listeners,
     isDragged: dragged.some((entry) => entry.kind === item.kind && entry.id === item.id),
     dropHighlighted: drop.highlighted,
+    fileDropProps: drop.fileDropProps,
   };
 }
 

@@ -76,6 +76,7 @@ function ItemRow({
     <Table.Tr
       ref={drag.setNodeRef}
       {...drag.listeners}
+      {...drag.fileDropProps}
       {...{ [SELECTION_KEY_ATTRIBUTE]: rowKey }}
       tabIndex={focusable ? 0 : undefined}
       aria-selected={interactions.selected}
