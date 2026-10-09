@@ -20,6 +20,7 @@ import { notifications } from '@mantine/notifications';
 import { handleAction } from '@/lib/action';
 import { changeMyPassword, updateMyProfile } from '@/app/_actions/account';
 import { useRouter } from 'next/navigation';
+import { AppearanceCard } from './AppearanceCard';
 import type { UserGender } from '@lawless-intranet/types';
 
 type SettingsImageMode = 'url' | 'upload';
@@ -217,7 +218,7 @@ export default function SettingsPageClient(props: {
             Paramètres du compte
           </Title>
           <Text c="dimmed" mt="xs">
-            Modifiez votre profil et votre mot de passe.
+            Modifiez votre profil, votre mot de passe et l’apparence du refuge.
           </Text>
         </div>
       </Group>
@@ -282,6 +283,8 @@ export default function SettingsPageClient(props: {
             </Group>
           </Stack>
         </Card>
+
+        <AppearanceCard />
 
         {props.canChangePassword ? (
           <Card withBorder shadow="sm" radius="md" padding="lg">
