@@ -2,7 +2,7 @@
 
 import { Card, Divider, Group, SimpleGrid, Text, Title, UnstyledButton } from '@mantine/core';
 import { IconCircleCheckFilled } from '@tabler/icons-react';
-import { originOf, useAppTheme, type ThemeDefinition } from '@lawless-intranet/host-kit/theme';
+import { useAppTheme, type ThemeDefinition } from '@lawless-intranet/host-kit/theme';
 import { DISP_THEMES } from '@/lib/themes';
 import classes from './AppearanceCard.module.scss';
 
@@ -32,7 +32,7 @@ function ThemePreview({ theme }: { theme: ThemeDefinition }) {
   );
 }
 
-/** « Apparence » section: one card per theme, applied with the reveal animation from the card. */
+/** « Apparence » section: one card per theme, applied with the circular reveal. */
 export function AppearanceCard() {
   const { themeId, setTheme } = useAppTheme();
 
@@ -53,7 +53,7 @@ export function AppearanceCard() {
               className={classes.option}
               data-active={active || undefined}
               aria-pressed={active}
-              onClick={(event) => setTheme(theme.id, { origin: originOf(event.currentTarget) })}
+              onClick={() => setTheme(theme.id)}
             >
               <ThemePreview theme={theme} />
               <Group justify="space-between" wrap="nowrap" mt="xs" px={4}>

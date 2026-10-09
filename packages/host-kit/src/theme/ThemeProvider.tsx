@@ -3,14 +3,14 @@
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { themeAttribute, themeCookieName } from './css';
-import { switchThemeWithTransition, type TransitionOrigin } from './transition';
+import { switchThemeWithTransition } from './transition';
 import type { ThemeConfig, ThemeOption, ThemeScheme } from './types';
 
 const COOKIE_MAX_AGE_S = 60 * 60 * 24 * 365;
 
 type SetThemeOptions = {
-  /** Center of the reveal circle (usually the clicked control); no animation without it. */
-  origin?: TransitionOrigin;
+  /** Circular reveal from the top right corner (default true). */
+  animate?: boolean;
   /** Saves the choice in the account (default true). */
   persist?: boolean;
 };
@@ -64,7 +64,7 @@ export function ThemeProvider({
   const scheme = themes.find((theme) => theme.id === themeId)?.scheme ?? 'light';
 
   const setTheme = useCallback(
-    (id: string, { origin, persist = true }: SetThemeOptions = {}) => {
+    (id: string, { animate = true, persist = true }: SetThemeOptions = {}) => {
       if (!store.isKnown(id) || id === store.get()) return;
       const nextScheme = themes.find((theme) => theme.id === id)?.scheme ?? 'light';
       switchThemeWithTransition(() => {
@@ -74,7 +74,7 @@ export function ThemeProvider({
         document.cookie = `${themeCookieName(prefix)}=${encodeURIComponent(id)}; path=/; max-age=${COOKIE_MAX_AGE_S}; SameSite=Lax`;
         // React (icons, Mantine scheme) updates inside the transition snapshot.
         flushSync(() => store.emit());
-      }, origin);
+      }, animate);
       if (persist) void Promise.resolve(onPersist?.(id)).catch(() => undefined);
     },
     [onPersist, prefix, store, themes],

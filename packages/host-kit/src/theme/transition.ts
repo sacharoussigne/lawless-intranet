@@ -1,17 +1,21 @@
 export type TransitionOrigin = { x: number; y: number };
+type Viewport = { width: number; height: number };
 
-const DURATION_MS = 500;
+const DURATION_MS = 650;
+/** A little past the farthest corner, so no anti-aliased edge is left when the circle stops. */
+const RADIUS_MARGIN_PX = 2;
 
-/** Radius from `origin` to the farthest corner of the viewport. */
-export function revealRadius(origin: TransitionOrigin, viewport: { width: number; height: number }): number {
-  return Math.hypot(Math.max(origin.x, viewport.width - origin.x), Math.max(origin.y, viewport.height - origin.y));
+/** The reveal starts from the top right corner of the viewport. */
+export function revealOrigin(viewport: Viewport): TransitionOrigin {
+  return { x: viewport.width, y: 0 };
 }
 
-/** Center of an element, as the origin of the reveal circle. */
-export function originOf(element: Element | null | undefined): TransitionOrigin | undefined {
-  if (!element) return undefined;
-  const rect = element.getBoundingClientRect();
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+/** Radius from `origin` to the farthest corner of the viewport, plus a small margin. */
+export function revealRadius(origin: TransitionOrigin, viewport: Viewport): number {
+  return (
+    Math.hypot(Math.max(origin.x, viewport.width - origin.x), Math.max(origin.y, viewport.height - origin.y)) +
+    RADIUS_MARGIN_PX
+  );
 }
 
 type ViewTransitionDocument = Document & {
@@ -20,20 +24,24 @@ type ViewTransitionDocument = Document & {
 
 /**
  * Runs `apply` (which must update the DOM synchronously) inside a View
- * Transition: the new theme grows as a circle from `origin`. Plain switch
- * without View Transitions support, with reduced motion or without an origin.
- * The host app disables the default cross-fade on `::view-transition-old/new(root)`.
+ * Transition: the new theme grows as a circle from the top right corner until
+ * it covers the whole page. Plain switch without View Transitions support,
+ * with reduced motion, or when `animate` is false. The host app disables the
+ * default cross-fade on `::view-transition-old/new(root)`.
  */
-export function switchThemeWithTransition(apply: () => void, origin?: TransitionOrigin): void {
+export function switchThemeWithTransition(apply: () => void, animate = true): void {
   const doc = document as ViewTransitionDocument;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!origin || reducedMotion || typeof doc.startViewTransition !== 'function') {
+  if (!animate || reducedMotion || typeof doc.startViewTransition !== 'function') {
     apply();
     return;
   }
 
+  // The snapshot covers the layout viewport (without the scrollbar).
+  const viewport = { width: document.documentElement.clientWidth, height: window.innerHeight };
+  const origin = revealOrigin(viewport);
+  const radius = revealRadius(origin, viewport);
   const transition = doc.startViewTransition(apply);
-  const radius = revealRadius(origin, { width: window.innerWidth, height: window.innerHeight });
   void transition.ready
     .then(() => {
       document.documentElement.animate(
@@ -43,8 +51,14 @@ export function switchThemeWithTransition(apply: () => void, origin?: Transition
             `circle(${radius}px at ${origin.x}px ${origin.y}px)`,
           ],
         },
-        { duration: DURATION_MS, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' },
+        {
+          duration: DURATION_MS,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          fill: 'both',
+          pseudoElement: '::view-transition-new(root)',
+        },
       );
     })
+    // Aborted transitions (hidden tab, interrupted) still applied the theme.
     .catch(() => undefined);
 }

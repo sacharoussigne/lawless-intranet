@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { darkSoftColors, lightSoftColors, themesToCss, themeToCss, type ThemeDefinition, type ThemePalette } from './index';
 import { themeInitScript } from './script';
-import { revealRadius } from './transition';
+import { revealOrigin, revealRadius } from './transition';
 
 const palette: ThemePalette = ['#000', '#111', '#222', '#333', '#444', '#555', '#666', '#777', '#888', '#999'];
 
@@ -46,9 +46,13 @@ describe('themeInitScript', () => {
   });
 });
 
-describe('revealRadius', () => {
-  it('reaches the farthest corner', () => {
-    expect(revealRadius({ x: 0, y: 0 }, { width: 300, height: 400 })).toBe(500);
-    expect(revealRadius({ x: 150, y: 200 }, { width: 300, height: 400 })).toBe(250);
+describe('reveal', () => {
+  it('starts from the top right corner', () => {
+    expect(revealOrigin({ width: 300, height: 400 })).toEqual({ x: 300, y: 0 });
+  });
+
+  it('reaches past the farthest corner', () => {
+    expect(revealRadius({ x: 300, y: 0 }, { width: 300, height: 400 })).toBe(502);
+    expect(revealRadius({ x: 150, y: 200 }, { width: 300, height: 400 })).toBe(252);
   });
 });
