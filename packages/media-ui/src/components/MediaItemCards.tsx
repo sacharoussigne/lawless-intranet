@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
-import { Box, Card, Center, Group, Image, Text } from '@mantine/core';
+import { useContext, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
+import { Box, Card, Center, Group, Image, Text, Tooltip } from '@mantine/core';
 import { IconFiles, IconFolderFilled, IconPhoto } from '@tabler/icons-react';
 import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
 import { type DragItem } from '../dnd';
@@ -10,6 +10,7 @@ import { formatBytes } from '../format';
 import { useMediaUi } from '../MediaUiProvider';
 import { itemKey } from '../selection';
 import {
+  DraggedItemsContext,
   fileTypeIcon,
   handleEnterKey,
   handleFolderLinkClick,
@@ -80,6 +81,7 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
   const { formatDate } = useMediaUi();
   const { kind, Icon: TypeIcon, color: typeColor } = fileTypeIcon(file.mimeType);
   const drag = useItemDrag(interactions.dragItem);
+  const dragging = useContext(DraggedItemsContext).length > 0;
 
   return (
     <Card
@@ -93,7 +95,6 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
       role="button"
       aria-label={file.name}
       aria-pressed={interactions.selected}
-      title={`${file.name}\n${formatBytes(file.size)} · ${formatDate(file.createdAt)}`}
       style={tileStyle(interactions.selected, drag.isDragged)}
       onClick={(event: MouseEvent) => {
         event.stopPropagation();
@@ -111,19 +112,39 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
         {file.shareToken ? <SharedBadge /> : null}
         <KebabMenu label={file.name}>{interactions.menu}</KebabMenu>
       </Group>
-      <Box
-        h={THUMB_HEIGHT}
-        style={{ borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
-        bg="var(--mantine-color-body)"
+      {/* Full name over the thumbnail (the title above it is truncated); none while dragging items. */}
+      <Tooltip
+        label={
+          <>
+            <Text size="sm" fw={500} style={{ wordBreak: 'break-word' }}>
+              {file.name}
+            </Text>
+            <Text size="xs" opacity={0.75}>
+              {formatBytes(file.size)} · {formatDate(file.createdAt)}
+            </Text>
+          </>
+        }
+        multiline
+        maw={320}
+        position="bottom"
+        openDelay={300}
+        disabled={dragging}
+        withinPortal
       >
-        {kind === 'image' && file.previewUrl ? (
-          <Image src={file.previewUrl} alt={file.name} h="100%" w="100%" fit="cover" loading="lazy" draggable={false} />
-        ) : (
-          <Center h="100%">
-            <TypeIcon size={56} stroke={1.25} color={typeColor} />
-          </Center>
-        )}
-      </Box>
+        <Box
+          h={THUMB_HEIGHT}
+          style={{ borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
+          bg="var(--mantine-color-body)"
+        >
+          {kind === 'image' && file.previewUrl ? (
+            <Image src={file.previewUrl} alt={file.name} h="100%" w="100%" fit="cover" loading="lazy" draggable={false} />
+          ) : (
+            <Center h="100%">
+              <TypeIcon size={56} stroke={1.25} color={typeColor} />
+            </Center>
+          )}
+        </Box>
+      </Tooltip>
     </Card>
   );
 }
