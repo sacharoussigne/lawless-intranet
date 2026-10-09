@@ -46,7 +46,7 @@ SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir 
 
 ## Temps réel
 
-Migration progressive SSE → WebSocket ; l'agenda, les todos (dispensary) et la médiathèque (refuge) sont déjà sur `apps/realtime`.
+Migration progressive SSE → WebSocket ; l'agenda, les todos (dispensary) et la médiathèque (refuge et dispensary) sont déjà sur `apps/realtime`.
 - Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`getRealtimeToken` dans `apps/<dispensary|shelter>/src/app/_actions/realtime.ts`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
 - Les services publient après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Exemple : `apps/agenda/src/lib/realtime/broadcast.ts`.
 - Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query**, jamais de patch d'état à partir du message. Après chaque (re)connexion, `useRealtimeSocketResync` recharge tout.

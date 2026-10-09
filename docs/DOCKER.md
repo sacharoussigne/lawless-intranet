@@ -183,7 +183,7 @@ docker build \
 | `REALTIME_VIRTUAL_HOST` | realtime | Hôte nginx-proxy du WebSocket |
 | `REALTIME_TOKEN_SECRET` | realtime + dispensary | Signature des jetons d'abonnement (dispensary signe, realtime vérifie) |
 | `REALTIME_INTERNAL_SECRET` | realtime + agenda | Publication service→realtime sur le port interne |
-| `MEDIA_INTERNAL_SECRET` | media + shelter | Secret hôte→media (toutes les routes) |
+| `MEDIA_INTERNAL_SECRET` | media + shelter + dispensary | Secret hôte→media (toutes les routes) |
 | `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION` | media | Bucket S3 de la médiathèque |
 | `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY` | media | Clés de l'utilisateur IAM du bucket |
 
