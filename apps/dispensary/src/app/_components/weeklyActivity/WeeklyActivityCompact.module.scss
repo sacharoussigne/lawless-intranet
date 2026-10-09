@@ -47,7 +47,7 @@
 
 .teamRow {
   padding-block: var(--mantine-spacing-sm);
-  border-bottom: 1px solid color-mix(in srgb, var(--mantine-color-sage-0) 18%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--disp-sage-soft) 18%, transparent);
 
   &:last-child {
     border-bottom: none;

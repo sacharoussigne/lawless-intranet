@@ -49,7 +49,7 @@
     padding: var(--mantine-spacing-sm);
     border: 1px solid var(--disp-border);
     border-radius: var(--mantine-radius-sm);
-    background: var(--disp-paper-muted, var(--mantine-color-slate-0));
+    background: var(--disp-paper-muted, var(--disp-slate-soft));
 
     &:last-of-type {
       border-bottom: 1px solid var(--disp-border);
@@ -122,7 +122,7 @@
   :global(.rbc-toolbar button:hover),
   :global(.rbc-toolbar button:active),
   :global(.rbc-toolbar button.rbc-active) {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
     border-color: var(--mantine-color-sage-4);
     color: var(--disp-ink);
   }
@@ -186,11 +186,11 @@
   }
 
   :global(.rbc-today) {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 
   :global(.rbc-off-range-bg) {
-    background: var(--disp-paper-muted, var(--mantine-color-slate-0));
+    background: var(--disp-paper-muted, var(--disp-slate-soft));
   }
 
   :global(.rbc-time-view .rbc-allday-cell) {
@@ -244,7 +244,7 @@
 
   &:hover {
     color: var(--disp-ink);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
@@ -267,14 +267,14 @@
 
   &:hover {
     color: var(--disp-ink);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
 .todoCategoryFilterChipActive {
   color: var(--disp-ink);
   border-color: var(--disp-border);
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
 }
 
 .todoListTabsRow {
@@ -301,14 +301,14 @@
 
   &:hover {
     color: var(--disp-ink);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
 .todoListTabActive {
   color: var(--disp-ink);
   border-color: var(--disp-border);
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
 }
 
 .todoListTabEditing {
@@ -324,7 +324,7 @@
 .todoListTabEditInput {
   width: 100%;
   min-width: 4rem;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -357,7 +357,7 @@
 }
 
 .todoCategoryDropZoneOver {
-  background-color: var(--mantine-color-sage-0);
+  background-color: var(--disp-sage-soft);
   outline: 1px dashed var(--mantine-color-sage-4);
   outline-offset: 2px;
 }
@@ -404,7 +404,7 @@
 .todoCategoryEditInput {
   flex: 1;
   min-width: 0;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -436,7 +436,7 @@
   transition: background 120ms ease, color 120ms ease;
 
   &:hover:not(:disabled) {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
     color: var(--disp-ink);
   }
 
@@ -460,7 +460,7 @@
 .inlineNoteInput {
   display: block;
   width: 100%;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -478,7 +478,7 @@
 
   &:focus {
     border-bottom-color: var(--mantine-color-sage-6);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
@@ -490,7 +490,7 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
@@ -524,7 +524,7 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 
   &[data-dragging] {
@@ -542,7 +542,7 @@
 .inlineEditableInput {
   flex: 1;
   min-width: 0;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -560,7 +560,7 @@
 .todoTaskEditInput {
   flex: 1;
   min-width: 0;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -620,7 +620,7 @@
   color: var(--disp-ink);
 
   &:hover {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
@@ -649,7 +649,7 @@
   }
 
   &:hover {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 
   &[data-pending] {

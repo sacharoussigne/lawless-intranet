@@ -22,6 +22,7 @@ type ViewTransitionDocument = Document & {
  * Runs `apply` (which must update the DOM synchronously) inside a View
  * Transition: the new theme grows as a circle from `origin`. Plain switch
  * without View Transitions support, with reduced motion or without an origin.
+ * The host app disables the default cross-fade on `::view-transition-old/new(root)`.
  */
 export function switchThemeWithTransition(apply: () => void, origin?: TransitionOrigin): void {
   const doc = document as ViewTransitionDocument;
@@ -47,6 +48,3 @@ export function switchThemeWithTransition(apply: () => void, origin?: Transition
     })
     .catch(() => undefined);
 }
-
-/** Global CSS needed by the reveal: no default cross-fade. */
-export const THEME_TRANSITION_CSS = `::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal;}`;

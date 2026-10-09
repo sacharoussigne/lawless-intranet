@@ -6,7 +6,7 @@ export function sortableRowStyles(isDragging: boolean): CSSProperties {
     marginBottom: 'var(--mantine-spacing-xs)',
     border: '1px solid var(--disp-surface-border)',
     borderRadius: 'var(--mantine-radius-md)',
-    backgroundColor: isDragging ? 'var(--mantine-color-sage-0)' : 'var(--disp-surface)',
+    backgroundColor: isDragging ? 'var(--disp-sage-soft)' : 'var(--disp-surface)',
     boxShadow: isDragging ? 'var(--disp-shadow-card)' : undefined,
     cursor: isDragging ? 'grabbing' : 'grab',
   };

@@ -24,6 +24,7 @@ import Image from 'next/image';
 import { IconArrowBackUp, IconLogout, IconSearch, IconSettings } from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
+import { ThemeToggle } from '@/app/_components/Theme/ThemeToggle';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { dispensarySiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
 import { hasRole } from '@lawless-intranet/auth-permissions';
@@ -237,6 +238,7 @@ export default function Header({
                     agendaHref={t.agenda.index}
                   />
                 )}
+                <ThemeToggle />
                 <Menu
                   width={260}
                   position="bottom-end"

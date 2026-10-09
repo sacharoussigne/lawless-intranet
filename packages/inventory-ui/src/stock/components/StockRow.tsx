@@ -60,6 +60,14 @@ export const StockRow = memo(function StockRow({
     }
   }
 
+  // User-chosen row colors are light pastels by default: keep the text readable whatever
+  // the theme (cells use --disp-ink). Dark text = the light theme's ink, so it looks unchanged there.
+  const rowTextColor = backgroundColor
+    ? getTextColor(backgroundColor) === '#ffffff'
+      ? '#ffffff'
+      : '#3D3429'
+    : undefined;
+
   const doneTodayBadgeBg = stockUiPreferences.doneTodayBadgeBg;
   const doneTodayTextColor = doneTodayBadgeBg ? getTextColor(doneTodayBadgeBg) : undefined;
   const canEditQuantity = isEditing && canStockUpdate && !isHidden;
@@ -69,6 +77,7 @@ export const StockRow = memo(function StockRow({
       key={item.id}
       style={{
         backgroundColor,
+        ...(rowTextColor ? { color: rowTextColor, '--disp-ink': rowTextColor } : null),
         opacity: isHidden ? 0.45 : undefined,
       }}
     >

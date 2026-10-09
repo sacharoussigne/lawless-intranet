@@ -35,7 +35,7 @@ Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, san
 - `*-client` (`agenda`, `bank`, `documents`, `inventory`, `media`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
 - `service-client` : couche fetch commune des `*-client` (`createServiceFetch` : URL et secret depuis l'env, cookie SSO transmis, parsing JSON, `ServiceClientError`). Chaque `XClientError` en hérite.
 - `service-kit` (services API uniquement) : `./prisma` (`createPrismaClient`), `./http` (`createCors`, `createRouteResponses`, `readSession`), `./internal-secret` (`hasInternalSecret`, comparaison en temps constant), `./scope`.
-- `host-kit` (apps hôtes dispensary / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
+- `host-kit` (apps hôtes dispensary / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`), `./theme` (moteur de thèmes : `themesToCss`, `themeInitScript`, `ThemeProvider` / `useAppTheme`, transition View Transitions). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
 - `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
 - Actions bank : la logique est partagée dans `@lawless-intranet/bank-client/host` (`createBankHostActions`). Chaque hôte ne fournit que `withBank` (`lib/bank/client.ts`) et ré-exporte les actions depuis `_actions/bankAccounts.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
@@ -120,9 +120,10 @@ Pour **tout nouveau code** et toute refonte : **React Query + server actions**. 
 
 - Mantine 8, `mantine-datatable`, `@tabler/icons-react`, modules SCSS, `@dnd-kit` pour les listes triables.
 - Dispensary, thème **« Apothecary »** (crème, encre, `sage` / `leather`) : les règles complètes sont dans `apps/dispensary/.cursor/rules/apothecary-design-system.mdc`. **À lire avant tout changement UI.**
+- Dispensary, **thèmes** : `lib/themes` (« Apothicaire » clair par défaut, « Lampe à huile » sombre), un par utilisateur (`UserUiPreferences.theme` + cookie `disp-theme`). On change de thème avec le bouton du header ou `/settings` › Apparence. Chaque thème génère les variables `--disp-*` et les teintes `--disp-<palette>-soft`, `-soft-strong`, `-soft-border`, `-soft-text`, scopées par `html[data-disp-theme]`. `dispTokens.colors` ne contient que des `var(...)`. **Pour un fond teinté, utiliser `--disp-<palette>-soft*`, pas `--mantine-color-<palette>-0/1`**, qui restent clairs en sombre. Le texte d'accent passe par `light-dark(...)`.
 - Shelter, thème **« refuge 1890 »** (parchemin, primaire `terracotta`) : voir `apps/shelter/src/lib/design-tokens.ts` et `theme.ts`.
 - Règles communes :
-  - pas de hex en dur : utiliser les tokens et les variables CSS `--disp-*` / `--shelter-*` ;
+  - pas de hex en dur : utiliser les tokens et les variables CSS `--disp-*` / `--shelter-*` (sinon le thème sombre casse) ;
   - pas de couleurs Mantine par défaut (`red`, `blue`, `gray`…) ;
   - réutiliser `PageHeader`, `AppModal` (dispensary), `ModuleCard`, `DeleteConfirmPopover`, `MarkdownContent`, etc.
 - Les liens de navigation doivent être de vrais liens (`<Link>` / `component={Link}`), pour que le clic milieu fonctionne.

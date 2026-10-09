@@ -2,19 +2,7 @@
 @import '@mantine/dates/styles.css';
 
 :root {
-  --disp-bg: #F7F3EB;
-  --disp-surface: #FFFCF6;
-  --disp-surface-border: #E8DFD0;
-  --disp-ink: #3D3429;
-  --disp-ink-muted: #6B5F52;
-  --disp-sage: #4A6B5A;
-  --disp-leather: #8B5E3C;
-  --disp-gold: #B8860B;
-  --disp-danger: #9B4D4D;
-  --disp-table-header: #F0EBE3;
-  --disp-table-zebra: #FAF6EF;
-  --disp-shadow-card: 0 1px 3px rgba(61, 52, 41, 0.06), 0 2px 8px rgba(61, 52, 41, 0.04);
-  --disp-shadow-header: 0 1px 0 rgba(232, 223, 208, 0.8), 0 2px 8px rgba(61, 52, 41, 0.04);
+  /* Colors and shadows (--disp-bg, --disp-surface…) come from the active theme: lib/themes, injected by the root layout. */
   --disp-font-display: var(--font-display), var(--font-ui), "Courier New", Courier, monospace;
   --disp-font-ui: var(--font-ui), "Courier New", Courier, monospace;
 
@@ -22,12 +10,25 @@
   --mantine-datatable-border-color-light: var(--disp-surface-border);
   --mantine-datatable-row-border-color-light: var(--disp-surface-border);
   --mantine-datatable-striped-color-light: var(--disp-table-zebra);
-  --mantine-datatable-highlight-on-hover-color-light: var(--mantine-color-sage-0);
+  --mantine-datatable-highlight-on-hover-color-light: var(--disp-sage-soft);
   --mantine-datatable-color-light: var(--disp-ink);
+  --mantine-datatable-background-color-dark: var(--disp-surface);
+  --mantine-datatable-border-color-dark: var(--disp-surface-border);
+  --mantine-datatable-row-border-color-dark: var(--disp-surface-border);
+  --mantine-datatable-striped-color-dark: var(--disp-table-zebra);
+  --mantine-datatable-highlight-on-hover-color-dark: var(--disp-sage-soft);
+  --mantine-datatable-color-dark: var(--disp-ink);
 
   /* Fallback before MantineProvider injects scheme variables */
   --mantine-color-dimmed: var(--disp-ink-muted);
   --mantine-color-default-hover: var(--disp-table-header);
+}
+
+/* Theme switch: the new theme is revealed by a growing circle (host-kit/theme), no cross-fade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 html {
