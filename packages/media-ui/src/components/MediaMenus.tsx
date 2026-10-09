@@ -3,6 +3,7 @@
 import { Menu } from '@mantine/core';
 import {
   IconArrowsMove,
+  IconCopy,
   IconDownload,
   IconEye,
   IconFolderOpen,
@@ -85,9 +86,16 @@ export type ShareMenuActions = {
 export function FileMenuItems({
   onPreview,
   onDownload,
+  onCopyImage,
   share,
   ...actions
-}: ItemMenuActions & { onPreview: () => void; onDownload: () => void; share?: ShareMenuActions }) {
+}: ItemMenuActions & {
+  onPreview: () => void;
+  onDownload: () => void;
+  /** Images only. */
+  onCopyImage?: () => void;
+  share?: ShareMenuActions;
+}) {
   return (
     <>
       <Menu.Item leftSection={<IconEye size={16} />} onClick={onPreview}>
@@ -96,6 +104,11 @@ export function FileMenuItems({
       <Menu.Item leftSection={<IconDownload size={16} />} onClick={onDownload}>
         Télécharger
       </Menu.Item>
+      {onCopyImage ? (
+        <Menu.Item leftSection={<IconCopy size={16} />} onClick={onCopyImage}>
+          Copier l’image
+        </Menu.Item>
+      ) : null}
       {share ? (
         <>
           <Menu.Divider />

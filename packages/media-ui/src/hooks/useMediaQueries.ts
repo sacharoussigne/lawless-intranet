@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import type { MediaFileRecord, MediaFolderContentsRecord } from '@lawless-intranet/types';
+import { copyImageToClipboard } from '../clipboard';
 import { useMediaUi } from '../MediaUiProvider';
 import { mediaKeys } from '../queryKeys';
 import { runMediaAction } from '../runMediaAction';
@@ -126,6 +127,21 @@ export function useMediaDownload() {
       window.location.assign(url);
     } catch (error) {
       notifyError(error, 'Téléchargement impossible');
+    }
+  };
+}
+
+/** Copies an image file into the clipboard (preview URL, or a fresh signed URL when missing). */
+export function useMediaCopyImage() {
+  const { actions } = useMediaUi();
+  return async (file: MediaFileRecord) => {
+    const getUrl = async () =>
+      file.previewUrl ?? runMediaAction(await actions.getDownloadUrl(file.id)).url;
+    try {
+      await copyImageToClipboard(getUrl);
+      notifySuccess(`« ${file.name} » copiée dans le presse-papier`);
+    } catch (error) {
+      notifyError(error, 'Copie de l’image impossible');
     }
   };
 }
