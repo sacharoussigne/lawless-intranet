@@ -151,6 +151,9 @@ export type PermissionsObject = {
     view: boolean;
     viewAll: boolean;
   };
+  media: {
+    access: boolean;
+  };
 };
 
 export function toPermissionsObject(
@@ -206,6 +209,9 @@ export function toPermissionsObject(
       cancel: has("sales", "cancel"),
       view: has("sales", "view"),
       viewAll: has("sales", "view_all"),
+    },
+    media: {
+      access: has("media", "access"),
     },
   };
 }

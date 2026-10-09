@@ -32,6 +32,7 @@ export const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
   "sales:view": "Consulter ses ventes",
   "sales:view_all": "Consulter toutes les ventes du dispensaire",
   "stock_statistics:view": "Consulter les statistiques et mouvements de stock",
+  "media:access": "Accéder à la médiathèque (dossiers, imports, liens de partage)",
 };
 
 export type CatalogPermissionEntry = {
