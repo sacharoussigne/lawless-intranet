@@ -61,6 +61,7 @@ import { SortControl, ViewToggle, type MediaView } from './components/ViewContro
 import { UploadQueue } from './components/UploadQueue';
 import {
   useInvalidateMedia,
+  useMediaCopyImage,
   useMediaDownload,
   useMediaFolderContents,
   useMediaMutations,
@@ -71,7 +72,7 @@ import { useFileDrop } from './hooks/useFileDrop';
 import { useMediaUploads } from './hooks/useMediaUploads';
 import { useMediaUi } from './MediaUiProvider';
 import { canDrop, parseDropId, type DragItem } from './dnd';
-import { DEFAULT_MEDIA_SORT, nextSort, parseMediaSort, sortItems, type MediaSort } from './format';
+import { DEFAULT_MEDIA_SORT, getFileKind, nextSort, parseMediaSort, sortItems, type MediaSort } from './format';
 import {
   applyClick,
   EMPTY_SELECTION,
@@ -184,6 +185,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   );
   const mutations = useMediaMutations();
   const download = useMediaDownload();
+  const copyImage = useMediaCopyImage();
   const share = useMediaShare();
   const uploads = useMediaUploads();
   useMediaRealtime();
@@ -430,6 +432,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
       <FileMenuItems
         onPreview={open}
         onDownload={() => void download(file.id)}
+        onCopyImage={getFileKind(file.mimeType) === 'image' ? () => void copyImage(file) : undefined}
         share={
           share.enabled
             ? {
