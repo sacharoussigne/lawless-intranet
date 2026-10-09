@@ -1,50 +1,46 @@
-export type TransitionOrigin = { x: number; y: number };
+/** Attribute set on `<html>` during a theme switch: scopes the reveal CSS below. */
+export const THEME_TRANSITION_ATTRIBUTE = 'data-theme-transition';
 
-const DURATION_MS = 500;
-
-/** Radius from `origin` to the farthest corner of the viewport. */
-export function revealRadius(origin: TransitionOrigin, viewport: { width: number; height: number }): number {
-  return Math.hypot(Math.max(origin.x, viewport.width - origin.x), Math.max(origin.y, viewport.height - origin.y));
+/**
+ * Circular reveal from the top right corner, as a CSS animation on the View
+ * Transition snapshot. CSS (not Element.animate) so the browser keeps the
+ * transition alive until it ends; percentages so it follows the snapshot box.
+ * A circle() radius percentage is relative to diagonal / √2: 150% (> √2 ≈ 141%)
+ * reaches past the opposite corner.
+ */
+export const THEME_TRANSITION_CSS = `@keyframes theme-reveal {
+  from { clip-path: circle(0% at 100% 0%); }
+  to { clip-path: circle(150% at 100% 0%); }
 }
-
-/** Center of an element, as the origin of the reveal circle. */
-export function originOf(element: Element | null | undefined): TransitionOrigin | undefined {
-  if (!element) return undefined;
-  const rect = element.getBoundingClientRect();
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+:root[${THEME_TRANSITION_ATTRIBUTE}]::view-transition-old(root) {
+  animation: none;
 }
+:root[${THEME_TRANSITION_ATTRIBUTE}]::view-transition-new(root) {
+  animation: theme-reveal 650ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  mix-blend-mode: normal;
+}`;
 
 type ViewTransitionDocument = Document & {
-  startViewTransition?: (update: () => void) => { ready: Promise<void> };
+  startViewTransition?: (update: () => void) => { finished: Promise<void> };
 };
 
 /**
  * Runs `apply` (which must update the DOM synchronously) inside a View
- * Transition: the new theme grows as a circle from `origin`. Plain switch
- * without View Transitions support, with reduced motion or without an origin.
- * The host app disables the default cross-fade on `::view-transition-old/new(root)`.
+ * Transition revealed by THEME_TRANSITION_CSS (injected with the themes CSS).
+ * Plain switch without View Transitions support, with reduced motion, or when
+ * `animate` is false.
  */
-export function switchThemeWithTransition(apply: () => void, origin?: TransitionOrigin): void {
+export function switchThemeWithTransition(apply: () => void, animate = true): void {
   const doc = document as ViewTransitionDocument;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!origin || reducedMotion || typeof doc.startViewTransition !== 'function') {
+  if (!animate || reducedMotion || typeof doc.startViewTransition !== 'function') {
     apply();
     return;
   }
 
+  const root = document.documentElement;
+  root.setAttribute(THEME_TRANSITION_ATTRIBUTE, '');
   const transition = doc.startViewTransition(apply);
-  const radius = revealRadius(origin, { width: window.innerWidth, height: window.innerHeight });
-  void transition.ready
-    .then(() => {
-      document.documentElement.animate(
-        {
-          clipPath: [
-            `circle(0px at ${origin.x}px ${origin.y}px)`,
-            `circle(${radius}px at ${origin.x}px ${origin.y}px)`,
-          ],
-        },
-        { duration: DURATION_MS, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' },
-      );
-    })
-    .catch(() => undefined);
+  // Also settles when the transition is skipped (hidden tab, interrupted): the theme is applied anyway.
+  void transition.finished.catch(() => undefined).finally(() => root.removeAttribute(THEME_TRANSITION_ATTRIBUTE));
 }

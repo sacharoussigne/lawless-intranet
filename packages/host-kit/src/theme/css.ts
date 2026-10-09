@@ -1,3 +1,4 @@
+import { THEME_TRANSITION_CSS } from './transition';
 import type { SoftColors, ThemeConfig, ThemeDefinition, ThemePalette } from './types';
 
 export function themeAttribute(prefix: string): string {
@@ -51,10 +52,11 @@ export function themeToCss(theme: ThemeDefinition, { prefix, isDefault = false }
   return `${isDefault ? ':root,\n' : ''}${selector} {\n${body}\n}`;
 }
 
-/** CSS of every predefined theme, the default one first. */
+/** CSS of every predefined theme (the default one first) and of the switch animation. */
 export function themesToCss(themes: readonly ThemeDefinition[], config: Pick<ThemeConfig, 'prefix' | 'defaultThemeId'>): string {
   const ordered = [...themes].sort((a, b) => Number(b.id === config.defaultThemeId) - Number(a.id === config.defaultThemeId));
-  return ordered.map((theme) => themeToCss(theme, { prefix: config.prefix, isDefault: theme.id === config.defaultThemeId })).join('\n\n');
+  const rules = ordered.map((theme) => themeToCss(theme, { prefix: config.prefix, isDefault: theme.id === config.defaultThemeId }));
+  return [...rules, THEME_TRANSITION_CSS].join('\n\n');
 }
 
 export function toThemeOptions(themes: readonly ThemeDefinition[]) {

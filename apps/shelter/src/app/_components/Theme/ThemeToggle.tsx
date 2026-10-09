@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { ActionIcon, Tooltip } from '@mantine/core';
 import { IconMoon, IconSun } from '@tabler/icons-react';
-import { originOf, useAppTheme } from '@lawless-intranet/host-kit/theme';
+import { useAppTheme } from '@lawless-intranet/host-kit/theme';
 import { getMyTheme } from '@/app/_actions/uiTheme';
 import { SHELTER_DARK_THEME_ID, SHELTER_LIGHT_THEME_ID } from '@/lib/themes';
 
@@ -18,7 +18,7 @@ function useAccountThemeSync() {
     void getMyTheme()
       .then((result) => {
         if (!cancelled && 'data' in result && typeof result.data === 'string') {
-          setTheme(result.data, { persist: false });
+          setTheme(result.data, { persist: false, animate: false });
         }
       })
       .catch(() => undefined);
@@ -28,7 +28,7 @@ function useAccountThemeSync() {
   }, [setTheme]);
 }
 
-/** Header sun / moon button: switches between the light and the dark theme, revealed from the button. */
+/** Header sun / moon button: switches between the light and the dark theme (circular reveal from the top right corner). */
 export function ThemeToggle() {
   const { scheme, setTheme } = useAppTheme();
   useAccountThemeSync();
@@ -41,9 +41,7 @@ export function ThemeToggle() {
         variant="light"
         size="lg"
         aria-label={label}
-        onClick={(event) =>
-          setTheme(isDark ? SHELTER_LIGHT_THEME_ID : SHELTER_DARK_THEME_ID, { origin: originOf(event.currentTarget) })
-        }
+        onClick={() => setTheme(isDark ? SHELTER_LIGHT_THEME_ID : SHELTER_DARK_THEME_ID)}
       >
         {isDark ? <IconSun size={18} stroke={1.6} /> : <IconMoon size={18} stroke={1.6} />}
       </ActionIcon>
