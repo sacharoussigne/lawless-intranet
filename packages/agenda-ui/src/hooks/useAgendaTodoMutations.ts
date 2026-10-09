@@ -28,6 +28,7 @@ type UseAgendaTodoMutationsOptions = {
   selectedList: AgendaTodoListDTO | null;
   mutationMeta: AgendaMutationMeta | undefined;
   archivesOpen: boolean;
+  archiveLists: AgendaTodoListDTO[];
   setArchiveLists: Dispatch<SetStateAction<AgendaTodoListDTO[]>>;
   setArchivesOpen: Dispatch<SetStateAction<boolean>>;
   isCategoryFilterActive: boolean;
@@ -62,7 +63,8 @@ function findTaskInLists(
 
 function toExpectedUpdatedAt(task: AgendaTodoTaskDTO | null): string | undefined {
   if (!task?.updatedAt) return undefined;
-  return task.updatedAt.toISOString();
+  // Tolerates dates still serialized as strings.
+  return new Date(task.updatedAt).toISOString();
 }
 
 export function useAgendaTodoMutations({
@@ -74,6 +76,7 @@ export function useAgendaTodoMutations({
   selectedList,
   mutationMeta,
   archivesOpen,
+  archiveLists,
   setArchiveLists,
   setArchivesOpen,
   isCategoryFilterActive,
@@ -248,6 +251,41 @@ export function useAgendaTodoMutations({
     ],
   );
 
+  /** Unchecks an archived task: it leaves the drawer and is back in the active list. */
+  const handleRestoreTask = useCallback(
+    async (id: string) => {
+      const pendingKey = `task:${id}`;
+      beginLocalMutation(pendingKey);
+      try {
+        // Not optimistic: the row keeps its spinner until the server confirms.
+        const result = await actions.updateTodoTask(
+          {
+            id,
+            completed: false,
+            expectedUpdatedAt: toExpectedUpdatedAt(findTaskInLists(archiveLists, id)),
+          },
+          mutationMeta,
+        );
+        runAgendaAction(result);
+        setArchiveLists((prev) => removeTaskFromLists(prev, id));
+        await reload();
+      } catch (error: unknown) {
+        showMutationError(error, 'Restauration impossible');
+      } finally {
+        endLocalMutation(pendingKey);
+      }
+    },
+    [
+      actions,
+      archiveLists,
+      beginLocalMutation,
+      endLocalMutation,
+      mutationMeta,
+      reload,
+      setArchiveLists,
+    ],
+  );
+
   const handleCreateList = useCallback(
     async (name: string) => {
       if (!agendaId) return false;
@@ -419,6 +457,7 @@ export function useAgendaTodoMutations({
     handleRenameList,
     handleRenameCategory,
     handleDeleteTask,
+    handleRestoreTask,
     handleCreateList,
     handleCreateCategory,
     handleAddTask,

@@ -312,6 +312,7 @@ export function AgendaTodoPanel({
     handleRenameList,
     handleRenameCategory,
     handleDeleteTask,
+    handleRestoreTask,
     handleCreateList,
     handleCreateCategory,
     handleAddTask,
@@ -326,6 +327,7 @@ export function AgendaTodoPanel({
     selectedList,
     mutationMeta,
     archivesOpen,
+    archiveLists,
     setArchiveLists,
     setArchivesOpen,
     isCategoryFilterActive,
@@ -906,6 +908,7 @@ export function AgendaTodoPanel({
         lists={archiveLists}
         canWrite={canWrite}
         onDeleteTask={handleDeleteTask}
+        onRestoreTask={handleRestoreTask}
         isPending={isPending}
       />
     </div>

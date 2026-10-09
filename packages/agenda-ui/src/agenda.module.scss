@@ -580,3 +580,119 @@
   text-decoration: line-through;
   color: var(--mantine-color-dimmed);
 }
+
+/* --- Archived todos drawer --- */
+
+.archiveChipCount {
+  margin-left: 0.2rem;
+  opacity: 0.7;
+}
+
+.archiveList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+}
+
+.archiveListHeader {
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--disp-border);
+}
+
+.archiveListName {
+  font-family: var(--disp-font-display);
+  font-size: 1.05rem;
+  color: var(--disp-ink);
+  min-width: 0;
+}
+
+.archiveCategory {
+  border: 1px solid var(--disp-border);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--disp-surface);
+  overflow: hidden;
+}
+
+.archiveCategoryHeader {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  color: var(--disp-ink);
+
+  &:hover {
+    background: var(--mantine-color-sage-0);
+  }
+}
+
+.archiveChevron {
+  flex-shrink: 0;
+  color: var(--mantine-color-dimmed);
+  transition: transform 0.15s ease;
+
+  &[data-opened] {
+    transform: rotate(90deg);
+  }
+}
+
+.archiveTasks {
+  border-top: 1px solid var(--disp-border);
+}
+
+.archiveTask {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.45rem 0.6rem;
+
+  & + & {
+    border-top: 1px dashed var(--disp-border);
+  }
+
+  &:hover {
+    background: var(--mantine-color-sage-0);
+  }
+
+  &[data-pending] {
+    opacity: 0.6;
+  }
+}
+
+.archiveTaskIcon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: var(--mantine-color-sage-6);
+}
+
+.archiveTaskBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.archiveTaskTitle {
+  color: var(--disp-ink);
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+
+.archiveTaskDate {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+}
+
+/* Actions on hover or keyboard focus; always visible on touch screens and while saving. */
+.archiveTaskActions {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+
+  .archiveTask:hover &,
+  .archiveTask:focus-within &,
+  .archiveTask[data-pending] & {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
