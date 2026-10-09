@@ -27,6 +27,7 @@ import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/shelter/platformAdmin';
 import { rewritePathWithShelterSlug } from '@/lib/shelter/slug';
 import { HeaderWaitlistIndicator } from './HeaderWaitlistIndicator';
+import { ThemeToggle } from '@/app/_components/Theme/ThemeToggle';
 import {
   IconArrowBackUp,
   IconCashRegister,
@@ -239,6 +240,7 @@ export default function Header({
           waitlistHref={t.employee.waitlist}
         />
       )}
+      <ThemeToggle />
       {avatarMenu}
     </Group>
   ) : null;

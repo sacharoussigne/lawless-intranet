@@ -281,3 +281,15 @@ model AnimalWaitRequest {
   @@index([shelterId, status, requestedAt])
   @@map("animal_wait_request")
 }
+
+/// Per-user interface preferences.
+model UserUiPreferences {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  /// Interface theme id (src/lib/themes), e.g. "refuge" or "veillee".
+  theme     String   @default("refuge")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_ui_preferences")
+}
