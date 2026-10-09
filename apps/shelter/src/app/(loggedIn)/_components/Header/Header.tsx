@@ -152,7 +152,9 @@ export default function Header({
     <Menu
       width={260}
       position="bottom-end"
-      transitionProps={{ transition: 'pop-top-right' }}
+      // No scale transition: the theme SegmentedControl measures its indicator on open,
+      // a scaled dropdown would misplace it until the transition ends (visible jump).
+      transitionProps={{ transition: 'fade-down' }}
       onClose={() => setUserMenuOpened(false)}
       onOpen={() => setUserMenuOpened(true)}
       withinPortal
