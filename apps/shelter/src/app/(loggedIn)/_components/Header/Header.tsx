@@ -27,7 +27,7 @@ import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/shelter/platformAdmin';
 import { rewritePathWithShelterSlug } from '@/lib/shelter/slug';
 import { HeaderWaitlistIndicator } from './HeaderWaitlistIndicator';
-import { ThemeToggle } from '@/app/_components/Theme/ThemeToggle';
+import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
 import {
   IconArrowBackUp,
   IconCashRegister,
@@ -168,6 +168,7 @@ export default function Header({
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
+        <AccountMenuHeader name={session.user.name} />
         {isPlatformAdminUser && (
           <>
             <Menu.Label>Plateforme</Menu.Label>
@@ -240,13 +241,13 @@ export default function Header({
           waitlistHref={t.employee.waitlist}
         />
       )}
-      <ThemeToggle />
       {avatarMenu}
     </Group>
   ) : null;
 
   return (
     <>
+      {session && <AccountThemeSync />}
       {spotlight && shelterSlug && (
         <AnimalSpotlight
           shelterSlug={shelterSlug}

@@ -24,7 +24,7 @@ import Image from 'next/image';
 import { IconArrowBackUp, IconLogout, IconSearch, IconSettings } from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
-import { ThemeToggle } from '@/app/_components/Theme/ThemeToggle';
+import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { dispensarySiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
 import { hasRole } from '@lawless-intranet/auth-permissions';
@@ -157,6 +157,7 @@ export default function Header({
 
   return (
     <header className={`${classes.header} mb-10`}>
+      {session && <AccountThemeSync />}
       <Container size={'xl'}>
         <div className={classes.headerInner}>
           <Group gap="md" wrap="nowrap" className={classes.headerSide}>
@@ -238,7 +239,6 @@ export default function Header({
                     agendaHref={t.agenda.index}
                   />
                 )}
-                <ThemeToggle />
                 <Menu
                   width={260}
                   position="bottom-end"
@@ -260,6 +260,7 @@ export default function Header({
                     </UnstyledButton>
                   </Menu.Target>
                   <Menu.Dropdown>
+                    <AccountMenuHeader name={session.user.name} />
                     {isPlatformAdminUser && (
                       <>
                         <Menu.Label>Plateforme</Menu.Label>
@@ -348,6 +349,7 @@ export default function Header({
                   <Avatar alt={session.user.name} radius="xl" size={40} src={session.user.image ?? null} />
                 </Menu.Target>
                 <Menu.Dropdown>
+                  <AccountMenuHeader name={session.user.name} />
                   <Menu.Item onClick={handleLogout}>Déconnexion</Menu.Item>
                 </Menu.Dropdown>
               </Menu>
