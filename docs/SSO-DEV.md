@@ -62,7 +62,7 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
    - `INVENTORY_URL=http://localhost:3005`
 15. Point shelter at bank: `BANK_URL=http://localhost:3004`
 16. In auth `.env`, set `SHELTER_URL` / `NEXT_PUBLIC_SHELTER_URL` to `http://localhost:3006` (or `http://shelter.localhost:3006`)
-17. Media library (shelter): copy `apps/media/.env.example` to `apps/media/.env` (database, `MEDIA_INTERNAL_SECRET`, dev S3 bucket), and set `MEDIA_URL=http://localhost:3009` + the same `MEDIA_INTERNAL_SECRET` in shelter. Bucket setup: `docs/MEDIA.md`.
+17. Media library (shelter and dispensary): copy `apps/media/.env.example` to `apps/media/.env` (database, `MEDIA_INTERNAL_SECRET`, dev S3 bucket), and set `MEDIA_URL=http://localhost:3009` + the same `MEDIA_INTERNAL_SECRET` in shelter and dispensary. Bucket setup: `docs/MEDIA.md`.
 18. Realtime websocket (agenda/todos): started by `pnpm dev`, no configuration needed in dev. Outside production, realtime, agenda and dispensary default to `localhost:3007` / `localhost:3008` and a shared dev secret; set the `REALTIME_*` variables only to override them (they are required in production).
 
 Optional root `.env` for one-shot migration scripts:

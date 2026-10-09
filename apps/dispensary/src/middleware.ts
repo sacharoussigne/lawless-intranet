@@ -22,6 +22,7 @@ import {
   hasApplicationAccessMiddleware,
   hasBankAccessMiddleware,
   hasMailsAccessMiddleware,
+  hasMediaAccessMiddleware,
   hasManagementAccessMiddleware,
   hasOrdersViewAccessMiddleware,
   hasPayrollReportsAccessMiddleware,
@@ -138,6 +139,11 @@ export async function middleware(req: NextRequest) {
       middlewares.push(hasWeeklyDispensaryActivityMiddleware);
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
         assertAppFeatureEnabledMiddleware(request, s, 'weeklyDispensaryActivity'),
+      );
+    } else if (pathname.startsWith(t.media.index)) {
+      middlewares.push(hasMediaAccessMiddleware);
+      middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
+        assertAppFeatureEnabledMiddleware(request, s, 'media'),
       );
     } else if (pathname.startsWith(t.agenda.index)) {
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>

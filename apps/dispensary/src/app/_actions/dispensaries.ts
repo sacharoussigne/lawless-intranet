@@ -25,6 +25,8 @@ import { bankScope } from '@/lib/bank/client';
 import { purgeInventoryScope } from '@lawless-intranet/inventory-client/server';
 import { InventoryClientError } from '@lawless-intranet/inventory-client';
 import { inventoryScope } from '@/lib/inventory/client';
+import { purgeMediaScope } from '@lawless-intranet/media-client/server';
+import { mediaScope } from '@/lib/media/client';
 import { ensureDispensaryRolePermissions } from '@/lib/dispensary/permissionsSeed';
 
 const createDispensarySchema = z.object({
@@ -139,6 +141,12 @@ export async function deleteDispensary(data: { id: string }) {
         return { status: error.status, error: error.message };
       }
       console.error('Failed to purge inventory scope', error);
+    }
+
+    try {
+      await purgeMediaScope(mediaScope(dispensary.id));
+    } catch (error) {
+      console.error('Failed to purge media scope', error);
     }
 
     try {

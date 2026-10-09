@@ -21,7 +21,7 @@ import { type AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
 import Link from 'next/link';
 import Image from 'next/image';
-import { IconArrowBackUp, IconLogout, IconSearch, IconSettings } from '@tabler/icons-react';
+import { IconArrowBackUp, IconLogout, IconPhoto, IconSearch, IconSettings } from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
 import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
@@ -233,6 +233,19 @@ export default function Header({
                   />
                 )}
 
+                {appSettings.featureMediaEnabled && permissions?.media.access && (
+                  <Tooltip label="Médiathèque" position="bottom">
+                    <ActionIcon
+                      component={Link}
+                      href={t.media.index}
+                      variant="light"
+                      size="lg"
+                      aria-label="Médiathèque"
+                    >
+                      <IconPhoto size={18} stroke={1.6} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
                 {appSettings.featureAgendaEnabled && agendaModuleAccess && dispensarySlug && (
                   <HeaderUpcomingEvents
                     dispensarySlug={dispensarySlug}

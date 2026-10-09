@@ -284,6 +284,12 @@ importers:
       '@lawless-intranet/mail-template-ui':
         specifier: workspace:*
         version: link:../../packages/mail-template-ui
+      '@lawless-intranet/media-client':
+        specifier: workspace:*
+        version: link:../../packages/media-client
+      '@lawless-intranet/media-ui':
+        specifier: workspace:*
+        version: link:../../packages/media-ui
       '@lawless-intranet/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime

@@ -3,9 +3,11 @@
 import { realtimeTopics } from '@lawless-intranet/realtime';
 import { signRealtimeToken } from '@lawless-intranet/realtime/token';
 import { getAgendaAccess } from '@lawless-intranet/agenda-client/server';
+import { can } from '@lawless-intranet/auth-permissions';
 import { actionErrorParser } from '@/lib/action';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { agendaCookie, agendaScope, AGENDA_SCOPE_TYPE } from '@/lib/agenda/client';
+import { MEDIA_SCOPE_TYPE } from '@/lib/media/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getRealtimeTokenSecret } from '@/lib/realtime/socketConfig';
 
@@ -25,7 +27,7 @@ export async function getRealtimeToken(dispensarySlug: string) {
     }
 
     const userId = ctx.session.user.id;
-    const { dispensaryId } = ctx.tenant;
+    const { dispensaryId, effectivePermissions } = ctx.tenant;
     const topics = [realtimeTopics.user(userId)];
 
     const agendaBlocked = await getAppFeatureActionBlock(dispensaryId, 'agenda');
@@ -35,6 +37,11 @@ export async function getRealtimeToken(dispensarySlug: string) {
       for (const agendaId of access.accessibleAgendaIds) {
         topics.push(realtimeTopics.agenda(agendaId));
       }
+    }
+
+    const mediaBlocked = await getAppFeatureActionBlock(dispensaryId, 'media');
+    if (!mediaBlocked && can(effectivePermissions, 'media', 'access')) {
+      topics.push(realtimeTopics.media(MEDIA_SCOPE_TYPE, dispensaryId));
     }
 
     return { status: 200, data: signRealtimeToken({ userId, topics }, secret) };

@@ -1,11 +1,11 @@
 # Médiathèque (`apps/media`)
 
-Stockage de fichiers façon drive : images et PDF rangés en dossiers, avec renommage, déplacement, suppression, aperçu et téléchargement. Pour l'instant, la médiathèque est branchée sur le **refuge**.
+Stockage de fichiers façon drive : images et PDF rangés en dossiers, avec renommage, déplacement, suppression, aperçu et téléchargement. La médiathèque est branchée sur le **refuge** et le **dispensaire** : une médiathèque par refuge et une par dispensaire, cloisonnées par `scopeType` / `scopeId` (`shelter:<id>`, `dispensary:<id>`). Le service ne connaît pas les hôtes : chaque hôte vérifie le tenant, la feature et la permission avant de l'appeler.
 
 ## Fonctionnement
 
 ```
-navigateur ──server actions──▶ shelter ──HTTP + MEDIA_INTERNAL_SECRET──▶ media:3009 ──▶ S3
+navigateur ──server actions──▶ shelter / dispensary ──HTTP + MEDIA_INTERNAL_SECRET──▶ media:3009 ──▶ S3
      │                                                                      (base lawless_media)
      └──── upload direct (POST présigné) / lecture (GET présigné) ─────────▶ S3
 ```
@@ -23,7 +23,7 @@ navigateur ──server actions──▶ shelter ──HTTP + MEDIA_INTERNAL_SEC
 
 ## Temps réel
 
-Chaque modification publie `media:<scopeType>:<scopeId>` sur le serveur WebSocket (`apps/realtime`). Les autres personnes qui ont la médiathèque ouverte voient le changement sans rafraîchir. Le refuge signe le jeton (topic ajouté si la feature et la permission sont actives). Le service publie par le réseau privé `realtime`.
+Chaque modification publie `media:<scopeType>:<scopeId>` sur le serveur WebSocket (`apps/realtime`). Les autres personnes qui ont la médiathèque ouverte voient le changement sans rafraîchir. L'hôte (refuge ou dispensaire) signe le jeton (topic ajouté si la feature et la permission sont actives). Le service publie par le réseau privé `realtime`.
 
 ## Imports abandonnés
 
@@ -33,11 +33,11 @@ Quand l'onglet est fermé ou que le réseau coupe avant la finalisation, un impo
 
 ## Liens de partage
 
-Clic droit sur un fichier, puis « Copier le lien de partage » : on obtient un lien public qui **n'expire pas**, par exemple pour Discord. Ce lien a la forme `https://<refuge>/partage/<jeton>/<nom>`.
+Clic droit sur un fichier, puis « Copier le lien de partage » : on obtient un lien public qui **n'expire pas**, par exemple pour Discord. Ce lien a la forme `https://<hôte>/partage/<jeton>/<nom>`, sur le domaine du refuge ou du dispensaire selon la médiathèque.
 - **Le jeton** fait 192 bits aléatoires et il est stocké sur le fichier (`MediaFile.shareToken`). La partie `<nom>` de l'URL est décorative.
-- **À l'ouverture du lien**, la route publique du refuge (`app/partage/[token]/[[...name]]`, hors middleware, sans connexion) fait trois choses :
+- **À l'ouverture du lien**, la route publique de l'hôte (`app/partage/[token]/[[...name]]`, hors middleware, sans connexion) fait trois choses :
   1. elle résout le jeton via le service (`GET /api/shares/:token`, secret interne) ;
-  2. elle vérifie que la feature `media` du refuge est active ;
+  2. elle vérifie que le fichier appartient bien à un tenant de cet hôte (`scopeType`) et que sa feature `media` est active. Un lien du refuge ouvert sur le domaine du dispensaire renvoie donc 404, et inversement ;
   3. elle redirige (302, `no-store`) vers une URL S3 signée **fraîche**.
 - **Le bucket reste privé** : aucun réglage AWS supplémentaire.
 - **« Désactiver le lien »** oublie le jeton, et le lien renvoie 404 immédiatement. Repartager le fichier donne un **nouveau** lien. Supprimer le fichier, ou désactiver la feature, coupe aussi le lien.
@@ -52,14 +52,19 @@ Un bucket par environnement, par exemple `lawless-media-dev` et `lawless-media-p
    ```json
    [
      {
-       "AllowedOrigins": ["http://localhost:3006", "https://refuge.example.com"],
+       "AllowedOrigins": [
+         "http://localhost:3006",
+         "http://localhost:3000",
+         "https://refuge.example.com",
+         "https://dispensaire.example.com"
+       ],
        "AllowedMethods": ["POST", "GET"],
        "AllowedHeaders": ["*"],
        "MaxAgeSeconds": 3600
      }
    ]
    ```
-   Pour le bucket de dev, `http://localhost:3006` suffit. Si tu ouvres le refuge via `shelter.localhost`, ajoute aussi cette origine.
+   Pour le bucket de dev, `http://localhost:3006` (refuge) et `http://localhost:3000` (dispensaire) suffisent. Si tu ouvres les apps via `shelter.localhost` / `dispensary.localhost`, ajoute aussi ces origines.
 3. **Utilisateur IAM** dédié (accès programmatique uniquement), avec cette politique :
    ```json
    {
@@ -78,7 +83,7 @@ Un bucket par environnement, par exemple `lawless-media-dev` et `lawless-media-p
      ]
    }
    ```
-   `ListBucket` ne sert qu'à la purge d'un refuge supprimé. Il faut une clé d'accès par environnement.
+   `ListBucket` ne sert qu'à la purge d'un refuge ou d'un dispensaire supprimé. Il faut une clé d'accès par environnement.
 
 ## Dev
 
@@ -87,9 +92,9 @@ Un bucket par environnement, par exemple `lawless-media-dev` et `lawless-media-p
    - `DATABASE_URL` ;
    - `MEDIA_INTERNAL_SECRET` ;
    - le bucket de dev (`S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).
-3. Appliquer les migrations : `pnpm --filter media db:migrate` (et `pnpm --filter shelter db:migrate` pour la nouvelle option `featureMediaEnabled`).
-4. Dans `apps/shelter/.env` : `MEDIA_URL=http://localhost:3009` et le **même** `MEDIA_INTERNAL_SECRET`.
-5. `pnpm dev`, puis ouvrir *Médiathèque* dans le refuge. Le module est réservé aux rôles `admin` et `direction` par défaut ; on peut accorder `media:access` à d'autres via l'écran des permissions.
+3. Appliquer les migrations : `pnpm db:migrate:deploy` (base media, plus l'option `featureMediaEnabled` du refuge et du dispensaire, et la permission du dispensaire).
+4. Dans `apps/shelter/.env` **et** `apps/dispensary/.env` : `MEDIA_URL=http://localhost:3009` et le **même** `MEDIA_INTERNAL_SECRET`.
+5. `pnpm dev`, puis ouvrir *Médiathèque* : lien du header dans le refuge, bouton à côté de l'agenda dans le dispensaire. Le module est réservé aux rôles `admin` et `direction` par défaut ; on peut accorder `media:access` à d'autres via l'écran des permissions. Il se désactive par tenant dans les paramètres (feature `media`).
 
 Vérification rapide : http://localhost:3009/api/health doit afficher `"storageConfigured": true`.
 
@@ -100,9 +105,9 @@ Dans le `.env` global du serveur (voir `docker/.env.example`) :
 - `MEDIA_INTERNAL_SECRET` ;
 - `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY`.
 
-Ensuite, `make deploy`. Le service `media` n'a pas d'hôte public : il n'est joignable que par le refuge, sur le réseau Docker `media`.
+Ensuite, `make deploy`. Le service `media` n'a pas d'hôte public : il n'est joignable que par le refuge et le dispensaire, sur le réseau Docker `media`.
 
-Penser à ajouter l'URL publique du refuge dans le **CORS du bucket de prod**.
+Penser à ajouter les URLs publiques du refuge et du dispensaire dans le **CORS du bucket de prod**.
 
 ## Plus tard
 

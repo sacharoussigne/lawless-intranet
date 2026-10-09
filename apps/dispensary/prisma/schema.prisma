@@ -135,6 +135,7 @@ model AppSettings {
   featureAgendaEnabled                     Boolean    @default(true)
   featureCabinetEnabled                    Boolean    @default(true)
   featureSalesEnabled                      Boolean    @default(true)
+  featureMediaEnabled                      Boolean    @default(true)
   weeklyActivityChestDaysVisible           Boolean    @default(true)
   weeklyActivityPresenceDaysVisible        Boolean    @default(true)
   weeklyActivityPatientsVisible            Boolean    @default(true)

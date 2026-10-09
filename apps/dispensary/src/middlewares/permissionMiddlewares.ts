@@ -26,6 +26,7 @@ export const hasApplicationAccessMiddleware = requirePermissionMiddleware('appli
 export const hasManagementAccessMiddleware = requirePermissionMiddleware('application', 'management', 'noManagementAccess');
 export const hasBankAccessMiddleware = requirePermissionMiddleware('bank', 'access');
 export const hasMailsAccessMiddleware = requirePermissionMiddleware('mails', 'access');
+export const hasMediaAccessMiddleware = requirePermissionMiddleware('media', 'access');
 export const hasOrdersViewAccessMiddleware = requirePermissionMiddleware('orders', 'view');
 export const hasPayrollReportsAccessMiddleware = requirePermissionMiddleware('payroll_reports', 'view', 'noManagementAccess');
 export const hasSearchAccessMiddleware = requirePermissionMiddleware('search', 'access');
