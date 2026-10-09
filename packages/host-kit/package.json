@@ -9,7 +9,8 @@
     "./query": "./src/QueryProvider.tsx",
     "./realtime": "./src/realtime.ts",
     "./middleware": "./src/middleware.ts",
-    "./service-host": "./src/serviceHost.ts"
+    "./service-host": "./src/serviceHost.ts",
+    "./theme": "./src/theme/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -23,7 +24,8 @@
     "@tanstack/react-query": "^5",
     "next": ">=15",
     "react": "^19",
-    "zod": "^3.25"
+    "zod": "^3.25",
+    "react-dom": "^19"
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.101.0",
@@ -33,6 +35,8 @@
     "react": "19.2.4",
     "typescript": "^5",
     "vitest": "^2.1.9",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "react-dom": "19.2.4",
+    "@types/react-dom": "^19"
   }
 }
