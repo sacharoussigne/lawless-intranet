@@ -27,6 +27,12 @@ import type { tenantRoutes } from '@/types/routes';
 
 type HeaderNavLinkItem = EmployeeNavItem | ManagementNavItem;
 
+/** A section link (Stock, Activité) stays active on all of its tabs. */
+function isItemActive(item: HeaderNavLinkItem, isRouteActive: (route: string) => boolean): boolean {
+  const hrefs = 'activeHrefs' in item && item.activeHrefs ? item.activeHrefs : [item.href];
+  return hrefs.some(isRouteActive);
+}
+
 function NavLinkItem({
   item,
   isActive,
@@ -128,7 +134,7 @@ export function HeaderNavLinks({
                     key={item.id}
                     component={Link}
                     href={item.href}
-                    className={`${classes.drawerLink} ${isRouteActive(item.href) ? classes.drawerLinkActive : ''}`}
+                    className={`${classes.drawerLink} ${isItemActive(item, isRouteActive) ? classes.drawerLinkActive : ''}`}
                   >
                     <Group gap="sm">
                       <Icon size={20} stroke={1.6} />
@@ -192,7 +198,7 @@ export function HeaderNavLinks({
     <NavLinkItem
       key={item.id}
       item={item}
-      isActive={isRouteActive(item.href)}
+      isActive={isItemActive(item, isRouteActive)}
       compact={isMobile}
     />
   );
@@ -223,7 +229,7 @@ export function HeaderNavLinks({
                   key={item.id}
                   component={Link}
                   href={item.href}
-                  className={`${classes.drawerLink} ${isRouteActive(item.href) ? classes.drawerLinkActive : ''}`}
+                  className={`${classes.drawerLink} ${isItemActive(item, isRouteActive) ? classes.drawerLinkActive : ''}`}
                 >
                   <Group gap="sm">
                     <Icon size={20} stroke={1.6} />
