@@ -15,7 +15,6 @@
   "peerDependencies": {
     "@dnd-kit/core": "^6",
     "@mantine/core": "^8",
-    "@mantine/dropzone": "^8",
     "@mantine/hooks": "^8",
     "@mantine/notifications": "^8",
     "@tabler/icons-react": "^3",
@@ -27,7 +26,6 @@
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@mantine/core": "^8.3.17",
-    "@mantine/dropzone": "^8.3.17",
     "@mantine/hooks": "^8.3.17",
     "@mantine/notifications": "^8.3.17",
     "@tabler/icons-react": "^3.36.1",

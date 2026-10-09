@@ -21,12 +21,12 @@ import {
   Group,
   Loader,
   Menu,
+  Paper,
   SimpleGrid,
   Stack,
   Text,
   UnstyledButton,
 } from '@mantine/core';
-import { Dropzone } from '@mantine/dropzone';
 import { useLocalStorage, useMediaQuery, useWindowEvent } from '@mantine/hooks';
 import { IconAlertTriangle, IconChevronDown, IconUpload } from '@tabler/icons-react';
 import type {
@@ -39,6 +39,7 @@ import { DeleteModal } from './components/DeleteModal';
 import { InfoModal } from './components/InfoModal';
 import {
   DraggedItemsContext,
+  FileDropTargetContext,
   SELECTION_KEY_ATTRIBUTE,
   useDropHighlight,
   type ItemInteractions,
@@ -66,6 +67,7 @@ import {
   useMediaShare,
 } from './hooks/useMediaQueries';
 import { useMediaRealtime } from './hooks/useMediaRealtime';
+import { useFileDrop } from './hooks/useFileDrop';
 import { useMediaUploads } from './hooks/useMediaUploads';
 import { useMediaUi } from './MediaUiProvider';
 import { canDrop, parseDropId, type DragItem } from './dnd';
@@ -134,12 +136,13 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && target.closest('input, textarea, select, [contenteditable="true"]') !== null;
 }
 
-/** Breadcrumb link that also accepts dropped items (move up to a parent or the root). */
+/** Breadcrumb link that also accepts dropped items and files (move up to a parent or the root). */
 function DropCrumb({ folderId, href, label }: { folderId: string | null; href: string; label: string }) {
   const drop = useDropHighlight(folderId);
   return (
     <Anchor
       ref={drop.setNodeRef}
+      {...drop.fileDropProps}
       component={Link}
       href={href}
       size="lg"
@@ -164,7 +167,8 @@ export type MediaLibraryProps = {
 
 /**
  * Drive-like library: right-click menus, multiple selection (click, Ctrl, Shift,
- * Ctrl+A, rectangle), double-click to open, drag & drop (upload and move),
+ * Ctrl+A, rectangle), double-click to open, drag & drop (move, and upload of
+ * files dropped anywhere on the page or onto a folder),
  * rename, move, delete, preview.
  */
 export function MediaLibrary({ initialContents, initialFolderId = null }: MediaLibraryProps) {
@@ -351,9 +355,24 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     ).catch(() => undefined);
   };
 
-  const startUpload = (picked: File[]) => {
-    if (picked.length > 0) void uploads.upload(picked, folderId);
+  const startUpload = (picked: File[], destination: string | null = folderId) => {
+    if (picked.length > 0) void uploads.upload(picked, destination);
   };
+
+  // Files from the computer: dropped anywhere goes to the current folder, onto a folder goes inside it.
+  const fileDrop = useFileDrop({
+    enabled: limits.storageConfigured,
+    onDrop: (picked, target) => startUpload(picked, target === undefined ? folderId : target),
+  });
+  const fileDropFolderName =
+    fileDrop.hoveredFolder === undefined
+      ? currentFolderName
+      : fileDrop.hoveredFolder === null
+        ? 'Médiathèque'
+        : (folders.find((folder) => folder.id === fileDrop.hoveredFolder)?.name ??
+          breadcrumb.find((crumb) => crumb.id === fileDrop.hoveredFolder)?.name ??
+          currentFolderName);
+  const surfaceDropHighlighted = fileDrop.active && fileDrop.hoveredFolder === undefined;
 
   const backgroundMenu = (
     <BackgroundMenuItems
@@ -444,81 +463,81 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
       onDragCancel={() => setDragged(null)}
     >
       <DraggedItemsContext.Provider value={dragged?.items ?? []}>
-        <Stack gap="md">
-          <Group justify="space-between" wrap="wrap" gap="sm" mih={36}>
-            <Breadcrumbs separatorMargin={2}>
-              {breadcrumb.length > 0 ? <DropCrumb folderId={null} href={folderHref(null)} label="Médiathèque" /> : null}
-              {breadcrumb.slice(0, -1).map((crumb) => (
-                <DropCrumb key={crumb.id} folderId={crumb.id} href={folderHref(crumb.id)} label={crumb.name} />
-              ))}
-              {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
-              <Menu position="bottom-start" width={230} shadow="md" withinPortal>
-                <Menu.Target>
-                  <UnstyledButton px="xs" py={4} style={{ borderRadius: 'var(--mantine-radius-xl)' }}>
-                    <Group gap={4} wrap="nowrap">
-                      <Text size="lg" fw={500}>
-                        {currentFolderName}
-                      </Text>
-                      <IconChevronDown size={18} />
-                    </Group>
-                  </UnstyledButton>
-                </Menu.Target>
-                <Menu.Dropdown>{backgroundMenu}</Menu.Dropdown>
-              </Menu>
-            </Breadcrumbs>
+        <FileDropTargetContext.Provider value={fileDrop.hoveredFolder}>
+          <Stack gap="md">
+            <Group justify="space-between" wrap="wrap" gap="sm" mih={36}>
+              <Breadcrumbs separatorMargin={2}>
+                {breadcrumb.length > 0 ? <DropCrumb folderId={null} href={folderHref(null)} label="Médiathèque" /> : null}
+                {breadcrumb.slice(0, -1).map((crumb) => (
+                  <DropCrumb key={crumb.id} folderId={crumb.id} href={folderHref(crumb.id)} label={crumb.name} />
+                ))}
+                {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
+                <Menu position="bottom-start" width={230} shadow="md" withinPortal>
+                  <Menu.Target>
+                    <UnstyledButton px="xs" py={4} style={{ borderRadius: 'var(--mantine-radius-xl)' }}>
+                      <Group gap={4} wrap="nowrap">
+                        <Text size="lg" fw={500}>
+                          {currentFolderName}
+                        </Text>
+                        <IconChevronDown size={18} />
+                      </Group>
+                    </UnstyledButton>
+                  </Menu.Target>
+                  <Menu.Dropdown>{backgroundMenu}</Menu.Dropdown>
+                </Menu>
+              </Breadcrumbs>
 
-            <Group gap="sm" wrap="nowrap">
-              {selectedKeys.length > 0 ? (
-                <SelectionBar
-                  count={selectedKeys.length}
-                  onClear={clearSelection}
-                  onMove={() => setDialog({ type: 'move', keys: selectedKeys })}
-                  onDelete={() => setDialog({ type: 'delete', keys: selectedKeys })}
-                />
-              ) : null}
-              <ViewToggle value={view} onChange={setView} />
+              <Group gap="sm" wrap="nowrap">
+                {selectedKeys.length > 0 ? (
+                  <SelectionBar
+                    count={selectedKeys.length}
+                    onClear={clearSelection}
+                    onMove={() => setDialog({ type: 'move', keys: selectedKeys })}
+                    onDelete={() => setDialog({ type: 'delete', keys: selectedKeys })}
+                  />
+                ) : null}
+                <ViewToggle value={view} onChange={setView} />
+              </Group>
             </Group>
-          </Group>
 
-          {/* Grid only: the list view sorts from its column headers. */}
-          {view === 'grid' && !isEmpty ? <SortControl sort={sort} onChange={setSort} /> : null}
+            {/* Grid only: the list view sorts from its column headers. */}
+            {view === 'grid' && !isEmpty ? <SortControl sort={sort} onChange={setSort} /> : null}
 
-          {!limits.storageConfigured ? (
-            <Alert color="amber" icon={<IconAlertTriangle size={16} />}>
-              Le stockage n&apos;est pas configuré : l&apos;import et l&apos;aperçu des fichiers sont indisponibles.
-            </Alert>
-          ) : null}
+            {!limits.storageConfigured ? (
+              <Alert color="amber" icon={<IconAlertTriangle size={16} />}>
+                Le stockage n&apos;est pas configuré : l&apos;import et l&apos;aperçu des fichiers sont indisponibles.
+              </Alert>
+            ) : null}
 
-          {contentsQuery.isError && !contents ? (
-            <Alert color="danger" icon={<IconAlertTriangle size={16} />}>
-              {contentsQuery.error instanceof Error ? contentsQuery.error.message : 'Chargement impossible'}
-            </Alert>
-          ) : null}
+            {contentsQuery.isError && !contents ? (
+              <Alert color="danger" icon={<IconAlertTriangle size={16} />}>
+                {contentsQuery.error instanceof Error ? contentsQuery.error.message : 'Chargement impossible'}
+              </Alert>
+            ) : null}
 
-          <Box
-            ref={surfaceRef}
-            onMouseDown={startLasso}
-            onClick={() => {
-              if (suppressClickRef.current) {
-                suppressClickRef.current = false;
-                return;
-              }
-              clearSelection();
-            }}
-            onContextMenu={(event) => {
-              clearSelection();
-              contextMenu.open(event, backgroundMenu);
-            }}
-          >
-            <Dropzone
-              onDrop={startUpload}
-              activateOnClick={false}
-              // Mantine disables pointer events on the content by default: the cards need them (click, drag, menu).
-              enablePointerEvents
-              disabled={!limits.storageConfigured}
-              multiple
-              // Validation (type, size) is done by the upload queue for clear per-file errors.
-              styles={{ root: { border: 0, padding: 0, background: 'transparent', cursor: 'default' } }}
+            <Box
+              ref={surfaceRef}
+              // Inner space for the file-drop frame; the negative margin keeps the content where it was.
+              p="sm"
+              m="calc(var(--mantine-spacing-sm) * -1)"
+              onMouseDown={startLasso}
+              onClick={() => {
+                if (suppressClickRef.current) {
+                  suppressClickRef.current = false;
+                  return;
+                }
+                clearSelection();
+              }}
+              onContextMenu={(event) => {
+                clearSelection();
+                contextMenu.open(event, backgroundMenu);
+              }}
+              style={{
+                borderRadius: 'var(--mantine-radius-lg)',
+                outline: surfaceDropHighlighted ? '2px solid var(--mantine-primary-color-filled)' : '2px solid transparent',
+                backgroundColor: surfaceDropHighlighted ? 'var(--mantine-primary-color-light)' : undefined,
+                transition: 'background-color 120ms ease, outline-color 120ms ease',
+              }}
             >
               <Stack gap="lg" mih="60vh">
                 {!contents ? (
@@ -573,113 +592,139 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                   </Center>
                 ) : null}
               </Stack>
-            </Dropzone>
-          </Box>
+            </Box>
 
-          {lassoRect ? (
-            <Box
-              pos="fixed"
-              left={lassoRect.left}
-              top={lassoRect.top}
-              w={lassoRect.right - lassoRect.left}
-              h={lassoRect.bottom - lassoRect.top}
-              style={{
-                zIndex: 10,
-                pointerEvents: 'none',
-                border: '1px solid var(--mantine-primary-color-filled)',
-                backgroundColor: 'var(--mantine-primary-color-light)',
-                borderRadius: 'var(--mantine-radius-xs)',
+            {lassoRect ? (
+              <Box
+                pos="fixed"
+                left={lassoRect.left}
+                top={lassoRect.top}
+                w={lassoRect.right - lassoRect.left}
+                h={lassoRect.bottom - lassoRect.top}
+                style={{
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                  border: '1px solid var(--mantine-primary-color-filled)',
+                  backgroundColor: 'var(--mantine-primary-color-light)',
+                  borderRadius: 'var(--mantine-radius-xs)',
+                }}
+              />
+            ) : null}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              hidden
+              multiple
+              accept={limits.allowedMimeTypes.join(',')}
+              onChange={(event) => {
+                startUpload(Array.from(event.currentTarget.files ?? []));
+                event.currentTarget.value = '';
               }}
             />
-          ) : null}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            hidden
-            multiple
-            accept={limits.allowedMimeTypes.join(',')}
-            onChange={(event) => {
-              startUpload(Array.from(event.currentTarget.files ?? []));
-              event.currentTarget.value = '';
-            }}
-          />
+            <ContextMenu state={contextMenu.state} onClose={contextMenu.close} />
 
-          <ContextMenu state={contextMenu.state} onClose={contextMenu.close} />
-
-          <NameModal
-            opened={dialog?.type === 'create'}
-            title="Nouveau dossier"
-            label="Nom du dossier"
-            submitLabel="Créer"
-            loading={mutations.createFolder.isPending}
-            onClose={closeDialog}
-            onSubmit={(name) =>
-              void mutations.createFolder.mutateAsync({ parentId: folderId, name }).then(closeDialog, () => undefined)
-            }
-          />
-
-          <NameModal
-            opened={dialog?.type === 'rename'}
-            title="Renommer"
-            label="Nouveau nom"
-            submitLabel="Renommer"
-            initialValue={dialog?.type === 'rename' ? dialog.target.item.name : ''}
-            selectBaseName={dialog?.type === 'rename' && dialog.target.kind === 'file'}
-            loading={mutations.updateFolder.isPending || mutations.updateFile.isPending}
-            onClose={closeDialog}
-            onSubmit={(name) => dialog?.type === 'rename' && handleRename(dialog.target, name)}
-          />
-
-          <MoveModal
-            opened={dialog?.type === 'move' && dialogTargets.length > 0}
-            title={
-              dialogTargets.length > 1
-                ? `Déplacer ${dialogTargets.length} éléments`
-                : `Déplacer « ${dialogTargets[0]?.item.name ?? ''} »`
-            }
-            // Everything shown lives in the current folder.
-            currentParentId={folderId}
-            excludeFolderIds={dialogTargets.filter((target) => target.kind === 'folder').map((target) => target.item.id)}
-            loading={mutations.moveItems.isPending}
-            onClose={closeDialog}
-            onSubmit={(destination) => void moveKeys(dialogKeys, destination).then(closeDialog, () => undefined)}
-          />
-
-          <DeleteModal
-            opened={dialog?.type === 'delete' && dialogTargets.length > 0}
-            items={dialogTargets.map((target) => ({ name: target.item.name, isFolder: target.kind === 'folder' }))}
-            loading={mutations.deleteItems.isPending}
-            onClose={closeDialog}
-            onConfirm={() => void deleteKeys(dialogKeys).then(closeDialog, () => undefined)}
-          />
-
-          <InfoModal
-            target={dialog?.type === 'info' ? dialog.target : null}
-            location={['Médiathèque', ...breadcrumb.map((crumb) => crumb.name)].join(' / ')}
-            onClose={closeDialog}
-          />
-
-          <MediaViewer
-            files={files}
-            index={previewIndex >= 0 ? previewIndex : null}
-            onIndexChange={(index) => {
-              const file = files[index];
-              if (file) {
-                setPreviewId(file.id);
-                setSelection(selectOnly(itemKey('file', file.id)));
+            <NameModal
+              opened={dialog?.type === 'create'}
+              title="Nouveau dossier"
+              label="Nom du dossier"
+              submitLabel="Créer"
+              loading={mutations.createFolder.isPending}
+              onClose={closeDialog}
+              onSubmit={(name) =>
+                void mutations.createFolder.mutateAsync({ parentId: folderId, name }).then(closeDialog, () => undefined)
               }
-            }}
-            onDownload={(id) => void download(id)}
-            onCopyShareLink={share.enabled ? share.copyLink : undefined}
-            onExpired={() => void invalidate()}
-            onClose={() => setPreviewId(null)}
-          />
-          <UploadQueue items={uploads.items} onClear={uploads.clearFinished} />
-        </Stack>
-        <DragOverlay dropAnimation={null}>
-          {dragged ? <DragChip items={dragged.items} name={dragged.name} /> : null}
-        </DragOverlay>
+            />
+
+            <NameModal
+              opened={dialog?.type === 'rename'}
+              title="Renommer"
+              label="Nouveau nom"
+              submitLabel="Renommer"
+              initialValue={dialog?.type === 'rename' ? dialog.target.item.name : ''}
+              selectBaseName={dialog?.type === 'rename' && dialog.target.kind === 'file'}
+              loading={mutations.updateFolder.isPending || mutations.updateFile.isPending}
+              onClose={closeDialog}
+              onSubmit={(name) => dialog?.type === 'rename' && handleRename(dialog.target, name)}
+            />
+
+            <MoveModal
+              opened={dialog?.type === 'move' && dialogTargets.length > 0}
+              title={
+                dialogTargets.length > 1
+                  ? `Déplacer ${dialogTargets.length} éléments`
+                  : `Déplacer « ${dialogTargets[0]?.item.name ?? ''} »`
+              }
+              // Everything shown lives in the current folder.
+              currentParentId={folderId}
+              excludeFolderIds={dialogTargets.filter((target) => target.kind === 'folder').map((target) => target.item.id)}
+              loading={mutations.moveItems.isPending}
+              onClose={closeDialog}
+              onSubmit={(destination) => void moveKeys(dialogKeys, destination).then(closeDialog, () => undefined)}
+            />
+
+            <DeleteModal
+              opened={dialog?.type === 'delete' && dialogTargets.length > 0}
+              items={dialogTargets.map((target) => ({ name: target.item.name, isFolder: target.kind === 'folder' }))}
+              loading={mutations.deleteItems.isPending}
+              onClose={closeDialog}
+              onConfirm={() => void deleteKeys(dialogKeys).then(closeDialog, () => undefined)}
+            />
+
+            <InfoModal
+              target={dialog?.type === 'info' ? dialog.target : null}
+              location={['Médiathèque', ...breadcrumb.map((crumb) => crumb.name)].join(' / ')}
+              onClose={closeDialog}
+            />
+
+            <MediaViewer
+              files={files}
+              index={previewIndex >= 0 ? previewIndex : null}
+              onIndexChange={(index) => {
+                const file = files[index];
+                if (file) {
+                  setPreviewId(file.id);
+                  setSelection(selectOnly(itemKey('file', file.id)));
+                }
+              }}
+              onDownload={(id) => void download(id)}
+              onCopyShareLink={share.enabled ? share.copyLink : undefined}
+              onExpired={() => void invalidate()}
+              onClose={() => setPreviewId(null)}
+            />
+            <UploadQueue items={uploads.items} onClear={uploads.clearFinished} />
+
+            {fileDrop.active ? (
+              <Paper
+                shadow="md"
+                radius="xl"
+                px="lg"
+                py="sm"
+                pos="fixed"
+                bottom={32}
+                left="50%"
+                style={{
+                  zIndex: 300,
+                  transform: 'translateX(-50%)',
+                  pointerEvents: 'none',
+                  backgroundColor: 'var(--mantine-primary-color-filled)',
+                  color: 'var(--mantine-primary-color-contrast)',
+                }}
+              >
+                <Group gap="sm" wrap="nowrap">
+                  <IconUpload size={20} />
+                  <Text size="sm" fw={500}>
+                    Déposez les fichiers pour les importer dans « {fileDropFolderName} »
+                  </Text>
+                </Group>
+              </Paper>
+            ) : null}
+          </Stack>
+          <DragOverlay dropAnimation={null}>
+            {dragged ? <DragChip items={dragged.items} name={dragged.name} /> : null}
+          </DragOverlay>
+        </FileDropTargetContext.Provider>
       </DraggedItemsContext.Provider>
     </DndContext>
   );

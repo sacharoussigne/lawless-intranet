@@ -46,6 +46,7 @@ export function FolderCard({
     <Card
       ref={drag.setNodeRef}
       {...drag.listeners}
+      {...drag.fileDropProps}
       {...{ [SELECTION_KEY_ATTRIBUTE]: itemKey('folder', folder.id) }}
       withBorder
       radius="lg"
