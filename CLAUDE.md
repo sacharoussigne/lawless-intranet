@@ -64,9 +64,14 @@ pnpm --filter <app> test                  # vitest (dispensary, shelter, documen
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate
+pnpm db:migrate:deploy                    # applique les migrations en attente de toutes les apps (après un pull, un merge…)
+pnpm db:migrate:status                    # état des migrations de toutes les apps
+pnpm db:generate                          # régénère les clients Prisma de toutes les apps
 ```
 
-Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage.
+Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage. En local, après un pull ou un merge qui apporte des migrations, lancer `pnpm db:migrate:deploy`.
+
+**Scripts de migration globaux** (`package.json` racine) : ils tournent sur toutes les apps de `apps/**` qui définissent `db:migrate:deploy`, `db:migrate:status` et `db:generate`. **À maintenir dès que nécessaire** : toute nouvelle app avec Prisma doit définir ces trois scripts (sur le modèle des apps existantes) ; si une app Prisma vit hors de `apps/` ou si ces scripts changent de nom, mettre à jour les scripts racine dans le même commit.
 
 ## Façon de développer (apps front : dispensary / shelter)
 
@@ -146,7 +151,8 @@ Les modules historiques (auth, documents, agenda, bank, inventory) ont été ext
 3. un package client `packages/<x>-client`, dont le `config.ts` instancie `createServiceFetch` (`service-client`) ; côté service, `lib/{prisma,cors,auth,internalAuth}.ts` s'appuient sur `service-kit` ;
 4. si besoin, un package UI `packages/<x>-ui` avec des actions injectées. Côté hôte : `lib/<x>/client.ts` (scope et cookie via `serviceHost`), erreurs avec `serviceActionError` ou `withTenantService` (`@/lib/serviceAction`), mapping UI avec `toUiResult` ;
 5. un script de migration de données dans `scripts/` (préserver les IDs), à exposer dans le `package.json` racine ;
-6. un secret interne partagé, plus les variables d'env dans `turbo.json`, `docker-compose.yml` et `docs/SSO-DEV.md`.
+6. les scripts `db:migrate`, `db:migrate:deploy`, `db:migrate:status` et `db:generate` dans le `package.json` de l'app (repris par les scripts globaux, voir « Commandes ») ;
+7. un secret interne partagé, plus les variables d'env dans `turbo.json`, `docker-compose.yml` et `docs/SSO-DEV.md`.
 
 ## Git
 
