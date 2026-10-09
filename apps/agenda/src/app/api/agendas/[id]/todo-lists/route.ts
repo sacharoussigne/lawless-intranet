@@ -18,7 +18,9 @@ import {
   filterTasksForArchives,
   filterTasksForMainView,
   mapTodoList,
+  todoListArchivesInclude,
   todoListInclude,
+  todoListMainViewInclude,
 } from '@/lib/todoLists';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -56,14 +58,14 @@ export async function GET(request: Request, context: RouteContext) {
     return errorResponse(request, guard.error, guard.status);
   }
 
+  const nowMs = Date.now();
   const lists = await prisma.agendaTodoList.findMany({
     where: { agendaId },
-    include: todoListInclude,
+    include: archives ? todoListArchivesInclude : todoListMainViewInclude(nowMs),
     orderBy: { order: 'asc' },
   });
 
   const mapped = lists.map(mapTodoList);
-  const nowMs = Date.now();
 
   if (archives) {
     const archived = mapped
