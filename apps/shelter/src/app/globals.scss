@@ -22,13 +22,6 @@
   --mantine-color-default-hover: var(--shelter-table-header);
 }
 
-/* Theme switch: the new theme is revealed by a growing circle (host-kit/theme), no cross-fade. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
 html {
   background-color: var(--shelter-bg);
 }

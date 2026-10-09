@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { darkSoftColors, lightSoftColors, themesToCss, themeToCss, type ThemeDefinition, type ThemePalette } from './index';
 import { themeInitScript } from './script';
-import { revealOrigin, revealRadius } from './transition';
+import { THEME_TRANSITION_CSS } from './transition';
 
 const palette: ThemePalette = ['#000', '#111', '#222', '#333', '#444', '#555', '#666', '#777', '#888', '#999'];
 
@@ -46,13 +46,11 @@ describe('themeInitScript', () => {
   });
 });
 
-describe('reveal', () => {
-  it('starts from the top right corner', () => {
-    expect(revealOrigin({ width: 300, height: 400 })).toEqual({ x: 300, y: 0 });
-  });
-
-  it('reaches past the farthest corner', () => {
-    expect(revealRadius({ x: 300, y: 0 }, { width: 300, height: 400 })).toBe(502);
-    expect(revealRadius({ x: 150, y: 200 }, { width: 300, height: 400 })).toBe(252);
+describe('theme transition CSS', () => {
+  it('is included with the themes and reveals from the top right corner', () => {
+    const css = themesToCss([light], { prefix: 'disp', defaultThemeId: 'clair' });
+    expect(css).toContain(THEME_TRANSITION_CSS);
+    expect(THEME_TRANSITION_CSS).toContain('circle(0% at 100% 0%)');
+    expect(THEME_TRANSITION_CSS).toContain(':root[data-theme-transition]::view-transition-new(root)');
   });
 });
