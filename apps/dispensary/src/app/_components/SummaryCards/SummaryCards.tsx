@@ -30,7 +30,7 @@ export function SummaryCards({ cards }: SummaryCardsProps) {
             withBorder
             radius="md"
             style={{
-              background: card.backgroundColor || 'var(--mantine-color-sage-0)',
+              background: card.backgroundColor || 'var(--disp-sage-soft)',
               height: '100%',
               display: 'flex',
               flexDirection: 'column',

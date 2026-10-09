@@ -31,6 +31,7 @@ import type { StockUiPreferences } from '@/types/stockUiPreferences';
 import { STOCK_UI_DEFAULTS } from '@/types/stockUiPreferences';
 import type { UserGender } from '@lawless-intranet/types';
 import { IconX } from '@tabler/icons-react';
+import { AppearanceCard } from './AppearanceCard';
 
 type SettingsImageMode = 'url' | 'upload';
 
@@ -320,7 +321,7 @@ export default function SettingsPageClient(props: {
         <div>
           <Title order={1}>Paramètres du compte</Title>
           <Text c="dimmed" mt="xs">
-            Modifiez votre profil et votre mot de passe.
+            Modifiez votre profil, votre mot de passe et l’apparence de l’intranet.
           </Text>
         </div>
       </Group>
@@ -472,6 +473,8 @@ export default function SettingsPageClient(props: {
             </Stack>
           </Card>
         )}
+
+        <AppearanceCard />
 
         <Card withBorder shadow="sm" radius="md" padding="lg">
           <Title order={3} mb="md">

@@ -1,20 +1,22 @@
 /**
  * Apothecary / western RP design tokens (Saint-Denis dispensary).
- * Consumed by theme.ts and global SCSS via CSS variables.
+ * Colors and shadows are CSS variables whose values come from the active theme
+ * (`lib/themes`); palettes are the Mantine color scales.
  */
 export const dispTokens = {
+  /** Theme-dependent: CSS variables generated from `lib/themes` (never raw hex in components). */
   colors: {
-    background: '#F7F3EB',
-    surface: '#FFFCF6',
-    surfaceBorder: '#E8DFD0',
-    ink: '#3D3429',
-    inkMuted: '#6B5F52',
-    sage: '#4A6B5A',
-    leather: '#8B5E3C',
-    gold: '#B8860B',
-    danger: '#9B4D4D',
-    tableHeader: '#F0EBE3',
-    tableZebra: '#FAF6EF',
+    background: 'var(--disp-bg)',
+    surface: 'var(--disp-surface)',
+    surfaceBorder: 'var(--disp-surface-border)',
+    ink: 'var(--disp-ink)',
+    inkMuted: 'var(--disp-ink-muted)',
+    sage: 'var(--disp-sage)',
+    leather: 'var(--disp-leather)',
+    gold: 'var(--disp-gold)',
+    danger: 'var(--disp-danger)',
+    tableHeader: 'var(--disp-table-header)',
+    tableZebra: 'var(--disp-table-zebra)',
   },
   radius: {
     sm: '8px',
@@ -23,9 +25,9 @@ export const dispTokens = {
     modal: '14px',
   },
   shadows: {
-    card: '0 1px 3px rgba(61, 52, 41, 0.06), 0 2px 8px rgba(61, 52, 41, 0.04)',
-    header: '0 1px 0 rgba(232, 223, 208, 0.8), 0 2px 8px rgba(61, 52, 41, 0.04)',
-    elevated: '0 4px 16px rgba(61, 52, 41, 0.08)',
+    card: 'var(--disp-shadow-card)',
+    header: 'var(--disp-shadow-header)',
+    elevated: 'var(--disp-shadow-elevated)',
   },
   fonts: {
     display: 'var(--font-display), var(--font-ui), "Courier New", Courier, monospace',
@@ -156,25 +158,3 @@ export const denimPalette = [
   '#3a4d5b',
   '#2f404c',
 ] as const;
-
-/** CSS custom properties injected on :root via globals.scss */
-export function dispCssVariables(): Record<string, string> {
-  const t = dispTokens;
-  return {
-    '--disp-bg': t.colors.background,
-    '--disp-surface': t.colors.surface,
-    '--disp-surface-border': t.colors.surfaceBorder,
-    '--disp-ink': t.colors.ink,
-    '--disp-ink-muted': t.colors.inkMuted,
-    '--disp-sage': t.colors.sage,
-    '--disp-leather': t.colors.leather,
-    '--disp-gold': t.colors.gold,
-    '--disp-danger': t.colors.danger,
-    '--disp-table-header': t.colors.tableHeader,
-    '--disp-table-zebra': t.colors.tableZebra,
-    '--disp-shadow-card': t.shadows.card,
-    '--disp-shadow-header': t.shadows.header,
-    '--disp-font-display': t.fonts.display,
-    '--disp-font-ui': t.fonts.ui,
-  };
-}

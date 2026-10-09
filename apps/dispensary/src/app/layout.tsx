@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Courier_Prime, Special_Elite } from 'next/font/google';
-import { ColorSchemeScript, mantineHtmlProps } from '@mantine/core';
+import { mantineHtmlProps } from '@mantine/core';
+import { themeInitScript } from '@lawless-intranet/host-kit/theme';
 
 import './globals.scss';
 import '@mantine/core/styles.css';
@@ -9,6 +10,7 @@ import 'mantine-datatable/styles.css';
 import './mantine-overrides.scss';
 
 import '@/lib/dayjs';
+import { DISP_THEME_CONFIG, DISP_THEMES_CSS } from '@/lib/themes';
 import { MantineAppProvider } from './MantineAppProvider';
 
 const fontUi = Courier_Prime({
@@ -43,7 +45,9 @@ export default function RootLayout({
     >
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
-        <ColorSchemeScript />
+        {/* Theme variables, then the saved theme applied before the first paint (replaces ColorSchemeScript). */}
+        <style dangerouslySetInnerHTML={{ __html: DISP_THEMES_CSS }} />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript(DISP_THEME_CONFIG) }} />
       </head>
       <body className="min-h-dvh flex flex-col">
         <MantineAppProvider>

@@ -203,9 +203,9 @@ function FormFieldSchemaRowInner({
       p="sm"
       style={{
         marginLeft: depth > 0 ? depth * 12 : 0,
-        border: '1px solid var(--mantine-color-slate-2)',
+        border: '1px solid var(--disp-surface-border)',
         borderRadius: 'var(--mantine-radius-sm)',
-        background: depth > 0 ? 'var(--mantine-color-slate-0)' : 'var(--mantine-color-sage-0)',
+        background: depth > 0 ? 'var(--disp-slate-soft)' : 'var(--disp-sage-soft)',
       }}
     >
       <Group justify="space-between" wrap="nowrap" align="center">
@@ -535,7 +535,7 @@ function ConditionalBranchEditor({
       p="sm"
       style={{
         borderLeft: '3px solid var(--mantine-color-leather-4)',
-        background: 'var(--mantine-color-sage-0)',
+        background: 'var(--disp-sage-soft)',
         borderRadius: 'var(--mantine-radius-sm)',
       }}
     >

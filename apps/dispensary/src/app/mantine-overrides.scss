@@ -28,7 +28,7 @@ html[data-mantine-color-scheme] body {
   &[data-hovered],
   &:hover:not([data-disabled]),
   &:focus:not([data-disabled]) {
-    background-color: var(--mantine-color-sage-0);
+    background-color: var(--disp-sage-soft);
     color: var(--disp-sage);
   }
 }
@@ -64,24 +64,24 @@ html[data-mantine-color-scheme] body {
 
   &[data-combobox-selected],
   &[data-selected] {
-    background-color: var(--mantine-color-sage-0) !important;
+    background-color: var(--disp-sage-soft) !important;
     color: var(--disp-sage);
   }
 
   &[data-combobox-active]:not([data-combobox-selected]):not([data-selected]) {
-    background-color: var(--mantine-color-sage-0) !important;
+    background-color: var(--disp-sage-soft) !important;
   }
 
   @media (hover: hover) {
     &:hover:where(:not([data-combobox-selected], [data-combobox-disabled], [data-selected])) {
-      background-color: var(--mantine-color-sage-0) !important;
+      background-color: var(--disp-sage-soft) !important;
       color: var(--disp-ink);
     }
   }
 
   @media (hover: none) {
     &:active:where(:not([data-combobox-selected], [data-combobox-disabled], [data-selected])) {
-      background-color: var(--mantine-color-sage-0) !important;
+      background-color: var(--disp-sage-soft) !important;
     }
   }
 }
@@ -159,7 +159,7 @@ html[data-mantine-color-scheme] body {
   .mantine-datatable-header-cell-filter-action-icon,
   .mantine-ActionIcon-root {
     --ai-bg: var(--disp-table-header);
-    --ai-hover: var(--mantine-color-sage-0);
+    --ai-hover: var(--disp-sage-soft);
     --ai-color: var(--disp-ink-muted);
     --ai-hover-color: var(--disp-sage);
     background-color: var(--disp-table-header) !important;
@@ -167,15 +167,15 @@ html[data-mantine-color-scheme] body {
     border: none;
 
     &:hover {
-      background-color: var(--mantine-color-sage-0) !important;
+      background-color: var(--disp-sage-soft) !important;
       color: var(--disp-sage) !important;
     }
   }
 
   .mantine-datatable-header-cell-filter-action-icon[data-active] {
-    --ai-bg: var(--mantine-color-sage-0);
+    --ai-bg: var(--disp-sage-soft);
     --ai-color: var(--disp-sage);
-    background-color: var(--mantine-color-sage-0) !important;
+    background-color: var(--disp-sage-soft) !important;
     color: var(--disp-sage) !important;
   }
 
@@ -186,7 +186,7 @@ html[data-mantine-color-scheme] body {
 }
 
 .mantine-datatable-header-cell-sortable:hover:not(:has(button:hover)) {
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
 }
 
 .mantine-datatable-empty-state {
@@ -194,7 +194,7 @@ html[data-mantine-color-scheme] body {
 }
 
 .mantine-datatable-empty-state-icon {
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   color: var(--disp-sage);
 
   svg {
@@ -205,7 +205,7 @@ html[data-mantine-color-scheme] body {
 
 .mantine-Tabs-root[data-variant='default'],
 .mantine-Tabs-root[data-variant='pills'] {
-  --tab-hover-color: var(--mantine-color-sage-0);
+  --tab-hover-color: var(--disp-sage-soft);
   --tab-border-color: var(--disp-surface-border);
 }
 
@@ -262,7 +262,7 @@ html[data-mantine-color-scheme] body {
 /* Accordion (payroll employee cards, etc.) */
 .mantine-Accordion-control {
   &:hover {
-    background-color: var(--mantine-color-sage-0);
+    background-color: var(--disp-sage-soft);
   }
 }
 
@@ -277,7 +277,7 @@ html[data-mantine-color-scheme] body {
     color: var(--disp-ink);
 
     &:hover {
-      background-color: var(--mantine-color-sage-0);
+      background-color: var(--disp-sage-soft);
     }
 
     &[data-active] {
@@ -297,8 +297,8 @@ html[data-mantine-color-scheme] body {
 /* Mantine Table: replace cool gray-0 stripes / gray-1 hover with apothecary tokens */
 [data-mantine-color-scheme='light'] .mantine-Table-table {
   --table-striped-color: var(--disp-table-zebra);
-  --table-highlight-on-hover-color: var(--mantine-color-sage-0);
-  --table-hover-color: var(--mantine-color-sage-0);
+  --table-highlight-on-hover-color: var(--disp-sage-soft);
+  --table-hover-color: var(--disp-sage-soft);
   --table-border-color: var(--disp-surface-border);
 }
 
@@ -315,7 +315,7 @@ html[data-mantine-color-scheme] body {
   }
 
   tbody .mantine-Table-tr:hover:where([data-hover]) {
-    background-color: var(--mantine-color-sage-0);
+    background-color: var(--disp-sage-soft);
   }
 }
 
@@ -329,7 +329,7 @@ html[data-mantine-color-scheme] body {
   color: var(--disp-ink) !important;
 
   &:hover:not([data-active]):not(:disabled) {
-    background-color: var(--mantine-color-sage-0) !important;
+    background-color: var(--disp-sage-soft) !important;
   }
 
   &[data-active] {
@@ -337,4 +337,12 @@ html[data-mantine-color-scheme] body {
     color: #fff !important;
     border-color: transparent !important;
   }
+}
+
+/* Tooltips in dark themes: Mantine inverts them (light gray), which glares on warm dark surfaces. */
+:root[data-mantine-color-scheme='dark'] .mantine-Tooltip-tooltip {
+  --tooltip-bg: var(--mantine-color-dark-5);
+  --tooltip-color: var(--disp-ink);
+  border: 1px solid var(--mantine-color-dark-4);
+  box-shadow: var(--disp-shadow-elevated);
 }
