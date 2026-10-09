@@ -94,7 +94,7 @@ Un bucket par environnement, par exemple `lawless-media-dev` et `lawless-media-p
    - le bucket de dev (`S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).
 3. Appliquer les migrations : `pnpm db:migrate:deploy` (base media, plus l'option `featureMediaEnabled` du refuge et du dispensaire, et la permission du dispensaire).
 4. Dans `apps/shelter/.env` **et** `apps/dispensary/.env` : `MEDIA_URL=http://localhost:3009` et le **même** `MEDIA_INTERNAL_SECRET`.
-5. `pnpm dev`, puis ouvrir *Médiathèque* : lien du header dans le refuge, bouton à côté de l'agenda dans le dispensaire. Le module est réservé aux rôles `admin` et `direction` par défaut ; on peut accorder `media:access` à d'autres via l'écran des permissions. Il se désactive par tenant dans les paramètres (feature `media`).
+5. `pnpm dev`, puis ouvrir *Médiathèque* avec le bouton icône du header (à côté de la file d'attente dans le refuge, de l'agenda dans le dispensaire). Le module est réservé aux rôles `admin` et `direction` par défaut ; on peut accorder `media:access` à d'autres via l'écran des permissions. Il se désactive par tenant dans les paramètres (feature `media`).
 
 Vérification rapide : http://localhost:3009/api/health doit afficher `"storageConfigured": true`.
 

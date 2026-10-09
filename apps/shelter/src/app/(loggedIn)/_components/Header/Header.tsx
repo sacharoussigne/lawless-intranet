@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  ActionIcon,
   Avatar,
   Button,
   Container,
@@ -9,6 +10,7 @@ import {
   Menu,
   SegmentedControl,
   Select,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -237,6 +239,20 @@ export default function Header({
           ]}
         />
       )}
+      {permissions?.media.access && appSettings.featureMediaEnabled && t && (
+        <Tooltip label="Médiathèque" position="bottom">
+          <ActionIcon
+            component={Link}
+            href={t.employee.media}
+            variant="light"
+            color="terracotta"
+            size="lg"
+            aria-label="Médiathèque"
+          >
+            <IconPhoto size={20} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+      )}
       {permissions?.waitlist.manage && t && shelterSlug && (
         <HeaderWaitlistIndicator
           shelterSlug={shelterSlug}
@@ -332,17 +348,6 @@ export default function Header({
                             <Group gap={6} wrap="nowrap" className={classes.linkInner}>
                               <IconCashRegister size={18} stroke={1.6} />
                               <span>Banque</span>
-                            </Group>
-                          </Link>
-                        )}
-                        {permissions?.media.access && appSettings.featureMediaEnabled && (
-                          <Link
-                            href={t.employee.media}
-                            className={`${classes.navLink} ${isActive(t.employee.media) ? classes.navLinkActive : ''}`}
-                          >
-                            <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-                              <IconPhoto size={18} stroke={1.6} />
-                              <span>Médiathèque</span>
                             </Group>
                           </Link>
                         )}
