@@ -60,12 +60,15 @@ export const StockRow = memo(function StockRow({
     }
   }
 
-  // User-chosen row colors are light pastels by default: keep the text readable whatever
-  // the theme (cells use --disp-ink). Dark text = the light theme's ink, so it looks unchanged there.
-  const rowTextColor = backgroundColor
-    ? getTextColor(backgroundColor) === '#ffffff'
-      ? '#ffffff'
-      : '#3D3429'
+  // User-chosen row colors are light pastels. Light scheme: the color as is. Dark scheme
+  // (light-dark() follows the theme's color-scheme): the same hue, saturated (pastels lose
+  // their hue once dimmed), as a translucent veil plus an accent stripe on the first cell,
+  // so the row keeps the theme's text and surfaces.
+  const rowBackground = backgroundColor
+    ? `light-dark(${backgroundColor}, oklch(from ${backgroundColor} 0.7 calc(c * 4) h / 0.2))`
+    : undefined;
+  const rowAccent = backgroundColor
+    ? `inset 3px 0 0 light-dark(transparent, oklch(from ${backgroundColor} 0.8 calc(c * 4) h))`
     : undefined;
 
   const doneTodayBadgeBg = stockUiPreferences.doneTodayBadgeBg;
@@ -76,12 +79,11 @@ export const StockRow = memo(function StockRow({
     <Table.Tr
       key={item.id}
       style={{
-        backgroundColor,
-        ...(rowTextColor ? { color: rowTextColor, '--disp-ink': rowTextColor } : null),
+        backgroundColor: rowBackground,
         opacity: isHidden ? 0.45 : undefined,
       }}
     >
-      <Table.Td>
+      <Table.Td style={rowAccent ? { boxShadow: rowAccent } : undefined}>
         <Group gap="xs" wrap="nowrap">
           {canHide && onHideItem && (
             <Tooltip label="Masquer cet objet sur ce coffre">
