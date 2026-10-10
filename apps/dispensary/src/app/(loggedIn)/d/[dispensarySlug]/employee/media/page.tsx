@@ -43,8 +43,12 @@ export default async function MediaPage({
   const folderId = typeof folder === 'string' && folder ? folder : null;
 
   return (
-    <Container size="xl" py="xl">
-      <PageHeader title="Médiathèque" description="Images et documents du dispensaire, rangés par dossiers." />
+    <Container size="xl" py={{ base: "xs", sm: "xl" }}>
+      <PageHeader
+        title="Médiathèque"
+        description="Images et documents du dispensaire, rangés par dossiers."
+        hideOnMobile
+      />
       <SuspenseLoader>
         <MediaContent dispensarySlug={dispensarySlug} folderId={folderId} />
       </SuspenseLoader>

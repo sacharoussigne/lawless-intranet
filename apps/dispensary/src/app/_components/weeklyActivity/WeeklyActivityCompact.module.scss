@@ -24,7 +24,7 @@
   font-weight: 600;
   color: var(--mantine-color-sage-2);
   text-align: center;
-  min-width: 2.75rem;
+  min-width: 0;
 }
 
 .dayCell {
@@ -33,7 +33,7 @@
   font-weight: 600;
   color: var(--mantine-color-sage-0);
   text-align: center;
-  min-width: 2.75rem;
+  min-width: 0;
   letter-spacing: 0.08em;
 }
 
@@ -70,4 +70,57 @@
   font-family: var(--disp-font-display);
   font-weight: 400;
   color: var(--mantine-color-sage-1);
+}
+
+$phone: 47.99em;
+
+/* Seven day columns: fixed width on desktop, shared width on phones (no horizontal scroll). */
+.dayGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 2.75rem);
+  column-gap: var(--mantine-spacing-md);
+
+  @media (max-width: $phone) {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    column-gap: 2px;
+  }
+}
+
+.mobileOnly {
+  @media (min-width: 48em) {
+    display: none;
+  }
+}
+
+.rowMain {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-lg);
+  flex: 1;
+  min-width: 0;
+
+  // Phones: the name above its week, both full width.
+  @media (max-width: $phone) {
+    flex-direction: column;
+    gap: var(--mantine-spacing-xs);
+  }
+}
+
+.nameCol {
+  min-width: 8rem;
+  flex-shrink: 0;
+
+  @media (max-width: $phone) {
+    min-width: 0;
+  }
+}
+
+/* Shared day header of the team list, aligned on the rows' grid (after the 8rem name column). */
+.teamHeader {
+  margin-bottom: var(--mantine-spacing-sm);
+  padding-left: calc(8rem + var(--mantine-spacing-lg));
+
+  @media (max-width: $phone) {
+    display: none;
+  }
 }

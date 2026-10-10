@@ -496,9 +496,11 @@
 
 .todoTaskRowDraggable {
   cursor: grab;
-  touch-action: none;
+  // The page still scrolls under a finger: touch drags start after a press-and-hold (agendaDnd).
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
 
   &[data-dragging] {
     cursor: grabbing;
@@ -516,9 +518,10 @@
 
 .todoCategoryHeaderDraggable {
   cursor: grab;
-  touch-action: none;
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
   margin: -0.15rem 0 0.2rem;
   padding: 0.15rem 0;
   border-radius: var(--mantine-radius-xs);
@@ -694,5 +697,31 @@
 
   @media (hover: none) {
     opacity: 1;
+  }
+}
+
+/* Phones (AgendaWorkspace mobileView): one panel at a time, natural heights, thumb-sized targets. */
+.agendaSelectorSlot {
+  @media (max-width: 47.99em) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 47.99em) {
+  .calendarPanel {
+    height: auto;
+  }
+
+  .todoPanel {
+    padding: var(--mantine-spacing-sm);
+  }
+}
+
+@media (hover: none) {
+  .todoTaskRow :global(.mantine-ActionIcon-root),
+  .todoCategoryHeader :global(.mantine-ActionIcon-root) {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
   }
 }

@@ -24,6 +24,7 @@ import Image from 'next/image';
 import { IconArrowBackUp, IconLogout, IconPhoto, IconSearch, IconSettings } from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
+import { MobileHeader } from './MobileHeader';
 import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { dispensarySiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
@@ -156,10 +157,20 @@ export default function Header({
       : routes.platform.dispensaries;
 
   return (
-    <header className={`${classes.header} mb-10`}>
+    <header className={classes.header}>
       {session && <AccountThemeSync />}
       <Container size={'xl'}>
-        <div className={classes.headerInner}>
+        {session && (
+          <MobileHeader
+            dispensarySlug={t ? (dispensarySlug ?? null) : null}
+            backHref={defaultTenantSlug ? tenantRoutes(defaultTenantSlug).employee.account : null}
+            isImpersonating={isImpersonating}
+            stoppingImpersonation={stoppingImpersonation}
+            onStopImpersonating={handleStopImpersonating}
+          />
+        )}
+        {/* Desktop and tablet header; phones get MobileHeader and the bottom tab bar. */}
+        <div className={`${classes.headerInner} ${session ? classes.desktopOnly : ''}`}>
           <Group gap="md" wrap="nowrap" className={classes.headerSide}>
             <Link href={logoHref} className={classes.logoLink}>
               <Image

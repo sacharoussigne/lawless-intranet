@@ -1,11 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Badge,
+  Box,
   Button,
+  Center,
+  Drawer,
   Group,
+  Indicator,
+  Pagination,
   Paper,
   Select,
   SimpleGrid,
@@ -18,7 +23,7 @@ import {
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { DataTable, type DataTableColumn } from 'mantine-datatable';
-import { IconCashRegister, IconSearch } from '@tabler/icons-react';
+import { IconCashRegister, IconFilter, IconSearch } from '@tabler/icons-react';
 import {
   cancelSale,
   deleteSale,
@@ -274,261 +279,231 @@ export function EmployeeWeeklySalesDashboard({
   const showSalesDetail = detailVisible;
   const showDetailToggle = typeof onDetailVisibleChange === 'function';
 
-  const columns = useMemo((): DataTableColumn<SaleListItem>[] => {
-    const cols: DataTableColumn<SaleListItem>[] = [
-      {
-        accessor: 'createdAt',
-        title: 'Date',
-        width: 130,
-        render: (sale) => (
-          <Stack gap={2}>
-            <Text size="sm">
-              {dayjs(sale.createdAt).tz('Europe/Paris').format('DD/MM HH:mm')}
-            </Text>
-            {sale.customerName && (
-              <Text size="xs" c="dimmed">
-                {sale.customerName}
-              </Text>
-            )}
-          </Stack>
-        ),
-        filter: (
-          <DatesProvider settings={{ locale: 'fr' }}>
-            <DatePickerInput
-              placeholder="Jour"
-              value={dayFilter ? formatDate(dayFilter) : null}
-              onChange={(value) => {
-                setDayFilter(parsePickerDate(value as Date | string | null));
-                setPage(1);
-              }}
-              clearable
-              minDate={formatDate(currentWeekBounds.start)}
-              maxDate={formatDate(currentWeekBounds.end)}
-              style={{ minWidth: 160 }}
-            />
-          </DatesProvider>
-        ),
-      },
-    ];
+  const hasActiveFilters = Boolean(employeeFilter || dayFilter || itemFilter.trim() || statusFilter);
 
-    if (canViewAll) {
-      cols.push({
-        accessor: 'userName',
-        title: 'Employé',
-        width: 160,
-        filter: (
-          <Select
-            placeholder="Tous"
-            data={employeeOptions}
-            value={employeeFilter}
-            onChange={(value) => {
-              setEmployeeFilter(value);
-              setPage(1);
-            }}
-            clearable
-            searchable
-            style={{ minWidth: 160 }}
-          />
-        ),
-      });
+  // Filters, shared by the table column headers (desktop) and the filters drawer (phones).
+  const dayFilterInput = (
+    <DatesProvider settings={{ locale: 'fr' }}>
+      <DatePickerInput
+        placeholder="Jour"
+        value={dayFilter ? formatDate(dayFilter) : null}
+        onChange={(value) => {
+          setDayFilter(parsePickerDate(value as Date | string | null));
+          setPage(1);
+        }}
+        clearable
+        minDate={formatDate(currentWeekBounds.start)}
+        maxDate={formatDate(currentWeekBounds.end)}
+        style={{ minWidth: 160 }}
+      />
+    </DatesProvider>
+  );
+  const employeeFilterInput = (
+    <Select
+      placeholder="Tous"
+      data={employeeOptions}
+      value={employeeFilter}
+      onChange={(value) => {
+        setEmployeeFilter(value);
+        setPage(1);
+      }}
+      clearable
+      searchable
+      style={{ minWidth: 160 }}
+    />
+  );
+  const itemFilterInput = (
+    <TextInput
+      placeholder="Rechercher un objet…"
+      leftSection={<IconSearch size={14} />}
+      value={itemFilter}
+      onChange={(event) => {
+        setItemFilter(event.currentTarget.value);
+        setPage(1);
+      }}
+      style={{ minWidth: 180 }}
+    />
+  );
+  const statusFilterInput = (
+    <Select
+      placeholder="Tous"
+      data={[
+        { value: 'completed', label: 'Validée' },
+        { value: 'cancelled', label: 'Annulée' },
+        { value: 'deposited', label: 'Déposé en caisse' },
+        { value: 'not_deposited', label: 'Non déposé' },
+      ]}
+      value={statusFilter}
+      onChange={(value) => {
+        setStatusFilter(value);
+        setPage(1);
+      }}
+      clearable
+      style={{ minWidth: 160 }}
+    />
+  );
+
+  const renderStatus = (sale: SaleListItem) => (
+    <Badge
+      variant="outline"
+      style={
+        sale.status === SaleStatus.COMPLETED
+          ? apothecaryBooleanPills.yes
+          : apothecaryPillStyle(amberPalette)
+      }
+    >
+      {sale.status === SaleStatus.COMPLETED ? 'Validée' : 'Annulée'}
+    </Badge>
+  );
+
+  const renderItems = (sale: SaleListItem) => (
+    <Stack gap={2}>
+      {sale.items.map((item) => (
+        <Text key={item.id} size="sm">
+          {item.quantity}× {item.itemName}{' '}
+          <Text span size="xs" c="dimmed">
+            ({item.source === 'POCKET' ? 'poche' : item.chestName ?? 'coffre'})
+          </Text>
+        </Text>
+      ))}
+    </Stack>
+  );
+
+  const renderTotal = (sale: SaleListItem) => (
+    <Stack gap={2}>
+      <Text size="sm">{sale.totalAmount.toFixed(2)} $</Text>
+      {sale.priceAdjustment !== 0 && (
+        <Text size="xs" c="dimmed">
+          dont {sale.priceAdjustment > 0 ? '+' : ''}
+          {sale.priceAdjustment.toFixed(2)} $
+        </Text>
+      )}
+    </Stack>
+  );
+
+  const renderSaleActions = (sale: SaleListItem, wrap = false) => {
+    const isCompleted = sale.status === SaleStatus.COMPLETED;
+    const canDepositSale =
+      isCompleted &&
+      !sale.depositedInCashRegister &&
+      (sale.userId === sessionUserId || canDepositOthers);
+    const canCancelSale =
+      canCancel &&
+      isCompleted &&
+      !sale.depositedInCashRegister &&
+      (sale.userId === sessionUserId || canViewAll);
+
+    if (
+      !canDepositSale &&
+      !canCancelSale &&
+      !canDelete &&
+      !(sale.depositedInCashRegister && isCompleted)
+    ) {
+      return null;
     }
 
-    cols.push(
-      {
-        accessor: 'items',
-        title: 'Objets',
-        render: (sale) => (
-          <Stack gap={2}>
-            {sale.items.map((item) => (
-              <Text key={item.id} size="sm">
-                {item.quantity}× {item.itemName}{' '}
-                <Text span size="xs" c="dimmed">
-                  ({item.source === 'POCKET' ? 'poche' : item.chestName ?? 'coffre'})
-                </Text>
-              </Text>
-            ))}
-          </Stack>
-        ),
-        filter: (
-          <TextInput
-            placeholder="Rechercher un objet…"
-            leftSection={<IconSearch size={14} />}
-            value={itemFilter}
-            onChange={(event) => {
-              setItemFilter(event.currentTarget.value);
-              setPage(1);
-            }}
-            style={{ minWidth: 180 }}
-          />
-        ),
-      },
-      {
-        accessor: 'totalAmount',
-        title: 'Total',
-        width: 110,
-        render: (sale) => (
-          <Stack gap={2}>
-            <Text size="sm">{sale.totalAmount.toFixed(2)} $</Text>
-            {sale.priceAdjustment !== 0 && (
-              <Text size="xs" c="dimmed">
-                dont {sale.priceAdjustment > 0 ? '+' : ''}
-                {sale.priceAdjustment.toFixed(2)} $
-              </Text>
-            )}
-          </Stack>
-        ),
-      },
-      {
-        accessor: 'status',
-        title: 'Statut',
-        width: 140,
-        render: (sale) => (
-          <Badge
-            variant="outline"
-            style={
-              sale.status === SaleStatus.COMPLETED
-                ? apothecaryBooleanPills.yes
-                : apothecaryPillStyle(amberPalette)
-            }
-          >
-            {sale.status === SaleStatus.COMPLETED ? 'Validée' : 'Annulée'}
+    return (
+      <Group gap="xs" wrap={wrap ? 'wrap' : 'nowrap'}>
+        {sale.depositedInCashRegister && isCompleted && (
+          <Badge variant="outline" style={apothecaryBooleanPills.yes}>
+            Déposé en caisse
           </Badge>
-        ),
-        filter: (
-          <Select
-            placeholder="Tous"
-            data={[
-              { value: 'completed', label: 'Validée' },
-              { value: 'cancelled', label: 'Annulée' },
-              { value: 'deposited', label: 'Déposé en caisse' },
-              { value: 'not_deposited', label: 'Non déposé' },
-            ]}
-            value={statusFilter}
-            onChange={(value) => {
-              setStatusFilter(value);
-              setPage(1);
+        )}
+        {canDepositSale && (
+          <DeleteConfirmPopover
+            title="Déposer en caisse ?"
+            message="Action irréversible : la vente ne pourra plus être annulée."
+            confirmLabel="Confirmer"
+            confirmColor="sage"
+            onConfirm={async () => {
+              await depositMutation.mutateAsync(sale.id);
             }}
-            clearable
-            style={{ minWidth: 160 }}
-          />
-        ),
-      },
-      {
-        accessor: 'actions',
-        title: '',
-        width: 220,
-        render: (sale) => {
-          const isCompleted = sale.status === SaleStatus.COMPLETED;
-          const canDepositSale =
-            isCompleted &&
-            !sale.depositedInCashRegister &&
-            (sale.userId === sessionUserId || canDepositOthers);
-          const canCancelSale =
-            canCancel &&
-            isCompleted &&
-            !sale.depositedInCashRegister &&
-            (sale.userId === sessionUserId || canViewAll);
-
-          if (
-            !canDepositSale &&
-            !canCancelSale &&
-            !canDelete &&
-            !(sale.depositedInCashRegister && isCompleted)
-          ) {
-            return null;
-          }
-
-          return (
-            <Group gap="xs" wrap="nowrap">
-              {sale.depositedInCashRegister && isCompleted && (
-                <Badge variant="outline" style={apothecaryBooleanPills.yes}>
-                  Déposé en caisse
-                </Badge>
-              )}
-              {canDepositSale && (
-                <DeleteConfirmPopover
-                  title="Déposer en caisse ?"
-                  message="Action irréversible : la vente ne pourra plus être annulée."
-                  confirmLabel="Confirmer"
-                  confirmColor="sage"
-                  onConfirm={async () => {
-                    await depositMutation.mutateAsync(sale.id);
-                  }}
-                >
-                  <Button
-                    size="xs"
-                    variant="light"
-                    color="sage"
-                    loading={depositMutation.isPending && depositMutation.variables === sale.id}
-                  >
-                    Caisse
-                  </Button>
-                </DeleteConfirmPopover>
-              )}
-              {canCancelSale && (
-                <DeleteConfirmPopover
-                  title="Confirmer l'annulation ?"
-                  message="Le stock coffre sera restauré. Cette action est irréversible."
-                  confirmLabel="Confirmer"
-                  onConfirm={async () => {
-                    await cancelMutation.mutateAsync(sale.id);
-                  }}
-                >
-                  <Button
-                    size="xs"
-                    variant="light"
-                    color="danger"
-                    loading={cancelMutation.isPending && cancelMutation.variables === sale.id}
-                  >
-                    Annuler
-                  </Button>
-                </DeleteConfirmPopover>
-              )}
-              {canDelete && (
-                <DeleteConfirmPopover
-                  title="Supprimer la vente ?"
-                  message="La vente sera définitivement supprimée. Le stock coffre sera restauré si elle était encore validée."
-                  onConfirm={async () => {
-                    await deleteMutation.mutateAsync(sale.id);
-                  }}
-                >
-                  <Button
-                    size="xs"
-                    variant="light"
-                    color="danger"
-                    loading={deleteMutation.isPending && deleteMutation.variables === sale.id}
-                  >
-                    Supprimer
-                  </Button>
-                </DeleteConfirmPopover>
-              )}
-            </Group>
-          );
-        },
-      },
+          >
+            <Button
+              size="xs"
+              variant="light"
+              color="sage"
+              loading={depositMutation.isPending && depositMutation.variables === sale.id}
+            >
+              Caisse
+            </Button>
+          </DeleteConfirmPopover>
+        )}
+        {canCancelSale && (
+          <DeleteConfirmPopover
+            title="Confirmer l'annulation ?"
+            message="Le stock coffre sera restauré. Cette action est irréversible."
+            confirmLabel="Confirmer"
+            onConfirm={async () => {
+              await cancelMutation.mutateAsync(sale.id);
+            }}
+          >
+            <Button
+              size="xs"
+              variant="light"
+              color="danger"
+              loading={cancelMutation.isPending && cancelMutation.variables === sale.id}
+            >
+              Annuler
+            </Button>
+          </DeleteConfirmPopover>
+        )}
+        {canDelete && (
+          <DeleteConfirmPopover
+            title="Supprimer la vente ?"
+            message="La vente sera définitivement supprimée. Le stock coffre sera restauré si elle était encore validée."
+            onConfirm={async () => {
+              await deleteMutation.mutateAsync(sale.id);
+            }}
+          >
+            <Button
+              size="xs"
+              variant="light"
+              color="danger"
+              loading={deleteMutation.isPending && deleteMutation.variables === sale.id}
+            >
+              Supprimer
+            </Button>
+          </DeleteConfirmPopover>
+        )}
+      </Group>
     );
+  };
 
-    return cols;
-  }, [
-    canCancel,
-    canDelete,
-    canDepositOthers,
-    canViewAll,
-    cancelMutation.isPending,
-    cancelMutation.variables,
-    currentWeekBounds.end,
-    currentWeekBounds.start,
-    dayFilter,
-    deleteMutation.isPending,
-    deleteMutation.variables,
-    depositMutation.isPending,
-    depositMutation.variables,
-    employeeFilter,
-    employeeOptions,
-    itemFilter,
-    sessionUserId,
-    statusFilter,
-  ]);
+  const columns: DataTableColumn<SaleListItem>[] = [
+    {
+      accessor: 'createdAt',
+      title: 'Date',
+      width: 130,
+      render: (sale) => (
+        <Stack gap={2}>
+          <Text size="sm">
+            {dayjs(sale.createdAt).tz('Europe/Paris').format('DD/MM HH:mm')}
+          </Text>
+          {sale.customerName && (
+            <Text size="xs" c="dimmed">
+              {sale.customerName}
+            </Text>
+          )}
+        </Stack>
+      ),
+      filter: dayFilterInput,
+    },
+    ...(canViewAll
+      ? [
+          {
+            accessor: 'userName',
+            title: 'Employé',
+            width: 160,
+            filter: employeeFilterInput,
+          } satisfies DataTableColumn<SaleListItem>,
+        ]
+      : []),
+    { accessor: 'items', title: 'Objets', render: renderItems, filter: itemFilterInput },
+    { accessor: 'totalAmount', title: 'Total', width: 110, render: renderTotal },
+    { accessor: 'status', title: 'Statut', width: 140, render: renderStatus, filter: statusFilterInput },
+    { accessor: 'actions', title: '', width: 220, render: (sale) => renderSaleActions(sale) },
+  ];
 
   return (
     <Stack gap="md">
@@ -554,28 +529,28 @@ export function EmployeeWeeklySalesDashboard({
       </Group>
 
       {showSalesDetail && (
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-          <Paper withBorder p="md">
+        <SimpleGrid cols={3} spacing={{ base: "xs", sm: "md" }}>
+          <Paper withBorder p={{ base: "xs", sm: "md" }}>
             <Text size="xs" c="dimmed" tt="uppercase">
               CA (ventes validées)
             </Text>
-            <Text fw={700} size="xl">
+            <Text fw={700} fz={{ base: "md", sm: "xl" }}>
               {summary.totalAmount.toFixed(2)} $
             </Text>
           </Paper>
-          <Paper withBorder p="md">
+          <Paper withBorder p={{ base: "xs", sm: "md" }}>
             <Text size="xs" c="dimmed" tt="uppercase">
               Quantité vendue
             </Text>
-            <Text fw={700} size="xl">
+            <Text fw={700} fz={{ base: "md", sm: "xl" }}>
               {summary.totalQuantity}
             </Text>
           </Paper>
-          <Paper withBorder p="md">
+          <Paper withBorder p={{ base: "xs", sm: "md" }}>
             <Text size="xs" c="dimmed" tt="uppercase">
               Ventes / annulées
             </Text>
-            <Text fw={700} size="xl">
+            <Text fw={700} fz={{ base: "md", sm: "xl" }}>
               {summary.completedCount} / {summary.cancelledCount}
             </Text>
           </Paper>
@@ -615,7 +590,7 @@ export function EmployeeWeeklySalesDashboard({
           <Text size="sm" fw={600}>
             Ventes
           </Text>
-          {(employeeFilter || dayFilter || itemFilter.trim() || statusFilter) && (
+          {hasActiveFilters && (
             <Button
               variant="subtle"
               color="slate"
@@ -633,6 +608,7 @@ export function EmployeeWeeklySalesDashboard({
           )}
         </Group>
 
+        <Box visibleFrom="sm">
         <DataTable
           idAccessor="id"
           records={paginatedSales}
@@ -660,7 +636,120 @@ export function EmployeeWeeklySalesDashboard({
             />
           }
         />
+        </Box>
+
+        <Box hiddenFrom="sm">
+          <SalesMobileList
+            sales={paginatedSales}
+            emptyMessage={
+              summary.sales.length === 0
+                ? 'Aucune vente sur cette semaine.'
+                : 'Aucune vente ne correspond aux filtres.'
+            }
+            page={safePage}
+            pageCount={maxPage}
+            onPageChange={setPage}
+            hasActiveFilters={hasActiveFilters}
+            filters={
+              <>
+                {dayFilterInput}
+                {canViewAll && employeeFilterInput}
+                {itemFilterInput}
+                {statusFilterInput}
+              </>
+            }
+            renderSale={(sale) => (
+              <Stack gap={6}>
+                <Group justify="space-between" wrap="nowrap" align="flex-start">
+                  <Stack gap={0} style={{ minWidth: 0 }}>
+                    <Text size="sm" fw={600}>
+                      {dayjs(sale.createdAt).tz('Europe/Paris').format('DD/MM HH:mm')}
+                      {canViewAll ? ` · ${sale.userName}` : ''}
+                    </Text>
+                    {sale.customerName && (
+                      <Text size="xs" c="dimmed">
+                        {sale.customerName}
+                      </Text>
+                    )}
+                  </Stack>
+                  {renderStatus(sale)}
+                </Group>
+                {renderItems(sale)}
+                <Group justify="space-between" align="flex-end" wrap="nowrap">
+                  {renderTotal(sale)}
+                </Group>
+                {renderSaleActions(sale, true)}
+              </Stack>
+            )}
+          />
+        </Box>
       </Paper>
+    </Stack>
+  );
+}
+
+/** Phones: sales as cards, filters in a bottom drawer. */
+function SalesMobileList({
+  sales,
+  emptyMessage,
+  page,
+  pageCount,
+  onPageChange,
+  hasActiveFilters,
+  filters,
+  renderSale,
+}: {
+  sales: SaleListItem[];
+  emptyMessage: string;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
+  hasActiveFilters: boolean;
+  filters: ReactNode;
+  renderSale: (sale: SaleListItem) => ReactNode;
+}) {
+  const [filtersOpened, setFiltersOpened] = useState(false);
+  return (
+    <Stack gap="sm">
+      <Indicator disabled={!hasActiveFilters} size={10} offset={4}>
+        <Button
+          variant="light"
+          fullWidth
+          leftSection={<IconFilter size={16} />}
+          onClick={() => setFiltersOpened(true)}
+        >
+          Filtres
+        </Button>
+      </Indicator>
+      {sales.length === 0 ? (
+        <Text c="dimmed" ta="center" py="md" size="sm">
+          {emptyMessage}
+        </Text>
+      ) : (
+        sales.map((sale) => (
+          <Paper key={sale.id} withBorder radius="md" p="sm">
+            {renderSale(sale)}
+          </Paper>
+        ))
+      )}
+      {pageCount > 1 && (
+        <Center>
+          <Pagination total={pageCount} value={page} onChange={onPageChange} size="sm" />
+        </Center>
+      )}
+      <Drawer
+        opened={filtersOpened}
+        onClose={() => setFiltersOpened(false)}
+        position="bottom"
+        size="auto"
+        title="Filtres"
+        radius="md"
+      >
+        <Stack gap="md" pb="md">
+          {filters}
+          <Button onClick={() => setFiltersOpened(false)}>Voir les ventes</Button>
+        </Stack>
+      </Drawer>
     </Stack>
   );
 }

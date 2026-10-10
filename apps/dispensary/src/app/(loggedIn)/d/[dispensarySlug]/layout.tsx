@@ -1,4 +1,5 @@
 import Header from '@/app/(loggedIn)/_components/Header/Header';
+import { MobileTabBar } from '@/app/(loggedIn)/_components/MobileTabBar/MobileTabBar';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
@@ -132,9 +133,10 @@ export default async function DispensaryLayout({
             dispensarySlug={dispensarySlug}
           />
 
-          <div className="flex-1 w-full min-w-0 pb-[72px] sm:pb-0 min-h-0">
+          <div className="flex-1 w-full min-w-0 disp-mobile-tab-space min-h-0">
             {children}
           </div>
+          <MobileTabBar />
         </LoggedInShell>
           </MailTemplateProvider>
         </QueryProvider>

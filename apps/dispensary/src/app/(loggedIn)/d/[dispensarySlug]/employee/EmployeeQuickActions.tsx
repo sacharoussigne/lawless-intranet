@@ -77,7 +77,9 @@ function ActiveOrdersChrome({
   return (
     <Stack gap="md" mb="lg">
       <Group justify="space-between" align="center" wrap="wrap">
-        <Group gap="sm">{leadingActions}</Group>
+        <Group gap="sm" wrap="nowrap" w={{ base: "100%", sm: "auto" }}>
+          {leadingActions}
+        </Group>
 
         {preferenceReady && (
           <UnstyledButton
@@ -105,7 +107,7 @@ function ActiveOrdersChrome({
 
       {ordersExpanded && (
         <Stack gap="sm">
-          <Group justify="flex-end">
+          <Group justify="flex-end" visibleFrom="sm">
             <Anchor component={Link} href={ordersHref} size="sm" c="dimmed">
               Voir toutes
             </Anchor>
@@ -119,6 +121,9 @@ function ActiveOrdersChrome({
     </Stack>
   );
 }
+
+/** Phones: the two actions share the width as large thumb-friendly buttons. */
+const MOBILE_ACTION_BUTTON = { flex: { base: 1, sm: "none" }, h: { base: 48, sm: 36 } } as const;
 
 type EmployeeQuickActionsProps = {
   canCreateSale: boolean;
@@ -168,7 +173,11 @@ export function EmployeeQuickActions({
   const leadingActions = (
     <>
       {canCreateSale && (
-        <Button leftSection={<IconCash size={16} />} onClick={() => setSaleOpened(true)}>
+        <Button
+          leftSection={<IconCash size={16} />}
+          onClick={() => setSaleOpened(true)}
+          {...MOBILE_ACTION_BUTTON}
+        >
           Vente
         </Button>
       )}
@@ -178,6 +187,7 @@ export function EmployeeQuickActions({
           variant="light"
           color="clay"
           onClick={() => setTakeOpened(true)}
+          {...MOBILE_ACTION_BUTTON}
         >
           Déposer / Prendre
         </Button>
@@ -199,7 +209,7 @@ export function EmployeeQuickActions({
           leadingActions={leadingActions}
         />
       ) : (
-        <Group mb="lg" gap="sm">
+        <Group mb="lg" gap="sm" wrap="nowrap" w={{ base: "100%", sm: "auto" }}>
           {leadingActions}
         </Group>
       )}

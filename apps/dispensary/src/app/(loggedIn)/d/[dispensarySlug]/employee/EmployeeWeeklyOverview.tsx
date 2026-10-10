@@ -113,7 +113,7 @@ export function EmployeeWeeklyOverview({
         <Stack gap="md">
           <Group justify="space-between" align="center" wrap="wrap">
             <Text className="disp-display-title">Activité hebdo</Text>
-            <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed">
+            <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed" visibleFrom="sm">
               Détail complet
             </Anchor>
           </Group>

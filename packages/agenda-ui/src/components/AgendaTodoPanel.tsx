@@ -47,7 +47,7 @@ import { AgendaTodoArchivesDrawer } from './AgendaTodoArchivesDrawer';
 import { InlineNoteInput } from './InlineNoteInput';
 import { EditableTodoListTab } from './EditableTodoListTab';
 import { DeleteTodoListButton } from './DeleteTodoListButton';
-import { usePressHoldPointerSensor } from './agendaDnd';
+import { usePressHoldSensors } from './agendaDnd';
 
 type TodoCategories = AgendaTodoListDTO['categories'];
 
@@ -340,7 +340,7 @@ export function AgendaTodoPanel({
   });
 
   const sensors = useSensors(
-    usePressHoldPointerSensor(),
+    ...usePressHoldSensors(),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

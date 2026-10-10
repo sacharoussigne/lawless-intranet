@@ -28,7 +28,7 @@ export function WeeklyActivityCompactPanel({
       withBorder
       shadow="sm"
       radius="md"
-      p="lg"
+      p={{ base: 'md', sm: 'lg' }}
       bg="sage.9"
       className={classes.panel}
     >

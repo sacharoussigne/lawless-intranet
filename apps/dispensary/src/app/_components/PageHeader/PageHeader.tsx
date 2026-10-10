@@ -10,6 +10,8 @@ export type PageHeaderProps = {
   backHref?: string;
   backLabel?: string;
   actions?: ReactNode;
+  /** Tab pages of the phone app: the mobile app bar already shows the title. */
+  hideOnMobile?: boolean;
 };
 
 export function PageHeader({
@@ -18,9 +20,10 @@ export function PageHeader({
   backHref,
   backLabel = 'Retour',
   actions,
+  hideOnMobile = false,
 }: PageHeaderProps) {
   return (
-    <header className={classes.root}>
+    <header className={hideOnMobile ? `${classes.root} ${classes.hideOnMobile}` : classes.root}>
       {backHref && (
         <Link href={backHref} className={classes.backLink}>
           <IconArrowLeft size={16} stroke={1.6} />

@@ -128,10 +128,8 @@ export default async function EmployeePage({
   }
 
   return (
-    <Container size="xl" py="xl">
-      <PageHeader
-        title="Espace employé"
-      />
+    <Container size="xl" py={{ base: "xs", sm: "xl" }}>
+      <PageHeader title="Espace employé" hideOnMobile />
 
       <EmployeeQuickActions
         canCreateSale={canCreateSale}

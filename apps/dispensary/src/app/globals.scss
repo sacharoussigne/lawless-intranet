@@ -22,6 +22,49 @@
   /* Fallback before MantineProvider injects scheme variables */
   --mantine-color-dimmed: var(--disp-ink-muted);
   --mantine-color-default-hover: var(--disp-table-header);
+
+  /* iPhone notch / home indicator (viewport-fit=cover in the root layout); 0 elsewhere. */
+  --disp-safe-top: env(safe-area-inset-top, 0px);
+  --disp-safe-right: env(safe-area-inset-right, 0px);
+  --disp-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --disp-safe-left: env(safe-area-inset-left, 0px);
+  /* Bottom tab bar of the phone layout (MobileTabBar), safe area excluded. */
+  --disp-tabbar-height: 60px;
+}
+
+/* Page content: room for the bottom tab bar (tenant pages) or the home indicator (other pages) on phones. */
+@media (max-width: 47.99em) {
+  /* Read by shared UI packages (media-ui floating « + » and bars) to stay above the tab bar. */
+  :root {
+    --app-bottom-bar-height: var(--disp-tabbar-height);
+  }
+
+  .disp-mobile-tab-space {
+    padding-bottom: calc(var(--disp-tabbar-height) + var(--disp-safe-bottom) + var(--mantine-spacing-md));
+  }
+
+  .disp-mobile-safe-space {
+    padding-bottom: calc(var(--disp-safe-bottom) + var(--mantine-spacing-md));
+  }
+}
+
+/* Installed app (home screen): no rubber-band bounce of the whole page. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+/* Phones: iOS Safari zooms into any field under 16px when it gets the focus. */
+@media (max-width: 47.99em) {
+  .mantine-Input-input,
+  .mantine-PillsInput-input,
+  input,
+  select,
+  textarea {
+    font-size: max(16px, var(--input-fz, 16px)) !important;
+  }
 }
 
 html {

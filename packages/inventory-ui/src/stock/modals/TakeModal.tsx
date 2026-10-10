@@ -9,6 +9,7 @@ import {
   Group,
   Modal,
   NumberInput,
+  Paper,
   SegmentedControl,
   Select,
   Stack,
@@ -17,6 +18,7 @@ import {
   ScrollArea,
 } from '@mantine/core';
 import { IconArrowBarToDown, IconArrowBarToUp, IconTrash } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useInventoryUi } from '../../InventoryUiProvider';
 import { unwrapActionResult } from '../../lib/actionResult';
@@ -47,6 +49,7 @@ export default function TakeDepositModal({
   initialChestId = null,
 }: TakeDepositModalProps) {
   const { scopeKey, actions } = useInventoryUi();
+  const isMobile = useMediaQuery('(max-width: 47.99em)') ?? false;
   const [mode, setMode] = useState<ChestStockMoveMode>('deposit');
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
   const [lines, setLines] = useState<MoveLine[]>([]);
@@ -222,6 +225,62 @@ export default function TakeDepositModal({
     }
   };
 
+  /** Controls of one line, laid out as a table row (desktop) or a card (phones). */
+  const lineControls = (line: MoveLine, size: 'xs' | 'sm') => {
+    const chestId = line.chestId || defaultChestId;
+    const available = getAvailableInChest(line.itemId, chestId);
+    const quantity = line.quantity;
+    const invalid =
+      quantity !== '' &&
+      (typeof quantity !== 'number' || quantity <= 0 || (isTake && quantity > available));
+    const updateLine = (patch: (entry: MoveLine) => MoveLine) =>
+      setLines((prev) => prev.map((entry) => (entry.key === line.key ? patch(entry) : entry)));
+
+    return {
+      name: (
+        <Text fw={500} style={{ minWidth: 0 }}>
+          {itemNameById.get(line.itemId) ?? line.itemId}
+        </Text>
+      ),
+      chest: (
+        <Select
+          data={chestOptions}
+          value={chestId}
+          onChange={(value) => updateLine((entry) => ({ ...entry, chestId: value }))}
+          size={size}
+        />
+      ),
+      stock: (
+        <Badge variant="outline" color="denim">
+          {available}
+        </Badge>
+      ),
+      quantity: (
+        <NumberInput
+          value={quantity}
+          min={1}
+          max={isTake ? Math.max(available, 1) : undefined}
+          error={invalid}
+          onChange={(value) =>
+            updateLine((entry) => ({ ...entry, quantity: typeof value === 'number' ? value : '' }))
+          }
+          size={size}
+        />
+      ),
+      remove: (
+        <ActionIcon
+          variant="light"
+          color="danger"
+          size={size === 'sm' ? 'lg' : 'md'}
+          onClick={() => setLines((prev) => prev.filter((entry) => entry.key !== line.key))}
+          aria-label="Retirer"
+        >
+          <IconTrash size={16} />
+        </ActionIcon>
+      ),
+    };
+  };
+
   return (
     <Modal
       opened={opened}
@@ -230,6 +289,9 @@ export default function TakeDepositModal({
       size="xl"
       yOffset={60}
       scrollAreaComponent={ScrollArea.Autosize}
+      // Phones: full screen sheet sliding up.
+      fullScreen={isMobile}
+      transitionProps={isMobile ? { transition: 'slide-up', duration: 200 } : undefined}
     >
       <Stack gap="md">
         <SegmentedControl
@@ -291,87 +353,63 @@ export default function TakeDepositModal({
             Aucun objet sélectionné.
           </Text>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Objet</Table.Th>
-                <Table.Th style={{ width: 200 }}>Coffre</Table.Th>
-                <Table.Th style={{ width: 120 }}>Stock</Table.Th>
-                <Table.Th style={{ width: 140 }}>Quantité</Table.Th>
-                <Table.Th style={{ width: 48 }} />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {lines.map((line) => {
-                const chestId = line.chestId || defaultChestId;
-                const available = getAvailableInChest(line.itemId, chestId);
-                const quantity = line.quantity;
-                const invalid =
-                  quantity !== '' &&
-                  (typeof quantity !== 'number' ||
-                    quantity <= 0 ||
-                    (isTake && quantity > available));
+          <>
+            <Table striped highlightOnHover visibleFrom="sm">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Objet</Table.Th>
+                  <Table.Th style={{ width: 200 }}>Coffre</Table.Th>
+                  <Table.Th style={{ width: 120 }}>Stock</Table.Th>
+                  <Table.Th style={{ width: 140 }}>Quantité</Table.Th>
+                  <Table.Th style={{ width: 48 }} />
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {lines.map((line) => {
+                  const view = lineControls(line, 'xs');
+                  return (
+                    <Table.Tr key={line.key}>
+                      <Table.Td>{view.name}</Table.Td>
+                      <Table.Td>{view.chest}</Table.Td>
+                      <Table.Td>{view.stock}</Table.Td>
+                      <Table.Td>{view.quantity}</Table.Td>
+                      <Table.Td>{view.remove}</Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
 
+            {/* Phones: one card per line instead of the table. */}
+            <Stack gap="sm" hiddenFrom="sm">
+              {lines.map((line) => {
+                const view = lineControls(line, 'sm');
                 return (
-                  <Table.Tr key={line.key}>
-                    <Table.Td>
-                      <Text fw={500}>{itemNameById.get(line.itemId) ?? line.itemId}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Select
-                        data={chestOptions}
-                        value={chestId}
-                        onChange={(value) =>
-                          setLines((prev) =>
-                            prev.map((entry) =>
-                              entry.key === line.key ? { ...entry, chestId: value } : entry,
-                            ),
-                          )
-                        }
-                        size="xs"
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="outline" color="denim">
-                        {available}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <NumberInput
-                        value={quantity}
-                        min={1}
-                        max={isTake ? Math.max(available, 1) : undefined}
-                        error={invalid}
-                        onChange={(value) =>
-                          setLines((prev) =>
-                            prev.map((entry) =>
-                              entry.key === line.key
-                                ? { ...entry, quantity: typeof value === 'number' ? value : '' }
-                                : entry,
-                            ),
-                          )
-                        }
-                        size="xs"
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      <ActionIcon
-                        variant="light"
-                        color="danger"
-                        onClick={() => setLines((prev) => prev.filter((entry) => entry.key !== line.key))}
-                        aria-label="Retirer"
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Table.Td>
-                  </Table.Tr>
+                  <Paper key={line.key} withBorder radius="md" p="sm">
+                    <Stack gap="xs">
+                      <Group justify="space-between" wrap="nowrap">
+                        {view.name}
+                        {view.remove}
+                      </Group>
+                      <Group gap="xs" wrap="nowrap" align="center">
+                        <div style={{ flex: 1, minWidth: 0 }}>{view.chest}</div>
+                        {view.stock}
+                      </Group>
+                      <Group gap="xs" wrap="nowrap" align="center">
+                        <Text size="sm" c="dimmed">
+                          Quantité
+                        </Text>
+                        <div style={{ flex: 1 }}>{view.quantity}</div>
+                      </Group>
+                    </Stack>
+                  </Paper>
                 );
               })}
-            </Table.Tbody>
-          </Table>
+            </Stack>
+          </>
         )}
 
-        <Group justify="flex-end" mt="md">
+        <Group justify="flex-end" mt="md" grow={isMobile}>
           <Button variant="subtle" color="slate" onClick={onClose}>
             Annuler
           </Button>

@@ -3,7 +3,7 @@
 import type { MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader } from '@mantine/core';
-import { stopDragPointer } from './agendaDnd';
+import { stopDragProps } from './agendaDnd';
 import classes from '../agenda.module.scss';
 
 interface InlineEditableTextProps {
@@ -15,6 +15,8 @@ interface InlineEditableTextProps {
   onEditingChange?: (editing: boolean) => void;
   /** Shows a spinner next to the text while the server confirms a change. */
   pending?: boolean;
+  /** Touch screens (no double-click): a single tap edits. False to keep the tap for the parent (e.g. selecting a tab). */
+  editOnTap?: boolean;
 }
 
 export function InlineEditableText({
@@ -25,6 +27,7 @@ export function InlineEditableText({
   inputClassName,
   onEditingChange,
   pending = false,
+  editOnTap = true,
 }: InlineEditableTextProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -77,7 +80,7 @@ export function InlineEditableText({
         className={inputClassName ?? classes.inlineEditableInput}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onPointerDown={stopDragPointer}
+        {...stopDragProps}
         onClick={(e) => e.stopPropagation()}
         onBlur={() => {
           if (skipBlurCommit.current) {
@@ -104,7 +107,13 @@ export function InlineEditableText({
 
   return (
     <>
-      <span className={textClassName} onDoubleClick={startEditing}>
+      <span
+        className={textClassName}
+        onDoubleClick={startEditing}
+        onClick={(event) => {
+          if (editOnTap && canEdit && window.matchMedia('(hover: none)').matches) startEditing(event);
+        }}
+      >
         {value}
       </span>
       {pending && <Loader size={12} aria-label="Enregistrement en cours" />}

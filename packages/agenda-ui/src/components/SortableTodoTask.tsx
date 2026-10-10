@@ -6,7 +6,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconTrash } from '@tabler/icons-react';
 import type { AgendaTodoTaskDTO } from '../types';
-import { stopDragPointer } from './agendaDnd';
+import { stopDragProps } from './agendaDnd';
 import { InlineEditableText } from './InlineEditableText';
 import classes from '../agenda.module.scss';
 
@@ -62,7 +62,7 @@ export function SortableTodoTask({
         checked={task.completed}
         onChange={(e) => onToggle(task.id, e.currentTarget.checked)}
         disabled={!canWrite || pending}
-        onPointerDown={stopDragPointer}
+        {...stopDragProps}
       />
       <InlineEditableText
         value={task.title}
@@ -81,7 +81,7 @@ export function SortableTodoTask({
           color="danger"
           size="sm"
           onClick={() => onDelete(task.id)}
-          onPointerDown={stopDragPointer}
+          {...stopDragProps}
           loading={pending}
         >
           <IconTrash size={14} />
