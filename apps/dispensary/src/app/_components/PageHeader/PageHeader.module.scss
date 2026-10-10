@@ -34,3 +34,9 @@
     text-decoration: underline;
   }
 }
+
+.hideOnMobile {
+  @media (max-width: 47.99em) {
+    display: none;
+  }
+}

@@ -9,13 +9,22 @@ import {
   Group,
   ActionIcon,
   Tooltip,
+  Box,
+  Button,
+  Center,
+  Drawer,
+  Indicator,
+  Loader,
+  Pagination,
+  Stack,
+  Text,
 } from '@mantine/core';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import type { CSSProperties, ReactNode } from 'react';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconTrash, IconEye, IconMail } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconEye, IconFilter, IconMail, IconSearch } from '@tabler/icons-react';
 import {
   orderStatusSelectOptions,
   orderTypeFilterOptions,
@@ -159,7 +168,181 @@ function CreatedAtRangeFilter({
   );
 }
 
-export function OrdersTable({
+/** Phones: one card per order, labelled action buttons, filters in a bottom drawer. */
+function OrdersMobileList({
+  orders,
+  loading,
+  statusFilter,
+  typeFilter,
+  nameFilter,
+  createdAtFrom,
+  createdAtTo,
+  page,
+  pageSize,
+  totalRecords,
+  permissions,
+  hideStatusFilter = false,
+  onStatusFilterChange,
+  onTypeFilterChange,
+  onNameFilterChange,
+  onCreatedAtRangeChange,
+  onPageChange,
+  onView,
+  onEdit,
+  onDelete,
+  onPreviewLetter,
+  hasLetterTemplateForOrder,
+}: OrdersTableProps) {
+  const [filtersOpened, setFiltersOpened] = useState(false);
+  const activeFilters =
+    (typeFilter ? 1 : 0) +
+    (createdAtFrom || createdAtTo ? 1 : 0) +
+    (!hideStatusFilter && statusFilter.length > 0 ? 1 : 0);
+  const pageCount = Math.max(1, Math.ceil(totalRecords / pageSize));
+
+  return (
+    <Stack gap="sm">
+      <Group gap="xs" wrap="nowrap">
+        <TextInput
+          placeholder="Rechercher un nom..."
+          value={nameFilter}
+          onChange={(e) => onNameFilterChange(e.currentTarget.value)}
+          leftSection={<IconSearch size={16} />}
+          style={{ flex: 1 }}
+        />
+        <Indicator label={activeFilters} size={16} disabled={activeFilters === 0}>
+          <Button variant="light" leftSection={<IconFilter size={16} />} onClick={() => setFiltersOpened(true)}>
+            Filtres
+          </Button>
+        </Indicator>
+      </Group>
+
+      {loading && orders.length === 0 ? (
+        <Center py="lg">
+          <Loader size="sm" />
+        </Center>
+      ) : orders.length === 0 ? (
+        <Text c="dimmed" ta="center" py="lg">
+          Aucune commande trouvée
+        </Text>
+      ) : (
+        orders.map((order) => {
+          const isCompleted = order.status === OrderStatusEnum.COMPLETED;
+          return (
+            <Paper key={order.id} withBorder radius="md" p="sm" style={{ opacity: loading ? 0.6 : 1 }}>
+              <Stack gap="xs">
+                <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+                  <Text fw={700} style={{ minWidth: 0 }} lineClamp={2}>
+                    {order.name}
+                  </Text>
+                  <OrderStatusBadge status={order.status} />
+                </Group>
+                <Group gap="xs" wrap="wrap">
+                  <OrderTypeBadge type={order.type || 'INCOMING'} />
+                  <Text size="sm" c="dimmed">
+                    {getOrderClientDisplayName(order)}
+                  </Text>
+                </Group>
+                <Group justify="space-between" wrap="nowrap">
+                  <Text size="sm" c="dimmed">
+                    {new Date(order.createdAt).toLocaleDateString('fr-FR', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                  <Text fw={600}>{order.price != null ? `${order.price.toFixed(2)} $` : '-'}</Text>
+                </Group>
+                <Group gap="xs" grow>
+                  <Button size="xs" variant="light" color="slate" leftSection={<IconEye size={14} />} onClick={() => onView(order)}>
+                    Détails
+                  </Button>
+                  {hasLetterTemplateForOrder?.(order) && onPreviewLetter && (
+                    <Button size="xs" variant="light" color="denim" leftSection={<IconMail size={14} />} onClick={() => onPreviewLetter(order)}>
+                      Courrier
+                    </Button>
+                  )}
+                  {permissions?.orders.update && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="slate"
+                      leftSection={<IconEdit size={14} />}
+                      disabled={isCompleted}
+                      onClick={() => onEdit(order)}
+                    >
+                      Modifier
+                    </Button>
+                  )}
+                  {permissions?.orders.delete && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="danger"
+                      leftSection={<IconTrash size={14} />}
+                      disabled={isCompleted}
+                      onClick={() => onDelete(order)}
+                    >
+                      Supprimer
+                    </Button>
+                  )}
+                </Group>
+              </Stack>
+            </Paper>
+          );
+        })
+      )}
+
+      {pageCount > 1 && (
+        <Center>
+          <Pagination total={pageCount} value={page} onChange={onPageChange} size="sm" />
+        </Center>
+      )}
+
+      <Drawer
+        opened={filtersOpened}
+        onClose={() => setFiltersOpened(false)}
+        position="bottom"
+        size="auto"
+        title="Filtres"
+        radius="md"
+      >
+        <Stack gap="md" pb="md">
+          {!hideStatusFilter && <StatusMultiSelectFilter value={statusFilter} onChange={onStatusFilterChange} />}
+          <Select
+            label="Type"
+            placeholder="Tous les types"
+            data={orderTypeFilterOptions}
+            value={typeFilter || ''}
+            onChange={(value) => onTypeFilterChange(value || null)}
+            clearable
+            comboboxProps={{ withinPortal: false }}
+          />
+          <CreatedAtRangeFilter
+            value={[createdAtFrom ? new Date(createdAtFrom) : null, createdAtTo ? new Date(createdAtTo) : null]}
+            onChange={onCreatedAtRangeChange}
+          />
+          <Button onClick={() => setFiltersOpened(false)}>Voir les commandes</Button>
+        </Stack>
+      </Drawer>
+    </Stack>
+  );
+}
+
+export function OrdersTable(props: OrdersTableProps) {
+  return (
+    <>
+      <Box visibleFrom="sm">
+        <OrdersDataTable {...props} />
+      </Box>
+      <Box hiddenFrom="sm">
+        <OrdersMobileList {...props} />
+      </Box>
+    </>
+  );
+}
+
+function OrdersDataTable({
   orders,
   loading,
   statusFilter,
