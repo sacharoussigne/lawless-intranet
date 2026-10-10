@@ -12,7 +12,7 @@ import {
 } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import { tenantRoutes } from '@/types/routes';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import { EmployeeWeeklyDashboard } from './EmployeeWeeklyDashboard';
@@ -113,7 +113,7 @@ export function EmployeeWeeklyOverview({
         <Stack gap="md">
           <Group justify="space-between" align="center" wrap="wrap">
             <Text className="disp-display-title">Activité hebdo</Text>
-            <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed">
+            <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed" visibleFrom="sm">
               Détail complet
             </Anchor>
           </Group>

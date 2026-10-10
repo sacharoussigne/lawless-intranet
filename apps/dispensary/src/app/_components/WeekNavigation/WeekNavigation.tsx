@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionIcon, Button, Group, Text } from '@mantine/core';
+import { ActionIcon, Button, Group, Stack, Text } from '@mantine/core';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { formatDate, parsePickerDate } from '@/lib/date';
@@ -57,62 +57,70 @@ export function WeekNavigation({
     getBankWeekBounds(weekStart).start.getTime() ===
     getBankWeekBounds(currentWeekStart).start.getTime();
 
+  const picker = (width: number | string) => (
+    <DatePickerInput
+      value={pickerValue}
+      onChange={(date) => {
+        const parsed = parsePickerDate(date as Date | string | null);
+        if (!parsed) {
+          onWeekChange(null);
+          return;
+        }
+        const realDate = useRpCalendar ? fromRpDisplayDate(parsed) : parsed;
+        if (maxWeekStart && isParisWeekAfter(realDate, maxWeekStart)) {
+          return;
+        }
+        onWeekChange(realDate);
+      }}
+      placeholder="Sélectionner le lundi"
+      valueFormat="D MMMM YYYY"
+      style={{ width }}
+      clearable={false}
+      radius="md"
+      size="sm"
+      maxDate={pickerMaxDate}
+    />
+  );
+  const previousButton = (size: 'md' | 'lg') => (
+    <ActionIcon variant="light" onClick={onPreviousWeek} disabled={loading} size={size} radius="md" aria-label="Semaine précédente">
+      <IconChevronLeft size={18} />
+    </ActionIcon>
+  );
+  const nextButton = (size: 'md' | 'lg') => (
+    <ActionIcon
+      variant="light"
+      onClick={onNextWeek}
+      disabled={loading || isAtMaxWeek}
+      size={size}
+      radius="md"
+      aria-label="Semaine suivante"
+    >
+      <IconChevronRight size={18} />
+    </ActionIcon>
+  );
+  const todayButton = (
+    <Button
+      size="compact-sm"
+      variant="light"
+      disabled={loading || isCurrentWeek}
+      onClick={() => onWeekChange(currentWeekStart)}
+    >
+      Aujourd&apos;hui
+    </Button>
+  );
+
   return (
     <DatesProvider settings={{ locale: 'fr' }}>
-      <Group align="center" wrap="nowrap" gap="md">
-        <ActionIcon
-          variant="light"
-          onClick={onPreviousWeek}
-          disabled={loading}
-          size="md"
-          radius="md"
-        >
-          <IconChevronLeft size={18} />
-        </ActionIcon>
+      <Group align="center" wrap="nowrap" gap="md" visibleFrom="sm">
+        {previousButton('md')}
         <Group gap="xs" align="center">
           <Text size="sm" fw={500} c="dimmed" style={{ whiteSpace: 'nowrap' }}>
             Semaine du
           </Text>
-          <DatePickerInput
-            value={pickerValue}
-            onChange={(date) => {
-              const parsed = parsePickerDate(date as Date | string | null);
-              if (!parsed) {
-                onWeekChange(null);
-                return;
-              }
-              const realDate = useRpCalendar ? fromRpDisplayDate(parsed) : parsed;
-              if (maxWeekStart && isParisWeekAfter(realDate, maxWeekStart)) {
-                return;
-              }
-              onWeekChange(realDate);
-            }}
-            placeholder="Sélectionner le lundi"
-            valueFormat="D MMMM YYYY"
-            style={{ width: 180 }}
-            clearable={false}
-            radius="md"
-            size="sm"
-            maxDate={pickerMaxDate}
-          />
+          {picker(180)}
         </Group>
-        <ActionIcon
-          variant="light"
-          onClick={onNextWeek}
-          disabled={loading || isAtMaxWeek}
-          size="md"
-          radius="md"
-        >
-          <IconChevronRight size={18} />
-        </ActionIcon>
-        <Button
-          size="compact-sm"
-          variant="light"
-          disabled={loading || isCurrentWeek}
-          onClick={() => onWeekChange(currentWeekStart)}
-        >
-          Aujourd&apos;hui
-        </Button>
+        {nextButton('md')}
+        {todayButton}
         <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
           <Text size="xs" c="dimmed" mb={2}>
             Période
@@ -122,6 +130,21 @@ export function WeekNavigation({
           </Text>
         </div>
       </Group>
+
+      {/* Phones: period between the arrows, picker and « Aujourd'hui » underneath. */}
+      <Stack gap="xs" hiddenFrom="sm">
+        <Group justify="space-between" wrap="nowrap" gap="sm">
+          {previousButton('lg')}
+          <Text fw={600} ta="center" style={{ flex: 1, minWidth: 0 }}>
+            {weekRange}
+          </Text>
+          {nextButton('lg')}
+        </Group>
+        <Group wrap="nowrap" gap="sm">
+          <div style={{ flex: 1, minWidth: 0 }}>{picker('100%')}</div>
+          {todayButton}
+        </Group>
+      </Stack>
     </DatesProvider>
   );
 }

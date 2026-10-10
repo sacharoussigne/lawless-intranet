@@ -8,7 +8,8 @@ export type AppFeatureKey =
   | 'weeklyDispensaryActivity'
   | 'agenda'
   | 'cabinet'
-  | 'sales';
+  | 'sales'
+  | 'media';
 
 export type AppSettingsDTO = {
   dispensaryName: string;
@@ -22,6 +23,7 @@ export type AppSettingsDTO = {
   featureAgendaEnabled: boolean;
   featureCabinetEnabled: boolean;
   featureSalesEnabled: boolean;
+  featureMediaEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   weeklyActivityPatientsVisible: boolean;
@@ -42,6 +44,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   featureAgendaEnabled: true,
   featureCabinetEnabled: true,
   featureSalesEnabled: true,
+  featureMediaEnabled: true,
   weeklyActivityChestDaysVisible: true,
   weeklyActivityPresenceDaysVisible: true,
   weeklyActivityPatientsVisible: true,
@@ -88,6 +91,8 @@ export function isAppFeatureEnabled(
       return settings.featureCabinetEnabled ?? APP_SETTINGS_DEFAULTS.featureCabinetEnabled;
     case 'sales':
       return settings.featureSalesEnabled ?? APP_SETTINGS_DEFAULTS.featureSalesEnabled;
+    case 'media':
+      return settings.featureMediaEnabled ?? APP_SETTINGS_DEFAULTS.featureMediaEnabled;
     default: {
       const _exhaustive: never = feature;
       return _exhaustive;

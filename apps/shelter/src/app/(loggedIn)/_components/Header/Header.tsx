@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  ActionIcon,
   Avatar,
   Button,
   Container,
@@ -9,6 +10,7 @@ import {
   Menu,
   SegmentedControl,
   Select,
+  Tooltip,
   UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -27,6 +29,7 @@ import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/shelter/platformAdmin';
 import { rewritePathWithShelterSlug } from '@/lib/shelter/slug';
 import { HeaderWaitlistIndicator } from './HeaderWaitlistIndicator';
+import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
 import {
   IconArrowBackUp,
   IconCashRegister,
@@ -151,7 +154,9 @@ export default function Header({
     <Menu
       width={260}
       position="bottom-end"
-      transitionProps={{ transition: 'pop-top-right' }}
+      // No scale transition: the theme SegmentedControl measures its indicator on open,
+      // a scaled dropdown would misplace it until the transition ends (visible jump).
+      transitionProps={{ transition: 'fade-down' }}
       onClose={() => setUserMenuOpened(false)}
       onOpen={() => setUserMenuOpened(true)}
       withinPortal
@@ -167,6 +172,7 @@ export default function Header({
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
+        <AccountMenuHeader name={session.user.name} />
         {isPlatformAdminUser && (
           <>
             <Menu.Label>Plateforme</Menu.Label>
@@ -233,6 +239,20 @@ export default function Header({
           ]}
         />
       )}
+      {permissions?.media.access && appSettings.featureMediaEnabled && t && (
+        <Tooltip label="Médiathèque" position="bottom">
+          <ActionIcon
+            component={Link}
+            href={t.employee.media}
+            variant="light"
+            color="terracotta"
+            size="lg"
+            aria-label="Médiathèque"
+          >
+            <IconPhoto size={20} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+      )}
       {permissions?.waitlist.manage && t && shelterSlug && (
         <HeaderWaitlistIndicator
           shelterSlug={shelterSlug}
@@ -245,6 +265,7 @@ export default function Header({
 
   return (
     <>
+      {session && <AccountThemeSync />}
       {spotlight && shelterSlug && (
         <AnimalSpotlight
           shelterSlug={shelterSlug}
@@ -327,17 +348,6 @@ export default function Header({
                             <Group gap={6} wrap="nowrap" className={classes.linkInner}>
                               <IconCashRegister size={18} stroke={1.6} />
                               <span>Banque</span>
-                            </Group>
-                          </Link>
-                        )}
-                        {permissions?.media.access && appSettings.featureMediaEnabled && (
-                          <Link
-                            href={t.employee.media}
-                            className={`${classes.navLink} ${isActive(t.employee.media) ? classes.navLinkActive : ''}`}
-                          >
-                            <Group gap={6} wrap="nowrap" className={classes.linkInner}>
-                              <IconPhoto size={18} stroke={1.6} />
-                              <span>Médiathèque</span>
                             </Group>
                           </Link>
                         )}

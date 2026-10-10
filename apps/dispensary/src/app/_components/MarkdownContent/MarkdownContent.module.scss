@@ -97,7 +97,7 @@
 }
 
 .root :global(a:hover) {
-  color: var(--mantine-color-sage-7);
+  color: light-dark(var(--mantine-color-sage-7), var(--mantine-color-sage-3));
 }
 
 .root :global(blockquote) {
@@ -105,7 +105,7 @@
   padding: 0.35em 0.75em;
   border-left: 3px solid var(--mantine-color-sage-4);
   color: var(--disp-ink-muted);
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
 }
 
 .root :global(code) {

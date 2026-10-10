@@ -1,7 +1,7 @@
 .counterTile {
   display: block;
   width: 100%;
-  border: 1px solid var(--mantine-color-sage-3);
+  border: 1px solid var(--disp-sage-soft-border);
   border-radius: var(--mantine-radius-sm);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   background: var(--disp-surface);
@@ -10,7 +10,7 @@
   transition: background-color 150ms ease, border-color 150ms ease;
 
   &:hover:not(:disabled) {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
     border-color: var(--mantine-color-sage-5);
   }
 
@@ -40,5 +40,5 @@
   flex-shrink: 0;
   font-size: var(--mantine-font-size-xs);
   font-weight: 600;
-  color: var(--mantine-color-sage-7);
+  color: light-dark(var(--mantine-color-sage-7), var(--mantine-color-sage-3));
 }

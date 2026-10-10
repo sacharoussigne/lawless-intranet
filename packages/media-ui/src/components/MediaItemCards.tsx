@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
-import { Box, Card, Center, Group, Image, Text } from '@mantine/core';
+import { useContext, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
+import { Box, Card, Center, Checkbox, Group, Image, Text, Tooltip } from '@mantine/core';
 import { IconFiles, IconFolderFilled, IconPhoto } from '@tabler/icons-react';
 import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
 import { type DragItem } from '../dnd';
@@ -10,6 +10,7 @@ import { formatBytes } from '../format';
 import { useMediaUi } from '../MediaUiProvider';
 import { itemKey } from '../selection';
 import {
+  DraggedItemsContext,
   fileTypeIcon,
   handleEnterKey,
   handleFolderLinkClick,
@@ -19,16 +20,34 @@ import {
   SharedBadge,
   stopPropagation,
   useItemDrag,
+  useLongPress,
   type ItemInteractions,
 } from './itemInteractions';
 
 const THUMB_HEIGHT = 150;
+
+/** Touch selection mode: check mark in the tile's corner. */
+function SelectionCheck({ checked }: { checked: boolean }) {
+  return (
+    <Checkbox
+      checked={checked}
+      readOnly
+      tabIndex={-1}
+      aria-hidden
+      radius="xl"
+      size="md"
+      style={{ pointerEvents: 'none', flexShrink: 0 }}
+    />
+  );
+}
 
 function tileStyle(highlighted: boolean, dragging: boolean): CSSProperties {
   return {
     position: 'relative',
     cursor: 'default',
     userSelect: 'none',
+    // iOS: no link / image callout on press-and-hold (that gesture selects).
+    WebkitTouchCallout: 'none',
     opacity: dragging ? 0.4 : 1,
     backgroundColor: highlighted ? 'var(--mantine-primary-color-light)' : 'var(--mantine-color-default-hover)',
     borderColor: highlighted ? 'var(--mantine-primary-color-filled)' : 'transparent',
@@ -41,11 +60,14 @@ export function FolderCard({
   ...interactions
 }: ItemInteractions & { folder: MediaFolderRecord; href: string }) {
   const drag = useItemDrag(interactions.dragItem);
+  const longPress = useLongPress(interactions.onLongPress);
 
   return (
     <Card
       ref={drag.setNodeRef}
       {...drag.listeners}
+      {...drag.fileDropProps}
+      {...longPress}
       {...{ [SELECTION_KEY_ATTRIBUTE]: itemKey('folder', folder.id) }}
       withBorder
       radius="lg"
@@ -65,6 +87,7 @@ export function FolderCard({
         onDoubleClick={interactions.onOpen}
       />
       <Group gap="sm" wrap="nowrap" style={{ position: 'relative', pointerEvents: 'none' }}>
+        {interactions.toggleOnClick ? <SelectionCheck checked={interactions.selected} /> : null}
         <IconFolderFilled size={22} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
         <Text size="sm" fw={500} truncate="end" style={{ flex: 1, minWidth: 0 }} title={folder.name}>
           {folder.name}
@@ -79,11 +102,16 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
   const { formatDate } = useMediaUi();
   const { kind, Icon: TypeIcon, color: typeColor } = fileTypeIcon(file.mimeType);
   const drag = useItemDrag(interactions.dragItem);
+  const longPress = useLongPress(interactions.onLongPress);
+  const dragging = useContext(DraggedItemsContext).length > 0;
+  // Touch: a tap opens or toggles, a tooltip would only get in the way.
+  const touch = interactions.openOnClick || interactions.toggleOnClick;
 
   return (
     <Card
       ref={drag.setNodeRef}
       {...drag.listeners}
+      {...longPress}
       {...{ [SELECTION_KEY_ATTRIBUTE]: itemKey('file', file.id) }}
       withBorder
       radius="lg"
@@ -92,7 +120,6 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
       role="button"
       aria-label={file.name}
       aria-pressed={interactions.selected}
-      title={`${file.name}\n${formatBytes(file.size)} · ${formatDate(file.createdAt)}`}
       style={tileStyle(interactions.selected, drag.isDragged)}
       onClick={(event: MouseEvent) => {
         event.stopPropagation();
@@ -103,6 +130,7 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
       onContextMenu={interactions.onContextMenu}
     >
       <Group gap="sm" wrap="nowrap" pl={6} mb="xs">
+        {interactions.toggleOnClick ? <SelectionCheck checked={interactions.selected} /> : null}
         <TypeIcon size={18} color={typeColor} style={{ flexShrink: 0 }} />
         <Text size="sm" fw={500} truncate="end" style={{ flex: 1, minWidth: 0 }}>
           {file.name}
@@ -110,19 +138,39 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
         {file.shareToken ? <SharedBadge /> : null}
         <KebabMenu label={file.name}>{interactions.menu}</KebabMenu>
       </Group>
-      <Box
-        h={THUMB_HEIGHT}
-        style={{ borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
-        bg="var(--mantine-color-body)"
+      {/* Full name over the thumbnail (the title above it is truncated); none while dragging items. */}
+      <Tooltip
+        label={
+          <>
+            <Text size="sm" fw={500} style={{ wordBreak: 'break-word' }}>
+              {file.name}
+            </Text>
+            <Text size="xs" opacity={0.75}>
+              {formatBytes(file.size)} · {formatDate(file.createdAt)}
+            </Text>
+          </>
+        }
+        multiline
+        maw={320}
+        position="bottom"
+        openDelay={300}
+        disabled={dragging || touch}
+        withinPortal
       >
-        {kind === 'image' && file.previewUrl ? (
-          <Image src={file.previewUrl} alt={file.name} h="100%" w="100%" fit="cover" loading="lazy" draggable={false} />
-        ) : (
-          <Center h="100%">
-            <TypeIcon size={56} stroke={1.25} color={typeColor} />
-          </Center>
-        )}
-      </Box>
+        <Box
+          h={THUMB_HEIGHT}
+          style={{ borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
+          bg="var(--mantine-color-body)"
+        >
+          {kind === 'image' && file.previewUrl ? (
+            <Image src={file.previewUrl} alt={file.name} h="100%" w="100%" fit="cover" loading="lazy" draggable={false} />
+          ) : (
+            <Center h="100%">
+              <TypeIcon size={56} stroke={1.25} color={typeColor} />
+            </Center>
+          )}
+        </Box>
+      </Tooltip>
     </Card>
   );
 }

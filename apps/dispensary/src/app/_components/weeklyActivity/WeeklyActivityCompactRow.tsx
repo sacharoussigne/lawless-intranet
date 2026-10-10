@@ -4,7 +4,7 @@ import { ActionIcon, Group, Stack, Text } from '@mantine/core';
 import { IconHistory, IconPencil } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import { emptyWeekdayFlags } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   buildCompactCounterStats,
   buildCompactDayCells,
@@ -52,30 +52,25 @@ export function WeeklyActivityCompactRow({
   return (
     <div className={classes.teamRow}>
       <Group align="flex-start" wrap="nowrap" gap="lg" justify="space-between">
-        <Group align="flex-start" wrap="nowrap" gap="lg" style={{ flex: 1, minWidth: 0 }}>
-          {showName && (
-            <Text className={classes.name} style={{ minWidth: '8rem', flexShrink: 0 }}>
-              {displayName}
-            </Text>
-          )}
+        <div className={classes.rowMain}>
+          {showName && <Text className={`${classes.name} ${classes.nameCol}`}>{displayName}</Text>}
           {showDayGrid && (
             <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-              {showDayHeaders && (
-                <Group gap="md" wrap="nowrap" justify="flex-start">
-                  {COMPACT_DAY_LABELS.map((label) => (
-                    <Text key={label} className={classes.dayHeader}>
-                      {label}
-                    </Text>
-                  ))}
-                </Group>
-              )}
-              <Group gap="md" wrap="nowrap" justify="flex-start">
+              {/* Team list: one shared header row on desktop, a header per row on phones (names stack above). */}
+              <div className={`${classes.dayGrid} ${showDayHeaders ? '' : classes.mobileOnly}`}>
+                {COMPACT_DAY_LABELS.map((label) => (
+                  <Text key={label} className={classes.dayHeader}>
+                    {label}
+                  </Text>
+                ))}
+              </div>
+              <div className={classes.dayGrid}>
                 {dayCells.map((cell, index) => (
                   <Text key={COMPACT_DAY_LABELS[index]} className={classes.dayCell}>
                     {cell}
                   </Text>
                 ))}
-              </Group>
+              </div>
               {counterLine ? (
                 <Text className={classes.counterLine}>{counterLine}</Text>
               ) : null}
@@ -87,7 +82,7 @@ export function WeeklyActivityCompactRow({
           {!showDayGrid && counterLine ? (
             <Text className={classes.counterLine}>{counterLine}</Text>
           ) : null}
-        </Group>
+        </div>
         {row && (onHistory || (canEdit && onEdit)) ? (
           <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
             {onHistory ? (

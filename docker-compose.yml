@@ -82,6 +82,9 @@ services:
       BANK_BOT_API_SECRET: "${BANK_BOT_API_SECRET:-}"
       INVENTORY_URL: "${INVENTORY_PUBLIC_URL:-http://inventory:3005}"
       INVENTORY_INTERNAL_SECRET: "${INVENTORY_INTERNAL_SECRET:?err}"
+      # Media library service (private network, see the media service)
+      MEDIA_URL: "http://media:3009"
+      MEDIA_INTERNAL_SECRET: "${MEDIA_INTERNAL_SECRET:?err}"
       # Browser websocket URL (read at runtime) + secret to sign realtime tokens
       REALTIME_PUBLIC_URL: "${REALTIME_PUBLIC_URL:?err}"
       REALTIME_TOKEN_SECRET: "${REALTIME_TOKEN_SECRET:?err}"
@@ -96,6 +99,7 @@ services:
     networks:
       - proxy
       - db
+      - media
 
   documents:
     restart: unless-stopped
@@ -253,7 +257,7 @@ services:
       - media
 
   # Media library API (files in S3). Not public: only called server-side by
-  # shelter over the private "media" network (no VIRTUAL_HOST). Browsers upload
+  # dispensary and shelter over the private "media" network (no VIRTUAL_HOST). Browsers upload
   # and download straight from S3 with presigned URLs.
   media:
     restart: unless-stopped
@@ -326,6 +330,6 @@ networks:
   # Private network between services and the realtime internal API (no outside access).
   realtime:
     internal: true
-  # Private network between shelter and the media service. Not "internal":
+  # Private network between the hosts (dispensary, shelter) and the media service. Not "internal":
   # the media service must reach S3.
   media: {}

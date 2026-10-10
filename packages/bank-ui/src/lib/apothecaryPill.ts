@@ -92,10 +92,12 @@ const dangerPalette = [
 ] as const;
 
 export function apothecaryPillStyle(palette: ApothecaryPalette): CSSProperties {
+  // light-dark() follows the theme's color-scheme: the palette's tints in light themes,
+  // translucent mid shades with light text in dark ones (same recipe as host-kit/theme darkSoftColors).
   return {
-    backgroundColor: palette[1],
-    color: palette[8],
-    border: `1px solid ${palette[3]}`,
+    backgroundColor: `light-dark(${palette[1]}, color-mix(in srgb, ${palette[5]} 24%, transparent))`,
+    color: `light-dark(${palette[8]}, ${palette[2]})`,
+    border: `1px solid light-dark(${palette[3]}, color-mix(in srgb, ${palette[4]} 45%, transparent))`,
   };
 }
 

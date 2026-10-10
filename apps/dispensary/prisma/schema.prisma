@@ -111,6 +111,9 @@ model UserUiPreferences {
 
   doneTodayBadgeBg    String?
 
+  /// Interface theme id (src/lib/themes), e.g. "apothecary" or "nuit".
+  theme               String   @default("apothecary")
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -132,6 +135,7 @@ model AppSettings {
   featureAgendaEnabled                     Boolean    @default(true)
   featureCabinetEnabled                    Boolean    @default(true)
   featureSalesEnabled                      Boolean    @default(true)
+  featureMediaEnabled                      Boolean    @default(true)
   weeklyActivityChestDaysVisible           Boolean    @default(true)
   weeklyActivityPresenceDaysVisible        Boolean    @default(true)
   weeklyActivityPatientsVisible            Boolean    @default(true)

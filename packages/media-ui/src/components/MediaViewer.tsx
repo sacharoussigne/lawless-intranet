@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
-import { ActionIcon, Box, Center, Group, Image, Loader, Modal, Text, Tooltip } from '@mantine/core';
-import { useWindowEvent } from '@mantine/hooks';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { ActionIcon, Box, Button, Center, Group, Image, Loader, Modal, Stack, Text, Tooltip } from '@mantine/core';
+import { useMediaQuery, useWindowEvent } from '@mantine/hooks';
 import {
   IconChevronLeft,
   IconChevronRight,
   IconDownload,
   IconExternalLink,
+  IconFileTypePdf,
   IconLink,
   IconX,
 } from '@tabler/icons-react';
@@ -28,6 +29,12 @@ const glassStyle: CSSProperties = {
 };
 
 const toolStyle: CSSProperties = { color: ON_DARK };
+
+/** iPhone notch / home indicator (installed app, viewport-fit=cover). */
+const SAFE_TOP = 'env(safe-area-inset-top, 0px)';
+const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)';
+/** Horizontal travel that turns a touch into a swipe to the previous / next file. */
+const SWIPE_MIN_PX = 50;
 
 const navButtonStyle: CSSProperties = {
   ...glassStyle,
@@ -78,6 +85,8 @@ export function MediaViewer({
   const file = index !== null ? files[index] : undefined;
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [retriedId, setRetriedId] = useState<string | null>(null);
+  const touch = useMediaQuery('(hover: none)') ?? false;
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   const step = (delta: number) => {
     if (index === null) return;
@@ -117,14 +126,37 @@ export function MediaViewer({
         <Box
           h="100%"
           p={{ base: 'md', sm: 72 }}
-          pt={{ base: 72, sm: 80 }}
+          pt={{ base: `calc(72px + ${SAFE_TOP})`, sm: 80 }}
+          pb={{ base: `calc(72px + ${SAFE_BOTTOM})`, sm: 72 }}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={(event) => {
             if (event.target === event.currentTarget) onClose();
           }}
+          // Touch: swipe left / right between the folder's files.
+          onTouchStart={(event) => {
+            const touchPoint = event.touches[0];
+            swipeStart.current = event.touches.length === 1 && touchPoint ? { x: touchPoint.clientX, y: touchPoint.clientY } : null;
+          }}
+          onTouchEnd={(event) => {
+            const start = swipeStart.current;
+            const end = event.changedTouches[0];
+            swipeStart.current = null;
+            if (!start || !end) return;
+            const dx = end.clientX - start.x;
+            const dy = end.clientY - start.y;
+            if (Math.abs(dx) > SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+          }}
         >
-          {/* File name and details, top left. */}
-          <Box pos="absolute" top={16} left={20} maw="45%" style={{ pointerEvents: 'none' }}>
+          {/* File name and details: top left, or at the bottom on phones (the tools take the top). */}
+          <Box
+            pos="absolute"
+            top={{ base: 'auto', sm: 16 }}
+            bottom={{ base: `calc(16px + ${SAFE_BOTTOM})`, sm: 'auto' }}
+            left={20}
+            right={{ base: 20, sm: 'auto' }}
+            maw={{ base: 'none', sm: '45%' }}
+            style={{ pointerEvents: 'none' }}
+          >
             <Text c={ON_DARK} fw={600} truncate="end">
               {file.name}
             </Text>
@@ -135,7 +167,7 @@ export function MediaViewer({
           </Box>
 
           {/* Tools, top right: grouped glass pill + separate round close button. */}
-          <Group pos="absolute" top={14} right={16} gap="xs" wrap="nowrap">
+          <Group pos="absolute" top={`calc(14px + ${SAFE_TOP})`} right={16} gap="xs" wrap="nowrap">
             <Group gap={2} p={4} wrap="nowrap" style={{ ...glassStyle, borderRadius: 'var(--mantine-radius-lg)' }}>
               {file.previewUrl ? (
                 <Tool label="Ouvrir dans un nouvel onglet" onClick={() => window.open(file.previewUrl ?? '', '_blank', 'noopener')}>
@@ -160,6 +192,19 @@ export function MediaViewer({
 
           {!file.previewUrl ? (
             <Text c={ON_DARK}>Aperçu indisponible.</Text>
+          ) : kind === 'pdf' && touch ? (
+            // iOS shows only the first page of a PDF in a frame: the native viewer does better.
+            <Stack align="center" gap="md">
+              <IconFileTypePdf size={72} stroke={1.25} color={ON_DARK} />
+              <Button
+                size="md"
+                radius="xl"
+                leftSection={<IconExternalLink size={18} />}
+                onClick={() => window.open(file.previewUrl ?? '', '_blank', 'noopener')}
+              >
+                Ouvrir le PDF
+              </Button>
+            </Stack>
           ) : kind === 'pdf' ? (
             <iframe
               key={file.id}

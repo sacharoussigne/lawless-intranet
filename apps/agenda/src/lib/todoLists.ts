@@ -1,6 +1,8 @@
+import type { Prisma } from '@/generated/prisma/client';
 import {
   compareTodoTasksByCompletedAtDesc,
   isTodoTaskArchived,
+  TODO_TASK_ARCHIVE_AFTER_MS,
 } from '@/lib/todoArchive';
 
 export type TodoListMapped = {
@@ -85,3 +87,32 @@ export const todoListInclude = {
     },
   },
 };
+
+/** Same shape as `todoListInclude`, with only the tasks matching `where`. */
+function todoListIncludeWhere(where: Prisma.AgendaTodoTaskWhereInput) {
+  return {
+    categories: {
+      orderBy: { order: 'asc' as const },
+      include: {
+        tasks: { where, orderBy: { order: 'asc' as const } },
+      },
+    },
+  };
+}
+
+/**
+ * Main view: active tasks and the ones checked less than an hour ago, filtered
+ * in the database so that archives (which keep growing) are never loaded.
+ * `filterTasksForMainView` still applies the exact rule and the ordering.
+ */
+export function todoListMainViewInclude(nowMs: number = Date.now()) {
+  return todoListIncludeWhere({
+    OR: [
+      { completed: false },
+      { completedAt: { gt: new Date(nowMs - TODO_TASK_ARCHIVE_AFTER_MS) } },
+    ],
+  });
+}
+
+/** Archives drawer: completed tasks only (`filterTasksForArchives` keeps the archived ones). */
+export const todoListArchivesInclude = todoListIncludeWhere({ completed: true });

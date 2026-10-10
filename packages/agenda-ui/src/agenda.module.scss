@@ -49,7 +49,7 @@
     padding: var(--mantine-spacing-sm);
     border: 1px solid var(--disp-border);
     border-radius: var(--mantine-radius-sm);
-    background: var(--disp-paper-muted, var(--mantine-color-slate-0));
+    background: var(--disp-paper-muted, var(--disp-slate-soft));
 
     &:last-of-type {
       border-bottom: 1px solid var(--disp-border);
@@ -122,7 +122,7 @@
   :global(.rbc-toolbar button:hover),
   :global(.rbc-toolbar button:active),
   :global(.rbc-toolbar button.rbc-active) {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
     border-color: var(--mantine-color-sage-4);
     color: var(--disp-ink);
   }
@@ -186,11 +186,11 @@
   }
 
   :global(.rbc-today) {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 
   :global(.rbc-off-range-bg) {
-    background: var(--disp-paper-muted, var(--mantine-color-slate-0));
+    background: var(--disp-paper-muted, var(--disp-slate-soft));
   }
 
   :global(.rbc-time-view .rbc-allday-cell) {
@@ -244,7 +244,7 @@
 
   &:hover {
     color: var(--disp-ink);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
@@ -267,14 +267,14 @@
 
   &:hover {
     color: var(--disp-ink);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
 .todoCategoryFilterChipActive {
   color: var(--disp-ink);
   border-color: var(--disp-border);
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
 }
 
 .todoListTabsRow {
@@ -301,14 +301,14 @@
 
   &:hover {
     color: var(--disp-ink);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
 .todoListTabActive {
   color: var(--disp-ink);
   border-color: var(--disp-border);
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
 }
 
 .todoListTabEditing {
@@ -324,7 +324,7 @@
 .todoListTabEditInput {
   width: 100%;
   min-width: 4rem;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -357,7 +357,7 @@
 }
 
 .todoCategoryDropZoneOver {
-  background-color: var(--mantine-color-sage-0);
+  background-color: var(--disp-sage-soft);
   outline: 1px dashed var(--mantine-color-sage-4);
   outline-offset: 2px;
 }
@@ -404,7 +404,7 @@
 .todoCategoryEditInput {
   flex: 1;
   min-width: 0;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -436,7 +436,7 @@
   transition: background 120ms ease, color 120ms ease;
 
   &:hover:not(:disabled) {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
     color: var(--disp-ink);
   }
 
@@ -460,7 +460,7 @@
 .inlineNoteInput {
   display: block;
   width: 100%;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -478,7 +478,7 @@
 
   &:focus {
     border-bottom-color: var(--mantine-color-sage-6);
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
@@ -490,15 +490,17 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 }
 
 .todoTaskRowDraggable {
   cursor: grab;
-  touch-action: none;
+  // The page still scrolls under a finger: touch drags start after a press-and-hold (agendaDnd).
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
 
   &[data-dragging] {
     cursor: grabbing;
@@ -516,15 +518,16 @@
 
 .todoCategoryHeaderDraggable {
   cursor: grab;
-  touch-action: none;
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
   margin: -0.15rem 0 0.2rem;
   padding: 0.15rem 0;
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    background: var(--mantine-color-sage-0);
+    background: var(--disp-sage-soft);
   }
 
   &[data-dragging] {
@@ -542,7 +545,7 @@
 .inlineEditableInput {
   flex: 1;
   min-width: 0;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -560,7 +563,7 @@
 .todoTaskEditInput {
   flex: 1;
   min-width: 0;
-  background: var(--mantine-color-sage-0);
+  background: var(--disp-sage-soft);
   border: none;
   border-bottom: 1px dashed var(--mantine-color-sage-4);
   border-radius: var(--mantine-radius-xs) var(--mantine-radius-xs) 0 0;
@@ -579,4 +582,146 @@
 .todoTaskCompleted {
   text-decoration: line-through;
   color: var(--mantine-color-dimmed);
+}
+
+/* --- Archived todos drawer --- */
+
+.archiveChipCount {
+  margin-left: 0.2rem;
+  opacity: 0.7;
+}
+
+.archiveList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+}
+
+.archiveListHeader {
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--disp-border);
+}
+
+.archiveListName {
+  font-family: var(--disp-font-display);
+  font-size: 1.05rem;
+  color: var(--disp-ink);
+  min-width: 0;
+}
+
+.archiveCategory {
+  border: 1px solid var(--disp-border);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--disp-surface);
+  overflow: hidden;
+}
+
+.archiveCategoryHeader {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  color: var(--disp-ink);
+
+  &:hover {
+    background: var(--disp-sage-soft);
+  }
+}
+
+.archiveChevron {
+  flex-shrink: 0;
+  color: var(--mantine-color-dimmed);
+  transition: transform 0.15s ease;
+
+  &[data-opened] {
+    transform: rotate(90deg);
+  }
+}
+
+.archiveTasks {
+  border-top: 1px solid var(--disp-border);
+}
+
+.archiveTask {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.45rem 0.6rem;
+
+  & + & {
+    border-top: 1px dashed var(--disp-border);
+  }
+
+  &:hover {
+    background: var(--disp-sage-soft);
+  }
+
+  &[data-pending] {
+    opacity: 0.6;
+  }
+}
+
+.archiveTaskIcon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: var(--mantine-color-sage-6);
+}
+
+.archiveTaskBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.archiveTaskTitle {
+  color: var(--disp-ink);
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+
+.archiveTaskDate {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+}
+
+/* Actions on hover or keyboard focus; always visible on touch screens and while saving. */
+.archiveTaskActions {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+
+  .archiveTask:hover &,
+  .archiveTask:focus-within &,
+  .archiveTask[data-pending] & {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
+/* Phones (AgendaWorkspace mobileView): one panel at a time, natural heights, thumb-sized targets. */
+.agendaSelectorSlot {
+  @media (max-width: 47.99em) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 47.99em) {
+  .calendarPanel {
+    height: auto;
+  }
+
+  .todoPanel {
+    padding: var(--mantine-spacing-sm);
+  }
+}
+
+@media (hover: none) {
+  .todoTaskRow :global(.mantine-ActionIcon-root),
+  .todoCategoryHeader :global(.mantine-ActionIcon-root) {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+  }
 }

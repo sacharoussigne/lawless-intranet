@@ -6,6 +6,11 @@ export function dispensaryBase(slug: string): string {
   return `/d/${encodeURIComponent(slug)}`;
 }
 
+/** Public share link of a media file (no login, outside the middleware matcher). */
+export function mediaShareRoute(token: string, fileName: string): string {
+  return `/partage/${encodeURIComponent(token)}/${encodeURIComponent(fileName)}`;
+}
+
 /** Employee module segments that used to live at /d/:slug/<seg> and now live under /employee. */
 export const EMPLOYEE_MODULE_SEGMENTS = [
   'stock',
@@ -31,6 +36,9 @@ export function tenantRoutes(slug: string) {
       stockStatistics: `${employeeBase}/stock-statistics`,
       stockMovements: `${employeeBase}/stock-movements`,
       sales: `${employeeBase}/sales`,
+      media: `${employeeBase}/media`,
+      /** Profile tab of the mobile app (account, theme, logout). */
+      account: `${employeeBase}/compte`,
       mails: `${employeeBase}/mails`,
       newMail: `${employeeBase}/mails/new`,
       editMail: (id: string) => `${employeeBase}/mails/${id}/edit`,
@@ -43,7 +51,8 @@ export function tenantRoutes(slug: string) {
     searchItems: { index: `${employeeBase}/search-items` },
     bank: { index: `${employeeBase}/bank` },
     weeklyActivity: { index: `${employeeBase}/weekly-activity` },
-    agenda: { index: `${employeeBase}/agenda` },
+    agenda: { index: `${employeeBase}/agenda`, tasks: `${employeeBase}/agenda/taches` },
+    media: { index: `${employeeBase}/media` },
     cabinet: {
       index: `${employeeBase}/cabinet`,
       forms: (cabinetId: string, tab?: FormEntityType) => {

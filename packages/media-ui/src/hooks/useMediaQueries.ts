@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import type { MediaFileRecord, MediaFolderContentsRecord } from '@lawless-intranet/types';
+import { copyImageToClipboard } from '../clipboard';
 import { useMediaUi } from '../MediaUiProvider';
 import { mediaKeys } from '../queryKeys';
 import { runMediaAction } from '../runMediaAction';
@@ -130,6 +131,21 @@ export function useMediaDownload() {
   };
 }
 
+/** Copies an image file into the clipboard (preview URL, or a fresh signed URL when missing). */
+export function useMediaCopyImage() {
+  const { actions } = useMediaUi();
+  return async (file: MediaFileRecord) => {
+    const getUrl = async () =>
+      file.previewUrl ?? runMediaAction(await actions.getDownloadUrl(file.id)).url;
+    try {
+      await copyImageToClipboard(getUrl);
+      notifySuccess(`« ${file.name} » copiée dans le presse-papier`);
+    } catch (error) {
+      notifyError(error, 'Copie de l’image impossible');
+    }
+  };
+}
+
 /**
  * Public share links: « copy » creates the link on first use (then always the same),
  * « revoke » kills it (sharing again gives a new link).
@@ -163,6 +179,16 @@ export function useMediaShare() {
     }
     if (!token) return;
     const url = buildShareUrl(token, file.name);
+    // Phones: the native share sheet (Discord, Messages…). It needs the user activation, which a
+    // first share (server round-trip) may have used up: any refusal falls back to the clipboard.
+    if (typeof navigator.share === 'function' && window.matchMedia('(hover: none)').matches) {
+      try {
+        await navigator.share({ title: file.name, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
     try {
       await navigator.clipboard.writeText(url);
       notifySuccess('Lien de partage copié');

@@ -21,6 +21,8 @@ type DispensaryAgendaWorkspaceProps = {
   initialEventsRange: AgendaCalendarRange;
   initialTodoLists: AgendaTodoListDTO[];
   isAdmin: boolean;
+  /** Phones: calendar (Agenda tab) or to-do lists (Tâches tab). */
+  mobileView: 'calendar' | 'tasks';
 };
 
 export function DispensaryAgendaWorkspace({
@@ -31,6 +33,7 @@ export function DispensaryAgendaWorkspace({
   initialEventsRange,
   initialTodoLists,
   isAdmin,
+  mobileView,
 }: DispensaryAgendaWorkspaceProps) {
   const actions = useMemo(
     () => createDispensaryAgendaActions(dispensarySlug),
@@ -56,6 +59,7 @@ export function DispensaryAgendaWorkspace({
         initialEventsRange={initialEventsRange}
         initialTodoLists={initialTodoLists}
         isAdmin={isAdmin}
+        mobileView={mobileView}
         onManageMembers={(agenda) => {
           setMembersAgenda(agenda);
           setMembersOpen(true);

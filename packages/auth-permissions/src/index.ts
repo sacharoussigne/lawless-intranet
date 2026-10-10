@@ -26,6 +26,7 @@ const user = ac.newRole({
   weekly_dispensary_activity: [],
   stock_statistics: [],
   sales: [],
+  media: [],
 });
 
 const admin = ac.newRole({
@@ -40,6 +41,7 @@ const admin = ac.newRole({
   weekly_dispensary_activity: ["view", "edit_own", "edit_all"],
   stock_statistics: ["view"],
   sales: ["create", "cancel", "view", "view_all"],
+  media: ["access"],
 });
 
 const employee = ac.newRole({
@@ -53,6 +55,7 @@ const employee = ac.newRole({
   weekly_dispensary_activity: ["view", "edit_own"],
   stock_statistics: [],
   sales: ["create", "cancel", "view"],
+  media: [],
 });
 
 const inventory_manager = ac.newRole({
@@ -67,6 +70,7 @@ const inventory_manager = ac.newRole({
   weekly_dispensary_activity: [],
   stock_statistics: ["view"],
   sales: ["create", "cancel", "view", "view_all"],
+  media: [],
 });
 
 const inventory_viewer = ac.newRole({
@@ -81,6 +85,7 @@ const inventory_viewer = ac.newRole({
   weekly_dispensary_activity: [],
   stock_statistics: [],
   sales: ["view"],
+  media: [],
 });
 
 const direction = ac.newRole({
@@ -95,6 +100,7 @@ const direction = ac.newRole({
   weekly_dispensary_activity: ["view", "edit_all"],
   stock_statistics: ["view"],
   sales: ["create", "cancel", "view", "view_all"],
+  media: ["access"],
 });
 
 const rolesMap = {

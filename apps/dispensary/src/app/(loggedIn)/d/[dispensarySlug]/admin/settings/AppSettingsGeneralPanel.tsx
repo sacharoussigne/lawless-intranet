@@ -63,6 +63,9 @@ export function AppSettingsGeneralPanel({
   const [featureSalesEnabled, setFeatureSalesEnabled] = useState(
     initial.featureSalesEnabled ?? true,
   );
+  const [featureMediaEnabled, setFeatureMediaEnabled] = useState(
+    initial.featureMediaEnabled ?? true,
+  );
   const [weeklyActivityChestDaysVisible, setWeeklyActivityChestDaysVisible] = useState(
     initial.weeklyActivityChestDaysVisible ?? true,
   );
@@ -106,6 +109,7 @@ export function AppSettingsGeneralPanel({
       onChange: setFeatureCabinetEnabled,
     },
     { label: 'Ventes', checked: featureSalesEnabled, onChange: setFeatureSalesEnabled },
+    { label: 'Médiathèque', checked: featureMediaEnabled, onChange: setFeatureMediaEnabled },
   ];
 
   const weeklyColumnToggles: FeatureToggle[] = [
@@ -156,6 +160,7 @@ export function AppSettingsGeneralPanel({
       featureAgendaEnabled,
       featureCabinetEnabled,
       featureSalesEnabled,
+      featureMediaEnabled,
       weeklyActivityChestDaysVisible,
       weeklyActivityPresenceDaysVisible,
       weeklyActivityPatientsVisible,

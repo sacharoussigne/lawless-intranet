@@ -2,7 +2,7 @@
 
 import { Paper, Text } from '@mantine/core';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import { WeeklyActivityCompactRow } from './WeeklyActivityCompactRow';
 import classes from './WeeklyActivityCompact.module.scss';
 
@@ -28,7 +28,7 @@ export function WeeklyActivityCompactPanel({
       withBorder
       shadow="sm"
       radius="md"
-      p="lg"
+      p={{ base: 'md', sm: 'lg' }}
       bg="sage.9"
       className={classes.panel}
     >

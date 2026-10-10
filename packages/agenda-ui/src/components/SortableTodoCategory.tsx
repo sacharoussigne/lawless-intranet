@@ -21,7 +21,7 @@ import type { AgendaTodoCategoryDTO } from '../types';
 import { SortableTodoTask } from './SortableTodoTask';
 import { InlineNoteInput } from './InlineNoteInput';
 import { InlineEditableText } from './InlineEditableText';
-import { stopDragPointer } from './agendaDnd';
+import { stopDragProps } from './agendaDnd';
 import classes from '../agenda.module.scss';
 
 function CategoryTaskDropZone({
@@ -111,7 +111,7 @@ function SortableCategoryShell({
                 color="danger"
                 size="sm"
                 onClick={() => setDeleteConfirmOpen(true)}
-                onPointerDown={stopDragPointer}
+                {...stopDragProps}
                 aria-label="Supprimer la catégorie"
               >
                 <IconTrash size={14} />

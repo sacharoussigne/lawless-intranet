@@ -1,5 +1,6 @@
 'use client';
 
+import { useMobileModalProps } from '@/lib/hooks/useMobileModalProps';
 import type { ReactNode } from 'react';
 import { Group, Modal, Stack, Text } from '@mantine/core';
 import type { Icon } from '@tabler/icons-react';
@@ -29,6 +30,7 @@ export function AppModal({
   children,
   footer,
 }: AppModalProps) {
+  const mobileModalProps = useMobileModalProps();
   const modalTitle = (
     <div>
       {IconComponent && (
@@ -50,6 +52,7 @@ export function AppModal({
       size={size}
       zIndex={zIndex}
       classNames={{ title: 'modal-title' }}
+      {...mobileModalProps}
     >
       <Stack gap="md">
         {children}

@@ -10,6 +10,7 @@ import {
   Button,
   Group,
   NumberInput,
+  Paper,
   Select,
   SegmentedControl,
   SimpleGrid,
@@ -271,6 +272,99 @@ export function SaleModal({
     createMutation.mutate();
   };
 
+  /** Controls of one line, laid out as a table row (desktop) or a card (phones). */
+  const lineControls = (line: SaleLine, size: 'xs' | 'sm') => {
+    const item = sellableItems.find((entry) => entry.id === line.itemId);
+    const chestId = line.chestId || defaultChestId;
+    const available =
+      line.source === SaleItemSource.CHEST ? getAvailableInChest(line.itemId, chestId) : null;
+    const updateLine = (patch: (entry: SaleLine) => SaleLine) =>
+      setLines((prev) => prev.map((entry) => (entry.key === line.key ? patch(entry) : entry)));
+    const pocketBadge = (
+      <Badge variant="outline" color="slate">
+        Poche
+      </Badge>
+    );
+
+    return {
+      name: (
+        <Stack gap={2} style={{ minWidth: 0 }}>
+          <Text fw={500}>{item?.name ?? line.itemId}</Text>
+          {item?.price != null && (
+            <Text size="xs" c="dimmed">
+              {item.price.toFixed(2)} $
+            </Text>
+          )}
+        </Stack>
+      ),
+      source:
+        chests.length === 0 ? (
+          pocketBadge
+        ) : (
+          <SegmentedControl
+            size={size}
+            fullWidth={size === 'sm'}
+            value={line.source}
+            onChange={(value) =>
+              updateLine((entry) => ({
+                ...entry,
+                source: value as SaleItemSource,
+                chestId: value === SaleItemSource.CHEST ? entry.chestId || defaultChestId : null,
+              }))
+            }
+            data={[
+              { label: 'Coffre', value: SaleItemSource.CHEST },
+              { label: 'Poche', value: SaleItemSource.POCKET },
+            ]}
+          />
+        ),
+      chest:
+        line.source === SaleItemSource.CHEST ? (
+          <Select
+            data={chestOptions}
+            value={chestId}
+            onChange={(value) => updateLine((entry) => ({ ...entry, chestId: value }))}
+            size={size}
+            placeholder="Coffre"
+          />
+        ) : (
+          pocketBadge
+        ),
+      stock:
+        line.source === SaleItemSource.CHEST ? (
+          <Badge variant="outline" color="denim">
+            {available ?? '—'}
+          </Badge>
+        ) : (
+          <Text size="xs" c="dimmed">
+            —
+          </Text>
+        ),
+      quantity: (
+        <NumberInput
+          value={line.quantity}
+          min={1}
+          max={line.source === SaleItemSource.CHEST && available != null ? Math.max(available, 1) : undefined}
+          onChange={(value) =>
+            updateLine((entry) => ({ ...entry, quantity: typeof value === 'number' ? value : '' }))
+          }
+          size={size}
+        />
+      ),
+      remove: (
+        <ActionIcon
+          variant="light"
+          color="danger"
+          size={size === 'sm' ? 'lg' : 'md'}
+          onClick={() => setLines((prev) => prev.filter((entry) => entry.key !== line.key))}
+          aria-label="Retirer"
+        >
+          <IconTrash size={16} />
+        </ActionIcon>
+      ),
+    };
+  };
+
   return (
     <AppModal
       opened={opened}
@@ -362,140 +456,65 @@ export function SaleModal({
             Aucun objet sélectionné.
           </Text>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Objet</Table.Th>
-                <Table.Th style={{ width: 150 }}>Provenance</Table.Th>
-                <Table.Th style={{ width: 150 }}>Coffre</Table.Th>
-                <Table.Th style={{ width: 80 }}>Stock</Table.Th>
-                <Table.Th style={{ width: 90 }}>Qté</Table.Th>
-                <Table.Th style={{ width: 48 }} />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {lines.map((line) => {
-                const item = sellableItems.find((entry) => entry.id === line.itemId);
-                const chestId = line.chestId || defaultChestId;
-                const available =
-                  line.source === SaleItemSource.CHEST
-                    ? getAvailableInChest(line.itemId, chestId)
-                    : null;
+          <>
+            <Table striped highlightOnHover visibleFrom="sm">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Objet</Table.Th>
+                  <Table.Th style={{ width: 150 }}>Provenance</Table.Th>
+                  <Table.Th style={{ width: 150 }}>Coffre</Table.Th>
+                  <Table.Th style={{ width: 80 }}>Stock</Table.Th>
+                  <Table.Th style={{ width: 90 }}>Qté</Table.Th>
+                  <Table.Th style={{ width: 48 }} />
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {lines.map((line) => {
+                  const view = lineControls(line, 'xs');
+                  return (
+                    <Table.Tr key={line.key}>
+                      <Table.Td>{view.name}</Table.Td>
+                      <Table.Td>{view.source}</Table.Td>
+                      <Table.Td>{view.chest}</Table.Td>
+                      <Table.Td>{view.stock}</Table.Td>
+                      <Table.Td>{view.quantity}</Table.Td>
+                      <Table.Td>{view.remove}</Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
 
+            {/* Phones: one card per line instead of the 6-column table. */}
+            <Stack gap="sm" hiddenFrom="sm">
+              {lines.map((line) => {
+                const view = lineControls(line, 'sm');
                 return (
-                  <Table.Tr key={line.key}>
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Text fw={500}>{item?.name ?? line.itemId}</Text>
-                        {item?.price != null && (
-                          <Text size="xs" c="dimmed">
-                            {item.price.toFixed(2)} $
-                          </Text>
-                        )}
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>
-                      {chests.length === 0 ? (
-                        <Badge variant="outline" color="slate">
-                          Poche
-                        </Badge>
-                      ) : (
-                        <SegmentedControl
-                          size="xs"
-                          value={line.source}
-                          onChange={(value) =>
-                            setLines((prev) =>
-                              prev.map((entry) =>
-                                entry.key === line.key
-                                  ? {
-                                      ...entry,
-                                      source: value as SaleItemSource,
-                                      chestId:
-                                        value === SaleItemSource.CHEST
-                                          ? entry.chestId || defaultChestId
-                                          : null,
-                                    }
-                                  : entry,
-                              ),
-                            )
-                          }
-                          data={[
-                            { label: 'Coffre', value: SaleItemSource.CHEST },
-                            { label: 'Poche', value: SaleItemSource.POCKET },
-                          ]}
-                        />
+                  <Paper key={line.key} withBorder radius="md" p="sm">
+                    <Stack gap="xs">
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        {view.name}
+                        {view.remove}
+                      </Group>
+                      {view.source}
+                      {line.source === SaleItemSource.CHEST && (
+                        <Group gap="xs" wrap="nowrap" align="center">
+                          <div style={{ flex: 1, minWidth: 0 }}>{view.chest}</div>
+                          {view.stock}
+                        </Group>
                       )}
-                    </Table.Td>
-                    <Table.Td>
-                      {line.source === SaleItemSource.CHEST ? (
-                        <Select
-                          data={chestOptions}
-                          value={chestId}
-                          onChange={(value) =>
-                            setLines((prev) =>
-                              prev.map((entry) =>
-                                entry.key === line.key ? { ...entry, chestId: value } : entry,
-                              ),
-                            )
-                          }
-                          size="xs"
-                          placeholder="Coffre"
-                        />
-                      ) : (
-                        <Badge variant="outline" color="slate">
-                          Poche
-                        </Badge>
-                      )}
-                    </Table.Td>
-                    <Table.Td>
-                      {line.source === SaleItemSource.CHEST ? (
-                        <Badge variant="outline" color="denim">
-                          {available ?? '—'}
-                        </Badge>
-                      ) : (
-                        <Text size="xs" c="dimmed">
-                          —
+                      <Group gap="xs" wrap="nowrap" align="center">
+                        <Text size="sm" c="dimmed">
+                          Quantité
                         </Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td>
-                      <NumberInput
-                        value={line.quantity}
-                        min={1}
-                        max={
-                          line.source === SaleItemSource.CHEST && available != null
-                            ? Math.max(available, 1)
-                            : undefined
-                        }
-                        onChange={(value) =>
-                          setLines((prev) =>
-                            prev.map((entry) =>
-                              entry.key === line.key
-                                ? { ...entry, quantity: typeof value === 'number' ? value : '' }
-                                : entry,
-                            ),
-                          )
-                        }
-                        size="xs"
-                      />
-                    </Table.Td>
-                    <Table.Td>
-                      <ActionIcon
-                        variant="light"
-                        color="danger"
-                        onClick={() =>
-                          setLines((prev) => prev.filter((entry) => entry.key !== line.key))
-                        }
-                        aria-label="Retirer"
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Table.Td>
-                  </Table.Tr>
+                        <div style={{ flex: 1 }}>{view.quantity}</div>
+                      </Group>
+                    </Stack>
+                  </Paper>
                 );
               })}
-            </Table.Tbody>
-          </Table>
+            </Stack>
+          </>
         )}
 
         {lines.length > 0 && (

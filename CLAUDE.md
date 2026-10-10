@@ -35,7 +35,7 @@ Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, san
 - `*-client` (`agenda`, `bank`, `documents`, `inventory`, `media`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
 - `service-client` : couche fetch commune des `*-client` (`createServiceFetch` : URL et secret depuis l'env, cookie SSO transmis, parsing JSON, `ServiceClientError`). Chaque `XClientError` en hérite.
 - `service-kit` (services API uniquement) : `./prisma` (`createPrismaClient`), `./http` (`createCors`, `createRouteResponses`, `readSession`), `./internal-secret` (`hasInternalSecret`, comparaison en temps constant), `./scope`.
-- `host-kit` (apps hôtes dispensary / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
+- `host-kit` (apps hôtes dispensary / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`), `./theme` (moteur de thèmes : `themesToCss`, `themeInitScript`, `ThemeProvider` / `useAppTheme`, transition View Transitions). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
 - `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
 - Actions bank : la logique est partagée dans `@lawless-intranet/bank-client/host` (`createBankHostActions`). Chaque hôte ne fournit que `withBank` (`lib/bank/client.ts`) et ré-exporte les actions depuis `_actions/bankAccounts.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
@@ -46,7 +46,7 @@ SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir 
 
 ## Temps réel
 
-Migration progressive SSE → WebSocket ; l'agenda, les todos (dispensary) et la médiathèque (refuge) sont déjà sur `apps/realtime`.
+Migration progressive SSE → WebSocket ; l'agenda, les todos (dispensary) et la médiathèque (refuge et dispensary) sont déjà sur `apps/realtime`.
 - Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`getRealtimeToken` dans `apps/<dispensary|shelter>/src/app/_actions/realtime.ts`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
 - Les services publient après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Exemple : `apps/agenda/src/lib/realtime/broadcast.ts`.
 - Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query**, jamais de patch d'état à partir du message. Après chaque (re)connexion, `useRealtimeSocketResync` recharge tout.
@@ -64,9 +64,14 @@ pnpm --filter <app> test                  # vitest (dispensary, shelter, documen
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate
+pnpm db:migrate:deploy                    # applique les migrations en attente de toutes les apps (après un pull, un merge…)
+pnpm db:migrate:status                    # état des migrations de toutes les apps
+pnpm db:generate                          # régénère les clients Prisma de toutes les apps
 ```
 
-Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage.
+Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage. En local, après un pull ou un merge qui apporte des migrations, lancer `pnpm db:migrate:deploy`.
+
+**Scripts de migration globaux** (`package.json` racine) : ils tournent sur toutes les apps de `apps/**` qui définissent `db:migrate:deploy`, `db:migrate:status` et `db:generate`. **À maintenir dès que nécessaire** : toute nouvelle app avec Prisma doit définir ces trois scripts (sur le modèle des apps existantes) ; si une app Prisma vit hors de `apps/` ou si ces scripts changent de nom, mettre à jour les scripts racine dans le même commit.
 
 ## Façon de développer (apps front : dispensary / shelter)
 
@@ -120,9 +125,12 @@ Pour **tout nouveau code** et toute refonte : **React Query + server actions**. 
 
 - Mantine 8, `mantine-datatable`, `@tabler/icons-react`, modules SCSS, `@dnd-kit` pour les listes triables.
 - Dispensary, thème **« Apothecary »** (crème, encre, `sage` / `leather`) : les règles complètes sont dans `apps/dispensary/.cursor/rules/apothecary-design-system.mdc`. **À lire avant tout changement UI.**
+- Dispensary, **thèmes** : `lib/themes` (« Apothicaire » clair par défaut, « Lampe à huile » sombre), un par utilisateur (`UserUiPreferences.theme` + cookie `disp-theme`). On change de thème avec le bouton du header ou `/settings` › Apparence. Chaque thème génère les variables `--disp-*` et les teintes `--disp-<palette>-soft`, `-soft-strong`, `-soft-border`, `-soft-text`, scopées par `html[data-disp-theme]`. `dispTokens.colors` ne contient que des `var(...)`. **Pour un fond teinté, utiliser `--disp-<palette>-soft*`, pas `--mantine-color-<palette>-0/1`**, qui restent clairs en sombre. Le texte d'accent passe par `light-dark(...)`.
 - Shelter, thème **« refuge 1890 »** (parchemin, primaire `terracotta`) : voir `apps/shelter/src/lib/design-tokens.ts` et `theme.ts`.
+- Shelter, **thèmes** : même moteur, dans `lib/themes` (« Refuge 1890 » par défaut, « Veillée » sombre), avec `UserUiPreferences.theme` et le cookie `shelter-theme`. Le thème clair garde deux jeux de valeurs historiques, les variables SCSS (`--shelter-bg`, `--shelter-surface`…) et les styles Mantine (`--shelter-ui-*`, via `shelterTokens`), pour un rendu identique ; le sombre les fait pointer vers les mêmes valeurs. Teintes : `--shelter-<palette>-soft*`.
+- Pastilles partagées (`apothecaryPillStyle`, `shelterPillStyle`) : `light-dark()` à partir de leur propre palette, donc rien à configurer côté hôte.
 - Règles communes :
-  - pas de hex en dur : utiliser les tokens et les variables CSS `--disp-*` / `--shelter-*` ;
+  - pas de hex en dur : utiliser les tokens et les variables CSS `--disp-*` / `--shelter-*` (sinon le thème sombre casse) ;
   - pas de couleurs Mantine par défaut (`red`, `blue`, `gray`…) ;
   - réutiliser `PageHeader`, `AppModal` (dispensary), `ModuleCard`, `DeleteConfirmPopover`, `MarkdownContent`, etc.
 - Les liens de navigation doivent être de vrais liens (`<Link>` / `component={Link}`), pour que le clic milieu fonctionne.
@@ -143,7 +151,8 @@ Les modules historiques (auth, documents, agenda, bank, inventory) ont été ext
 3. un package client `packages/<x>-client`, dont le `config.ts` instancie `createServiceFetch` (`service-client`) ; côté service, `lib/{prisma,cors,auth,internalAuth}.ts` s'appuient sur `service-kit` ;
 4. si besoin, un package UI `packages/<x>-ui` avec des actions injectées. Côté hôte : `lib/<x>/client.ts` (scope et cookie via `serviceHost`), erreurs avec `serviceActionError` ou `withTenantService` (`@/lib/serviceAction`), mapping UI avec `toUiResult` ;
 5. un script de migration de données dans `scripts/` (préserver les IDs), à exposer dans le `package.json` racine ;
-6. un secret interne partagé, plus les variables d'env dans `turbo.json`, `docker-compose.yml` et `docs/SSO-DEV.md`.
+6. les scripts `db:migrate`, `db:migrate:deploy`, `db:migrate:status` et `db:generate` dans le `package.json` de l'app (repris par les scripts globaux, voir « Commandes ») ;
+7. un secret interne partagé, plus les variables d'env dans `turbo.json`, `docker-compose.yml` et `docs/SSO-DEV.md`.
 
 ## Git
 

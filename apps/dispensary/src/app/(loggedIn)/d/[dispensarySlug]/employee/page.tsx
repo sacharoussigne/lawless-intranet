@@ -21,7 +21,7 @@ import {
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import prisma from '@/lib/prisma';
 import { getDataOrThrow } from '@/lib/response';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import type { ChestListItem } from '@/types/chests';
 import type { OrdersPageResult } from '@/types/orders';
@@ -128,10 +128,8 @@ export default async function EmployeePage({
   }
 
   return (
-    <Container size="xl" py="xl">
-      <PageHeader
-        title="Espace employé"
-      />
+    <Container size="xl" py={{ base: "xs", sm: "xl" }}>
+      <PageHeader title="Espace employé" hideOnMobile />
 
       <EmployeeQuickActions
         canCreateSale={canCreateSale}

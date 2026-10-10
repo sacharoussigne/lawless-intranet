@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
     "db:generate": "prisma generate"
   },
   "dependencies": {
@@ -31,6 +32,8 @@
     "@lawless-intranet/inventory-ui": "workspace:*",
     "@lawless-intranet/mail-template-engine": "workspace:*",
     "@lawless-intranet/mail-template-ui": "workspace:*",
+    "@lawless-intranet/media-client": "workspace:*",
+    "@lawless-intranet/media-ui": "workspace:*",
     "@lawless-intranet/realtime": "workspace:*",
     "@lawless-intranet/types": "workspace:*",
     "@mantine/charts": "^8.3.17",

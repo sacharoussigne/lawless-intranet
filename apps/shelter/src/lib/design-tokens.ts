@@ -1,20 +1,22 @@
 /**
  * 1890 refuge design tokens (poster palette: parchment / terracotta / charcoal).
- * Consumed by theme.ts and global SCSS via CSS variables.
+ * Colors and shadows are CSS variables whose values come from the active theme
+ * (`lib/themes`); palettes are the Mantine color scales.
  */
 export const shelterTokens = {
+  /** Theme-dependent: CSS variables generated from `lib/themes` (never raw hex in components). */
   colors: {
-    background: '#F0E6D6',
-    surface: '#FBF6EE',
-    surfaceBorder: '#DCCBB3',
-    ink: '#3E3B39',
-    inkMuted: '#6A635C',
-    terracotta: '#8B4532',
-    sageDust: '#A4AC86',
-    leather: '#8B5E3C',
-    danger: '#8B2323',
-    tableHeader: '#E8DCC8',
-    tableZebra: '#F5EDE0',
+    background: 'var(--shelter-ui-bg)',
+    surface: 'var(--shelter-ui-surface)',
+    surfaceBorder: 'var(--shelter-ui-border)',
+    ink: 'var(--shelter-ui-ink)',
+    inkMuted: 'var(--shelter-ui-muted)',
+    terracotta: 'var(--shelter-terracotta)',
+    sageDust: 'var(--shelter-sage-dust)',
+    leather: 'var(--shelter-leather)',
+    danger: 'var(--shelter-danger)',
+    tableHeader: 'var(--shelter-ui-table-header)',
+    tableZebra: 'var(--shelter-ui-table-zebra)',
   },
   radius: {
     sm: '4px',
@@ -23,9 +25,9 @@ export const shelterTokens = {
     modal: '8px',
   },
   shadows: {
-    card: '0 1px 2px rgba(62, 59, 57, 0.05), 0 2px 6px rgba(62, 59, 57, 0.04)',
-    header: '0 1px 0 rgba(220, 203, 179, 0.9), 0 2px 6px rgba(62, 59, 57, 0.04)',
-    elevated: '0 3px 12px rgba(62, 59, 57, 0.08)',
+    card: 'var(--shelter-ui-shadow-card)',
+    header: 'var(--shelter-ui-shadow-header)',
+    elevated: 'var(--shelter-ui-shadow-elevated)',
   },
   fonts: {
     display: 'var(--font-display), var(--font-ui), "Courier New", Courier, monospace',
@@ -115,32 +117,10 @@ export const mossPalette = [
 ] as const;
 
 export function shelterPillStyle(palette: readonly string[]) {
+  // light-dark() follows the theme's color-scheme (see host-kit/theme darkSoftColors for the dark recipe).
   return {
-    backgroundColor: palette[1],
-    color: palette[8],
-    border: `1px solid ${palette[3]}`,
-  };
-}
-
-/** CSS custom properties injected on :root via globals.scss */
-export function shelterCssVariables(): Record<string, string> {
-  const t = shelterTokens;
-  return {
-    '--shelter-bg': t.colors.background,
-    '--shelter-bg-accent': t.colors.tableHeader,
-    '--shelter-surface': t.colors.surface,
-    '--shelter-border': t.colors.surfaceBorder,
-    '--shelter-ink': t.colors.ink,
-    '--shelter-muted': t.colors.inkMuted,
-    '--shelter-terracotta': t.colors.terracotta,
-    '--shelter-sage-dust': t.colors.sageDust,
-    '--shelter-leather': t.colors.leather,
-    '--shelter-danger': t.colors.danger,
-    '--shelter-table-header': t.colors.tableHeader,
-    '--shelter-table-zebra': t.colors.tableZebra,
-    '--shelter-shadow-card': t.shadows.card,
-    '--shelter-shadow-header': t.shadows.header,
-    '--shelter-font-display': t.fonts.display,
-    '--shelter-font-ui': t.fonts.ui,
+    backgroundColor: `light-dark(${palette[1]}, color-mix(in srgb, ${palette[5]} 24%, transparent))`,
+    color: `light-dark(${palette[8]}, ${palette[2]})`,
+    border: `1px solid light-dark(${palette[3]}, color-mix(in srgb, ${palette[4]} 45%, transparent))`,
   };
 }

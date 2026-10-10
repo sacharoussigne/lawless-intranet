@@ -19,7 +19,7 @@ export function UploadQueue({ items, onClear }: UploadQueueProps) {
       shadow="md"
       p="sm"
       radius="md"
-      style={{ position: 'fixed', right: 16, bottom: 16, width: 340, maxWidth: 'calc(100vw - 32px)', zIndex: 200 }}
+      style={{ position: 'fixed', right: 16, bottom: 'calc(var(--app-bottom-bar-height, 0px) + env(safe-area-inset-bottom, 0px) + 16px)', width: 340, maxWidth: 'calc(100vw - 32px)', zIndex: 200 }}
     >
       <Group justify="space-between" mb="xs">
         <Text fw={600} size="sm">

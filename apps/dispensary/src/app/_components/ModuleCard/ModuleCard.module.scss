@@ -8,8 +8,8 @@
     transform 0.2s ease;
 
   &:hover {
-    box-shadow: var(--disp-shadow-card), 0 4px 12px rgba(61, 52, 41, 0.08);
-    border-color: var(--mantine-color-sage-2);
+    box-shadow: var(--disp-shadow-card), var(--disp-shadow-hover);
+    border-color: var(--disp-sage-soft-border);
     transform: translateY(-1px);
   }
 }
@@ -32,7 +32,7 @@
   height: 44px;
   border-radius: var(--mantine-radius-sm);
   background-color: var(--disp-table-header);
-  color: var(--mantine-color-leather-7);
+  color: light-dark(var(--mantine-color-leather-7), var(--mantine-color-leather-3));
   flex-shrink: 0;
 }
 

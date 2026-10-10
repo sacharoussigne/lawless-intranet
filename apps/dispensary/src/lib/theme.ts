@@ -58,9 +58,12 @@ const noAutofillProps: Record<string, string> = {
 const theme = createTheme({
   ...DEFAULT_THEME,
 
-  /** Used for dropdowns, popovers, etc. — not pure #fff */
-  white: c.surface,
-  black: c.ink,
+  /**
+   * Literal colors: Mantine parses them. Cream text on filled buttons, ink as
+   * fallback text; surfaces and text otherwise come from the theme variables.
+   */
+  white: '#FFFCF6',
+  black: '#3D3429',
 
   colors: {
     sage: [...sagePalette],
@@ -72,6 +75,19 @@ const theme = createTheme({
     amber: [...amberPalette],
     moss: [...mossPalette],
     denim: [...denimPalette],
+    /** Dark scheme surfaces (« Lampe à huile »): warm browns instead of Mantine's blue-grays. */
+    dark: [
+      '#ECE3D2',
+      '#D3C8B6',
+      '#B0A493',
+      '#8A7F70',
+      '#4A4035',
+      '#3B3329',
+      '#2D2720',
+      '#26201A',
+      '#1C1814',
+      '#15120F',
+    ],
     blue: [
       '#e3f4fd',
       '#cbe8fb',
@@ -87,7 +103,8 @@ const theme = createTheme({
   },
 
   primaryColor: 'sage',
-  primaryShade: 6,
+  // Lighter accent on dark surfaces.
+  primaryShade: { light: 6, dark: 5 },
 
   defaultRadius: 'md',
 
@@ -439,7 +456,7 @@ const theme = createTheme({
       },
       vars: () => ({
         root: {
-          '--tab-hover-color': 'var(--mantine-color-sage-0)',
+          '--tab-hover-color': 'var(--disp-sage-soft)',
           '--tab-border-color': c.surfaceBorder,
         },
       }),
@@ -457,7 +474,7 @@ const theme = createTheme({
       vars: () => ({
         table: {
           '--table-striped-color': c.tableZebra,
-          '--table-highlight-on-hover-color': 'var(--mantine-color-sage-0)',
+          '--table-highlight-on-hover-color': 'var(--disp-sage-soft)',
           '--table-border-color': c.surfaceBorder,
         },
       }),
@@ -483,26 +500,27 @@ const theme = createTheme({
   },
 });
 
-/** Readable muted text and surfaces on cream backgrounds (light scheme). */
+/** Mantine base colors follow the active theme, in both schemes. */
+const themeMantineVariables = {
+  '--mantine-color-dimmed': c.inkMuted,
+  '--mantine-color-body': c.background,
+  '--mantine-color-text': c.ink,
+  '--mantine-color-default': c.surface,
+  '--mantine-color-default-color': c.ink,
+  '--mantine-color-default-hover': c.tableHeader,
+  '--mantine-color-default-border': c.surfaceBorder,
+  '--mantine-color-disabled': c.tableHeader,
+  '--mantine-color-disabled-color': c.inkMuted,
+  '--mantine-color-disabled-border': c.surfaceBorder,
+};
+
 export const dispCssVariablesResolver: CSSVariablesResolver = () => ({
-  variables: {},
-  light: {
-    '--mantine-color-dimmed': c.inkMuted,
-    '--mantine-color-body': c.background,
-    '--mantine-color-text': c.ink,
-    '--mantine-color-default-hover': c.tableHeader,
-    '--mantine-color-default-border': c.surfaceBorder,
-    '--mantine-color-disabled': c.tableHeader,
-    '--mantine-color-disabled-color': c.inkMuted,
-    '--mantine-color-disabled-border': c.surfaceBorder,
+  variables: {
     '--mantine-font-family': dispTokens.fonts.ui,
     '--mantine-font-family-monospace': dispTokens.fonts.mono,
   },
-  dark: {
-    '--mantine-color-dimmed': 'var(--mantine-color-dark-2)',
-    '--mantine-font-family': dispTokens.fonts.ui,
-    '--mantine-font-family-monospace': dispTokens.fonts.mono,
-  },
+  light: themeMantineVariables,
+  dark: themeMantineVariables,
 });
 
 export default theme;

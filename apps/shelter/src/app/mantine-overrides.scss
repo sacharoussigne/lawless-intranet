@@ -42,7 +42,7 @@
   .mantine-Menu-item {
     &[data-hovered],
     &:hover {
-      background-color: var(--mantine-color-terracotta-0);
+      background-color: var(--shelter-terracotta-soft);
     }
   }
 }
@@ -52,7 +52,7 @@
   .mantine-datatable-header-cell-filter-action-icon,
   .mantine-ActionIcon-root {
     --ai-bg: transparent;
-    --ai-hover: var(--mantine-color-terracotta-0);
+    --ai-hover: var(--shelter-terracotta-soft);
     --ai-color: var(--shelter-muted);
     --ai-hover-color: var(--shelter-terracotta);
     background-color: transparent !important;
@@ -61,15 +61,23 @@
     box-shadow: none;
 
     &:hover {
-      background-color: var(--mantine-color-terracotta-0) !important;
+      background-color: var(--shelter-terracotta-soft) !important;
       color: var(--shelter-terracotta) !important;
     }
   }
 
   .mantine-datatable-header-cell-filter-action-icon[data-active] {
-    --ai-bg: var(--mantine-color-terracotta-0);
+    --ai-bg: var(--shelter-terracotta-soft);
     --ai-color: var(--shelter-terracotta);
-    background-color: var(--mantine-color-terracotta-0) !important;
+    background-color: var(--shelter-terracotta-soft) !important;
     color: var(--shelter-terracotta) !important;
   }
+}
+
+/* Tooltips in dark themes: Mantine inverts them (light gray), which glares on warm dark surfaces. */
+:root[data-mantine-color-scheme='dark'] .mantine-Tooltip-tooltip {
+  --tooltip-bg: var(--mantine-color-dark-5);
+  --tooltip-color: var(--shelter-ink);
+  border: 1px solid var(--mantine-color-dark-4);
+  box-shadow: var(--shelter-shadow-card);
 }

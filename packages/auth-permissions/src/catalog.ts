@@ -11,6 +11,7 @@ export const applicationPermissionCatalog = {
   weekly_dispensary_activity: ["view", "edit_own", "edit_all"],
   sales: ["create", "cancel", "view", "view_all"],
   stock_statistics: ["view"],
+  media: ["access"],
 } as const;
 
 export type ApplicationResource = keyof typeof applicationPermissionCatalog;
@@ -77,6 +78,7 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
     weekly_dispensary_activity: [...applicationPermissionCatalog.weekly_dispensary_activity],
     sales: [...applicationPermissionCatalog.sales],
     stock_statistics: [...applicationPermissionCatalog.stock_statistics],
+    media: [...applicationPermissionCatalog.media],
   },
   employee: {
     stock: ["view"],
@@ -109,6 +111,7 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
     weekly_dispensary_activity: ["view", "edit_all"],
     stock_statistics: ["view"],
     sales: ["create", "cancel", "view", "view_all"],
+    media: ["access"],
   },
 };
 

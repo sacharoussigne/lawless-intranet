@@ -97,7 +97,7 @@
 }
 
 .root :global(a:hover) {
-  color: var(--mantine-color-terracotta-7);
+  color: light-dark(var(--mantine-color-terracotta-7), var(--mantine-color-terracotta-3));
 }
 
 .root :global(blockquote) {
@@ -105,7 +105,7 @@
   padding: 0.35em 0.75em;
   border-left: 3px solid var(--mantine-color-terracotta-4);
   color: var(--shelter-muted);
-  background: var(--mantine-color-terracotta-0);
+  background: var(--shelter-terracotta-soft);
 }
 
 .root :global(code) {

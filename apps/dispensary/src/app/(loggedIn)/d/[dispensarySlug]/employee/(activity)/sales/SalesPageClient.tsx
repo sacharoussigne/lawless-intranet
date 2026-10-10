@@ -11,7 +11,7 @@ import {
 } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
-import { EmployeeWeeklySalesDashboard } from '../EmployeeWeeklySalesDashboard';
+import { EmployeeWeeklySalesDashboard } from '../../EmployeeWeeklySalesDashboard';
 
 type SalesPageClientProps = {
   dispensarySlug: string;

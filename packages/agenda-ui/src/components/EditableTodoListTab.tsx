@@ -48,6 +48,8 @@ export function EditableTodoListTab({
         inputClassName={classes.todoListTabEditInput}
         onEditingChange={setEditing}
         pending={pending}
+        // Touch: the first tap selects the list, a tap on the active one renames it.
+        editOnTap={active}
       />
     </div>
   );

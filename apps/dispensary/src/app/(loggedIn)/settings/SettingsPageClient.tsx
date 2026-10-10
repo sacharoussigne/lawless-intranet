@@ -31,6 +31,7 @@ import type { StockUiPreferences } from '@/types/stockUiPreferences';
 import { STOCK_UI_DEFAULTS } from '@/types/stockUiPreferences';
 import type { UserGender } from '@lawless-intranet/types';
 import { IconX } from '@tabler/icons-react';
+import { AppearanceCard } from './AppearanceCard';
 
 type SettingsImageMode = 'url' | 'upload';
 
@@ -315,12 +316,13 @@ export default function SettingsPageClient(props: {
   };
 
   return (
-    <Container size="sm" py="xl">
-      <Group justify="space-between" mb="xl">
+    <Container size="sm" py={{ base: "md", sm: "xl" }}>
+      {/* Phones: the app bar already shows the title. */}
+      <Group justify="space-between" mb="xl" visibleFrom="sm">
         <div>
           <Title order={1}>Paramètres du compte</Title>
           <Text c="dimmed" mt="xs">
-            Modifiez votre profil et votre mot de passe.
+            Modifiez votre profil, votre mot de passe et l’apparence de l’intranet.
           </Text>
         </div>
       </Group>
@@ -385,7 +387,7 @@ export default function SettingsPageClient(props: {
             )}
 
             <Group justify="flex-end">
-              <Button onClick={handleSaveProfile} loading={profileSaving}>
+              <Button onClick={handleSaveProfile} loading={profileSaving} w={{ base: "100%", sm: "auto" }}>
                 Enregistrer
               </Button>
             </Group>
@@ -465,13 +467,15 @@ export default function SettingsPageClient(props: {
                 {...passwordForm.getInputProps('confirmNewPassword')}
               />
               <Group justify="flex-end">
-                <Button onClick={handleSavePassword} loading={passwordSaving}>
+                <Button onClick={handleSavePassword} loading={passwordSaving} w={{ base: "100%", sm: "auto" }}>
                   Mettre à jour
                 </Button>
               </Group>
             </Stack>
           </Card>
         )}
+
+        <AppearanceCard />
 
         <Card withBorder shadow="sm" radius="md" padding="lg">
           <Title order={3} mb="md">
@@ -583,7 +587,7 @@ export default function SettingsPageClient(props: {
             />
 
             <Group justify="flex-end">
-              <Button onClick={handleSaveStockUi} loading={stockUiSaving}>
+              <Button onClick={handleSaveStockUi} loading={stockUiSaving} w={{ base: "100%", sm: "auto" }}>
                 Enregistrer
               </Button>
             </Group>

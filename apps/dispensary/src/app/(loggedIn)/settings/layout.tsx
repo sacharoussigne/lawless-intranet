@@ -24,7 +24,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
           session={session as AuthSession | null}
           impersonatorDisplayName={impersonatorDisplayName}
         />
-        <div className="flex-1 w-full min-w-0 pb-[72px] sm:pb-0">
+        <div className="flex-1 w-full min-w-0 disp-mobile-safe-space">
           {children}
         </div>
       </LoggedInShell>

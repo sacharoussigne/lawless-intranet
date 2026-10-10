@@ -1,8 +1,8 @@
 'use client';
 
-import { Group, Paper, Stack, Text } from '@mantine/core';
+import { Paper, Stack, Text } from '@mantine/core';
 import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import { COMPACT_DAY_LABELS } from './compactDisplay';
 import { WeeklyActivityCompactRow } from './WeeklyActivityCompactRow';
 import classes from './WeeklyActivityCompact.module.scss';
@@ -31,7 +31,7 @@ export function WeeklyActivityCompactTeamList({
       withBorder
       shadow="sm"
       radius="md"
-      p="lg"
+      p={{ base: 'md', sm: 'lg' }}
       bg="sage.9"
       className={classes.panel}
     >
@@ -40,13 +40,13 @@ export function WeeklyActivityCompactTeamList({
       </Text>
 
       {showDayGrid && rows.length > 0 && (
-        <Group gap="lg" wrap="nowrap" mb="sm" pl="calc(8rem + var(--mantine-spacing-lg))">
+        <div className={`${classes.dayGrid} ${classes.teamHeader}`}>
           {COMPACT_DAY_LABELS.map((label) => (
             <Text key={label} className={classes.dayHeader}>
               {label}
             </Text>
           ))}
-        </Group>
+        </div>
       )}
 
       <Stack gap={0}>

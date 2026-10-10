@@ -40,7 +40,7 @@ export default function SignupForm() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <h1 className="text-center text-2xl font-semibold">Bienvenue !</h1>
       <p className="mt-2 text-center text-sm text-zinc-500">
         Déjà un compte ?{' '}
@@ -60,10 +60,11 @@ export default function SignupForm() {
             </label>
             <input
               id="username"
+              autoComplete="username"
               required
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-base sm:text-sm"
             />
           </div>
           <div>
@@ -72,11 +73,12 @@ export default function SignupForm() {
             </label>
             <input
               id="email"
+              autoComplete="email"
               type="email"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-base sm:text-sm"
             />
           </div>
           <div>
@@ -85,19 +87,20 @@ export default function SignupForm() {
             </label>
             <input
               id="password"
+              autoComplete="new-password"
               type="password"
               required
               minLength={8}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-base sm:text-sm"
             />
           </div>
           {authError ? <p className="text-sm text-red-600">{authError}</p> : null}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+            className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-base font-medium sm:py-2.5 sm:text-sm text-white hover:bg-zinc-800 disabled:opacity-60"
           >
             {isLoading ? 'Inscription…' : 'S&apos;inscrire'}
           </button>

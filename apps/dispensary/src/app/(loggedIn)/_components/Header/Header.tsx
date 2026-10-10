@@ -21,9 +21,11 @@ import { type AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
 import Link from 'next/link';
 import Image from 'next/image';
-import { IconArrowBackUp, IconLogout, IconSearch, IconSettings } from '@tabler/icons-react';
+import { IconArrowBackUp, IconLogout, IconPhoto, IconSearch, IconSettings } from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
+import { MobileHeader } from './MobileHeader';
+import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { dispensarySiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
 import { hasRole } from '@lawless-intranet/auth-permissions';
@@ -155,9 +157,20 @@ export default function Header({
       : routes.platform.dispensaries;
 
   return (
-    <header className={`${classes.header} mb-10`}>
+    <header className={classes.header}>
+      {session && <AccountThemeSync />}
       <Container size={'xl'}>
-        <div className={classes.headerInner}>
+        {session && (
+          <MobileHeader
+            dispensarySlug={t ? (dispensarySlug ?? null) : null}
+            backHref={defaultTenantSlug ? tenantRoutes(defaultTenantSlug).employee.account : null}
+            isImpersonating={isImpersonating}
+            stoppingImpersonation={stoppingImpersonation}
+            onStopImpersonating={handleStopImpersonating}
+          />
+        )}
+        {/* Desktop and tablet header; phones get MobileHeader and the bottom tab bar. */}
+        <div className={`${classes.headerInner} ${session ? classes.desktopOnly : ''}`}>
           <Group gap="md" wrap="nowrap" className={classes.headerSide}>
             <Link href={logoHref} className={classes.logoLink}>
               <Image
@@ -231,6 +244,19 @@ export default function Header({
                   />
                 )}
 
+                {appSettings.featureMediaEnabled && permissions?.media.access && (
+                  <Tooltip label="Médiathèque" position="bottom">
+                    <ActionIcon
+                      component={Link}
+                      href={t.media.index}
+                      variant="light"
+                      size="lg"
+                      aria-label="Médiathèque"
+                    >
+                      <IconPhoto size={18} stroke={1.6} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
                 {appSettings.featureAgendaEnabled && agendaModuleAccess && dispensarySlug && (
                   <HeaderUpcomingEvents
                     dispensarySlug={dispensarySlug}
@@ -240,7 +266,9 @@ export default function Header({
                 <Menu
                   width={260}
                   position="bottom-end"
-                  transitionProps={{ transition: 'pop-top-right' }}
+                  // No scale transition: the theme SegmentedControl measures its indicator on open,
+                  // a scaled dropdown would misplace it until the transition ends (visible jump).
+                  transitionProps={{ transition: 'fade-down' }}
                   onClose={() => setUserMenuOpened(false)}
                   onOpen={() => setUserMenuOpened(true)}
                   withinPortal
@@ -258,6 +286,7 @@ export default function Header({
                     </UnstyledButton>
                   </Menu.Target>
                   <Menu.Dropdown>
+                    <AccountMenuHeader name={session.user.name} />
                     {isPlatformAdminUser && (
                       <>
                         <Menu.Label>Plateforme</Menu.Label>
@@ -346,6 +375,7 @@ export default function Header({
                   <Avatar alt={session.user.name} radius="xl" size={40} src={session.user.image ?? null} />
                 </Menu.Target>
                 <Menu.Dropdown>
+                  <AccountMenuHeader name={session.user.name} />
                   <Menu.Item onClick={handleLogout}>Déconnexion</Menu.Item>
                 </Menu.Dropdown>
               </Menu>

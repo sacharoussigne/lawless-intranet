@@ -55,8 +55,12 @@ const noAutofillProps: Record<string, string> = {
 const theme = createTheme({
   ...DEFAULT_THEME,
 
-  white: c.surface,
-  black: c.ink,
+  /**
+   * Literal colors: Mantine parses them. Light text on filled buttons, ink as
+   * fallback text; surfaces and text otherwise come from the theme variables.
+   */
+  white: '#FBF6EE',
+  black: '#3E3B39',
 
   colors: {
     terracotta: [...terracottaPalette],
@@ -65,10 +69,24 @@ const theme = createTheme({
     slate: [...slatePalette],
     leather: [...leatherPalette],
     moss: [...mossPalette],
+    /** Dark scheme surfaces (« Veillée »): warm charcoal instead of Mantine's blue-grays. */
+    dark: [
+      '#EDE3D4',
+      '#D5C9B7',
+      '#B3A795',
+      '#8C8172',
+      '#4B4239',
+      '#3E362F',
+      '#302823',
+      '#28221E',
+      '#1E1A17',
+      '#161310',
+    ],
   },
 
   primaryColor: 'terracotta',
-  primaryShade: 6,
+  // Lighter accent on dark surfaces.
+  primaryShade: { light: 6, dark: 5 },
 
   defaultRadius: 'sm',
 
@@ -428,7 +446,7 @@ const theme = createTheme({
       },
       vars: () => ({
         root: {
-          '--tab-hover-color': 'var(--mantine-color-terracotta-0)',
+          '--tab-hover-color': 'var(--shelter-terracotta-soft)',
           '--tab-border-color': c.surfaceBorder,
         },
       }),
@@ -446,7 +464,7 @@ const theme = createTheme({
       vars: () => ({
         table: {
           '--table-striped-color': c.tableZebra,
-          '--table-highlight-on-hover-color': 'var(--mantine-color-terracotta-0)',
+          '--table-highlight-on-hover-color': 'var(--shelter-terracotta-soft)',
           '--table-border-color': c.surfaceBorder,
         },
       }),
@@ -472,25 +490,27 @@ const theme = createTheme({
   },
 });
 
+/** Mantine base colors follow the active theme, in both schemes. */
+const themeMantineVariables = {
+  '--mantine-color-dimmed': c.inkMuted,
+  '--mantine-color-body': c.background,
+  '--mantine-color-text': c.ink,
+  '--mantine-color-default': c.surface,
+  '--mantine-color-default-color': c.ink,
+  '--mantine-color-default-hover': c.tableHeader,
+  '--mantine-color-default-border': c.surfaceBorder,
+  '--mantine-color-disabled': c.tableHeader,
+  '--mantine-color-disabled-color': c.inkMuted,
+  '--mantine-color-disabled-border': c.surfaceBorder,
+};
+
 export const shelterCssVariablesResolver: CSSVariablesResolver = () => ({
-  variables: {},
-  light: {
-    '--mantine-color-dimmed': c.inkMuted,
-    '--mantine-color-body': c.background,
-    '--mantine-color-text': c.ink,
-    '--mantine-color-default-hover': c.tableHeader,
-    '--mantine-color-default-border': c.surfaceBorder,
-    '--mantine-color-disabled': c.tableHeader,
-    '--mantine-color-disabled-color': c.inkMuted,
-    '--mantine-color-disabled-border': c.surfaceBorder,
+  variables: {
     '--mantine-font-family': shelterTokens.fonts.ui,
     '--mantine-font-family-monospace': shelterTokens.fonts.mono,
   },
-  dark: {
-    '--mantine-color-dimmed': 'var(--mantine-color-dark-2)',
-    '--mantine-font-family': shelterTokens.fonts.ui,
-    '--mantine-font-family-monospace': shelterTokens.fonts.mono,
-  },
+  light: themeMantineVariables,
+  dark: themeMantineVariables,
 });
 
 export default theme;

@@ -38,7 +38,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <h1 className="text-center text-2xl font-semibold">Bon retour !</h1>
       <p className="mt-2 text-center text-sm text-zinc-500">
         Pas encore de compte ?{' '}
@@ -54,7 +54,7 @@ export default function LoginForm() {
         <button
           type="button"
           onClick={() => signInWithDiscord(callbackUrl)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#5865F2] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#4752C4]"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#5865F2] px-4 py-3 text-base font-medium sm:py-2.5 sm:text-sm text-white hover:bg-[#4752C4]"
         >
           Continuer avec Discord
         </button>
@@ -72,11 +72,12 @@ export default function LoginForm() {
             </label>
             <input
               id="email"
+              autoComplete="username"
               type="email"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-base sm:text-sm"
               placeholder="vous@exemple.com"
             />
           </div>
@@ -86,18 +87,19 @@ export default function LoginForm() {
             </label>
             <input
               id="password"
+              autoComplete="current-password"
               type="password"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-base sm:text-sm"
             />
           </div>
           {authError ? <p className="text-sm text-red-600">{authError}</p> : null}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60"
+            className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-base font-medium sm:py-2.5 sm:text-sm text-white hover:bg-zinc-800 disabled:opacity-60"
           >
             {isLoading ? 'Connexion…' : 'Se connecter'}
           </button>
