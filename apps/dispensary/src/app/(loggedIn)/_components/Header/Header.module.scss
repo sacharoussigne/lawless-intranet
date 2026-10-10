@@ -3,6 +3,50 @@
   border-bottom: 1px solid var(--disp-surface-border);
   box-shadow: var(--disp-shadow-header);
   padding-block: var(--mantine-spacing-sm);
+  margin-bottom: 2.5rem;
+
+  // Phones: compact app bar pinned at the top, under the notch.
+  @media (max-width: 47.99em) {
+    position: sticky;
+    top: 0;
+    z-index: 180;
+    margin-bottom: var(--mantine-spacing-md);
+    padding-block: var(--mantine-spacing-xs);
+    padding-top: calc(var(--mantine-spacing-xs) + var(--disp-safe-top));
+  }
+}
+
+.desktopOnly {
+  @media (max-width: 47.99em) {
+    display: none !important;
+  }
+}
+
+.mobileBar {
+  display: none;
+
+  @media (max-width: 47.99em) {
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-sm);
+    min-height: 44px;
+  }
+}
+
+.mobileLogo {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.mobileTitle {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--disp-font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--disp-ink);
 }
 
 .headerInner {

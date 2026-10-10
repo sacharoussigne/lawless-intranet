@@ -316,8 +316,9 @@ export default function SettingsPageClient(props: {
   };
 
   return (
-    <Container size="sm" py="xl">
-      <Group justify="space-between" mb="xl">
+    <Container size="sm" py={{ base: "md", sm: "xl" }}>
+      {/* Phones: the app bar already shows the title. */}
+      <Group justify="space-between" mb="xl" visibleFrom="sm">
         <div>
           <Title order={1}>Paramètres du compte</Title>
           <Text c="dimmed" mt="xs">
@@ -386,7 +387,7 @@ export default function SettingsPageClient(props: {
             )}
 
             <Group justify="flex-end">
-              <Button onClick={handleSaveProfile} loading={profileSaving}>
+              <Button onClick={handleSaveProfile} loading={profileSaving} w={{ base: "100%", sm: "auto" }}>
                 Enregistrer
               </Button>
             </Group>
@@ -466,7 +467,7 @@ export default function SettingsPageClient(props: {
                 {...passwordForm.getInputProps('confirmNewPassword')}
               />
               <Group justify="flex-end">
-                <Button onClick={handleSavePassword} loading={passwordSaving}>
+                <Button onClick={handleSavePassword} loading={passwordSaving} w={{ base: "100%", sm: "auto" }}>
                   Mettre à jour
                 </Button>
               </Group>
@@ -586,7 +587,7 @@ export default function SettingsPageClient(props: {
             />
 
             <Group justify="flex-end">
-              <Button onClick={handleSaveStockUi} loading={stockUiSaving}>
+              <Button onClick={handleSaveStockUi} loading={stockUiSaving} w={{ base: "100%", sm: "auto" }}>
                 Enregistrer
               </Button>
             </Group>

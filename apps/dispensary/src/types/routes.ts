@@ -37,6 +37,8 @@ export function tenantRoutes(slug: string) {
       stockMovements: `${employeeBase}/stock-movements`,
       sales: `${employeeBase}/sales`,
       media: `${employeeBase}/media`,
+      /** Profile tab of the mobile app (account, theme, logout). */
+      account: `${employeeBase}/compte`,
       mails: `${employeeBase}/mails`,
       newMail: `${employeeBase}/mails/new`,
       editMail: (id: string) => `${employeeBase}/mails/${id}/edit`,
@@ -49,7 +51,7 @@ export function tenantRoutes(slug: string) {
     searchItems: { index: `${employeeBase}/search-items` },
     bank: { index: `${employeeBase}/bank` },
     weeklyActivity: { index: `${employeeBase}/weekly-activity` },
-    agenda: { index: `${employeeBase}/agenda` },
+    agenda: { index: `${employeeBase}/agenda`, tasks: `${employeeBase}/agenda/taches` },
     media: { index: `${employeeBase}/media` },
     cabinet: {
       index: `${employeeBase}/cabinet`,

@@ -7,10 +7,12 @@ import {
   type MantineColorSchemeManager,
 } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
+import { useMediaQuery } from '@mantine/hooks';
 import { Notifications } from '@mantine/notifications';
 import { ThemeProvider, useAppTheme } from '@lawless-intranet/host-kit/theme';
 import theme, { dispCssVariablesResolver } from '@/lib/theme';
 import { DISP_THEME_CONFIG } from '@/lib/themes';
+import { MOBILE_MEDIA_QUERY } from '@/lib/navigation/mobileNav';
 import { setMyTheme } from './_actions/uiTheme';
 
 /**
@@ -46,6 +48,12 @@ function MantineSchemeSync() {
   return null;
 }
 
+/** Phones: notifications at the top, clear of the bottom tab bar and the thumb. */
+function AppNotifications() {
+  const isPhone = useMediaQuery(MOBILE_MEDIA_QUERY) ?? false;
+  return <Notifications position={isPhone ? 'top-center' : 'bottom-right'} />;
+}
+
 export function MantineAppProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider config={DISP_THEME_CONFIG} onPersist={setMyTheme}>
@@ -55,7 +63,7 @@ export function MantineAppProvider({ children }: { children: React.ReactNode }) 
         colorSchemeManager={themeColorSchemeManager}
       >
         <MantineSchemeSync />
-        <Notifications />
+        <AppNotifications />
         <ModalsProvider>{children}</ModalsProvider>
       </MantineProvider>
     </ThemeProvider>
