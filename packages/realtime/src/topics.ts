@@ -15,6 +15,8 @@ export const realtimeTopics = {
   /** Weekly activity of one member in a dispensary (the member, with `view`). */
   weeklyActivityOfUser: (dispensaryId: string, userId: string) =>
     `weeklyactivity:${dispensaryId}:user:${userId}`,
+  /** Animal waitlist of a shelter (viewers with `waitlist:manage`). */
+  waitlist: (shelterId: string) => `waitlist:${shelterId}`,
   /** Media library of a scope (folders and files). */
   media: (scopeType: string, scopeId: string) => `media:${scopeType}:${scopeId}`,
   /** Per-user notifications (participant events, access changes). */
