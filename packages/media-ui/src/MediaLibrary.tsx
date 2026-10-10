@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -91,6 +91,16 @@ import {
 export const MEDIA_FOLDER_PARAM = 'folder';
 
 /** Same columns for folders and files so both grids line up, like Drive. */
+/**
+ * Touch (Drive-like): press-and-hold anywhere in the library never selects text
+ * nor shows the iOS copy / loupe / image callout; it only opens our menu.
+ */
+const TOUCH_NO_SELECT: CSSProperties = {
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
+  WebkitTouchCallout: 'none',
+};
+
 const GRID_COLS = { base: 2, sm: 3, md: 4, xl: 5 };
 /**
  * Floating « + » / selection bar: above the host's bottom bar when it has one
@@ -511,7 +521,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     >
       <DraggedItemsContext.Provider value={dragged?.items ?? []}>
         <FileDropTargetContext.Provider value={fileDrop.hoveredFolder}>
-          <Stack gap="md">
+          <Stack gap="md" style={isTouch ? TOUCH_NO_SELECT : undefined}>
             <Group justify="space-between" wrap="wrap" gap="sm" mih={36}>
               <Breadcrumbs separatorMargin={2} style={{ flexWrap: 'wrap', minWidth: 0 }}>
                 {isPhone && breadcrumb.length > 1 ? (

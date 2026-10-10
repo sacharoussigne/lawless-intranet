@@ -30,6 +30,7 @@ function rowStyle(highlighted: boolean, dragging: boolean): CSSProperties {
   return {
     cursor: 'default',
     userSelect: 'none',
+    WebkitUserSelect: 'none',
     WebkitTouchCallout: 'none',
     opacity: dragging ? 0.4 : 1,
     backgroundColor: highlighted ? 'var(--mantine-primary-color-light)' : undefined,
