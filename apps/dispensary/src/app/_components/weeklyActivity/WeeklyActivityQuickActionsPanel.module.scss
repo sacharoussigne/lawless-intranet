@@ -42,3 +42,40 @@
   font-weight: 600;
   color: light-dark(var(--mantine-color-sage-7), var(--mantine-color-sage-3));
 }
+
+.phoneLabel {
+  display: none;
+}
+
+/* Phones: short button labels; counters as one full-width row each (name, count, +1), nothing truncated. */
+@media (max-width: 47.99em) {
+  .desktopLabel {
+    display: none;
+  }
+
+  .phoneLabel {
+    display: inline;
+  }
+
+  .counterTile {
+    min-height: 40px;
+
+    &:active:not(:disabled) {
+      background: var(--disp-sage-soft);
+    }
+  }
+
+  .counterIcon {
+    color: var(--disp-sage-soft-text);
+  }
+
+  .counterValue {
+    margin-left: auto;
+  }
+
+  .counterTilePlus {
+    padding: 2px var(--mantine-spacing-xs);
+    border-radius: var(--mantine-radius-xl);
+    background: var(--disp-sage-soft);
+  }
+}
