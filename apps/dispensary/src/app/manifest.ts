@@ -8,6 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Dispensaire',
     description: 'Intranet du dispensaire : activité, agenda, tâches et médiathèque.',
     lang: 'fr',
+    // Stable identity of the installed app, even if start_url changes.
+    id: '/',
     // `/` redirects to the employee home of the first accessible dispensary.
     start_url: '/',
     scope: '/',
