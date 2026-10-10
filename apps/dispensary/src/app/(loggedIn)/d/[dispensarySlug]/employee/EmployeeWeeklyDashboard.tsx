@@ -12,6 +12,7 @@ import { HistoryWeeklyActivityModal } from '@/app/(loggedIn)/d/[dispensarySlug]/
 import {
   invalidateWeeklyActivityFromRealtimeEvent,
   useWeeklyActivities,
+  useWeeklyActivityRealtimeResync,
   type WeeklyActivityListItem,
 } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import { getBankWeekBounds } from '@/lib/bankWeek';
@@ -99,6 +100,7 @@ export function EmployeeWeeklyDashboard({
     enabled: true,
     onChange: handleRealtimeChange,
   });
+  useWeeklyActivityRealtimeResync();
 
   const { data: fetchedRows = [] } = useWeeklyActivities(queryWeekBounds, {
     bounds: initialWeekBounds,

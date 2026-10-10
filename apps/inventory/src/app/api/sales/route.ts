@@ -10,9 +10,6 @@ import {
   getSellableItems,
   listWeeklySales,
 } from '@/lib/domain/sales';
-import prisma from '@/lib/prisma';
-import { fanInSaleRealtimeToDispensary } from '@/lib/realtime/salesFanIn';
-import { scopeWhere } from '@/lib/scope';
 import { createSaleSchema, saleActionSchema } from '@/lib/validation';
 import { parseISO } from 'date-fns';
 
@@ -47,17 +44,6 @@ export async function GET(request: Request) {
   );
 }
 
-async function loadSaleRealtimeTarget(
-  scopeType: string,
-  scopeId: string,
-  saleId: string,
-): Promise<{ id: string; userId: string; createdAt: Date } | null> {
-  return prisma.sale.findFirst({
-    where: { id: saleId, ...scopeWhere(scopeType, scopeId) },
-    select: { id: true, userId: true, createdAt: true },
-  });
-}
-
 export async function POST(request: Request) {
   const auth = await requireSession(request);
   if (auth instanceof Response) return auth;
@@ -68,12 +54,6 @@ export async function POST(request: Request) {
   if (action === 'cancel' || action === 'deposit' || action === 'delete') {
     const parsed = parseJsonBody(saleActionSchema, body);
     if (!parsed.ok) return errorResponse(request, parsed.error, 400);
-
-    const existing = await loadSaleRealtimeTarget(
-      parsed.data.scopeType,
-      parsed.data.scopeId,
-      parsed.data.id,
-    );
 
     let result;
     if (action === 'cancel') {
@@ -96,17 +76,6 @@ export async function POST(request: Request) {
       });
     }
 
-    if (result.ok && existing) {
-      await fanInSaleRealtimeToDispensary({
-        scopeType: parsed.data.scopeType,
-        scopeId: parsed.data.scopeId,
-        saleId: existing.id,
-        ownerUserId: existing.userId,
-        createdAt: existing.createdAt,
-        originClientId: parsed.data.originClientId,
-      });
-    }
-
     return fromDomainResult(request, result);
   }
 
@@ -117,16 +86,6 @@ export async function POST(request: Request) {
   if (!parsed.ok) return errorResponse(request, parsed.error, 400);
 
   const created = await createSale(parsed.data);
-  if (created.ok) {
-    await fanInSaleRealtimeToDispensary({
-      scopeType: parsed.data.scopeType,
-      scopeId: parsed.data.scopeId,
-      saleId: created.data.id,
-      ownerUserId: created.data.userId,
-      createdAt: created.data.createdAt,
-      originClientId: parsed.data.originClientId,
-    });
-  }
 
   return fromDomainResult(request, created);
 }

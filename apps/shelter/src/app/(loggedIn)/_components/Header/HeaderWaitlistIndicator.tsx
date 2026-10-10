@@ -75,11 +75,14 @@ export function HeaderWaitlistIndicator({
     });
   }, [fetchPreview]);
 
+  const refreshFromRealtime = useCallback(() => {
+    void fetchPreview();
+  }, [fetchPreview]);
+
   useWaitlistRealtime({
     enabled: true,
-    onChange: () => {
-      void fetchPreview();
-    },
+    onChange: refreshFromRealtime,
+    onResync: refreshFromRealtime,
   });
 
   const handlePopoverChange = useCallback(

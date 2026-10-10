@@ -189,14 +189,14 @@ docker build \
 
 ## Serveur temps réel (WebSocket)
 
-`apps/realtime` est un serveur Node + `ws` (bundle esbuild, image `docker/realtime.Dockerfile`). Il remplace progressivement les flux SSE ; l'agenda, les todos et la médiathèque passent déjà par lui.
+`apps/realtime` est un serveur Node + `ws` (bundle esbuild, image `docker/realtime.Dockerfile`). Tout le temps réel des apps passe par lui (il n'y a plus de SSE).
 
 ```
 navigateur ──wss://REALTIME_VIRTUAL_HOST──▶ nginx-proxy ──▶ realtime:3007   (WebSocket, seul port routé)
-agenda, media ──http://realtime:3008/publish (réseau privé « realtime »)──▶ realtime:3008
+agenda, media, dispensary, shelter ──http://realtime:3008/publish (réseau privé « realtime »)──▶ realtime:3008
 ```
 
-- **Port 3007** : WebSocket navigateur. Contrôle de l'`Origin` (`ALLOWED_ORIGINS`), puis authentification par un jeton court signé par le dispensary (`REALTIME_TOKEN_SECRET`) qui liste les topics autorisés (`agenda:<id>`, `agendas:<scope>`, `user:<id>`).
+- **Port 3007** : WebSocket navigateur. Contrôle de l'`Origin` (`ALLOWED_ORIGINS`), puis authentification par un jeton court signé par l'app hôte, dispensary ou shelter (`REALTIME_TOKEN_SECRET`), qui liste les topics autorisés (`agenda:<id>`, `orders:<id>`, `sales:<id>`, `waitlist:<id>`, `user:<id>`…, voir `packages/realtime/src/topics.ts`).
 - **Port 3008** : API interne (`/publish`, `/revoke`, `/health`), joignable uniquement sur le réseau Docker privé `realtime` (`internal: true`) et protégée par `REALTIME_INTERNAL_SECRET`. nginx ne la route pas et aucun port n'est publié sur l'hôte.
 - Ping toutes les 25 s (sous le `proxy_read_timeout` de 60 s de nginx-proxy) ; nginx-proxy gère l'upgrade WebSocket par défaut.
 - Une seule instance (hub en mémoire). Si le serveur redémarre, les clients se reconnectent et rechargent leurs données.

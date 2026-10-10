@@ -4,10 +4,7 @@ import { useCallback, type ReactNode } from 'react';
 import { RealtimeSocketProvider } from '@lawless-intranet/realtime/socket';
 import { getRealtimeToken } from '@/app/_actions/realtime';
 
-/**
- * Websocket transport (media library). The waitlist still uses the SSE stream
- * of ShelterRealtimeShell during the migration.
- */
+/** Websocket transport for every realtime domain of the shelter (media library, waitlist). */
 export function ShelterRealtimeSocketShell({
   shelterSlug,
   url,

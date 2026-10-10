@@ -30,10 +30,7 @@ function RealtimeAccessSync() {
   return null;
 }
 
-/**
- * Websocket transport (agenda, todos). Other domains still use the SSE stream
- * of DispensaryRealtimeShell during the migration.
- */
+/** Websocket transport for every realtime domain of the dispensary. */
 export function DispensaryRealtimeSocketShell({
   dispensarySlug,
   url,
