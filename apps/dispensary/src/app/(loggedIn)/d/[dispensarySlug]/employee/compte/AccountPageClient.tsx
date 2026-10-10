@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Avatar, Button, Card, Container, Group, Select, Stack, Text, UnstyledButton } from '@mantine/core';
-import { IconChevronRight, IconLogout, IconSettings } from '@tabler/icons-react';
+import { Avatar, Button, Card, Container, Divider, Group, Select, Stack, Text, UnstyledButton } from '@mantine/core';
+import { IconBuildingHospital, IconChevronRight, IconLogout, IconPalette, IconSettings } from '@tabler/icons-react';
 import { authClient } from '@lawless-intranet/auth-client/browser';
 import { ThemeSwitch } from '@/app/_components/Theme/ThemeMenuSwitch';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
@@ -17,10 +17,14 @@ type AccountPageClientProps = {
   image: string | null;
 };
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+/** One line of the settings list: icon and label on the left, control on the right. */
+function Row({ icon: Icon, label, children }: { icon: typeof IconSettings; label: string; children: React.ReactNode }) {
   return (
-    <Group justify="space-between" wrap="nowrap" gap="md" mih={44}>
-      <Text fw={600}>{label}</Text>
+    <Group justify="space-between" wrap="nowrap" gap="md" mih={52} px="lg" w="100%">
+      <Group gap="sm" wrap="nowrap">
+        <Icon size={20} stroke={1.6} />
+        <Text>{label}</Text>
+      </Group>
       {children}
     </Group>
   );
@@ -55,32 +59,30 @@ export function AccountPageClient({ name, email, image }: AccountPageClientProps
           </Group>
         </Card>
 
-        <Card withBorder radius="md" padding="lg">
-          <Stack gap="xs">
-            <Row label="Thème">
-              <ThemeSwitch />
-            </Row>
-            {accessibleDispensaries.length > 1 && (
-              <Select
-                label="Dispensaire"
-                data={accessibleDispensaries.map((d) => ({ value: d.slug, label: d.name }))}
-                value={dispensarySlug ?? null}
-                onChange={(slug) => slug && pathname && router.push(rewritePathWithDispensarySlug(pathname, slug))}
-                allowDeselect={false}
-              />
-            )}
-          </Stack>
-        </Card>
-
         <Card withBorder radius="md" padding={0}>
-          <UnstyledButton component={Link} href={routes.settings.index} px="lg" py="md" w="100%">
-            <Group justify="space-between" wrap="nowrap">
-              <Group gap="sm" wrap="nowrap">
-                <IconSettings size={20} stroke={1.6} />
-                <Text>Paramètres du compte</Text>
-              </Group>
+          <Row icon={IconPalette} label="Thème">
+            <ThemeSwitch />
+          </Row>
+          {accessibleDispensaries.length > 1 && (
+            <>
+              <Divider />
+              <Row icon={IconBuildingHospital} label="Dispensaire">
+                <Select
+                  aria-label="Dispensaire"
+                  w={170}
+                  data={accessibleDispensaries.map((d) => ({ value: d.slug, label: d.name }))}
+                  value={dispensarySlug ?? null}
+                  onChange={(slug) => slug && pathname && router.push(rewritePathWithDispensarySlug(pathname, slug))}
+                  allowDeselect={false}
+                />
+              </Row>
+            </>
+          )}
+          <Divider />
+          <UnstyledButton component={Link} href={routes.settings.index} w="100%">
+            <Row icon={IconSettings} label="Paramètres du compte">
               <IconChevronRight size={18} stroke={1.6} />
-            </Group>
+            </Row>
           </UnstyledButton>
         </Card>
 
