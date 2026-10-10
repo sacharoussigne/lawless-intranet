@@ -17,14 +17,9 @@ export function DispensaryRealtimeShell({ children }: { children: ReactNode }) {
     appSettings.featureSalesEnabled &&
     Boolean(permissions?.sales.view);
 
-  const ordersRealtimeEnabled =
-    Boolean(dispensarySlug) &&
-    appSettings.featureOrdersEnabled &&
-    Boolean(permissions?.orders.view);
-
   const streamEnabled =
     Boolean(dispensarySlug) &&
-    (weeklyActivityRealtimeEnabled || salesRealtimeEnabled || ordersRealtimeEnabled);
+    (weeklyActivityRealtimeEnabled || salesRealtimeEnabled);
 
   if (!streamEnabled || !dispensarySlug) {
     return children;

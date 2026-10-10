@@ -39,6 +39,11 @@ export async function getRealtimeToken(dispensarySlug: string) {
       }
     }
 
+    const ordersBlocked = await getAppFeatureActionBlock(dispensaryId, 'orders');
+    if (!ordersBlocked && can(effectivePermissions, 'orders', 'view')) {
+      topics.push(realtimeTopics.orders(dispensaryId));
+    }
+
     const mediaBlocked = await getAppFeatureActionBlock(dispensaryId, 'media');
     if (!mediaBlocked && can(effectivePermissions, 'media', 'access')) {
       topics.push(realtimeTopics.media(MEDIA_SCOPE_TYPE, dispensaryId));

@@ -63,15 +63,7 @@ export async function requireDispensaryRealtimeStreamAccess(
       }
     }
 
-    let orders = false;
-    if (settings.featureOrdersEnabled) {
-      const featureBlock = await getAppFeatureActionBlock(dispensary.id, 'orders');
-      if (!featureBlock && can(effectivePermissions, 'orders', 'view')) {
-        orders = true;
-      }
-    }
-
-    if (!weeklyActivity && !sales && !orders) {
+    if (!weeklyActivity && !sales) {
       return { ok: false, status: 403, error: 'Aucun flux temps réel autorisé' };
     }
 
@@ -79,7 +71,7 @@ export async function requireDispensaryRealtimeStreamAccess(
       ok: true,
       dispensaryId: dispensary.id,
       userId: session.user.id,
-      filter: { weeklyActivity, sales, orders },
+      filter: { weeklyActivity, sales },
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '';

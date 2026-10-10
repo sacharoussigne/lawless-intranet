@@ -88,6 +88,9 @@ services:
       # Browser websocket URL (read at runtime) + secret to sign realtime tokens
       REALTIME_PUBLIC_URL: "${REALTIME_PUBLIC_URL:?err}"
       REALTIME_TOKEN_SECRET: "${REALTIME_TOKEN_SECRET:?err}"
+      # Publishes changes (orders) to the realtime server over the private network
+      REALTIME_INTERNAL_URL: "http://realtime:3008"
+      REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
@@ -100,6 +103,7 @@ services:
       - proxy
       - db
       - media
+      - realtime
 
   documents:
     restart: unless-stopped
