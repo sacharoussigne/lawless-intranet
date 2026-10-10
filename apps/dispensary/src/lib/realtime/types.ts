@@ -1,9 +1,7 @@
 import type { WeeklyActivityRealtimeViewerFilter } from '@/lib/dispensaryWeeklyActivity/realtime/types';
-import type { WeeklySalesRealtimeViewerFilter } from '@/lib/sales/realtime/types';
 
 export type DispensaryRealtimeViewerFilter = {
   weeklyActivity: WeeklyActivityRealtimeViewerFilter | null;
-  sales: WeeklySalesRealtimeViewerFilter | null;
 };
 
 export type DispensaryRealtimePublishBody = {

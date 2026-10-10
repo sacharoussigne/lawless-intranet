@@ -11,12 +11,12 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
           type: 'todos',
           payload: { agendaId: 'a1' },
         },
-        { weeklyActivity: null, sales: null },
+        { weeklyActivity: null },
       ),
     ).toBe(false);
   });
 
-  it('hides sales without sales filter', () => {
+  it('ignores sales events (delivered over the realtime websocket)', () => {
     expect(
       isDispensaryRealtimeVisibleToViewer(
         {
@@ -29,7 +29,7 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
             periodEnd: '2026-01-07',
           },
         },
-        { weeklyActivity: null, sales: null },
+        { weeklyActivity: null },
       ),
     ).toBe(false);
   });
@@ -42,7 +42,7 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
           type: 'orders',
           payload: { orderId: 'o1' },
         },
-        { weeklyActivity: null, sales: null },
+        { weeklyActivity: null },
       ),
     ).toBe(false);
   });
@@ -67,7 +67,6 @@ describe('isDispensaryRealtimeVisibleToViewer', () => {
             viewerUserId: 'u2',
             viewerDiscordUserId: 'd2',
           },
-          sales: null,
         },
       ),
     ).toBe(false);

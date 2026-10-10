@@ -6,6 +6,10 @@ export const realtimeTopics = {
   agendas: (scopeType: string, scopeId: string) => `agendas:${scopeType}:${scopeId}`,
   /** Orders of a dispensary (create, update, status, delete). */
   orders: (dispensaryId: string) => `orders:${dispensaryId}`,
+  /** Every sale of a dispensary (viewers with `sales:view_all`). */
+  sales: (dispensaryId: string) => `sales:${dispensaryId}`,
+  /** Sales of one seller in a dispensary (the seller, with `sales:view`). */
+  salesOfUser: (dispensaryId: string, userId: string) => `sales:${dispensaryId}:user:${userId}`,
   /** Media library of a scope (folders and files). */
   media: (scopeType: string, scopeId: string) => `media:${scopeType}:${scopeId}`,
   /** Per-user notifications (participant events, access changes). */

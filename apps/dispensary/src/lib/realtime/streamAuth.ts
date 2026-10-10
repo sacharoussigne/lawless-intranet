@@ -1,4 +1,3 @@
-import { can } from '@lawless-intranet/auth-permissions';
 import { getRequestAuthSession } from '@/lib/authSession';
 import { getAppFeatureActionBlock, getAppSettings } from '@/lib/appSettings';
 import {
@@ -52,18 +51,7 @@ export async function requireDispensaryRealtimeStreamAccess(
       }
     }
 
-    let sales: DispensaryRealtimeViewerFilter['sales'] = null;
-    if (settings.featureSalesEnabled) {
-      const featureBlock = await getAppFeatureActionBlock(dispensary.id, 'sales');
-      if (!featureBlock && can(effectivePermissions, 'sales', 'view')) {
-        sales = {
-          canViewAll: can(effectivePermissions, 'sales', 'view_all'),
-          viewerUserId: session.user.id,
-        };
-      }
-    }
-
-    if (!weeklyActivity && !sales) {
+    if (!weeklyActivity) {
       return { ok: false, status: 403, error: 'Aucun flux temps réel autorisé' };
     }
 
@@ -71,7 +59,7 @@ export async function requireDispensaryRealtimeStreamAccess(
       ok: true,
       dispensaryId: dispensary.id,
       userId: session.user.id,
-      filter: { weeklyActivity, sales },
+      filter: { weeklyActivity },
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : '';

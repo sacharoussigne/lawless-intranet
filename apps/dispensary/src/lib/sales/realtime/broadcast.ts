@@ -1,9 +1,12 @@
-import { publishWeeklySalesRealtime } from '@/lib/sales/realtime/pgBus';
+import { realtimeTopics } from '@lawless-intranet/realtime';
+import { publishRealtime } from '@lawless-intranet/realtime/publish';
+import { toWeeklySalesRealtimeEnvelope } from '@/lib/sales/realtime/envelope';
 import type {
   SalesMutationMeta,
   WeeklySalesRealtimeEvent,
 } from '@/lib/sales/realtime/types';
 
+/** Tells every-sale viewers and the seller (topics checked in the realtime token) to refetch. */
 export async function emitWeeklySalesChange(
   dispensaryId: string,
   event: Omit<WeeklySalesRealtimeEvent, 'originClientId' | 'type'> & {
@@ -11,14 +14,21 @@ export async function emitWeeklySalesChange(
   },
   meta?: SalesMutationMeta,
 ): Promise<void> {
-  await publishWeeklySalesRealtime(dispensaryId, {
-    type: 'weeklySales',
-    saleId: event.saleId,
-    ownerUserId: event.ownerUserId,
-    periodStart: event.periodStart,
-    periodEnd: event.periodEnd,
-    originClientId: meta?.originClientId,
-  });
+  await publishRealtime(
+    [
+      realtimeTopics.sales(dispensaryId),
+      realtimeTopics.salesOfUser(dispensaryId, event.ownerUserId),
+    ],
+    toWeeklySalesRealtimeEnvelope({
+      type: 'weeklySales',
+      saleId: event.saleId,
+      ownerUserId: event.ownerUserId,
+      periodStart: event.periodStart,
+      periodEnd: event.periodEnd,
+      originClientId: meta?.originClientId,
+    }),
+    { logLabel: 'sales' },
+  );
 }
 
 export function saleToWeeklySalesRealtimePayload(

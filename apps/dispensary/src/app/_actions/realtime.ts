@@ -44,6 +44,15 @@ export async function getRealtimeToken(dispensarySlug: string) {
       topics.push(realtimeTopics.orders(dispensaryId));
     }
 
+    const salesBlocked = await getAppFeatureActionBlock(dispensaryId, 'sales');
+    if (!salesBlocked && can(effectivePermissions, 'sales', 'view')) {
+      topics.push(
+        can(effectivePermissions, 'sales', 'view_all')
+          ? realtimeTopics.sales(dispensaryId)
+          : realtimeTopics.salesOfUser(dispensaryId, userId),
+      );
+    }
+
     const mediaBlocked = await getAppFeatureActionBlock(dispensaryId, 'media');
     if (!mediaBlocked && can(effectivePermissions, 'media', 'access')) {
       topics.push(realtimeTopics.media(MEDIA_SCOPE_TYPE, dispensaryId));
