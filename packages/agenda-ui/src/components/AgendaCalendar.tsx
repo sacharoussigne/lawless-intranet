@@ -17,6 +17,9 @@ type CalendarEvent = {
   resource: AgendaEventDTO;
 };
 
+const COMPACT_VIEWS: View[] = ['month', 'day', 'agenda'];
+const COMPACT_HEIGHT_PX = 540;
+
 interface AgendaCalendarProps {
   events: AgendaEventDTO[];
   view: View;
@@ -25,6 +28,8 @@ interface AgendaCalendarProps {
   onNavigate: (date: Date) => void;
   canWrite: boolean;
   panelHeightPx: number;
+  /** Phones: no week view (unreadable at 375px), list view at its natural height. */
+  compact?: boolean;
   onSelectEvent: (event: AgendaEventDTO) => void;
   onSelectSlot: (start: Date, end: Date, view: View) => void;
 }
@@ -38,6 +43,7 @@ export function AgendaCalendar({
   onNavigate,
   canWrite,
   panelHeightPx,
+  compact = false,
   onSelectEvent,
   onSelectSlot,
 }: AgendaCalendarProps) {
@@ -97,7 +103,8 @@ export function AgendaCalendar({
         startAccessor="start"
         endAccessor="end"
         allDayAccessor="allDay"
-        style={{ height: panelHeightPx }}
+        views={compact ? COMPACT_VIEWS : undefined}
+        style={{ height: compact ? (view === 'agenda' ? 'auto' : COMPACT_HEIGHT_PX) : panelHeightPx }}
         culture="fr"
         messages={{
           today: "Aujourd'hui",

@@ -19,7 +19,7 @@ export function AgendaSelector({ agendas, value, onChange }: AgendaSelectorProps
       data={agendas.map((a) => ({ value: a.id, label: a.name }))}
       value={value}
       onChange={(v) => v && onChange(v)}
-      w={260}
+      w={{ base: '100%', sm: 260 }}
     />
   );
 }

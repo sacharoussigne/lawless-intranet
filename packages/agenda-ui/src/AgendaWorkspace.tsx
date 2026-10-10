@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -58,7 +59,14 @@ interface AgendaWorkspaceProps {
   initialTodoLists: AgendaTodoListDTO[];
   isAdmin: boolean;
   onManageMembers?: (agenda: { id: string; name: string }) => void;
+  /**
+   * Phones only: the calendar or the tasks (two tabs of the mobile app). Larger
+   * screens keep the side-by-side layout and its controls.
+   */
+  mobileView?: 'calendar' | 'tasks';
 }
+
+const PHONE_MEDIA_QUERY = '(max-width: 47.99em)';
 
 function AgendaPageHeader({
   title,
@@ -70,8 +78,9 @@ function AgendaPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <Group justify="space-between" align="flex-start" mb="lg" wrap="wrap" gap="md">
-      <Stack gap={4}>
+    <Group justify="space-between" align="flex-start" mb={{ base: 'sm', sm: 'lg' }} wrap="wrap" gap="md">
+      {/* Phones: the app bar already shows the section title. */}
+      <Stack gap={4} visibleFrom="sm">
         <Title
           order={2}
           style={{ fontFamily: 'var(--disp-font-display, inherit)', fontWeight: 400 }}
@@ -97,8 +106,10 @@ export function AgendaWorkspace({
   initialTodoLists,
   isAdmin,
   onManageMembers,
+  mobileView = 'calendar',
 }: AgendaWorkspaceProps) {
   const { actions, adminHref, scopeKey } = useAgendaUi();
+  const isPhone = useMediaQuery(PHONE_MEDIA_QUERY) ?? false;
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -339,8 +350,13 @@ export function AgendaWorkspace({
 
   const showCalendarPanel = Boolean(selectedAgendaId) || participantOnly;
   const showTodoPanel = !participantOnly;
-  const renderCalendar = showCalendarPanel && (participantOnly || effectiveLayout.showCalendar);
-  const renderTodo = showTodoPanel && effectiveLayout.showTodo;
+  const renderCalendar = isPhone
+    ? showCalendarPanel && mobileView === 'calendar'
+    : showCalendarPanel && (participantOnly || effectiveLayout.showCalendar);
+  const renderTodo = isPhone
+    ? showTodoPanel && mobileView === 'tasks'
+    : showTodoPanel && effectiveLayout.showTodo;
+  const showCreateEvent = !isPhone || mobileView === 'calendar';
   const eventModalAgendaId = selectedAgendaId ?? selectedEvent?.agendaId ?? '';
 
   const layoutClassName = [
@@ -356,7 +372,7 @@ export function AgendaWorkspace({
       size={isExpanded ? undefined : 'xl'}
       fluid={isExpanded}
       className={isExpanded ? classes.agendaContainerExpanded : undefined}
-      py="xl"
+      py={{ base: 'xs', sm: 'xl' }}
     >
       <AgendaPageHeader
         title="Agenda"
@@ -366,22 +382,26 @@ export function AgendaWorkspace({
             : (selectedAgenda?.description ?? 'Calendrier partagé et listes de tâches.')
         }
         actions={
-          <Group gap="sm">
-            <AgendaLayoutControls
-              layout={effectiveLayout}
-              canToggleCalendar={!participantOnly}
-              canToggleTodo={showTodoPanel}
-              onWidthModeChange={setWidthMode}
-              onToggleCalendar={handleToggleCalendar}
-              onToggleTodo={toggleTodo}
-            />
+          <Group gap="sm" w={{ base: '100%', sm: 'auto' }} wrap="nowrap">
+            {!isPhone && (
+              <AgendaLayoutControls
+                layout={effectiveLayout}
+                canToggleCalendar={!participantOnly}
+                canToggleTodo={showTodoPanel}
+                onWidthModeChange={setWidthMode}
+                onToggleCalendar={handleToggleCalendar}
+                onToggleTodo={toggleTodo}
+              />
+            )}
             {!participantOnly && (
               <>
-                <AgendaSelector
-                  agendas={agendas}
-                  value={selectedAgendaId}
-                  onChange={handleAgendaChange}
-                />
+                <div className={classes.agendaSelectorSlot}>
+                  <AgendaSelector
+                    agendas={agendas}
+                    value={selectedAgendaId}
+                    onChange={handleAgendaChange}
+                  />
+                </div>
                 {canManageMembers && selectedAgenda && (
                   <ActionIcon
                     variant="light"
@@ -399,7 +419,7 @@ export function AgendaWorkspace({
                     <IconUsers size={18} />
                   </ActionIcon>
                 )}
-                {canWrite && selectedAgendaId && (
+                {canWrite && selectedAgendaId && showCreateEvent && (
                   <Button
                     color="sage"
                     leftSection={<IconPlus size={16} />}
@@ -428,9 +448,16 @@ export function AgendaWorkspace({
             onNavigate={calendarNavigation.navigate}
             canWrite={canWrite && !participantOnly}
             panelHeightPx={panelHeightPx}
+            compact={isPhone}
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}
           />
+        )}
+
+        {isPhone && mobileView === 'tasks' && !showTodoPanel && (
+          <Text c="dimmed" ta="center" py="xl">
+            Aucune liste de tâches pour cet agenda.
+          </Text>
         )}
 
         {renderTodo && (

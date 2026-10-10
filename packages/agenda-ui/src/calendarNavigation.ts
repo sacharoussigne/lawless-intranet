@@ -1,7 +1,8 @@
 import dayjs from './dayjs';
 import { formatAgendaDateInput } from './dates';
 
-export const AGENDA_CALENDAR_VIEWS = ['month', 'week', 'day', 'work_week'] as const;
+// 'agenda' = list of the next 30 days (default of the phone app).
+export const AGENDA_CALENDAR_VIEWS = ['month', 'week', 'day', 'work_week', 'agenda'] as const;
 export type AgendaCalendarView = (typeof AGENDA_CALENDAR_VIEWS)[number];
 
 export const AGENDA_CALENDAR_FOCUS_PARAM = 'focus';
@@ -23,12 +24,7 @@ export function withAgendaCalendarFocus(href: string): string {
 }
 
 export function isAgendaCalendarView(value: string | null): value is AgendaCalendarView {
-  return (
-    value === 'month' ||
-    value === 'week' ||
-    value === 'day' ||
-    value === 'work_week'
-  );
+  return (AGENDA_CALENDAR_VIEWS as readonly (string | null)[]).includes(value);
 }
 
 export function parseAgendaCalendarDateParam(value: string | null): Date | null {

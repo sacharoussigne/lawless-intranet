@@ -16,6 +16,7 @@ import {
 import { DateInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/fr';
 import { IconCalendarEvent, IconTrash } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useAgendaUi } from '../AgendaUiProvider';
 import { runAgendaAction } from '../runAgendaAction';
@@ -59,6 +60,8 @@ export function EventModal({
   onSuccess,
 }: EventModalProps) {
   const { actions } = useAgendaUi();
+  // Phones: full screen sheet sliding up.
+  const isPhone = useMediaQuery('(max-width: 47.99em)') ?? false;
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [allDay, setAllDay] = useState(false);
@@ -407,6 +410,8 @@ export function EventModal({
       title={modalTitle}
       size="lg"
       classNames={{ title: 'modal-title' }}
+      fullScreen={isPhone}
+      transitionProps={isPhone ? { transition: 'slide-up', duration: 200 } : undefined}
     >
       <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
       <Stack gap="md">
