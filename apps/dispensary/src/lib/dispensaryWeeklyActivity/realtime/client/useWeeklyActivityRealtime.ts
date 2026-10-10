@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { REALTIME_DOMAIN, type RealtimeEnvelope } from '@lawless-intranet/realtime';
-import { useRealtimeSubscription } from '@lawless-intranet/realtime/client';
+import { useRealtimeSocketEvents } from '@lawless-intranet/realtime/socket';
 import { fromWeeklyActivityRealtimeEnvelope } from '@/lib/dispensaryWeeklyActivity/realtime/envelope';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 
@@ -24,7 +24,7 @@ export function useWeeklyActivityRealtime({
     [onChange],
   );
 
-  return useRealtimeSubscription({
+  useRealtimeSocketEvents({
     enabled,
     domains: DOMAINS,
     onEvent: handleEvent,

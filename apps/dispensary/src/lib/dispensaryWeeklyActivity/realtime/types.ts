@@ -11,9 +11,3 @@ export type WeeklyActivityRealtimeEvent = {
 export type WeeklyActivityMutationMeta = {
   originClientId?: string;
 };
-
-export type WeeklyActivityRealtimeViewerFilter = {
-  canEditAll: boolean;
-  viewerUserId: string;
-  viewerDiscordUserId: string | null;
-};

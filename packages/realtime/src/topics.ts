@@ -10,6 +10,11 @@ export const realtimeTopics = {
   sales: (dispensaryId: string) => `sales:${dispensaryId}`,
   /** Sales of one seller in a dispensary (the seller, with `sales:view`). */
   salesOfUser: (dispensaryId: string, userId: string) => `sales:${dispensaryId}:user:${userId}`,
+  /** Every weekly activity of a dispensary (viewers with `edit_all`). */
+  weeklyActivity: (dispensaryId: string) => `weeklyactivity:${dispensaryId}`,
+  /** Weekly activity of one member in a dispensary (the member, with `view`). */
+  weeklyActivityOfUser: (dispensaryId: string, userId: string) =>
+    `weeklyactivity:${dispensaryId}:user:${userId}`,
   /** Media library of a scope (folders and files). */
   media: (scopeType: string, scopeId: string) => `media:${scopeType}:${scopeId}`,
   /** Per-user notifications (participant events, access changes). */
