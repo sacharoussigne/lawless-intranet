@@ -39,18 +39,19 @@ Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, san
 - `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
 - Actions bank : la logique est partagée dans `@lawless-intranet/bank-client/host` (`createBankHostActions`). Chaque hôte ne fournit que `withBank` (`lib/bank/client.ts`) et ré-exporte les actions depuis `_actions/bankAccounts.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
-- `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services), et l'ancien SSE (`./server`, `./client`) encore utilisé par weeklyActivity, sales, orders et waitlist.
+- `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services) et `topics.ts` (noms des topics).
 - `mail-template-engine` : parseur et moteur de rendu des templates (variables, conditions).
 
 SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir `docs/SSO-DEV.md`. Docker et déploiement : `docs/DOCKER.md` (le serveur `realtime` a son propre `docker/realtime.Dockerfile`).
 
 ## Temps réel
 
-Migration progressive SSE → WebSocket ; l'agenda, les todos (dispensary) et la médiathèque (refuge et dispensary) sont déjà sur `apps/realtime`.
+Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et todos, commandes, ventes, activité hebdo et médiathèque (dispensary) ; liste d'attente et médiathèque (refuge).
 - Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`getRealtimeToken` dans `apps/<dispensary|shelter>/src/app/_actions/realtime.ts`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
-- Les services publient après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Exemple : `apps/agenda/src/lib/realtime/broadcast.ts`.
+- Le code qui écrit (service ou app hôte) publie après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Exemples : `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/dispensary/src/lib/orders/realtime/broadcast.ts`. En prod, tout publieur rejoint le réseau Docker `realtime` avec `REALTIME_INTERNAL_URL` / `REALTIME_INTERNAL_SECRET`.
 - Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query**, jamais de patch d'état à partir du message. Après chaque (re)connexion, `useRealtimeSocketResync` recharge tout.
-- Pour migrer un domaine : définir ses topics (`packages/realtime/src/topics.ts`), les ajouter au jeton, publier depuis le service, puis consommer avec `useRealtimeSocketEvents`.
+- « Voit tout » / « voit les siennes » : un topic par tenant plus un topic par utilisateur dans le tenant (ex. `sales:<id>` et `sales:<id>:user:<userId>`), le jeton n'en reçoit qu'un selon la permission.
+- Pour un nouveau domaine : définir ses topics (`packages/realtime/src/topics.ts`), les ajouter au jeton, publier depuis le code qui écrit, puis consommer avec `useRealtimeSocketEvents`.
 
 ## Commandes
 
