@@ -28,6 +28,10 @@ export async function getRealtimeToken(shelterSlug: string) {
     const { shelterId, effectivePermissions } = ctx.tenant;
     const topics = [realtimeTopics.user(userId)];
 
+    if (can(effectivePermissions, 'waitlist', 'manage')) {
+      topics.push(realtimeTopics.waitlist(shelterId));
+    }
+
     const mediaBlocked = await getAppFeatureActionBlock(shelterId, 'media');
     if (!mediaBlocked && can(effectivePermissions, 'media', 'access')) {
       topics.push(realtimeTopics.media(MEDIA_SCOPE_TYPE, shelterId));

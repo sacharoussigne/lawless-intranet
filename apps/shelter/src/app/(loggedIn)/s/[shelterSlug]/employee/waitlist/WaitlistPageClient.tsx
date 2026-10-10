@@ -30,7 +30,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { realtimeMutationMeta } from '@lawless-intranet/realtime';
-import { useOptionalRealtimeClientId } from '@lawless-intranet/realtime/client';
+import { useOptionalRealtimeSocket } from '@lawless-intranet/realtime/socket';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
@@ -122,7 +122,7 @@ export function WaitlistPageClient({
   speciesOptions,
 }: WaitlistPageClientProps) {
   const t = useTenantRoutes();
-  const realtimeClientId = useOptionalRealtimeClientId();
+  const realtimeClientId = useOptionalRealtimeSocket()?.clientId;
   const mutationMeta = realtimeMutationMeta(realtimeClientId);
   const [requests, setRequests] = useState(initialRequests);
   const [statusFilter, setStatusFilter] = useState<string | null>('open');
@@ -156,11 +156,14 @@ export function WaitlistPageClient({
     }
   }, [shelterSlug]);
 
+  const refreshFromRealtime = useCallback(() => {
+    void refreshRequests();
+  }, [refreshRequests]);
+
   useWaitlistRealtime({
     enabled: true,
-    onChange: () => {
-      void refreshRequests();
-    },
+    onChange: refreshFromRealtime,
+    onResync: refreshFromRealtime,
   });
 
   const form = useForm<RequestFormValues>({
