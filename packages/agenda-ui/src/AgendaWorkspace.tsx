@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -41,6 +41,7 @@ import { EventModal } from './components/EventModal';
 import { useAgendaLayoutPreference } from './hooks/useAgendaLayoutPreference';
 import {
   AGENDA_CONTAINER_MAX_WIDTH_EXPANDED_PX,
+  AGENDA_FILL_BOTTOM_GAP_PX,
   AGENDA_PANEL_HEIGHT_EXPANDED_PX,
   AGENDA_PANEL_HEIGHT_PX,
   AGENDA_TODO_COLUMN_WIDTH_EXPANDED_PX,
@@ -201,6 +202,36 @@ export function AgendaWorkspace({
       }) as CSSProperties,
     [panelHeightPx, todoColumnWidthPx],
   );
+
+  // Desktop, to-do alone: the panel reaches the bottom of the window instead of stopping at the
+  // fixed calendar height. Measured here, then read by the CSS as `--agenda-fill-height`.
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const todoFillsWindow =
+    !isPhone &&
+    !participantOnly &&
+    effectiveLayout.showTodo &&
+    !(selectedAgendaId && effectiveLayout.showCalendar);
+  useLayoutEffect(() => {
+    const element = layoutRef.current;
+    if (!element || !todoFillsWindow) return;
+    const setHeight = (height: number) =>
+      element.style.setProperty('--agenda-fill-height', `${Math.max(0, Math.floor(height))}px`);
+    const update = () => {
+      const top = element.getBoundingClientRect().top + window.scrollY;
+      setHeight(window.innerHeight - top - AGENDA_FILL_BOTTOM_GAP_PX);
+      // Whatever sits below (page paddings, wrappers) is unknown here: take back any page overflow.
+      const overflow = document.documentElement.scrollHeight - window.innerHeight;
+      if (overflow > 0) {
+        setHeight(window.innerHeight - top - AGENDA_FILL_BOTTOM_GAP_PX - overflow);
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      element.style.removeProperty('--agenda-fill-height');
+    };
+  }, [todoFillsWindow, selectedAgendaId]);
 
   // --- Events of the visible calendar range ---
   const calendarNavigation = useAgendaCalendarNavigation();
@@ -435,6 +466,7 @@ export function AgendaWorkspace({
       />
 
       <div
+        ref={layoutRef}
         className={participantOnly ? undefined : layoutClassName}
         style={layoutStyle}
       >
