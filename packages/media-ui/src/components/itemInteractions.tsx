@@ -22,8 +22,6 @@ import { getFileKind } from '../format';
 
 export type SelectModifiers = { toggle: boolean; range: boolean };
 
-export type LongPressPoint = { x: number; y: number };
-
 /**
  * Drive-like interactions: click selects (Ctrl toggles, Shift selects a range),
  * double-click / Enter opens, right-click opens the menu.
@@ -34,8 +32,6 @@ export type ItemInteractions = {
   openOnClick: boolean;
   /** Touch selection mode: a tap checks / unchecks the item (and shows a checkbox). */
   toggleOnClick: boolean;
-  /** Touch: press and hold opens the item menu at the finger (iOS has no right-click). */
-  onLongPress: (point: LongPressPoint) => void;
   onSelect: (modifiers: SelectModifiers) => void;
   onOpen: () => void;
   onContextMenu: (event: MouseEvent) => void;
@@ -118,15 +114,15 @@ export function handleEnterKey(event: KeyboardEvent, interactions: ItemInteracti
   }
 }
 
-const LONG_PRESS_MS = 450;
-const LONG_PRESS_TOLERANCE_PX = 10;
+export const LONG_PRESS_MS = 450;
+export const LONG_PRESS_TOLERANCE_PX = 10;
 
 /**
- * Touch press-and-hold on an item (iOS has no right-click). The touch end and the
- * click that end the press are swallowed, so they neither open the item nor close
- * a menu opened by the press.
+ * Touch press-and-hold on an item: it lifts for dragging (TouchSensor, same delay).
+ * Feedback here; the touch end and click that end the press are swallowed, so
+ * releasing without moving does not open the item.
  */
-export function useLongPress(onLongPress: (point: LongPressPoint) => void) {
+export function useLongPress() {
   const timer = useRef<number | null>(null);
   const origin = useRef<{ x: number; y: number } | null>(null);
   const fired = useRef(false);
@@ -142,14 +138,12 @@ export function useLongPress(onLongPress: (point: LongPressPoint) => void) {
       if (event.pointerType !== 'touch') return;
       fired.current = false;
       origin.current = { x: event.clientX, y: event.clientY };
-      const point = { x: event.clientX, y: event.clientY };
       timer.current = window.setTimeout(() => {
         fired.current = true;
         timer.current = null;
-        // A selection iOS may have started before the menu opens.
+        // A selection iOS may have started during the press.
         window.getSelection()?.removeAllRanges();
         navigator.vibrate?.(10);
-        onLongPress(point);
       }, LONG_PRESS_MS);
     },
     onPointerMove: (event: PointerEvent) => {
@@ -160,7 +154,7 @@ export function useLongPress(onLongPress: (point: LongPressPoint) => void) {
     },
     onPointerUp: cancel,
     onPointerCancel: cancel,
-    // No compatibility mousedown / click after the press (they would close the menu at once).
+    // No compatibility mousedown / click after the press (the click would open the item).
     onTouchEnd: (event: TouchEvent) => {
       if (fired.current) event.preventDefault();
     },
