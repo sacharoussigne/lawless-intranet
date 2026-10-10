@@ -4,7 +4,6 @@ import type { WeeklySalesRealtimeViewerFilter } from '@/lib/sales/realtime/types
 export type DispensaryRealtimeViewerFilter = {
   weeklyActivity: WeeklyActivityRealtimeViewerFilter | null;
   sales: WeeklySalesRealtimeViewerFilter | null;
-  orders: boolean;
 };
 
 export type DispensaryRealtimePublishBody = {

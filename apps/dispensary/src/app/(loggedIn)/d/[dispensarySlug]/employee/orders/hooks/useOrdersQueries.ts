@@ -23,6 +23,7 @@ import {
   defaultActiveOrdersPageFilters,
   type OrdersPageFilters,
 } from '@/lib/orders/queryKeys';
+import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
 import { useOrdersRealtime } from '@/lib/orders/realtime/client/useOrdersRealtime';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import { normalizeItemPrice } from '@/lib/orders/calculateOrderPriceFromItems';
@@ -210,6 +211,8 @@ export function useOrdersRealtimeInvalidation(enabled = true) {
     enabled: enabled && Boolean(dispensarySlug),
     onChange: handleRealtimeChange,
   });
+  // Changes missed while disconnected.
+  useRealtimeSocketResync(handleRealtimeChange, enabled && Boolean(dispensarySlug));
 }
 
 export function useCreateOrderMutation() {
