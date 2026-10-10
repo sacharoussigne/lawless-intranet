@@ -1,8 +1,17 @@
 'use client';
 
-import { createContext, useContext, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useRef,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { ActionIcon, Box, Menu, Tooltip } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconDotsVertical, IconFileTypePdf, IconLink, IconPhoto } from '@tabler/icons-react';
 import { canDrop, dragId, dropId, type DragItem } from '../dnd';
 import { fileDropFolderProps } from '../fileDrop';
@@ -20,6 +29,10 @@ export type ItemInteractions = {
   selected: boolean;
   /** Touch screens: a single tap opens (double-tap is unreliable). */
   openOnClick: boolean;
+  /** Touch selection mode: a tap checks / unchecks the item (and shows a checkbox). */
+  toggleOnClick: boolean;
+  /** Touch: press and hold enters the selection mode with this item. */
+  onLongPress: () => void;
   onSelect: (modifiers: SelectModifiers) => void;
   onOpen: () => void;
   onContextMenu: (event: MouseEvent) => void;
@@ -76,7 +89,9 @@ export const stopPropagation = (event: MouseEvent) => event.stopPropagation();
 export function handleItemClick(event: MouseEvent, interactions: ItemInteractions) {
   const modifiers = { toggle: event.ctrlKey || event.metaKey, range: event.shiftKey };
   // `detail === 0`: click synthesized by the keyboard (Enter on a link).
-  if (!modifiers.toggle && !modifiers.range && (interactions.openOnClick || event.detail === 0)) {
+  if (interactions.toggleOnClick && !modifiers.range) {
+    interactions.onSelect({ toggle: true, range: false });
+  } else if (!modifiers.toggle && !modifiers.range && (interactions.openOnClick || event.detail === 0)) {
     interactions.onOpen();
   } else {
     interactions.onSelect(modifiers);
@@ -100,12 +115,67 @@ export function handleEnterKey(event: KeyboardEvent, interactions: ItemInteracti
   }
 }
 
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_TOLERANCE_PX = 10;
+
+/**
+ * Touch press-and-hold on an item (iOS has no right-click). The click that ends
+ * the press is swallowed, so it does not also open or toggle the item.
+ */
+export function useLongPress(onLongPress: () => void) {
+  const timer = useRef<number | null>(null);
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const fired = useRef(false);
+
+  const cancel = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    origin.current = null;
+  };
+
+  return {
+    onPointerDown: (event: PointerEvent) => {
+      if (event.pointerType !== 'touch') return;
+      fired.current = false;
+      origin.current = { x: event.clientX, y: event.clientY };
+      timer.current = window.setTimeout(() => {
+        fired.current = true;
+        timer.current = null;
+        navigator.vibrate?.(10);
+        onLongPress();
+      }, LONG_PRESS_MS);
+    },
+    onPointerMove: (event: PointerEvent) => {
+      const start = origin.current;
+      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > LONG_PRESS_TOLERANCE_PX) {
+        cancel();
+      }
+    },
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onClickCapture: (event: MouseEvent) => {
+      if (!fired.current) return;
+      fired.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+  };
+}
+
 export function KebabMenu({ label, children }: { label: string; children: ReactNode }) {
+  // Touch: thumb-sized target.
+  const touch = useMediaQuery('(hover: none)') ?? false;
   return (
     <Box onClick={stopPropagation} onDoubleClick={stopPropagation} style={{ pointerEvents: 'auto' }}>
       <Menu position="bottom-end" width={230} shadow="md" withinPortal>
         <Menu.Target>
-          <ActionIcon variant="subtle" color="slate" radius="xl" aria-label={`Actions pour ${label}`}>
+          <ActionIcon
+            variant="subtle"
+            color="slate"
+            radius="xl"
+            size={touch ? 'xl' : 'md'}
+            aria-label={`Actions pour ${label}`}
+          >
             <IconDotsVertical size={16} />
           </ActionIcon>
         </Menu.Target>

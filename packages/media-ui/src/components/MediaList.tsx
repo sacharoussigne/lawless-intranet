@@ -18,6 +18,7 @@ import {
   SharedBadge,
   stopPropagation,
   useItemDrag,
+  useLongPress,
   type ItemInteractions,
 } from './itemInteractions';
 
@@ -29,6 +30,7 @@ function rowStyle(highlighted: boolean, dragging: boolean): CSSProperties {
   return {
     cursor: 'default',
     userSelect: 'none',
+    WebkitTouchCallout: 'none',
     opacity: dragging ? 0.4 : 1,
     backgroundColor: highlighted ? 'var(--mantine-primary-color-light)' : undefined,
   };
@@ -72,10 +74,12 @@ function ItemRow({
   children: ReactNode;
 }) {
   const drag = useItemDrag(interactions.dragItem);
+  const longPress = useLongPress(interactions.onLongPress);
   return (
     <Table.Tr
       ref={drag.setNodeRef}
       {...drag.listeners}
+      {...longPress}
       {...drag.fileDropProps}
       {...{ [SELECTION_KEY_ATTRIBUTE]: rowKey }}
       tabIndex={focusable ? 0 : undefined}

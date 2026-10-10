@@ -13,9 +13,11 @@ import {
 } from '@dnd-kit/core';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
+  ActionIcon,
   Alert,
   Anchor,
   Box,
+  Button,
   Breadcrumbs,
   Center,
   Group,
@@ -28,7 +30,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useLocalStorage, useMediaQuery, useWindowEvent } from '@mantine/hooks';
-import { IconAlertTriangle, IconChevronDown, IconUpload } from '@tabler/icons-react';
+import { IconAlertTriangle, IconChevronDown, IconPlus, IconUpload } from '@tabler/icons-react';
 import type {
   MediaFileRecord,
   MediaFolderContentsRecord,
@@ -89,7 +91,12 @@ import {
 export const MEDIA_FOLDER_PARAM = 'folder';
 
 /** Same columns for folders and files so both grids line up, like Drive. */
-const GRID_COLS = { base: 1, xs: 2, sm: 3, md: 4, xl: 5 };
+const GRID_COLS = { base: 2, sm: 3, md: 4, xl: 5 };
+/**
+ * Floating « + » / selection bar: above the host's bottom bar when it has one
+ * (it sets `--app-bottom-bar-height`, e.g. the dispensary phone tab bar) and the home indicator.
+ */
+const FLOATING_BOTTOM = 'calc(var(--app-bottom-bar-height, 0px) + env(safe-area-inset-bottom, 0px) + 16px)';
 /** Per-browser display preferences (fall back to defaults when storage is unavailable). */
 const SORT_STORAGE_KEY = 'lawless-media:sort';
 const VIEW_STORAGE_KEY = 'lawless-media:view';
@@ -191,7 +198,9 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   useMediaRealtime();
   const contextMenu = useContextMenu();
   const invalidate = useInvalidateMedia();
-  const openOnClick = useMediaQuery('(hover: none)') ?? false;
+  /** Touch screens: no right-click nor hover; taps open, press-and-hold selects, a « + » button creates. */
+  const isTouch = useMediaQuery('(hover: none)') ?? false;
+  const isPhone = useMediaQuery('(max-width: 47.99em)') ?? false;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const lassoRef = useRef<LassoGesture | null>(null);
@@ -199,6 +208,8 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const [dialog, setDialog] = useState<Dialog>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [selectionState, setSelection] = useState<Selection>(EMPTY_SELECTION);
+  /** Touch selection mode entered with « Sélectionner » (kept even when nothing is checked yet). */
+  const [touchSelecting, setTouchSelecting] = useState(false);
   const [lassoRect, setLassoRect] = useState<Rect | null>(null);
   const [dragged, setDragged] = useState<{ items: DragItem[]; name: string } | null>(null);
   const [sort, setSort] = useLocalStorage<MediaSort>({
@@ -250,11 +261,15 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   // Items removed by someone else (realtime) or after a folder change drop out of the selection.
   const selection = pruneSelection(selectionState, order);
   const selectedKeys = order.filter((key) => selection.keys.has(key));
+  const selectionMode = isTouch && (touchSelecting || selection.keys.size > 0);
   // Derived from the live list: a deleted file closes the viewer, a refetch refreshes its URL.
   const previewIndex = previewId ? files.findIndex((file) => file.id === previewId) : -1;
 
   const closeDialog = () => setDialog(null);
-  const clearSelection = () => setSelection(EMPTY_SELECTION);
+  const clearSelection = () => {
+    setSelection(EMPTY_SELECTION);
+    setTouchSelecting(false);
+  };
   const nameOf = (keys: readonly string[]) => (keys[0] ? (targets.get(keys[0])?.item.name ?? '') : '');
 
   const handleRename = (target: Target, name: string) => {
@@ -394,10 +409,20 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const tileInteractions = (key: string, target: Target, onOpen: () => void, menu: ReactNode): ItemInteractions => ({
     dragItem: toDragItem(target),
     selected: selection.keys.has(key),
-    openOnClick,
+    openOnClick: isTouch && !selectionMode,
+    toggleOnClick: selectionMode,
+    onLongPress: () => {
+      setTouchSelecting(true);
+      setSelection(applyClick(selection, key, { toggle: true, range: false }, order));
+    },
     onSelect: (modifiers: SelectModifiers) => setSelection(applyClick(selection, key, modifiers, order)),
     onOpen,
     onContextMenu: (event: MouseEvent) => {
+      // Touch (Android fires it on press-and-hold): the long press selects, the ⋮ button holds the menu.
+      if (isTouch) {
+        event.preventDefault();
+        return;
+      }
       if (selection.keys.has(key) && selection.keys.size > 1) {
         contextMenu.open(
           event,
@@ -469,11 +494,22 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
         <FileDropTargetContext.Provider value={fileDrop.hoveredFolder}>
           <Stack gap="md">
             <Group justify="space-between" wrap="wrap" gap="sm" mih={36}>
-              <Breadcrumbs separatorMargin={2}>
-                {breadcrumb.length > 0 ? <DropCrumb folderId={null} href={folderHref(null)} label="Médiathèque" /> : null}
-                {breadcrumb.slice(0, -1).map((crumb) => (
-                  <DropCrumb key={crumb.id} folderId={crumb.id} href={folderHref(crumb.id)} label={crumb.name} />
-                ))}
+              <Breadcrumbs separatorMargin={2} style={{ flexWrap: 'wrap', minWidth: 0 }}>
+                {isPhone && breadcrumb.length > 1 ? (
+                  // Phones: « … › current folder », the ellipsis leads to the parent.
+                  <DropCrumb
+                    folderId={breadcrumb.at(-2)?.id ?? null}
+                    href={folderHref(breadcrumb.at(-2)?.id ?? null)}
+                    label="…"
+                  />
+                ) : (
+                  <>
+                    {breadcrumb.length > 0 ? <DropCrumb folderId={null} href={folderHref(null)} label="Médiathèque" /> : null}
+                    {breadcrumb.slice(0, -1).map((crumb) => (
+                      <DropCrumb key={crumb.id} folderId={crumb.id} href={folderHref(crumb.id)} label={crumb.name} />
+                    ))}
+                  </>
+                )}
                 {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
                 <Menu position="bottom-start" width={230} shadow="md" withinPortal>
                   <Menu.Target>
@@ -491,13 +527,18 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
               </Breadcrumbs>
 
               <Group gap="sm" wrap="nowrap">
-                {selectedKeys.length > 0 ? (
+                {selectedKeys.length > 0 && !isPhone ? (
                   <SelectionBar
                     count={selectedKeys.length}
                     onClear={clearSelection}
                     onMove={() => setDialog({ type: 'move', keys: selectedKeys })}
                     onDelete={() => setDialog({ type: 'delete', keys: selectedKeys })}
                   />
+                ) : null}
+                {isTouch && !selectionMode && !isEmpty && contents ? (
+                  <Button variant="subtle" size="compact-sm" onClick={() => setTouchSelecting(true)}>
+                    Sélectionner
+                  </Button>
                 ) : null}
                 <ViewToggle value={view} onChange={setView} />
               </Group>
@@ -588,8 +629,10 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                     <Stack gap={4} align="center">
                       <IconUpload size={40} stroke={1.25} color="var(--mantine-color-dimmed)" />
                       <Text fw={500}>Ce dossier est vide</Text>
-                      <Text c="dimmed" size="sm">
-                        Faites un clic droit pour créer un dossier ou importer, ou glissez des fichiers ici.
+                      <Text c="dimmed" size="sm" ta="center">
+                        {isTouch
+                          ? 'Touchez + pour créer un dossier ou importer des fichiers.'
+                          : 'Faites un clic droit pour créer un dossier ou importer, ou glissez des fichiers ici.'}
                       </Text>
                     </Stack>
                   </Center>
@@ -697,6 +740,39 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
               onClose={() => setPreviewId(null)}
             />
             <UploadQueue items={uploads.items} onClear={uploads.clearFinished} />
+
+            {/* Touch: « + » (no right-click on iOS), or the selection actions at the bottom on phones. */}
+            {isPhone && selectionMode ? (
+              <Box pos="fixed" left={12} right={12} bottom={FLOATING_BOTTOM} style={{ zIndex: 195 }}>
+                <Paper shadow="md" radius="xl" p={4} withBorder>
+                  <SelectionBar
+                    compact
+                    count={selectedKeys.length}
+                    onClear={clearSelection}
+                    onMove={() => setDialog({ type: 'move', keys: selectedKeys })}
+                    onDelete={() => setDialog({ type: 'delete', keys: selectedKeys })}
+                  />
+                </Paper>
+              </Box>
+            ) : isTouch && !selectionMode ? (
+              <Menu position="top-end" width={230} shadow="md" withinPortal>
+                <Menu.Target>
+                  <ActionIcon
+                    size={56}
+                    radius="xl"
+                    variant="filled"
+                    aria-label="Nouveau dossier ou import"
+                    pos="fixed"
+                    right={16}
+                    bottom={FLOATING_BOTTOM}
+                    style={{ zIndex: 195, boxShadow: 'var(--mantine-shadow-lg)' }}
+                  >
+                    <IconPlus size={28} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>{backgroundMenu}</Menu.Dropdown>
+              </Menu>
+            ) : null}
 
             {fileDrop.active ? (
               <Paper

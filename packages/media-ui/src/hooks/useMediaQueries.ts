@@ -179,6 +179,16 @@ export function useMediaShare() {
     }
     if (!token) return;
     const url = buildShareUrl(token, file.name);
+    // Phones: the native share sheet (Discord, Messages…). It needs the user activation, which a
+    // first share (server round-trip) may have used up: any refusal falls back to the clipboard.
+    if (typeof navigator.share === 'function' && window.matchMedia('(hover: none)').matches) {
+      try {
+        await navigator.share({ title: file.name, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
     try {
       await navigator.clipboard.writeText(url);
       notifySuccess('Lien de partage copié');
