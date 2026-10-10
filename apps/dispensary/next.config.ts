@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: monorepoRoot,
   },
+  // Metadata always in <head>: dynamic pages otherwise stream it into <body>, where browsers
+  // ignore the manifest link and the iOS home screen tags (installable PWA).
+  htmlLimitedBots: /.*/,
   serverExternalPackages: [
     'pg',
     '@prisma/client',
