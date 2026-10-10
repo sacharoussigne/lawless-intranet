@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
+  Box,
   Button,
   Checkbox,
   Group,
@@ -665,16 +666,40 @@ export function AgendaTodoPanel({
     );
   }
 
+  const taskSearchInput =
+    selectedList && selectedList.categories.length > 0 ? (
+      <TextInput
+        placeholder="Rechercher une tâche…"
+        value={taskSearch}
+        onChange={(event) => setTaskSearch(event.currentTarget.value)}
+        leftSection={<IconSearch size={16} stroke={1.5} />}
+        rightSection={
+          taskSearch ? (
+            <UnstyledButton
+              aria-label="Effacer la recherche"
+              onClick={() => setTaskSearch('')}
+              className={classes.todoSearchClear}
+            >
+              <IconX size={14} stroke={1.5} />
+            </UnstyledButton>
+          ) : null
+        }
+        size="sm"
+      />
+    ) : null;
+
   return (
     <div ref={todoPanelRef} className={classes.todoPanel}>
-      <Group justify="space-between" mb="xs" align="flex-start" wrap="nowrap">
-        <div>
+      <Group justify="space-between" mb={{ base: 'md', sm: 'xs' }} align="flex-start" wrap="nowrap">
+        {/* Phones: only the saving spinner is left here, so the block goes when idle (no gap before the search). */}
+        <Box visibleFrom={isSaving ? undefined : 'sm'}>
           <Group gap="xs" align="center">
-            <Title order={4} className="disp-display-title">To-Do</Title>
+            {/* Phones: the app bar already says « Tâches ». */}
+            <Title order={4} className="disp-display-title" visibleFrom="sm">To-Do</Title>
             {isSaving && (
               <Group gap={6} align="center" aria-live="polite">
                 <Loader size={12} />
-                <Text size="xs" c="dimmed">Enregistrement…</Text>
+                <Text size="xs" c="dimmed" visibleFrom="sm">Enregistrement…</Text>
               </Group>
             )}
           </Group>
@@ -682,7 +707,7 @@ export function AgendaTodoPanel({
             Les tâches cochées restent visibles 1 h, puis passent dans Archives
             (elles ne sont pas décochées).
           </Text>
-        </div>
+        </Box>
         <Button
           variant="subtle"
           color="slate"
@@ -693,11 +718,16 @@ export function AgendaTodoPanel({
         >
           Archives
         </Button>
-        {/* Phones: icon only, at the far right of the title. */}
+        {/* Phones: the search shares the archives row. */}
+        {taskSearchInput && (
+          <Box hiddenFrom="sm" style={{ flex: 1, minWidth: 0 }}>
+            {taskSearchInput}
+          </Box>
+        )}
         <ActionIcon
           variant="subtle"
           color="slate"
-          size="lg"
+          size="input-sm"
           radius="xl"
           aria-label="Archives"
           onClick={() => void openArchives()}
@@ -746,24 +776,7 @@ export function AgendaTodoPanel({
 
         {selectedList && selectedList.categories.length > 0 && (
           <Stack gap="xs">
-            <TextInput
-              placeholder="Rechercher une tâche…"
-              value={taskSearch}
-              onChange={(event) => setTaskSearch(event.currentTarget.value)}
-              leftSection={<IconSearch size={16} stroke={1.5} />}
-              rightSection={
-                taskSearch ? (
-                  <UnstyledButton
-                    aria-label="Effacer la recherche"
-                    onClick={() => setTaskSearch('')}
-                    className={classes.todoSearchClear}
-                  >
-                    <IconX size={14} stroke={1.5} />
-                  </UnstyledButton>
-                ) : null
-              }
-              size="sm"
-            />
+            <Box visibleFrom="sm">{taskSearchInput}</Box>
 
             {selectedList.categories.length > 1 && (
               <div className={classes.todoCategoryFilters} role="group" aria-label="Filtrer par catégorie">
