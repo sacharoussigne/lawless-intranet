@@ -15,9 +15,14 @@ export function useContextMenu() {
     setState({ x: event.clientX, y: event.clientY, content });
   }, []);
 
+  /** Touch press-and-hold: same menu, at the finger. */
+  const openAt = useCallback((point: { x: number; y: number }, content: ReactNode) => {
+    setState({ ...point, content });
+  }, []);
+
   const close = useCallback(() => setState(null), []);
 
-  return { state, open, close };
+  return { state, open, openAt, close };
 }
 
 /**
