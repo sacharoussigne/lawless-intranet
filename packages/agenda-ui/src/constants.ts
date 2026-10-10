@@ -3,3 +3,5 @@ export const AGENDA_PANEL_HEIGHT_EXPANDED_PX = 720;
 export const AGENDA_TODO_COLUMN_WIDTH_PX = 360;
 export const AGENDA_TODO_COLUMN_WIDTH_EXPANDED_PX = 520;
 export const AGENDA_CONTAINER_MAX_WIDTH_EXPANDED_PX = 1680;
+/** Space kept under a window-filling panel (the page bottom padding). */
+export const AGENDA_FILL_BOTTOM_GAP_PX = 32;

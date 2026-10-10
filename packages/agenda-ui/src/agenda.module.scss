@@ -30,6 +30,14 @@
   .todoPanel {
     grid-column: 1;
     grid-row: 1;
+
+    // Down to the bottom of the window (measured by AgendaWorkspace); the floor only kicks in
+    // on very short windows, where the page scrolls instead.
+    @media (min-width: 62.01em) {
+      height: var(--agenda-fill-height, var(--agenda-panel-height, 620px));
+      min-height: 320px;
+      max-height: none;
+    }
   }
 }
 
