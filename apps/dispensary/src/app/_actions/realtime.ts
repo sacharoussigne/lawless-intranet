@@ -8,6 +8,10 @@ import { actionErrorParser } from '@/lib/action';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { agendaCookie, agendaScope, AGENDA_SCOPE_TYPE } from '@/lib/agenda/client';
 import { MEDIA_SCOPE_TYPE } from '@/lib/media/client';
+import {
+  canEditAllWeeklyDispensaryActivity,
+  canViewWeeklyDispensaryActivity,
+} from '@/lib/dispensaryWeeklyActivity/access';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getRealtimeTokenSecret } from '@/lib/realtime/socketConfig';
 
@@ -50,6 +54,18 @@ export async function getRealtimeToken(dispensarySlug: string) {
         can(effectivePermissions, 'sales', 'view_all')
           ? realtimeTopics.sales(dispensaryId)
           : realtimeTopics.salesOfUser(dispensaryId, userId),
+      );
+    }
+
+    const weeklyActivityBlocked = await getAppFeatureActionBlock(
+      dispensaryId,
+      'weeklyDispensaryActivity',
+    );
+    if (!weeklyActivityBlocked && canViewWeeklyDispensaryActivity(effectivePermissions)) {
+      topics.push(
+        canEditAllWeeklyDispensaryActivity(effectivePermissions)
+          ? realtimeTopics.weeklyActivity(dispensaryId)
+          : realtimeTopics.weeklyActivityOfUser(dispensaryId, userId),
       );
     }
 

@@ -32,6 +32,7 @@ import {
   invalidateWeeklyActivityFromRealtimeEvent,
   useDeleteWeeklyActivityMutation,
   useWeeklyActivities,
+  useWeeklyActivityRealtimeResync,
   type WeeklyActivityListItem,
 } from './hooks/useWeeklyActivityQueries';
 
@@ -108,6 +109,7 @@ export default function WeeklyActivityPageClient({
     enabled: true,
     onChange: handleRealtimeChange,
   });
+  useWeeklyActivityRealtimeResync();
 
   const { data: rows = [], isFetching } = useWeeklyActivities(queryWeekBounds, {
     bounds: initialWeekBounds,

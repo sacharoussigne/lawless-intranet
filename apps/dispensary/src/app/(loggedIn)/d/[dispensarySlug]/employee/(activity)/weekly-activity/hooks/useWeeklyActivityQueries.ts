@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
@@ -26,7 +27,10 @@ import {
 } from '@/lib/dispensaryWeeklyActivity/queryKeys';
 import type { SerializedDispensaryWeeklyActivityRow } from '@/lib/dispensaryWeeklyActivity/apiRow';
 import type { WeekHoursRecapBundle, WeekHoursRecapDay } from '@/lib/dispensaryWeeklyActivity/weekHoursRecap';
-import { useOptionalWeeklyActivityRealtimeClientId } from '@/lib/dispensaryWeeklyActivity/realtime/client/WeeklyActivityRealtimeProvider';
+import {
+  useOptionalRealtimeSocket,
+  useRealtimeSocketResync,
+} from '@lawless-intranet/realtime/socket';
 import { weeklyActivityMutationMeta } from '@/lib/dispensaryWeeklyActivity/realtime/client/mutationMeta';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 
@@ -105,8 +109,18 @@ async function fetchWeeklyActivityTargets(
 }
 
 function useWeeklyActivityMutationMeta() {
-  const clientId = useOptionalWeeklyActivityRealtimeClientId();
+  const clientId = useOptionalRealtimeSocket()?.clientId;
   return weeklyActivityMutationMeta(clientId);
+}
+
+/** Refetches every weekly activity query after a websocket reconnect (changes missed meanwhile). */
+export function useWeeklyActivityRealtimeResync() {
+  const queryClient = useQueryClient();
+  const dispensarySlug = useRequiredDispensarySlug();
+  const resync = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: weeklyActivityKeys.all(dispensarySlug) });
+  }, [dispensarySlug, queryClient]);
+  useRealtimeSocketResync(resync);
 }
 
 export function invalidateWeeklyActivityFromRealtimeEvent(

@@ -19,7 +19,6 @@ import { notFound, redirect } from 'next/navigation';
 import { userHasAnyAgendaAccess, listAccessibleAgendaIds } from '@/lib/agenda/access';
 import { userHasAnyCabinetAccess, listAccessibleCabinetIds } from '@/lib/cabinet/access';
 import { userHasAccessibleChests } from '@/lib/chests/access';
-import { DispensaryRealtimeShell } from './DispensaryRealtimeShell';
 import { DispensaryRealtimeSocketShell } from './DispensaryRealtimeSocketShell';
 import { getRealtimePublicUrl } from '@/lib/realtime/socketConfig';
 import { OrdersRealtimeBridge } from './OrdersRealtimeBridge';
@@ -114,7 +113,6 @@ export default async function DispensaryLayout({
       accessibleCabinetIds={accessibleCabinetIds}
       hasAccessibleChests={hasAccessibleChests}
     >
-      <DispensaryRealtimeShell>
         <DispensaryRealtimeSocketShell
           dispensarySlug={dispensarySlug}
           url={getRealtimePublicUrl()}
@@ -141,7 +139,6 @@ export default async function DispensaryLayout({
           </MailTemplateProvider>
         </QueryProvider>
         </DispensaryRealtimeSocketShell>
-      </DispensaryRealtimeShell>
     </PermissionsProvider>
   );
 }
