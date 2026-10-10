@@ -62,7 +62,7 @@ export function FolderCard({
   ...interactions
 }: ItemInteractions & { folder: MediaFolderRecord; href: string }) {
   const drag = useItemDrag(interactions.dragItem);
-  const longPress = useLongPress(interactions.onLongPress);
+  const longPress = useLongPress();
 
   return (
     <Card
@@ -104,7 +104,7 @@ export function FileCard({ file, ...interactions }: ItemInteractions & { file: M
   const { formatDate } = useMediaUi();
   const { kind, Icon: TypeIcon, color: typeColor } = fileTypeIcon(file.mimeType);
   const drag = useItemDrag(interactions.dragItem);
-  const longPress = useLongPress(interactions.onLongPress);
+  const longPress = useLongPress();
   const dragging = useContext(DraggedItemsContext).length > 0;
   // Touch: a tap opens or toggles, a tooltip would only get in the way.
   const touch = interactions.openOnClick || interactions.toggleOnClick;
