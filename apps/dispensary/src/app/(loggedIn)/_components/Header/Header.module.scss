@@ -47,6 +47,9 @@
   font-weight: 400;
   line-height: 1.2;
   color: var(--disp-ink);
+  // The display font's tall descent lifts the capitals ~2px above the logo's center.
+  position: relative;
+  top: 2px;
 }
 
 .headerInner {
