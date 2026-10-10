@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActionIcon,
   Button,
   Checkbox,
   Group,
@@ -666,7 +667,7 @@ export function AgendaTodoPanel({
 
   return (
     <div ref={todoPanelRef} className={classes.todoPanel}>
-      <Group justify="space-between" mb="xs" align="flex-start">
+      <Group justify="space-between" mb="xs" align="flex-start" wrap="nowrap">
         <div>
           <Group gap="xs" align="center">
             <Title order={4} className="disp-display-title">To-Do</Title>
@@ -677,7 +678,7 @@ export function AgendaTodoPanel({
               </Group>
             )}
           </Group>
-          <Text size="xs" c="dimmed" mt={4}>
+          <Text size="xs" c="dimmed" mt={4} visibleFrom="sm">
             Les tâches cochées restent visibles 1 h, puis passent dans Archives
             (elles ne sont pas décochées).
           </Text>
@@ -688,9 +689,22 @@ export function AgendaTodoPanel({
           size="xs"
           leftSection={<IconArchive size={14} />}
           onClick={() => void openArchives()}
+          visibleFrom="sm"
         >
           Archives
         </Button>
+        {/* Phones: icon only, at the far right of the title. */}
+        <ActionIcon
+          variant="subtle"
+          color="slate"
+          size="lg"
+          radius="xl"
+          aria-label="Archives"
+          onClick={() => void openArchives()}
+          hiddenFrom="sm"
+        >
+          <IconArchive size={20} />
+        </ActionIcon>
       </Group>
 
       <Stack gap="md">
