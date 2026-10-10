@@ -18,9 +18,13 @@ import {
   DndContext,
   DragOverlay,
   closestCenter,
+  getFirstCollision,
   KeyboardSensor,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -100,7 +104,6 @@ function categoriesTaskKey(categories: TodoCategories) {
 function applyTaskOverPlacement(
   categories: TodoCategories,
   draggingTaskId: string,
-  startCategoryId: string,
   overType: string | undefined,
   overCategoryId: string,
   overTaskId: string | number | undefined,
@@ -110,9 +113,8 @@ function applyTaskOverPlacement(
   const current = findTaskLocation(categories, draggingTaskId);
   if (!current) return null;
 
-  if (current.categoryId === startCategoryId && overCategoryId === startCategoryId) {
-    return null;
-  }
+  // Inside its current category, sorting is left to the sortable transforms.
+  if (current.categoryId === overCategoryId) return null;
 
   const targetCategory = categories.find((category) => category.id === overCategoryId);
   if (!targetCategory) return null;
@@ -190,6 +192,8 @@ export function AgendaTodoPanel({
     | { type: 'category'; name: string }
     | null
   >(null);
+  /** Categories as shown while a task is dragged into another one (the list data is untouched). */
+  const [dragPreview, setDragPreview] = useState<TodoCategories | null>(null);
   const canWrite = canWriteAgenda(accessLevel);
   const mutationMeta = agendaMutationMeta(clientId);
 
@@ -263,7 +267,7 @@ export function AgendaTodoPanel({
   const visibleCategories = useMemo(() => {
     if (!selectedList) return [];
 
-    let categories = selectedList.categories;
+    let categories = dragPreview ?? selectedList.categories;
     if (isCategoryFilterActive) {
       categories = categories.filter((category) => categoryFilterIds.has(category.id));
     }
@@ -281,7 +285,8 @@ export function AgendaTodoPanel({
         ),
       }))
       .filter((category) => category.tasks.length > 0);
-  }, [selectedList, categoryFilterIds, taskSearch, isCategoryFilterActive]);
+  }, [selectedList, dragPreview, categoryFilterIds, taskSearch, isCategoryFilterActive]);
+  const displayCategories = dragPreview ?? selectedList?.categories ?? [];
 
   const toggleCategoryFilter = (categoryId: string) => {
     if (!selectedList) return;
@@ -351,6 +356,64 @@ export function AgendaTodoPanel({
   const taskDragSnapshotRef = useRef<TodoCategories | null>(null);
   const dragCategoriesRef = useRef<TodoCategories | null>(null);
   const lastDragOverKeyRef = useRef<string | null>(null);
+  // Multiple-containers guards (dnd-kit example): right after a task changes category, the
+  // layout is re-measured; keep the last target meanwhile instead of bouncing between categories.
+  const lastOverIdRef = useRef<string | number | null>(null);
+  const recentlyMovedToNewCategoryRef = useRef(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      recentlyMovedToNewCategoryRef.current = false;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [dragPreview]);
+
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    if (args.active.data.current?.type !== 'task') {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(
+          (container) => container.data.current?.type === 'category',
+        ),
+      });
+    }
+
+    if (recentlyMovedToNewCategoryRef.current && lastOverIdRef.current !== null) {
+      return [{ id: lastOverIdRef.current }];
+    }
+
+    const targets = args.droppableContainers.filter((container) => {
+      const type = container.data.current?.type;
+      return type === 'task' || type === 'category-drop';
+    });
+    const pointerHits = pointerWithin({ ...args, droppableContainers: targets });
+    const hits =
+      pointerHits.length > 0 ? pointerHits : rectIntersection({ ...args, droppableContainers: targets });
+    const taskHit = hits.find(
+      (hit) => targets.find((container) => container.id === hit.id)?.data.current?.type === 'task',
+    );
+    let overId = taskHit?.id ?? getFirstCollision(hits, 'id');
+
+    if (overId !== null && overId !== undefined) {
+      // Over a category's drop zone: aim at its closest task (the zone itself only for an empty one).
+      const zone = targets.find((container) => container.id === overId);
+      if (zone?.data.current?.type === 'category-drop') {
+        const categoryId = zone.data.current.categoryId as string;
+        const tasks = targets.filter(
+          (container) =>
+            container.data.current?.type === 'task' &&
+            container.data.current.categoryId === categoryId,
+        );
+        if (tasks.length > 0) {
+          overId = closestCenter({ ...args, droppableContainers: tasks })[0]?.id ?? overId;
+        }
+      }
+      lastOverIdRef.current = overId;
+      return [{ id: overId }];
+    }
+
+    return lastOverIdRef.current !== null ? [{ id: lastOverIdRef.current }] : [];
+  }, []);
   const todoPanelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handleWheel = (event: WheelEvent) => {
@@ -403,6 +466,7 @@ export function AgendaTodoPanel({
         if (taskIndex >= 0) {
           taskDragCrossedRef.current = false;
           lastDragOverKeyRef.current = null;
+          lastOverIdRef.current = null;
           taskDragStartRef.current = { categoryId: category.id, index: taskIndex };
           taskDragSnapshotRef.current = selectedList.categories.map((item) => ({
             ...item,
@@ -459,7 +523,6 @@ export function AgendaTodoPanel({
     const nextCategories = applyTaskOverPlacement(
       previewCategories,
       taskId,
-      startCategoryId,
       overType,
       overCategoryId,
       overType === 'task' ? over.id : undefined,
@@ -477,8 +540,8 @@ export function AgendaTodoPanel({
       ...category,
       tasks: [...category.tasks],
     }));
-    // Keep preview in refs only — updating React state during cross-category drag
-    // remounts sortable items and triggers dnd-kit measureRects loops.
+    recentlyMovedToNewCategoryRef.current = true;
+    setDragPreview(dragCategoriesRef.current);
   };
 
   const resetTaskDragState = () => {
@@ -487,6 +550,8 @@ export function AgendaTodoPanel({
     taskDragSnapshotRef.current = null;
     dragCategoriesRef.current = null;
     lastDragOverKeyRef.current = null;
+    lastOverIdRef.current = null;
+    setDragPreview(null);
   };
 
   const persistTaskDragChanges = async (
@@ -533,6 +598,17 @@ export function AgendaTodoPanel({
     const startCategoryId = dragStart.categoryId;
 
     if (crossedDuringDrag && previewCategories) {
+      // The last moves inside the new category were only shown by the sortable transforms.
+      const current = findTaskLocation(previewCategories, taskId);
+      const overIndex =
+        current && over && over.id !== active.id
+          ? previewCategories
+              .find((category) => category.id === current.categoryId)
+              ?.tasks.findIndex((task) => task.id === over.id)
+          : undefined;
+      if (current && overIndex !== undefined && overIndex >= 0) {
+        return reorderTaskInCategory(previewCategories, current.categoryId, current.index, overIndex);
+      }
       return previewCategories;
     }
 
@@ -562,7 +638,6 @@ export function AgendaTodoPanel({
     return applyTaskOverPlacement(
       baseCategories,
       taskId,
-      startCategoryId,
       overType,
       overCategoryId,
       overType === 'task' ? over.id : undefined,
@@ -640,6 +715,7 @@ export function AgendaTodoPanel({
       }
 
       applyCategoryUpdates(selectedList.id, nextCategories);
+      setDragPreview(null);
 
       await persistTaskDragChanges(nextCategories, taskId, dragStart.categoryId);
     } catch (error: unknown) {
@@ -834,7 +910,7 @@ export function AgendaTodoPanel({
             ) : (
               <DndContext
                 sensors={sensors}
-                collisionDetection={closestCenter}
+                collisionDetection={collisionDetection}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragCancel={() => {
@@ -848,7 +924,7 @@ export function AgendaTodoPanel({
               >
                 <SortableContext
                   items={
-                    (isCategoryFilterActive ? visibleCategories : selectedList.categories).map(
+                    (isCategoryFilterActive ? visibleCategories : displayCategories).map(
                       (c) => c.id,
                     )
                   }
@@ -858,10 +934,10 @@ export function AgendaTodoPanel({
                     gap={0}
                     className={getCategoriesGridClass(
                       wideLayout,
-                      (isCategoryFilterActive ? visibleCategories : selectedList.categories).length,
+                      (isCategoryFilterActive ? visibleCategories : displayCategories).length,
                     )}
                   >
-                    {(isCategoryFilterActive ? visibleCategories : selectedList.categories).map(
+                    {(isCategoryFilterActive ? visibleCategories : displayCategories).map(
                       (category) => (
                       <SortableTodoCategory
                         key={category.id}
