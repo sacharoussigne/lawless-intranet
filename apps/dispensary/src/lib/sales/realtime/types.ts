@@ -10,8 +10,3 @@ export type WeeklySalesRealtimeEvent = {
 export type SalesMutationMeta = {
   originClientId?: string;
 };
-
-export type WeeklySalesRealtimeViewerFilter = {
-  canViewAll: boolean;
-  viewerUserId: string;
-};

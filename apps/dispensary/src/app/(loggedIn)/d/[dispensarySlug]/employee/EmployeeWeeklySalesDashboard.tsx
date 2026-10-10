@@ -45,6 +45,7 @@ import { amberPalette } from '@/lib/design-tokens';
 import { normalizeString } from '@/lib/string/normalizeString';
 import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
 import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
+import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
 
 const DEFAULT_PAGE_SIZE = 10;
 const STATUS_FILTER_STORAGE_KEY = 'employee-sales-status-filter';
@@ -107,6 +108,8 @@ export function EmployeeWeeklySalesDashboard({
   const { clientId } = useSalesRealtime({
     onChange: handleRealtimeChange,
   });
+  // Changes missed while disconnected.
+  useRealtimeSocketResync(handleRealtimeChange);
   const mutationMeta = salesMutationMeta(clientId);
 
   const currentWeekBounds = useMemo(
