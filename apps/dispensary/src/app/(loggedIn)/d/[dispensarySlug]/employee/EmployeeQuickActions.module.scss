@@ -1,0 +1,64 @@
+/* Phones: « Commandes en cours » is a full-width collapsible panel, its state written on the header. */
+
+.ordersToggle {
+  border-radius: var(--mantine-radius-md);
+}
+
+.ordersHint,
+.ordersIcon {
+  display: none;
+}
+
+@media (max-width: 47.99em) {
+  .ordersPanel {
+    width: 100%;
+    border: 1px solid var(--disp-surface-border);
+    border-radius: var(--mantine-radius-md);
+    background-color: var(--disp-surface);
+    overflow: hidden;
+  }
+
+  .ordersToggle {
+    width: 100%;
+    min-height: 52px;
+    padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+    border-radius: 0;
+
+    &:active {
+      background-color: var(--disp-sage-soft);
+    }
+  }
+
+  .ordersToggleInner {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .ordersIcon {
+    display: block;
+    flex-shrink: 0;
+    color: var(--disp-sage-soft-text);
+  }
+
+  .ordersHint {
+    display: block;
+    font-size: var(--mantine-font-size-xs);
+    color: var(--disp-ink-muted);
+  }
+
+  .ordersContent {
+    padding: var(--mantine-spacing-sm);
+    border-top: 1px dashed var(--disp-surface-border);
+  }
+}
+
+/* Desktop: the panel dissolves, the toggle sits next to the actions and the list wraps below. */
+@media (min-width: 48em) {
+  .ordersPanel {
+    display: contents;
+  }
+
+  .ordersContent {
+    flex-basis: 100%;
+  }
+}

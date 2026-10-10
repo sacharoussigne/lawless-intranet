@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionIcon, Button, Group, Stack, Text } from '@mantine/core';
+import { ActionIcon, Anchor, Button, Group, Stack, Text } from '@mantine/core';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { formatDate, parsePickerDate } from '@/lib/date';
@@ -57,7 +57,7 @@ export function WeekNavigation({
     getBankWeekBounds(weekStart).start.getTime() ===
     getBankWeekBounds(currentWeekStart).start.getTime();
 
-  const picker = (width: number | string) => (
+  const picker = (width: number) => (
     <DatePickerInput
       value={pickerValue}
       onChange={(date) => {
@@ -131,20 +131,27 @@ export function WeekNavigation({
         </div>
       </Group>
 
-      {/* Phones: period between the arrows, picker and « Aujourd'hui » underneath. */}
-      <Stack gap="xs" hiddenFrom="sm">
-        <Group justify="space-between" wrap="nowrap" gap="sm">
-          {previousButton('lg')}
-          <Text fw={600} ta="center" style={{ flex: 1, minWidth: 0 }}>
+      {/* Phones: just the period between the arrows; a link back appears away from the current week. */}
+      <Group justify="space-between" wrap="nowrap" gap="sm" hiddenFrom="sm">
+        {previousButton('lg')}
+        <Stack gap={0} align="center" style={{ flex: 1, minWidth: 0 }}>
+          <Text fw={600} ta="center">
             {weekRange}
           </Text>
-          {nextButton('lg')}
-        </Group>
-        <Group wrap="nowrap" gap="sm">
-          <div style={{ flex: 1, minWidth: 0 }}>{picker('100%')}</div>
-          {todayButton}
-        </Group>
-      </Stack>
+          {!isCurrentWeek && (
+            <Anchor
+              component="button"
+              type="button"
+              size="xs"
+              disabled={loading}
+              onClick={() => onWeekChange(currentWeekStart)}
+            >
+              Revenir à cette semaine
+            </Anchor>
+          )}
+        </Stack>
+        {nextButton('lg')}
+      </Group>
     </DatesProvider>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Anchor, Badge, Button, Group, Stack, Text, UnstyledButton } from '@mantine/core';
-import { IconArrowsExchange2, IconCash, IconChevronDown } from '@tabler/icons-react';
+import { IconArrowsExchange2, IconCash, IconChevronDown, IconClipboardList } from '@tabler/icons-react';
 import Link from 'next/link';
 import {
   InventoryUiProvider,
@@ -21,6 +21,7 @@ import {
   useOrdersPage,
 } from './orders/hooks/useOrdersQueries';
 import { EmployeeActiveOrdersDashboard } from './EmployeeActiveOrdersDashboard';
+import classes from './EmployeeQuickActions.module.scss';
 
 const ORDERS_VISIBLE_STORAGE_KEY = 'employee-home-orders-visible';
 
@@ -74,56 +75,64 @@ function ActiveOrdersChrome({
   const ordersExpanded = preferenceReady && ordersVisible;
   const ordersHref = tenantRoutes(dispensarySlug).orders.index;
 
+  // Desktop: toggle next to the actions, list below. Phones: one bordered panel (see the SCSS).
   return (
-    <Stack gap="md" mb="lg">
-      <Group justify="space-between" align="center" wrap="wrap">
-        <Group gap="sm" wrap="nowrap" w={{ base: "100%", sm: "auto" }}>
-          {leadingActions}
-        </Group>
-
-        {preferenceReady && (
-          <UnstyledButton
-            onClick={() => setOrdersVisible((current) => !current)}
-            aria-expanded={ordersVisible}
-          >
-            <Group gap="xs" align="center" wrap="nowrap">
-              <Text className="disp-display-title" style={{ fontSize: '1.15rem' }}>
-                Commandes en cours
-              </Text>
-              <Badge variant="filled" color="sage" radius="lg" size="lg">
-                {activeCount}
-              </Badge>
-              <IconChevronDown
-                size={18}
-                style={{
-                  transform: ordersVisible ? 'rotate(180deg)' : undefined,
-                  transition: 'transform 150ms ease',
-                }}
-              />
-            </Group>
-          </UnstyledButton>
-        )}
+    <Group justify="space-between" align="center" wrap="wrap" gap="md" mb="lg">
+      <Group gap="sm" wrap="nowrap" w={{ base: "100%", sm: "auto" }}>
+        {leadingActions}
       </Group>
 
-      {ordersExpanded && (
-        <Stack gap="sm">
-          <Group justify="flex-end" visibleFrom="sm">
-            <Anchor component={Link} href={ordersHref} size="sm" c="dimmed">
-              Voir toutes
-            </Anchor>
-          </Group>
-          <EmployeeActiveOrdersDashboard
-            initialOrdersPage={summaryPage ?? initialOrdersPage}
-            initialAssignments={initialAssignments}
-          />
-        </Stack>
+      {preferenceReady && (
+        <div className={classes.ordersPanel}>
+          <UnstyledButton
+            className={classes.ordersToggle}
+            onClick={() => setOrdersVisible((current) => !current)}
+            aria-expanded={ordersExpanded}
+          >
+            <Group gap="xs" align="center" wrap="nowrap" className={classes.ordersToggleInner}>
+              <Group gap="xs" align="center" wrap="nowrap">
+                <IconClipboardList size={20} className={classes.ordersIcon} />
+                <Text className="disp-display-title" style={{ fontSize: '1.15rem' }}>
+                  Commandes en cours
+                </Text>
+                <Badge variant={activeCount > 0 ? 'filled' : 'light'} color="sage" radius="lg" size="lg">
+                  {activeCount}
+                </Badge>
+              </Group>
+              <Group gap={4} align="center" wrap="nowrap">
+                <span className={classes.ordersHint}>{ordersExpanded ? 'Masquer' : 'Afficher'}</span>
+                <IconChevronDown
+                  size={18}
+                  style={{
+                    transform: ordersExpanded ? 'rotate(180deg)' : undefined,
+                    transition: 'transform 150ms ease',
+                  }}
+                />
+              </Group>
+            </Group>
+          </UnstyledButton>
+
+          {ordersExpanded && (
+            <Stack gap="sm" className={classes.ordersContent}>
+              <Group justify="flex-end" visibleFrom="sm">
+                <Anchor component={Link} href={ordersHref} size="sm" c="dimmed">
+                  Voir toutes
+                </Anchor>
+              </Group>
+              <EmployeeActiveOrdersDashboard
+                initialOrdersPage={summaryPage ?? initialOrdersPage}
+                initialAssignments={initialAssignments}
+              />
+            </Stack>
+          )}
+        </div>
       )}
-    </Stack>
+    </Group>
   );
 }
 
-/** Phones: the two actions share the width as large thumb-friendly buttons. */
-const MOBILE_ACTION_BUTTON = { flex: { base: 1, sm: "none" }, h: { base: 48, sm: 36 } } as const;
+/** Phones: the two actions share the width (default 36px height, as on desktop). */
+const MOBILE_ACTION_BUTTON = { flex: { base: 1, sm: "none" } } as const;
 
 type EmployeeQuickActionsProps = {
   canCreateSale: boolean;

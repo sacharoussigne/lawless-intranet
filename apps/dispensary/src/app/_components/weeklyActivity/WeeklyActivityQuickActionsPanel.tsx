@@ -66,7 +66,7 @@ export function WeeklyActivityQuickActionsPanel({
   const visibleCounters = COUNTER_ACTIONS.filter((action) => fieldVisibility[action.field]);
 
   return (
-    <Paper withBorder shadow="sm" radius="md" p="lg">
+    <Paper withBorder shadow="sm" radius="md" p={{ base: 'md', sm: 'lg' }}>
       <Text size="sm" fw={500} mb="md" className="disp-display-title">
         Actions rapides
       </Text>
@@ -77,7 +77,8 @@ export function WeeklyActivityQuickActionsPanel({
         </Alert>
       ) : (
         <Stack gap="md">
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          {/* Phones: side by side with short labels (« aujourd'hui » is implied). */}
+          <SimpleGrid cols={2} spacing="sm">
             {fieldVisibility.chestDays && (
               <Button
                 color="sage"
@@ -87,7 +88,10 @@ export function WeeklyActivityQuickActionsPanel({
                 loading={chestMutation.isPending}
                 onClick={() => chestMutation.mutate({ weekBounds })}
               >
-                {chestDone ? 'Caisse enregistrée' : "Caisse aujourd'hui"}
+                <span className={classes.desktopLabel}>
+                  {chestDone ? 'Caisse enregistrée' : "Caisse aujourd'hui"}
+                </span>
+                <span className={classes.phoneLabel}>{chestDone ? 'Caisse faite' : 'Caisse'}</span>
               </Button>
             )}
             {fieldVisibility.presenceDays && (
@@ -99,13 +103,16 @@ export function WeeklyActivityQuickActionsPanel({
                 loading={presenceMutation.isPending}
                 onClick={() => presenceMutation.mutate({ weekBounds })}
               >
-                {presenceDone ? 'Présence enregistrée' : "Présence aujourd'hui"}
+                <span className={classes.desktopLabel}>
+                  {presenceDone ? 'Présence enregistrée' : "Présence aujourd'hui"}
+                </span>
+                <span className={classes.phoneLabel}>{presenceDone ? 'Présence faite' : 'Présence'}</span>
               </Button>
             )}
           </SimpleGrid>
 
           {visibleCounters.length > 0 && (
-            <SimpleGrid cols={2} spacing="sm">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={{ base: 6, sm: 'sm' }}>
               {visibleCounters.map((action) => {
                 const Icon = action.icon;
                 const value = row?.[action.field] ?? 0;
@@ -121,11 +128,11 @@ export function WeeklyActivityQuickActionsPanel({
                   >
                     <div className={classes.counterTileInner}>
                       <div className={classes.counterTileLabel}>
-                        <Icon size={16} stroke={1.75} />
-                        <Text size="sm" truncate>
+                        <Icon size={16} stroke={1.75} className={classes.counterIcon} />
+                        <Text size="sm" truncate className={classes.counterName}>
                           {action.label}
                         </Text>
-                        <Text size="sm" fw={600}>
+                        <Text size="sm" fw={600} className={classes.counterValue}>
                           {value}
                         </Text>
                       </div>
