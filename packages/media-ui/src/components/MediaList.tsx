@@ -75,7 +75,7 @@ function ItemRow({
   children: ReactNode;
 }) {
   const drag = useItemDrag(interactions.dragItem);
-  const longPress = useLongPress(interactions.onLongPress);
+  const longPress = useLongPress();
   return (
     <Table.Tr
       ref={drag.setNodeRef}

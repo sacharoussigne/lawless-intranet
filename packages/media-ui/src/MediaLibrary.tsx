@@ -6,6 +6,7 @@ import {
   DndContext,
   DragOverlay,
   MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -30,7 +31,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useLocalStorage, useMediaQuery, useWindowEvent } from '@mantine/hooks';
-import { IconAlertTriangle, IconCheckbox, IconChevronDown, IconPlus, IconUpload } from '@tabler/icons-react';
+import { IconAlertTriangle, IconChevronDown, IconPlus, IconUpload } from '@tabler/icons-react';
 import type {
   MediaFileRecord,
   MediaFolderContentsRecord,
@@ -42,6 +43,8 @@ import { InfoModal } from './components/InfoModal';
 import {
   DraggedItemsContext,
   FileDropTargetContext,
+  LONG_PRESS_MS,
+  LONG_PRESS_TOLERANCE_PX,
   SELECTION_KEY_ATTRIBUTE,
   useDropHighlight,
   type ItemInteractions,
@@ -234,8 +237,12 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     serialize: (value) => value,
     deserialize: (value) => (value === 'list' ? 'list' : 'grid'),
   });
-  // Mouse only: on touch screens a drag would fight with scrolling, « Déplacer » covers it.
-  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }));
+  const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 6 } });
+  // Touch: same hold as the long-press menu; moving earlier cancels it, so swipes still scroll.
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: { delay: LONG_PRESS_MS, tolerance: LONG_PRESS_TOLERANCE_PX },
+  });
+  const sensors = useSensors(mouseSensor, isTouch ? touchSensor : null);
 
   const folderHref = useCallback(
     (id: string | null) => {
@@ -358,17 +365,22 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   };
 
   // --- Drag & drop between folders (the whole selection when a selected item is dragged) ---
-  const handleDragStart = (event: DragStartEvent) => {
-    const item = event.active.data.current as DragItem | undefined;
-    if (!item) return;
+  const beginDrag = (item: DragItem, touch: boolean) => {
     const key = itemKey(item.kind, item.id);
     const keys = selection.keys.has(key) ? selectedKeys : [key];
-    if (!selection.keys.has(key)) setSelection(selectOnly(key));
+    // Touch outside selection mode: selecting would switch the view to selection mode.
+    if (!selection.keys.has(key) && !touch) setSelection(selectOnly(key));
     const items = keys.flatMap((entry) => {
       const target = targets.get(entry);
       return target ? [toDragItem(target)] : [];
     });
     setDragged({ items, name: nameOf(keys) });
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const item = event.active.data.current as DragItem | undefined;
+    if (!item) return;
+    beginDrag(item, typeof TouchEvent !== 'undefined' && event.activatorEvent instanceof TouchEvent);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -421,33 +433,10 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     selected: selection.keys.has(key),
     openOnClick: isTouch && !selectionMode,
     toggleOnClick: selectionMode,
-    onLongPress: (point) => {
-      // Selection mode: the press checks / unchecks the item like a tap.
-      if (selectionMode) {
-        setSelection(applyClick(selection, key, { toggle: true, range: false }, order));
-        return;
-      }
-      contextMenu.openAt(
-        point,
-        <>
-          <Menu.Item
-            leftSection={<IconCheckbox size={16} />}
-            onClick={() => {
-              setTouchSelecting(true);
-              setSelection(selectOnly(key));
-            }}
-          >
-            Sélectionner
-          </Menu.Item>
-          <Menu.Divider />
-          {menu}
-        </>,
-      );
-    },
     onSelect: (modifiers: SelectModifiers) => setSelection(applyClick(selection, key, modifiers, order)),
     onOpen,
     onContextMenu: (event: MouseEvent) => {
-      // Touch (Android fires it on press-and-hold): the long press opens the menu itself.
+      // Touch (Android fires it on press-and-hold): holding drags the item, the ⋮ button has the menu.
       if (isTouch) {
         event.preventDefault();
         return;
