@@ -46,7 +46,9 @@ function tileStyle(highlighted: boolean, dragging: boolean): CSSProperties {
     position: 'relative',
     cursor: 'default',
     userSelect: 'none',
-    // iOS: no link / image callout on press-and-hold (that gesture selects).
+    // Safari only knows the prefixed property.
+    WebkitUserSelect: 'none',
+    // iOS: no link / image callout on press-and-hold (that gesture opens the menu).
     WebkitTouchCallout: 'none',
     opacity: dragging ? 0.4 : 1,
     backgroundColor: highlighted ? 'var(--mantine-primary-color-light)' : 'var(--mantine-color-default-hover)',

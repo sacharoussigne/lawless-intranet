@@ -146,6 +146,8 @@ export function useLongPress(onLongPress: (point: LongPressPoint) => void) {
       timer.current = window.setTimeout(() => {
         fired.current = true;
         timer.current = null;
+        // A selection iOS may have started before the menu opens.
+        window.getSelection()?.removeAllRanges();
         navigator.vibrate?.(10);
         onLongPress(point);
       }, LONG_PRESS_MS);
