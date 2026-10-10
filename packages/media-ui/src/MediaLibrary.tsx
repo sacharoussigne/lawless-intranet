@@ -30,7 +30,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useLocalStorage, useMediaQuery, useWindowEvent } from '@mantine/hooks';
-import { IconAlertTriangle, IconChevronDown, IconPlus, IconUpload } from '@tabler/icons-react';
+import { IconAlertTriangle, IconCheckbox, IconChevronDown, IconPlus, IconUpload } from '@tabler/icons-react';
 import type {
   MediaFileRecord,
   MediaFolderContentsRecord,
@@ -411,14 +411,33 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     selected: selection.keys.has(key),
     openOnClick: isTouch && !selectionMode,
     toggleOnClick: selectionMode,
-    onLongPress: () => {
-      setTouchSelecting(true);
-      setSelection(applyClick(selection, key, { toggle: true, range: false }, order));
+    onLongPress: (point) => {
+      // Selection mode: the press checks / unchecks the item like a tap.
+      if (selectionMode) {
+        setSelection(applyClick(selection, key, { toggle: true, range: false }, order));
+        return;
+      }
+      contextMenu.openAt(
+        point,
+        <>
+          <Menu.Item
+            leftSection={<IconCheckbox size={16} />}
+            onClick={() => {
+              setTouchSelecting(true);
+              setSelection(selectOnly(key));
+            }}
+          >
+            Sélectionner
+          </Menu.Item>
+          <Menu.Divider />
+          {menu}
+        </>,
+      );
     },
     onSelect: (modifiers: SelectModifiers) => setSelection(applyClick(selection, key, modifiers, order)),
     onOpen,
     onContextMenu: (event: MouseEvent) => {
-      // Touch (Android fires it on press-and-hold): the long press selects, the ⋮ button holds the menu.
+      // Touch (Android fires it on press-and-hold): the long press opens the menu itself.
       if (isTouch) {
         event.preventDefault();
         return;
