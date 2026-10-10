@@ -711,6 +711,14 @@
 @media (max-width: 47.99em) {
   .calendarPanel {
     height: auto;
+
+    // List view at its natural height: its `flex: 1 0 0` + `overflow: auto` collapses to 0
+    // in an auto-height calendar, hiding every event.
+    :global(.rbc-agenda-view),
+    :global(.rbc-agenda-content) {
+      flex: none;
+      overflow: visible;
+    }
   }
 
   .todoPanel {
