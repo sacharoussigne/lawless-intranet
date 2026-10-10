@@ -51,7 +51,13 @@ export function ContextMenu({ state, onClose }: { state: ContextMenuState; onClo
           style={{ position: 'fixed', left: state.x, top: state.y, width: 0, height: 0, pointerEvents: 'none' }}
         />
       </Menu.Target>
-      <Menu.Dropdown onContextMenu={(event) => event.preventDefault()}>{state.content}</Menu.Dropdown>
+      <Menu.Dropdown
+        onContextMenu={(event) => event.preventDefault()}
+        // Touch: holding an entry must not select its text.
+        style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
+      >
+        {state.content}
+      </Menu.Dropdown>
     </Menu>
   );
 }
