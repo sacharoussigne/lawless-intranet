@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { decodeReadPayload, encodeReadPayload } from './transport';
+import { decodeReadPayload, encodeReadPayload } from './read';
 
-describe('read transport', () => {
+describe('read payload', () => {
   it('round-trips dates, nested and in arrays', () => {
     const value = {
       status: 200,

@@ -1,3 +1,4 @@
+import type { ReadRegistry } from '@lawless-intranet/host-kit/read';
 import { listDispensaryWeeklyActivities, listDispensaryWeeklyActivityTargets } from '@/app/_actions/dispensaryWeeklyActivity';
 import { getOrdersPage } from '@/app/_actions/orders';
 import { listWeeklySales } from '@/app/_actions/sales';
@@ -15,11 +16,6 @@ export const readRoutes = {
     listDispensaryWeeklyActivityTargets(slug),
   weeklySales: (slug: string, input: { weekDate?: Date }) => listWeeklySales(slug, input?.weekDate),
   ordersPage: (slug: string, input: Parameters<typeof getOrdersPage>[1]) => getOrdersPage(slug, input),
-};
+} satisfies ReadRegistry;
 
 export type ReadRoutes = typeof readRoutes;
-export type ReadQuery = keyof ReadRoutes;
-
-export function isReadQuery(query: string): query is ReadQuery {
-  return Object.hasOwn(readRoutes, query);
-}
