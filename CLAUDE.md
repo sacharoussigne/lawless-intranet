@@ -117,8 +117,10 @@ export async function doThing(slug: string, input: unknown) {
 
 ### Data fetching client
 
-Pour **tout nouveau code** et toute refonte : **React Query + server actions**. Lire `apps/dispensary/docs/react-query.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
-- `queryFn: () => handleAction(await action(...))`, avec `initialData` venant du SSR et des query keys qui incluent le slug.
+Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/dispensary/docs/react-query.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
+- Server actions pour les **mutations** et le chargement SSR des `page.tsx`. Next les exécute **une par une par onglet** (dans la file de la navigation) : ne pas s'en servir pour les relectures client.
+- Relectures côté client (`queryFn`) : `fetchRead(slug, '<query>', input)` (`lib/read/fetchRead.ts`), une GET same-origin vers `/api/d/<slug>/read/<query>` qui réutilise l'action de lecture inscrite dans le registre fermé `lib/read/readRoutes.ts` (auth et permissions restent dans l'action, `Date` conservées). Même forme de résultat : `queryFn: async () => handleAction(await fetchRead(...))`. Inscrire une lecture au registre quand on touche son `queryFn` ; les anciens `queryFn` en server action restent à migrer au fil de l'eau.
+- `initialData` vient du SSR, et les query keys incluent le slug.
 - `useMutation` + invalidation ciblée. Les notifications sont gérées dans le hook de mutation, pas dans la page.
 - À ne pas reproduire : le pattern legacy `useState` + `useEffect` + `loadX()`. `runAsyncEffect` reste admis seulement pour le temps réel ou les effets sans cache.
 

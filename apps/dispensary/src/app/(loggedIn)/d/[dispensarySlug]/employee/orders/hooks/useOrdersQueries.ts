@@ -10,9 +10,9 @@ import {
   deleteOrder,
   getActiveOrdersForCompanyGroup,
   getOrderById,
-  getOrdersPage,
   updateOrder,
 } from '@/app/_actions/orders';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { getItems } from '@/app/_actions/items';
 import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
 import { handleAction } from '@/lib/action';
@@ -47,7 +47,7 @@ function filtersMatchSeed(filters: OrdersPageFilters, seed: OrdersPageFilters): 
 }
 
 async function fetchOrdersPage(dispensarySlug: string, filters: OrdersPageFilters) {
-  const result = await getOrdersPage(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'ordersPage', {
     page: filters.page,
     pageSize: filters.pageSize,
     status: filters.status as Array<

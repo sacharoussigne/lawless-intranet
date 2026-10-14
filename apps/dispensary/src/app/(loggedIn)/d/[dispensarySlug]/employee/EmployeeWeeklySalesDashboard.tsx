@@ -28,10 +28,10 @@ import {
   cancelSale,
   deleteSale,
   depositSaleInCashRegister,
-  listWeeklySales,
   type SaleListItem,
   type WeeklySalesSummary,
 } from '@/app/_actions/sales';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { handleAction } from '@/lib/action';
@@ -151,7 +151,7 @@ export function EmployeeWeeklySalesDashboard({
     ],
     queryFn: async () =>
       handleAction(
-        await listWeeklySales(dispensarySlug, currentWeekBounds.start),
+        await fetchRead(dispensarySlug, 'weeklySales', { weekDate: currentWeekBounds.start }),
       ) as WeeklySalesSummary,
     initialData:
       currentWeekBounds.start.getTime() ===
