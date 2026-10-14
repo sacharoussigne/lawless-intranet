@@ -12,10 +12,16 @@
     "./internal": "./src/internal.ts",
     "./config": "./src/config.ts"
   },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@lawless-intranet/auth-permissions": "workspace:*",
     "@lawless-intranet/types": "workspace:*",
     "better-auth": "^1.4.12"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
   },
   "peerDependencies": {
     "react": "^19.0.0"
