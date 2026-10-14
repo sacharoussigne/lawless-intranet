@@ -1,6 +1,6 @@
 'use client';
 
-import { listAgendaEvents } from '@/app/_actions/agenda/events';
+import { fetchRead } from '@/lib/read/fetchRead';
 import {
   agendaKeys,
   buildAgendaDayViewHref,
@@ -153,7 +153,7 @@ export function HeaderUpcomingEvents({
   const eventsQuery = useQuery({
     queryKey: agendaKeys.upcoming(dispensarySlug, bounds),
     queryFn: async () => {
-      const result = await listAgendaEvents(dispensarySlug, {
+      const result = await fetchRead(dispensarySlug, 'agendaEvents', {
         rangeStart: bounds.rangeStart,
         rangeEnd: bounds.rangeEnd,
       });

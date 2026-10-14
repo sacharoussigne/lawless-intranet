@@ -1,17 +1,13 @@
 import {
   createAgendaEvent,
   deleteAgendaEvent,
-  getAgendaEvent,
-  listAgendaEvents,
   updateAgendaEvent,
 } from '@/app/_actions/agenda/events';
 import {
   createAgendaEventTodoTask,
   deleteAgendaEventTodoTask,
-  listAgendaEventTodoTasks,
   updateAgendaEventTodoTask,
 } from '@/app/_actions/agenda/eventTodos';
-import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
 import {
   createAgendaTodoCategory,
   createAgendaTodoList,
@@ -19,7 +15,6 @@ import {
   deleteAgendaTodoCategory,
   deleteAgendaTodoList,
   deleteAgendaTodoTask,
-  listAgendaTodoLists,
   moveAgendaTodoTask,
   reorderAgendaTodoCategories,
   updateAgendaTodoCategory,
@@ -27,19 +22,21 @@ import {
   updateAgendaTodoTask,
 } from '@/app/_actions/agenda/todoLists';
 import type { AgendaUiActions } from '@lawless-intranet/agenda-ui';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 export function createDispensaryAgendaActions(
   dispensarySlug: string,
 ): AgendaUiActions {
   return {
-    listEvents: (input) => listAgendaEvents(dispensarySlug, input),
-    getEvent: (eventId) => getAgendaEvent(dispensarySlug, eventId),
+    // Reads over GET (lib/read): they run in parallel, not in the server action queue.
+    listEvents: (input) => fetchRead(dispensarySlug, 'agendaEvents', input),
+    getEvent: (eventId) => fetchRead(dispensarySlug, 'agendaEvent', { eventId }),
     createEvent: (input, meta) => createAgendaEvent(dispensarySlug, input, meta),
     updateEvent: (input, meta) => updateAgendaEvent(dispensarySlug, input, meta),
     deleteEvent: (id, meta) => deleteAgendaEvent(dispensarySlug, id, meta),
 
     listTodoLists: (agendaId, options) =>
-      listAgendaTodoLists(dispensarySlug, agendaId, options),
+      fetchRead(dispensarySlug, 'agendaTodoLists', { agendaId, archives: options?.archives }),
     createTodoList: (input, meta) =>
       createAgendaTodoList(dispensarySlug, input, meta),
     updateTodoList: (input, meta) =>
@@ -64,7 +61,7 @@ export function createDispensaryAgendaActions(
       moveAgendaTodoTask(dispensarySlug, input, meta),
 
     listEventTodoTasks: (eventId) =>
-      listAgendaEventTodoTasks(dispensarySlug, eventId),
+      fetchRead(dispensarySlug, 'agendaEventTodoTasks', { eventId }),
     createEventTodoTask: (input, meta) =>
       createAgendaEventTodoTask(dispensarySlug, input, meta),
     updateEventTodoTask: (input, meta) =>
@@ -72,6 +69,6 @@ export function createDispensaryAgendaActions(
     deleteEventTodoTask: (id, meta) =>
       deleteAgendaEventTodoTask(dispensarySlug, id, meta),
 
-    searchUsers: (query) => searchDispensaryUsersForAgenda(dispensarySlug, query),
+    searchUsers: (query) => fetchRead(dispensarySlug, 'agendaUserSearch', { query }),
   };
 }
