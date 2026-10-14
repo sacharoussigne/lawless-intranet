@@ -28,7 +28,7 @@ import type { RealtimeEnvelope } from './types';
  * - Calls `resync` handlers after every (re)connection: consumers refetch their
  *   data, so notifications missed while disconnected are never lost.
  * - Refreshes the token before it expires, and on demand (`refreshAccess`)
- *   after an access change.
+ *   after an access change, on the same connection (no resync: nothing was missed).
  */
 
 export type RealtimeSocketStatus = 'connecting' | 'open' | 'closed';
@@ -61,6 +61,21 @@ const BACKOFF_BASE_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
 /** Skip the very first resync when the socket opens right after the SSR render. */
 const INITIAL_RESYNC_GRACE_MS = 5_000;
+
+/**
+ * `ready` comes after every authentication: the first one of a connection, but
+ * also each token refresh on the same connection. Only a new connection may
+ * have missed events, so only its first `ready` resyncs (except the very first
+ * connection right after the SSR render, whose data is fresh).
+ */
+export function shouldResyncOnReady(input: {
+  firstOnSocket: boolean;
+  firstConnection: boolean;
+  sinceMountMs: number;
+}): boolean {
+  if (!input.firstOnSocket) return false;
+  return !input.firstConnection || input.sinceMountMs > INITIAL_RESYNC_GRACE_MS;
+}
 
 export function computeReconnectDelay(attempt: number, random = Math.random): number {
   const exponential = Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** attempt);
@@ -117,7 +132,8 @@ export function RealtimeSocketProvider({
     let disposed = false;
     let socket: WebSocket | null = null;
     let attempt = 0;
-    let readyCount = 0;
+    let connectedCount = 0;
+    let readyOnCurrentSocket = false;
     let lastMessageAt = Date.now();
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let tokenTimer: ReturnType<typeof setTimeout> | null = null;
@@ -212,11 +228,18 @@ export function RealtimeSocketProvider({
       switch (message.op) {
         case 'ready': {
           attempt = 0;
-          readyCount += 1;
           setStatus('open');
           scheduleTokenRefresh(message.expiresAt);
-          const isFirstReady = readyCount === 1;
-          if (!isFirstReady || Date.now() - mountedAt > INITIAL_RESYNC_GRACE_MS) {
+          const firstOnSocket = !readyOnCurrentSocket;
+          readyOnCurrentSocket = true;
+          if (firstOnSocket) connectedCount += 1;
+          if (
+            shouldResyncOnReady({
+              firstOnSocket,
+              firstConnection: connectedCount === 1,
+              sinceMountMs: Date.now() - mountedAt,
+            })
+          ) {
             runResync();
           }
           break;
@@ -254,6 +277,7 @@ export function RealtimeSocketProvider({
         return;
       }
       socket = current;
+      readyOnCurrentSocket = false;
 
       current.addEventListener('open', () => {
         lastMessageAt = Date.now();
