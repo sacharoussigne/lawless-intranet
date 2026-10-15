@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
@@ -57,7 +58,7 @@ export async function listTemplateAccessesAction(
   }
 }
 
-export async function grantTemplateAccessAction(
+async function grantTemplateAccessActionUnlogged(
   dispensarySlug: string,
   data: {
     templateId: string;
@@ -94,7 +95,7 @@ export async function grantTemplateAccessAction(
   }
 }
 
-export async function revokeTemplateAccessAction(
+async function revokeTemplateAccessActionUnlogged(
   dispensarySlug: string,
   data: { templateId: string; userId: string },
 ) {
@@ -145,7 +146,7 @@ export async function listDocumentAccessesAction(
   }
 }
 
-export async function grantDocumentAccessAction(
+async function grantDocumentAccessActionUnlogged(
   dispensarySlug: string,
   data: {
     documentId: string;
@@ -182,7 +183,7 @@ export async function grantDocumentAccessAction(
   }
 }
 
-export async function revokeDocumentAccessAction(
+async function revokeDocumentAccessActionUnlogged(
   dispensarySlug: string,
   data: { documentId: string; userId: string },
 ) {
@@ -232,4 +233,46 @@ export async function searchUsersForDocumentAccess(dispensarySlug: string, query
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la recherche des utilisateurs');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function grantTemplateAccessAction(
+  ...args: Parameters<typeof grantTemplateAccessActionUnlogged>
+) {
+  return loggedAction(
+    { feature: 'mails', event: 'documentAccesses.grantTemplateAccessAction' },
+    args,
+    () => grantTemplateAccessActionUnlogged(...args),
+  );
+}
+
+export async function revokeTemplateAccessAction(
+  ...args: Parameters<typeof revokeTemplateAccessActionUnlogged>
+) {
+  return loggedAction(
+    { feature: 'mails', event: 'documentAccesses.revokeTemplateAccessAction' },
+    args,
+    () => revokeTemplateAccessActionUnlogged(...args),
+  );
+}
+
+export async function grantDocumentAccessAction(
+  ...args: Parameters<typeof grantDocumentAccessActionUnlogged>
+) {
+  return loggedAction(
+    { feature: 'mails', event: 'documentAccesses.grantDocumentAccessAction' },
+    args,
+    () => grantDocumentAccessActionUnlogged(...args),
+  );
+}
+
+export async function revokeDocumentAccessAction(
+  ...args: Parameters<typeof revokeDocumentAccessActionUnlogged>
+) {
+  return loggedAction(
+    { feature: 'mails', event: 'documentAccesses.revokeDocumentAccessAction' },
+    args,
+    () => revokeDocumentAccessActionUnlogged(...args),
+  );
 }

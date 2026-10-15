@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -34,7 +35,7 @@ const reorderCategoryItemsSchema = z.object({
   })),
 });
 
-export async function createCategoryItem(
+async function createCategoryItemUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -75,7 +76,7 @@ export async function getManagementCategoryItems(dispensarySlug: string) {
   }
 }
 
-export async function updateCategoryItem(
+async function updateCategoryItemUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -100,7 +101,7 @@ export async function updateCategoryItem(
   }
 }
 
-export async function deleteCategoryItem(dispensarySlug: string, data: { id: string }) {
+async function deleteCategoryItemUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -118,7 +119,7 @@ export async function deleteCategoryItem(dispensarySlug: string, data: { id: str
   }
 }
 
-export async function reorderCategoryItems(
+async function reorderCategoryItemsUnlogged(
   dispensarySlug: string,
   data: { items: { id: string; order: number }[] },
 ) {
@@ -137,4 +138,40 @@ export async function reorderCategoryItems(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du réordonnancement des catégories d\'objets');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createCategoryItem(...args: Parameters<typeof createCategoryItemUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'categoryItems.createCategoryItem' },
+    args,
+    () => createCategoryItemUnlogged(...args),
+  );
+}
+
+export async function updateCategoryItem(...args: Parameters<typeof updateCategoryItemUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'categoryItems.updateCategoryItem' },
+    args,
+    () => updateCategoryItemUnlogged(...args),
+  );
+}
+
+export async function deleteCategoryItem(...args: Parameters<typeof deleteCategoryItemUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'categoryItems.deleteCategoryItem' },
+    args,
+    () => deleteCategoryItemUnlogged(...args),
+  );
+}
+
+export async function reorderCategoryItems(
+  ...args: Parameters<typeof reorderCategoryItemsUnlogged>
+) {
+  return loggedAction(
+    { feature: 'management', event: 'categoryItems.reorderCategoryItems' },
+    args,
+    () => reorderCategoryItemsUnlogged(...args),
+  );
 }

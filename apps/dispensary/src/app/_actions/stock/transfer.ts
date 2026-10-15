@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { transferStock } from '@lawless-intranet/inventory-client/server';
 import {
@@ -10,7 +11,7 @@ import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 
 type TransferItem = { itemId: string; quantity: number };
 
-export async function transferMultipleStock(
+async function transferMultipleStockUnlogged(
   dispensarySlug: string,
   data: {
     sourceChestId: string;
@@ -67,4 +68,14 @@ export async function transferMultipleStock(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du transfert des items');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function transferMultipleStock(
+  ...args: Parameters<typeof transferMultipleStockUnlogged>
+) {
+  return loggedAction({ feature: 'stock', event: 'transfer.transferMultipleStock' }, args, () =>
+    transferMultipleStockUnlogged(...args),
+  );
 }

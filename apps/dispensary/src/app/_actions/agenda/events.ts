@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import type { AgendaEventDTO } from '@/types/agenda';
 import {
@@ -126,7 +127,7 @@ export async function getAgendaEvent(dispensarySlug: string, eventId: string) {
   }
 }
 
-export async function createAgendaEvent(
+async function createAgendaEventUnlogged(
   dispensarySlug: string,
   data: {
     agendaId: string;
@@ -179,7 +180,7 @@ export async function createAgendaEvent(
   }
 }
 
-export async function updateAgendaEvent(
+async function updateAgendaEventUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -234,7 +235,7 @@ export async function updateAgendaEvent(
   }
 }
 
-export async function deleteAgendaEvent(
+async function deleteAgendaEventUnlogged(
   dispensarySlug: string,
   id: string,
   meta?: AgendaMutationMeta,
@@ -254,4 +255,24 @@ export async function deleteAgendaEvent(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression de l\'événement');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createAgendaEvent(...args: Parameters<typeof createAgendaEventUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'events.createAgendaEvent' }, args, () =>
+    createAgendaEventUnlogged(...args),
+  );
+}
+
+export async function updateAgendaEvent(...args: Parameters<typeof updateAgendaEventUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'events.updateAgendaEvent' }, args, () =>
+    updateAgendaEventUnlogged(...args),
+  );
+}
+
+export async function deleteAgendaEvent(...args: Parameters<typeof deleteAgendaEventUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'events.deleteAgendaEvent' }, args, () =>
+    deleteAgendaEventUnlogged(...args),
+  );
 }

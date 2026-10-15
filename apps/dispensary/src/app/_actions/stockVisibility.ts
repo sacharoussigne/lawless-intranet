@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -44,7 +45,7 @@ export async function getChestStockVisibility(
   }
 }
 
-export async function setChestCategoryHidden(
+async function setChestCategoryHiddenUnlogged(
   dispensarySlug: string,
   input: { chestId: string; categoryId: string; hidden: boolean },
 ) {
@@ -72,7 +73,7 @@ export async function setChestCategoryHidden(
   }
 }
 
-export async function setChestItemHidden(
+async function setChestItemHiddenUnlogged(
   dispensarySlug: string,
   input: { chestId: string; itemId: string; hidden: boolean },
 ) {
@@ -98,4 +99,22 @@ export async function setChestItemHidden(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la mise à jour de la visibilité de l\'objet');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function setChestCategoryHidden(
+  ...args: Parameters<typeof setChestCategoryHiddenUnlogged>
+) {
+  return loggedAction(
+    { feature: 'stock', event: 'stockVisibility.setChestCategoryHidden' },
+    args,
+    () => setChestCategoryHiddenUnlogged(...args),
+  );
+}
+
+export async function setChestItemHidden(...args: Parameters<typeof setChestItemHiddenUnlogged>) {
+  return loggedAction({ feature: 'stock', event: 'stockVisibility.setChestItemHidden' }, args, () =>
+    setChestItemHiddenUnlogged(...args),
+  );
 }

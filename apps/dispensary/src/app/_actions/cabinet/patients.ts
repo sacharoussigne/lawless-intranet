@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
@@ -126,7 +127,7 @@ export async function getCabinetPatient(dispensarySlug: string, patientId: strin
   }
 }
 
-export async function createCabinetPatient(
+async function createCabinetPatientUnlogged(
   dispensarySlug: string,
   data: {
     cabinetId: string;
@@ -189,7 +190,7 @@ export async function createCabinetPatient(
   }
 }
 
-export async function updateCabinetPatient(
+async function updateCabinetPatientUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -256,7 +257,7 @@ export async function updateCabinetPatient(
   }
 }
 
-export async function deleteCabinetPatient(dispensarySlug: string, id: string) {
+async function deleteCabinetPatientUnlogged(dispensarySlug: string, id: string) {
   try {
     const ctx = await getCabinetSessionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -290,4 +291,30 @@ export async function deleteCabinetPatient(dispensarySlug: string, id: string) {
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression du patient');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createCabinetPatient(
+  ...args: Parameters<typeof createCabinetPatientUnlogged>
+) {
+  return loggedAction({ feature: 'cabinet', event: 'patients.createCabinetPatient' }, args, () =>
+    createCabinetPatientUnlogged(...args),
+  );
+}
+
+export async function updateCabinetPatient(
+  ...args: Parameters<typeof updateCabinetPatientUnlogged>
+) {
+  return loggedAction({ feature: 'cabinet', event: 'patients.updateCabinetPatient' }, args, () =>
+    updateCabinetPatientUnlogged(...args),
+  );
+}
+
+export async function deleteCabinetPatient(
+  ...args: Parameters<typeof deleteCabinetPatientUnlogged>
+) {
+  return loggedAction({ feature: 'cabinet', event: 'patients.deleteCabinetPatient' }, args, () =>
+    deleteCabinetPatientUnlogged(...args),
+  );
 }

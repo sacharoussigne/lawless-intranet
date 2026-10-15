@@ -17,6 +17,21 @@ function sanitizeValue(value: unknown, depth: number): unknown {
   if (typeof value === 'number' || typeof value === 'boolean') return value;
   if (typeof value === 'bigint') return value.toString();
   if (value instanceof Date) return value.toISOString();
+  if (typeof Blob !== 'undefined' && value instanceof Blob) {
+    return { file: (value as { name?: unknown }).name ?? null, type: value.type, size: value.size };
+  }
+  if (typeof FormData !== 'undefined' && value instanceof FormData) {
+    // Long fields (pasted HTML, imports) by size only; files by name and size.
+    const fields: Record<string, unknown> = {};
+    for (const [key, field] of value.entries()) {
+      fields[key] = SECRET_KEY_PATTERN.test(key)
+        ? '[masqué]'
+        : typeof field === 'string' && field.length > 200
+          ? `[${field.length} caractères]`
+          : sanitizeValue(field, depth + 1);
+    }
+    return fields;
+  }
   if (depth >= MAX_DEPTH) return '[trop profond]';
   if (Array.isArray(value)) {
     const items = value.slice(0, MAX_ARRAY_ITEMS).map((item) => sanitizeValue(item, depth + 1));

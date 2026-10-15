@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { actionErrorParser } from '@/lib/action';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
@@ -22,7 +23,7 @@ import {
 } from '@lawless-intranet/agenda-client/server';
 import { enrichAgendaMembers } from '@/lib/enrichUsers';
 
-export async function upsertAgendaMember(
+async function upsertAgendaMemberUnlogged(
   dispensarySlug: string,
   data: { agendaId: string; userId: string; accessLevel: 'OWNER' | 'WRITE' | 'READ' },
 ) {
@@ -59,7 +60,7 @@ export async function upsertAgendaMember(
   }
 }
 
-export async function removeAgendaMember(
+async function removeAgendaMemberUnlogged(
   dispensarySlug: string,
   data: { agendaId: string; userId: string },
 ) {
@@ -119,4 +120,18 @@ export async function searchDispensaryUsersForAgenda(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la recherche');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function upsertAgendaMember(...args: Parameters<typeof upsertAgendaMemberUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'members.upsertAgendaMember' }, args, () =>
+    upsertAgendaMemberUnlogged(...args),
+  );
+}
+
+export async function removeAgendaMember(...args: Parameters<typeof removeAgendaMemberUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'members.removeAgendaMember' }, args, () =>
+    removeAgendaMemberUnlogged(...args),
+  );
 }

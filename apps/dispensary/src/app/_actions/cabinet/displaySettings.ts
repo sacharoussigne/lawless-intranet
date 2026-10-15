@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
@@ -72,7 +73,7 @@ export async function getCabinetDisplaySettings(
   }
 }
 
-export async function updateCabinetDisplaySettings(
+async function updateCabinetDisplaySettingsUnlogged(
   dispensarySlug: string,
   data: { cabinetId: string; displaySettings: CabinetDisplaySettings },
 ) {
@@ -95,4 +96,16 @@ export async function updateCabinetDisplaySettings(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la sauvegarde des paramètres d\'affichage');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function updateCabinetDisplaySettings(
+  ...args: Parameters<typeof updateCabinetDisplaySettingsUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'displaySettings.updateCabinetDisplaySettings' },
+    args,
+    () => updateCabinetDisplaySettingsUnlogged(...args),
+  );
 }

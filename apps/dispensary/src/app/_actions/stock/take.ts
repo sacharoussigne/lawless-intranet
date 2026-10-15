@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { moveItemsWithChests as moveItemsWithChestsApi } from '@lawless-intranet/inventory-client/server';
 import {
@@ -16,7 +17,7 @@ export type ChestStockMoveItemInput = {
   chestId: string;
 };
 
-export async function moveItemsWithChests(
+async function moveItemsWithChestsUnlogged(
   dispensarySlug: string,
   data: {
     mode: ChestStockMoveMode;
@@ -61,3 +62,10 @@ export async function moveItemsWithChests(
   }
 }
 
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function moveItemsWithChests(...args: Parameters<typeof moveItemsWithChestsUnlogged>) {
+  return loggedAction({ feature: 'stock', event: 'take.moveItemsWithChests' }, args, () =>
+    moveItemsWithChestsUnlogged(...args),
+  );
+}

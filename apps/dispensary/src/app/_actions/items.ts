@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -50,7 +51,7 @@ const reorderItemsSchema = z.object({
   })),
 });
 
-export async function createItem(
+async function createItemUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -105,7 +106,7 @@ export async function getItems(
   }
 }
 
-export async function updateItem(
+async function updateItemUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -138,7 +139,7 @@ export async function updateItem(
   }
 }
 
-export async function deleteItem(dispensarySlug: string, data: { id: string }) {
+async function deleteItemUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -156,7 +157,7 @@ export async function deleteItem(dispensarySlug: string, data: { id: string }) {
   }
 }
 
-export async function reorderItems(
+async function reorderItemsUnlogged(
   dispensarySlug: string,
   data: { items: { id: string; order: number }[] },
 ) {
@@ -175,4 +176,30 @@ export async function reorderItems(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du réordonnancement des objets');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createItem(...args: Parameters<typeof createItemUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'items.createItem' }, args, () =>
+    createItemUnlogged(...args),
+  );
+}
+
+export async function updateItem(...args: Parameters<typeof updateItemUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'items.updateItem' }, args, () =>
+    updateItemUnlogged(...args),
+  );
+}
+
+export async function deleteItem(...args: Parameters<typeof deleteItemUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'items.deleteItem' }, args, () =>
+    deleteItemUnlogged(...args),
+  );
+}
+
+export async function reorderItems(...args: Parameters<typeof reorderItemsUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'items.reorderItems' }, args, () =>
+    reorderItemsUnlogged(...args),
+  );
 }

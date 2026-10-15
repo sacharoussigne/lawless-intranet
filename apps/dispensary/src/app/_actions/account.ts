@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { changePassword, updateUser } from '@lawless-intranet/auth-client/admin';
 import { requireSession } from '@/lib/serverActionAuth';
 import { getAuthRequestContext } from '@/lib/authRequest';
@@ -35,7 +36,7 @@ const updateMyProfileSchema = z.object({
     }, 'Image invalide (URL ou Data URL base64 ≤ 1MB)'),
 });
 
-export async function updateMyProfile(data: z.infer<typeof updateMyProfileSchema>) {
+async function updateMyProfileUnlogged(data: z.infer<typeof updateMyProfileSchema>) {
   try {
     const ctx = await requireSession();
     if (!ctx.ok) return ctx.response;
@@ -62,7 +63,7 @@ const changeMyPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
 });
 
-export async function changeMyPassword(data: z.infer<typeof changeMyPasswordSchema>) {
+async function changeMyPasswordUnlogged(data: z.infer<typeof changeMyPasswordSchema>) {
   try {
     const ctx = await requireSession();
     if (!ctx.ok) return ctx.response;
@@ -82,4 +83,21 @@ export async function changeMyPassword(data: z.infer<typeof changeMyPasswordSche
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du changement de mot de passe');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function updateMyProfile(...args: Parameters<typeof updateMyProfileUnlogged>) {
+  return loggedAction({ feature: 'account', event: 'account.updateMyProfile' }, args, () =>
+    updateMyProfileUnlogged(...args),
+  );
+}
+
+export async function changeMyPassword(...args: Parameters<typeof changeMyPasswordUnlogged>) {
+  // Arguments hold a password: not logged.
+  return loggedAction(
+    { feature: 'account', event: 'account.changeMyPassword', context: null },
+    args,
+    () => changeMyPasswordUnlogged(...args),
+  );
 }

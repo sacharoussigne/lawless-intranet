@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { actionErrorParser } from '@/lib/action';
@@ -48,7 +49,7 @@ export async function listMyDispensaryGrades() {
   };
 }
 
-export async function updateMyDispensaryGrade(
+async function updateMyDispensaryGradeUnlogged(
   dispensarySlug: string,
   data: { description?: string | null },
 ) {
@@ -82,4 +83,16 @@ export async function updateMyDispensaryGrade(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la mise à jour du grade');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function updateMyDispensaryGrade(
+  ...args: Parameters<typeof updateMyDispensaryGradeUnlogged>
+) {
+  return loggedAction(
+    { feature: 'settings', event: 'dispensaryMemberProfile.updateMyDispensaryGrade' },
+    args,
+    () => updateMyDispensaryGradeUnlogged(...args),
+  );
 }

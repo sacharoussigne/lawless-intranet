@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -30,7 +31,7 @@ const deleteCompanyGroupSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-export async function createCompanyGroup(
+async function createCompanyGroupUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -106,7 +107,7 @@ export async function getCompanyGroups(dispensarySlug: string) {
   }
 }
 
-export async function updateCompanyGroup(
+async function updateCompanyGroupUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -138,7 +139,7 @@ export async function updateCompanyGroup(
   }
 }
 
-export async function deleteCompanyGroup(dispensarySlug: string, data: { id: string }) {
+async function deleteCompanyGroupUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -154,4 +155,30 @@ export async function deleteCompanyGroup(dispensarySlug: string, data: { id: str
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression du groupe d\'entreprises');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createCompanyGroup(...args: Parameters<typeof createCompanyGroupUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'companyGroups.createCompanyGroup' },
+    args,
+    () => createCompanyGroupUnlogged(...args),
+  );
+}
+
+export async function updateCompanyGroup(...args: Parameters<typeof updateCompanyGroupUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'companyGroups.updateCompanyGroup' },
+    args,
+    () => updateCompanyGroupUnlogged(...args),
+  );
+}
+
+export async function deleteCompanyGroup(...args: Parameters<typeof deleteCompanyGroupUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'companyGroups.deleteCompanyGroup' },
+    args,
+    () => deleteCompanyGroupUnlogged(...args),
+  );
 }

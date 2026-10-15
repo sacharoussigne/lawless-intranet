@@ -6,15 +6,15 @@ Journal **à l'échelle de l'application** (pas d'un dispensaire), lu par les ad
 
 | Quoi | Type (`kind`) | Niveau | Où c'est branché |
 |---|---|---|---|
-| Erreur serveur (500, exception inattendue) de **n'importe quelle** feature | `ERROR` | `ERROR` | automatique : `actionErrorParser` / `serviceActionError` (`src/lib/action.ts`, `src/lib/serviceAction.ts`) |
-| **Chaque action** de l'activité hebdo / journalière et de la paie | `ACTION` | `INFO` réussi ou rien à faire, `WARN` refusé ou invalide, `ERROR` échec | `withLoggedAction` dans `src/app/_actions/dispensaryWeeklyActivity.ts` et `payrollReports.ts` |
+| **Chaque modification** (création, modification, suppression, action métier) de **toutes** les features, quel que soit le résultat | `ACTION` | `INFO` réussi ou rien à faire, `WARN` refusé ou invalide, `ERROR` échec | `loggedAction` sur chaque mutation exportée de `src/app/_actions/**` ; `withLoggedAction` (libellés français, cas « déjà fait ») pour l'activité hebdo et la paie |
+| Erreur serveur (500, exception inattendue), **lectures comprises** | `ERROR` | `ERROR` | automatique : `actionErrorParser` / `serviceActionError` (`src/lib/action.ts`, `src/lib/serviceAction.ts`) |
 | **Chaque requête** du bot Discord | `BOT_REQUEST` | `INFO` 2xx, `WARN` 4xx, `ERROR` 5xx | `withBotRouteLog` sur les routes `src/app/api/dispensary/weekly-activity/**` et `api/dispensary/bank/bot/**` |
 
-Les erreurs 4xx des features non sensibles (permission refusée, formulaire invalide) ne sont **pas** loguées : elles sont normales et feraient du bruit.
+Les **lectures** (`get…`, `list…`, `search…`), rappelées en permanence par React Query et le temps réel, ne sont loguées qu'en cas d'erreur serveur. Une page qui recharge ses données ne crée donc aucune ligne.
 
 Chaque ligne (`AppLog`, table `app_logs`) porte : date, niveau, type, feature, événement (`weeklyActivity.chest.mark`, `bot.caisse`…), résultat (`success`, `noop`, `denied`, `invalid`, `failure`), message, source (intranet, bot, système), dispensaire, utilisateur, Discord id, statut HTTP, durée, chemin, `context` (entrée nettoyée, résumé du résultat) et `error` (nom, message, code, stack, cause).
 
-Une action sensible en échec donne **deux lignes** : l'action (`ACTION`, `failure`) et l'erreur serveur (`ERROR`, avec la stack).
+Une modification en échec donne **deux lignes** : l'action (`ACTION`, `failure`) et l'erreur serveur (`ERROR`, avec la stack).
 
 ## Lire un cas « le bot n'a rien fait »
 
@@ -31,21 +31,21 @@ Les dates de la page sont en **heure réelle** (pas le calendrier RP), pour les 
 
 Le logger (`src/lib/logs/`) ne lève jamais d'exception et ne ralentit pas la réponse (écriture en arrière-plan, gardée en vie par `after()`).
 
-- **Nouvelle feature sensible** : envelopper chaque mutation exportée.
+- **Toute nouvelle mutation exportée** (obligatoire, vérifié par `src/lib/logs/coverage.test.ts`) : le corps va dans `<nom>Unlogged`, l'export l'enveloppe.
 
   ```ts
-  async function doThingUnlogged(slug: string, input: Input) { /* action standard */ }
+  async function createThingUnlogged(dispensarySlug: string, input: Input) {
+    /* action standard */
+  }
 
-  export async function doThing(slug: string, input: Input) {
-    return withLoggedAction(
-      { feature: 'payroll', event: 'payroll.thing.do', label: 'Faire la chose', context: input },
-      () => doThingUnlogged(slug, input),
-      // optionnel : préciser le résultat (ex. "déjà fait" → noop) ou ajouter un résumé
-      (result) => (result.status === 200 ? { context: { id: result.data?.id } } : undefined),
+  export async function createThing(...args: Parameters<typeof createThingUnlogged>) {
+    return loggedAction({ feature: 'orders', event: 'things.createThing' }, args, () =>
+      createThingUnlogged(...args),
     );
   }
   ```
-  Le dispensaire et l'utilisateur sont déduits de la requête (page d'origine, session).
+  Le 1er argument (slug) donne le dispensaire, les suivants vont dans `context` (nettoyés) ; l'utilisateur vient de la session. Si les arguments contiennent un secret (mot de passe) ou un gros contenu, passer `context: null` ou un résumé (`context: { id }`). Une lecture (`get…`, `list…`, `search…`) n'est pas enveloppée.
+- **Libellé français ou résultat précis** : `withLoggedAction(meta, run, describe)` (voir l'activité hebdo et la paie), par exemple pour classer « déjà fait » en `noop`.
 - **Nouvelle route du bot** : `export const POST = withBotRouteLog({ feature: '…', event: 'bot.…' }, handlePost);`. Les erreurs inattendues doivent être **relancées** (`throw`), pas transformées en 500 : le wrapper logue la stack et répond un 500 générique (le message brut n'est jamais envoyé au bot).
 - **Ponctuel** : `logAction({ feature, event, outcome, message, context })` ou `logServerError({ error, status, message })` (`src/lib/logs/writer.ts`).
 - **Feature d'une erreur automatique** : déduite de la page d'où vient l'action (`src/lib/logs/paths.ts`). Une nouvelle page de feature doit y être ajoutée, sinon ses erreurs sont classées « Inconnue ».

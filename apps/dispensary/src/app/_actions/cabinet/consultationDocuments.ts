@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
@@ -202,7 +203,7 @@ export async function listConsultationDocuments(
   }
 }
 
-export async function createFreeTextConsultationDocument(
+async function createFreeTextConsultationDocumentUnlogged(
   dispensarySlug: string,
   data: {
     consultationId: string;
@@ -260,7 +261,7 @@ export async function createFreeTextConsultationDocument(
   }
 }
 
-export async function createConsultationDocumentFromTemplate(
+async function createConsultationDocumentFromTemplateUnlogged(
   dispensarySlug: string,
   data: {
     consultationId: string;
@@ -337,7 +338,7 @@ export async function createConsultationDocumentFromTemplate(
   }
 }
 
-export async function updateConsultationDocument(
+async function updateConsultationDocumentUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -399,7 +400,7 @@ export async function updateConsultationDocument(
   }
 }
 
-export async function deleteConsultationDocument(
+async function deleteConsultationDocumentUnlogged(
   dispensarySlug: string,
   data: { id: string; consultationId: string },
 ) {
@@ -550,4 +551,46 @@ export async function generateConsultationDocumentPreview(
       'Erreur lors de la génération de l’aperçu du document',
     );
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createFreeTextConsultationDocument(
+  ...args: Parameters<typeof createFreeTextConsultationDocumentUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'consultationDocuments.createFreeTextConsultationDocument' },
+    args,
+    () => createFreeTextConsultationDocumentUnlogged(...args),
+  );
+}
+
+export async function createConsultationDocumentFromTemplate(
+  ...args: Parameters<typeof createConsultationDocumentFromTemplateUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'consultationDocuments.createConsultationDocumentFromTemplate' },
+    args,
+    () => createConsultationDocumentFromTemplateUnlogged(...args),
+  );
+}
+
+export async function updateConsultationDocument(
+  ...args: Parameters<typeof updateConsultationDocumentUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'consultationDocuments.updateConsultationDocument' },
+    args,
+    () => updateConsultationDocumentUnlogged(...args),
+  );
+}
+
+export async function deleteConsultationDocument(
+  ...args: Parameters<typeof deleteConsultationDocumentUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'consultationDocuments.deleteConsultationDocument' },
+    args,
+    () => deleteConsultationDocumentUnlogged(...args),
+  );
 }

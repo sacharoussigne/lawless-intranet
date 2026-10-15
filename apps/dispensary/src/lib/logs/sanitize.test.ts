@@ -61,3 +61,21 @@ describe('serializeError', () => {
     expect(serializeError('nope')).toEqual({ name: 'NonError', message: 'nope' });
   });
 });
+
+describe('sanitizeLogContext with form data', () => {
+  it('keeps short fields, sizes long ones, describes files and masks secrets', () => {
+    const form = new FormData();
+    form.set('weekStart', '2026-10-12');
+    form.set('html', '<table>'.repeat(100));
+    form.set('password', 'p');
+    form.set('file', new File(['abc'], 'paie.html', { type: 'text/html' }));
+    expect(sanitizeLogContext([form])).toEqual([
+      {
+        weekStart: '2026-10-12',
+        html: '[700 caractères]',
+        password: '[masqué]',
+        file: { file: 'paie.html', type: 'text/html', size: 3 },
+      },
+    ]);
+  });
+});

@@ -191,7 +191,7 @@ export function LogsPageClient({
     <Container size="xl" py="md">
       <PageHeader
         title="Logs de l’application"
-        description="Erreurs serveur de toutes les features, actions de l’activité hebdo et de la paie, requêtes du bot Discord. Conservés 90 jours."
+        description="Toutes les modifications de toutes les features (réussies ou non), erreurs serveur et requêtes du bot Discord. Conservés 90 jours."
         actions={
           <Tooltip label="Rafraîchir (automatique toutes les 30 s)">
             <ActionIcon

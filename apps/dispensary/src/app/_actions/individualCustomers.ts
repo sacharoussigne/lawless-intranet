@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -70,7 +71,7 @@ export async function getIndividualCustomers(dispensarySlug: string) {
   }
 }
 
-export async function createIndividualCustomer(
+async function createIndividualCustomerUnlogged(
   dispensarySlug: string,
   data: { name: string },
 ) {
@@ -94,7 +95,7 @@ export async function createIndividualCustomer(
   }
 }
 
-export async function deleteIndividualCustomerByName(
+async function deleteIndividualCustomerByNameUnlogged(
   dispensarySlug: string,
   data: { name: string },
 ) {
@@ -116,4 +117,26 @@ export async function deleteIndividualCustomerByName(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression du particulier');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createIndividualCustomer(
+  ...args: Parameters<typeof createIndividualCustomerUnlogged>
+) {
+  return loggedAction(
+    { feature: 'orders', event: 'individualCustomers.createIndividualCustomer' },
+    args,
+    () => createIndividualCustomerUnlogged(...args),
+  );
+}
+
+export async function deleteIndividualCustomerByName(
+  ...args: Parameters<typeof deleteIndividualCustomerByNameUnlogged>
+) {
+  return loggedAction(
+    { feature: 'orders', event: 'individualCustomers.deleteIndividualCustomerByName' },
+    args,
+    () => deleteIndividualCustomerByNameUnlogged(...args),
+  );
 }

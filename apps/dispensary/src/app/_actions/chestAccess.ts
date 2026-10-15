@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -71,7 +72,7 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
   }
 }
 
-export async function upsertRoleChestAccess(
+async function upsertRoleChestAccessUnlogged(
   dispensarySlug: string,
   data: {
     role: string;
@@ -120,4 +121,16 @@ export async function upsertRoleChestAccess(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la sauvegarde des accès aux coffres');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function upsertRoleChestAccess(
+  ...args: Parameters<typeof upsertRoleChestAccessUnlogged>
+) {
+  return loggedAction(
+    { feature: 'management', event: 'chestAccess.upsertRoleChestAccess' },
+    args,
+    () => upsertRoleChestAccessUnlogged(...args),
+  );
 }

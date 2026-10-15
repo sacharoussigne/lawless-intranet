@@ -4,6 +4,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { getAuthSession } from '@/lib/authSession';
 import { resolveDispensaryFromSlug } from '@/lib/dispensary/context';
 import prisma from '@/lib/prisma';
+import { LOG_FEATURE_LABELS } from './labels';
 import { dispensarySlugFromPath, featureFromPath } from './paths';
 import { sanitizeLogContext, serializeError } from './sanitize';
 import {
@@ -101,15 +102,26 @@ type ActionLogInput = {
   httpStatus?: number;
   durationMs?: number;
   dispensaryId?: string | null;
+  /** Tenant slug of the action: resolves the dispensary when `dispensaryId` is not given. */
+  dispensarySlug?: string | null;
   userId?: string | null;
   discordUserId?: string | null;
   source?: 'INTRANET' | 'DISCORD_BOT' | 'SYSTEM';
 };
 
+async function resolveDispensaryId(input: ActionLogInput, request: RequestLogContext) {
+  if (input.dispensaryId) return input.dispensaryId;
+  if (input.dispensarySlug) {
+    const dispensary = await resolveDispensaryFromSlug(input.dispensarySlug).catch(() => null);
+    if (dispensary) return dispensary.id;
+  }
+  return request.dispensaryId;
+}
+
 /** One action of a sensitive feature (success, refusal or failure). Missing who/where come from the request. */
 export function logAction(input: ActionLogInput): void {
   writeAppLog(
-    resolveRequestLogContext().then((request) => ({
+    resolveRequestLogContext().then(async (request) => ({
       level: levelFromOutcome(input.outcome),
       kind: 'ACTION' as const,
       feature: input.feature,
@@ -117,7 +129,7 @@ export function logAction(input: ActionLogInput): void {
       outcome: input.outcome,
       message: input.message,
       source: input.source ?? 'INTRANET',
-      dispensaryId: input.dispensaryId ?? request.dispensaryId,
+      dispensaryId: await resolveDispensaryId(input, request),
       userId: input.userId ?? request.userId,
       discordUserId: input.discordUserId ?? null,
       httpStatus: input.httpStatus ?? null,
@@ -166,13 +178,16 @@ const OUTCOME_LABELS: Record<LogOutcome, string> = {
 
 type ActionResult = { status: number; error?: unknown; data?: unknown };
 
-/**
- * Runs a server action of a sensitive feature and logs its result: success,
- * refusal (401/403), invalid input (other 4xx) or failure (5xx or exception,
- * rethrown). `describe` adds details from the result (outcome override, context).
- */
-export async function withLoggedAction<R extends ActionResult>(
-  meta: { feature: LogFeature; event: string; label: string; context?: unknown },
+type LoggedRunMeta = {
+  feature: LogFeature;
+  event: string;
+  label: string;
+  context?: unknown;
+  dispensarySlug?: string;
+};
+
+async function runLogged<R extends ActionResult>(
+  meta: LoggedRunMeta,
   run: () => Promise<R>,
   describe?: (result: R) => { outcome?: LogOutcome; context?: unknown } | undefined,
 ): Promise<R> {
@@ -189,6 +204,7 @@ export async function withLoggedAction<R extends ActionResult>(
       message: `${meta.label} (${OUTCOME_LABELS[outcome]})${reason}`,
       httpStatus: result.status,
       durationMs: Date.now() - startedAt,
+      dispensarySlug: meta.dispensarySlug,
       context: { input: meta.context, ...(extra?.context === undefined ? {} : { result: extra.context }) },
     });
     return result;
@@ -199,9 +215,51 @@ export async function withLoggedAction<R extends ActionResult>(
       outcome: 'failure',
       message: `${meta.label} (échec) : ${error instanceof Error ? error.message : String(error)}`,
       durationMs: Date.now() - startedAt,
+      dispensarySlug: meta.dispensarySlug,
       context: { input: meta.context },
       error,
     });
     throw error;
   }
+}
+
+/**
+ * Runs a server action of a sensitive feature and logs its result: success,
+ * refusal (401/403), invalid input (other 4xx) or failure (5xx or exception,
+ * rethrown). `describe` adds details from the result (outcome override, context).
+ */
+export async function withLoggedAction<R extends ActionResult>(
+  meta: { feature: LogFeature; event: string; label: string; context?: unknown },
+  run: () => Promise<R>,
+  describe?: (result: R) => { outcome?: LogOutcome; context?: unknown } | undefined,
+): Promise<R> {
+  return runLogged(meta, run, describe);
+}
+
+/** Features whose actions take the dispensary slug as first argument. */
+const NON_TENANT_FEATURES = new Set<LogFeature>(['platform', 'account']);
+
+/**
+ * Mutation of any feature: logs every call, whatever the outcome (see
+ * docs/APP-LOGS.md). `args` are the action arguments: the first one is the
+ * dispensary slug for tenant features, the rest goes to the log context
+ * (sanitized). Pass `context` instead when arguments hold secrets or large content.
+ */
+export async function loggedAction<A extends unknown[], R extends ActionResult>(
+  meta: { feature: LogFeature; event: string; label?: string; context?: unknown },
+  args: A,
+  run: () => Promise<R>,
+): Promise<R> {
+  const tenant = !NON_TENANT_FEATURES.has(meta.feature) && typeof args[0] === 'string';
+  const actionName = meta.event.split('.').pop() ?? meta.event;
+  return runLogged(
+    {
+      feature: meta.feature,
+      event: meta.event,
+      label: meta.label ?? `${LOG_FEATURE_LABELS[meta.feature]} · ${actionName}`,
+      dispensarySlug: tenant ? (args[0] as string) : undefined,
+      context: 'context' in meta ? meta.context : tenant ? args.slice(1) : args,
+    },
+    run,
+  );
 }
