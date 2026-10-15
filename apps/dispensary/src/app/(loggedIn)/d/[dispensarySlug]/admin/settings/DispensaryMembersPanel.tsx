@@ -20,7 +20,6 @@ import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/Del
 import {
   listDispensaryMembers,
   removeDispensaryMember,
-  searchUsersForDispensaryInvite,
   upsertDispensaryMember,
 } from '@/app/_actions/dispensaryMembers';
 import {
@@ -32,6 +31,7 @@ import {
 } from '@/types/enum/roles';
 import { MemberPermissionOverridesEditor } from './MemberPermissionOverridesEditor';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
+import { fetchRead } from '@/lib/read/fetchRead';
 const ROLE_OPTIONS = DISPENSARY_MEMBER_ROLES.map((role) => ({
   value: role,
   label: rolesAsString(role),
@@ -76,7 +76,7 @@ export function DispensaryMembersPanel({
 
   const searchUsers = useCallback(
     async (query: string) => {
-      const result = await searchUsersForDispensaryInvite(dispensarySlug, query);
+      const result = await fetchRead(dispensarySlug, 'memberInviteUserSearch', { query });
       if (result.status === 200 && result.data) {
         return result.data;
       }

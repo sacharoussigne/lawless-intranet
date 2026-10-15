@@ -15,7 +15,6 @@ import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
 import {
   removeAgendaMember,
-  searchDispensaryUsersForAgenda,
   upsertAgendaMember,
 } from '@/app/_actions/agenda/members';
 import { getAgendaWithMembers } from '@/app/_actions/agenda/agendas';
@@ -26,6 +25,7 @@ import {
   type AgendaMemberDTO,
 } from '@/types/agenda';
 import type { AgendaAccessLevel } from '@/types/agenda';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 interface AgendaMembersModalProps {
   opened: boolean;
@@ -73,7 +73,7 @@ export function AgendaMembersModal({
 
   const searchAgendaUsers = useCallback(
     async (query: string) => {
-      const result = await searchDispensaryUsersForAgenda(dispensarySlug, query);
+      const result = await fetchRead(dispensarySlug, 'agendaUserSearch', { query });
       const data = handleAction(result);
       return data ?? [];
     },

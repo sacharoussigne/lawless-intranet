@@ -24,7 +24,6 @@ import { notifications } from '@mantine/notifications';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import { createSale, getSellableItems } from '@/app/_actions/sales';
-import { searchIndividualCustomers } from '@/app/_actions/individualCustomers';
 import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
 import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
@@ -37,6 +36,7 @@ import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import type { ChestListItem } from '@/types/chests';
 import type { ItemWithRelations } from '@/types/stock';
 import { SaleItemSource } from '@lawless-intranet/inventory-client';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type SaleLine = {
   key: string;
@@ -96,7 +96,9 @@ export function SaleModal({
     queryKey: ['individual-customers-search', dispensarySlug, debouncedCustomerQuery],
     queryFn: async () =>
       handleAction(
-        await searchIndividualCustomers(dispensarySlug, debouncedCustomerQuery),
+        await fetchRead(dispensarySlug, 'individualCustomerSearch', {
+          query: debouncedCustomerQuery,
+        }),
       ) as Array<{ id: string; name: string }>,
     enabled: opened && Boolean(dispensarySlug) && debouncedCustomerQuery.length >= 2,
     staleTime: 30_000,

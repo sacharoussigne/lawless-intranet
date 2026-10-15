@@ -4,6 +4,11 @@ import { getAgendaEvent, listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaEventTodoTasks } from '@/app/_actions/agenda/eventTodos';
 import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
 import { listAgendaTodoLists } from '@/app/_actions/agenda/todoLists';
+import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
+import { searchDispensaryUsersForCabinet } from '@/app/_actions/cabinet/members';
+import { searchUsersForDispensaryInvite } from '@/app/_actions/dispensaryMembers';
+import { searchUsersForDocumentAccess } from '@/app/_actions/documentAccesses';
+import { searchIndividualCustomers } from '@/app/_actions/individualCustomers';
 import { getOrdersPage } from '@/app/_actions/orders';
 import { listWeeklySales } from '@/app/_actions/sales';
 
@@ -29,8 +34,20 @@ export const readRoutes = {
     listAgendaTodoLists(slug, input?.agendaId, { archives: input?.archives }),
   agendaEventTodoTasks: (slug: string, input: { eventId: string }) =>
     listAgendaEventTodoTasks(slug, input?.eventId),
-  agendaUserSearch: (slug: string, input: { query: string }) =>
-    searchDispensaryUsersForAgenda(slug, input?.query),
+  agendaUserSearch: (slug: string, input: { query: string; adminContext?: boolean }) =>
+    searchDispensaryUsersForAgenda(slug, input?.query, { adminContext: input?.adminContext }),
+
+  // Search-as-you-type (one request per debounced keystroke)
+  individualCustomerSearch: (slug: string, input: { query: string }) =>
+    searchIndividualCustomers(slug, input?.query),
+  cabinetPatients: (slug: string, input: Parameters<typeof listCabinetPatients>[1]) =>
+    listCabinetPatients(slug, input),
+  cabinetUserSearch: (slug: string, input: { query: string; adminContext?: boolean }) =>
+    searchDispensaryUsersForCabinet(slug, input?.query, { adminContext: input?.adminContext }),
+  documentAccessUserSearch: (slug: string, input: { query: string }) =>
+    searchUsersForDocumentAccess(slug, input?.query),
+  memberInviteUserSearch: (slug: string, input: { query: string }) =>
+    searchUsersForDispensaryInvite(slug, input?.query),
 } satisfies ReadRegistry;
 
 export type ReadRoutes = typeof readRoutes;

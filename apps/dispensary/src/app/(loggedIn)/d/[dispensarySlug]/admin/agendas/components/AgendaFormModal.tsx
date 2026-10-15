@@ -7,8 +7,8 @@ import { notifications } from '@mantine/notifications';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
 import { createAgenda, updateAgenda } from '@/app/_actions/agenda/agendas';
-import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type AgendaFormData = {
   id?: string;
@@ -42,11 +42,10 @@ export function AgendaFormModal({
 
   const searchAgendaUsers = useCallback(
     async (query: string) => {
-      const result = await searchDispensaryUsersForAgenda(
-        dispensarySlug,
+      const result = await fetchRead(dispensarySlug, 'agendaUserSearch', {
         query,
-        { adminContext: true },
-      );
+        adminContext: true,
+      });
       const data = handleAction(result);
       return data ?? [];
     },

@@ -28,8 +28,8 @@ import {
   listTemplateAccessesAction,
   revokeDocumentAccessAction,
   revokeTemplateAccessAction,
-  searchUsersForDocumentAccess,
 } from '@/app/_actions/documentAccesses';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type ManageResourceAccessModalProps = {
   opened: boolean;
@@ -89,7 +89,7 @@ export function ManageResourceAccessModal({
 
   const searchUsers = useCallback(
     async (query: string) => {
-      const result = await searchUsersForDocumentAccess(dispensarySlug, query);
+      const result = await fetchRead(dispensarySlug, 'documentAccessUserSearch', { query });
       if (result.status === 200 && 'data' in result && result.data) {
         return result.data;
       }

@@ -7,8 +7,8 @@ import { notifications } from '@mantine/notifications';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
 import { createCabinet, updateCabinet } from '@/app/_actions/cabinet/cabinets';
-import { searchDispensaryUsersForCabinet } from '@/app/_actions/cabinet/members';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type CabinetFormData = {
   id?: string;
@@ -42,11 +42,10 @@ export function CabinetFormModal({
 
   const searchCabinetUsers = useCallback(
     async (query: string) => {
-      const result = await searchDispensaryUsersForCabinet(
-        dispensarySlug,
+      const result = await fetchRead(dispensarySlug, 'cabinetUserSearch', {
         query,
-        { adminContext: true },
-      );
+        adminContext: true,
+      });
       const data = handleAction(result);
       return data ?? [];
     },
