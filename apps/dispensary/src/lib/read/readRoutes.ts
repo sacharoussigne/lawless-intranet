@@ -9,8 +9,24 @@ import { getAgendaEvent, listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaEventTodoTasks } from '@/app/_actions/agenda/eventTodos';
 import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
 import { listAgendaTodoLists } from '@/app/_actions/agenda/todoLists';
+import {
+  getBankGlobalStats,
+  getBankWeeks,
+  getDescriptionSuggestions,
+  getNameSuggestions,
+  getPendingOccurrences,
+  getPlannedTransactions,
+} from '@/app/_actions/bankAccounts';
 import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
-import { getChestsList } from '@/app/_actions/chests';
+import { getManagementCategoryItems } from '@/app/_actions/categoryItems';
+import { getRoleChestAccesses } from '@/app/_actions/chestAccess';
+import { getCompanies, getCompaniesForSelect } from '@/app/_actions/companies';
+import {
+  getCompanyGroups,
+  getCompanyGroupsForOrders,
+  getCompanyGroupsForSelect,
+} from '@/app/_actions/companyGroups';
+import { getChests, getChestsList } from '@/app/_actions/chests';
 import { getCraftRecipesByItemId } from '@/app/_actions/craftRecipes';
 import { getItems } from '@/app/_actions/items';
 import { getSellableItems, listWeeklySales } from '@/app/_actions/sales';
@@ -22,7 +38,7 @@ import {
   getLastStockDaysByChest,
 } from '@/app/_actions/stock/queries';
 import { getStockConsumptionStats } from '@/app/_actions/stock/statistics';
-import { getStockChecksSummary } from '@/app/_actions/stockChecks';
+import { getChestStockCheckForm, getStockChecksSummary } from '@/app/_actions/stockChecks';
 import { getChestStockVisibility } from '@/app/_actions/stockVisibility';
 import { searchDispensaryUsersForCabinet } from '@/app/_actions/cabinet/members';
 import { searchUsersForDispensaryInvite } from '@/app/_actions/dispensaryMembers';
@@ -157,6 +173,26 @@ export const readRoutes = {
   payrollReport: (slug: string, input: { id: string }) => getPayrollReportById(slug, input?.id),
   payrollImportableWeeks: (slug: string, _input?: undefined) =>
     listPayrollImportableActivityWeeks(slug),
+
+  // Bank (bank-ui, see lib/bank/bankUiActions; getOrCreateWeek writes, it stays an action)
+  bankWeeks: (slug: string, _input?: undefined) => getBankWeeks(slug),
+  bankNameSuggestions: (slug: string, _input?: undefined) => getNameSuggestions(slug),
+  bankDescriptionSuggestions: (slug: string, _input?: undefined) => getDescriptionSuggestions(slug),
+  bankPlannedTransactions: (slug: string, _input?: undefined) => getPlannedTransactions(slug),
+  bankPendingOccurrences: (slug: string, _input?: undefined) => getPendingOccurrences(slug),
+  bankGlobalStats: (slug: string, _input?: undefined) => getBankGlobalStats(slug),
+
+  // Management catalog
+  managementCategoryItems: (slug: string, _input?: undefined) => getManagementCategoryItems(slug),
+  chests: (slug: string, _input?: undefined) => getChests(slug),
+  roleChestAccesses: (slug: string, _input?: undefined) => getRoleChestAccesses(slug),
+  chestStockCheckForm: (slug: string, input: { chestId: string }) =>
+    getChestStockCheckForm(slug, input?.chestId),
+  companyGroups: (slug: string, _input?: undefined) => getCompanyGroups(slug),
+  companyGroupsForSelect: (slug: string, _input?: undefined) => getCompanyGroupsForSelect(slug),
+  companyGroupsForOrders: (slug: string, _input?: undefined) => getCompanyGroupsForOrders(slug),
+  companies: (slug: string, _input?: undefined) => getCompanies(slug),
+  companiesForSelect: (slug: string, _input?: undefined) => getCompaniesForSelect(slug),
 } satisfies ReadRegistry;
 
 export type ReadRoutes = typeof readRoutes;

@@ -2,31 +2,27 @@ import type { BankActionResult, BankUiActions } from '@lawless-intranet/bank-ui'
 import { toUiResult } from '@lawless-intranet/host-kit/action';
 import {
   getOrCreateWeek,
-  getBankWeeks,
   createTransaction,
   updateTransaction,
   deleteTransaction,
   importTransactions,
-  getNameSuggestions,
-  getDescriptionSuggestions,
   addNameSuggestion,
   addDescriptionSuggestion,
   deleteNameSuggestion,
   deleteDescriptionSuggestion,
-  getPlannedTransactions,
-  getPendingOccurrences,
   createPlannedTransaction,
   updatePlannedTransaction,
   deletePlannedTransaction,
   confirmPlannedOccurrence,
   skipPlannedOccurrence,
-  getBankGlobalStats,
 } from '@/app/_actions/bankAccounts';
+import { fetchRead } from '@/lib/read/fetchRead';
 
+/** Reads go over GET (lib/read); `getOrCreateWeek` may create the week, so it stays an action. */
 export function createDispensaryBankActions(dispensarySlug: string): BankUiActions {
   return {
     getOrCreateWeek: (date) => toUiResult(getOrCreateWeek(dispensarySlug, date)),
-    getBankWeeks: () => toUiResult(getBankWeeks(dispensarySlug)),
+    getBankWeeks: () => toUiResult(fetchRead(dispensarySlug, 'bankWeeks')),
     createTransaction: (data) => toUiResult(createTransaction(dispensarySlug, data)),
     updateTransaction: (data) => toUiResult(updateTransaction(dispensarySlug, data)),
     deleteTransaction: (data) =>
@@ -34,8 +30,9 @@ export function createDispensaryBankActions(dispensarySlug: string): BankUiActio
         BankActionResult<{ success: true }>
       >,
     importTransactions: (data) => toUiResult(importTransactions(dispensarySlug, data)),
-    getNameSuggestions: () => toUiResult(getNameSuggestions(dispensarySlug)),
-    getDescriptionSuggestions: () => toUiResult(getDescriptionSuggestions(dispensarySlug)),
+    getNameSuggestions: () => toUiResult(fetchRead(dispensarySlug, 'bankNameSuggestions')),
+    getDescriptionSuggestions: () =>
+      toUiResult(fetchRead(dispensarySlug, 'bankDescriptionSuggestions')),
     addNameSuggestion: (data) => toUiResult(addNameSuggestion(dispensarySlug, data)),
     addDescriptionSuggestion: (data) =>
       toUiResult(addDescriptionSuggestion(dispensarySlug, data)),
@@ -47,8 +44,8 @@ export function createDispensaryBankActions(dispensarySlug: string): BankUiActio
       toUiResult(deleteDescriptionSuggestion(dispensarySlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
-    getPlannedTransactions: () => toUiResult(getPlannedTransactions(dispensarySlug)),
-    getPendingOccurrences: () => toUiResult(getPendingOccurrences(dispensarySlug)),
+    getPlannedTransactions: () => toUiResult(fetchRead(dispensarySlug, 'bankPlannedTransactions')),
+    getPendingOccurrences: () => toUiResult(fetchRead(dispensarySlug, 'bankPendingOccurrences')),
     createPlannedTransaction: (data) =>
       toUiResult(createPlannedTransaction(dispensarySlug, data)),
     updatePlannedTransaction: (data) =>
@@ -63,6 +60,6 @@ export function createDispensaryBankActions(dispensarySlug: string): BankUiActio
       toUiResult(skipPlannedOccurrence(dispensarySlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
-    getBankGlobalStats: () => toUiResult(getBankGlobalStats(dispensarySlug)),
+    getBankGlobalStats: () => toUiResult(fetchRead(dispensarySlug, 'bankGlobalStats')),
   };
 }
