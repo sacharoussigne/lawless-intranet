@@ -69,6 +69,7 @@ pnpm --filter <app> db:generate
 pnpm db:migrate:deploy                    # applique les migrations en attente de toutes les apps (après un pull, un merge…)
 pnpm db:migrate:status                    # état des migrations de toutes les apps
 pnpm db:generate                          # régénère les clients Prisma de toutes les apps
+pnpm db:pull-prod                         # copie les bases de prod en local (.env.prod, voir docs/DB-PULL-PROD.md)
 ```
 
 Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage. En local, après un pull ou un merge qui apporte des migrations, lancer `pnpm db:migrate:deploy`.

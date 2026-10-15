@@ -11,6 +11,7 @@
     "db:migrate:deploy": "pnpm --filter \"./apps/**\" --workspace-concurrency=1 run db:migrate:deploy",
     "db:migrate:status": "pnpm --filter \"./apps/**\" --workspace-concurrency=1 --no-bail run db:migrate:status",
     "db:generate": "pnpm --filter \"./apps/**\" run db:generate",
+    "db:pull-prod": "bash scripts/db-pull-prod.sh",
     "migrate:users-to-auth": "tsx scripts/migrate-users-to-auth.ts",
     "migrate:mails-to-documents": "tsx scripts/migrate-mails-to-documents.ts",
     "migrate:agenda-to-service": "tsx scripts/migrate-agenda-to-agenda-service.ts",
