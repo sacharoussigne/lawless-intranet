@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
@@ -112,7 +113,7 @@ export async function getCabinetPageBootstrap(dispensarySlug: string) {
   }
 }
 
-export async function createCabinet(
+async function createCabinetUnlogged(
   dispensarySlug: string,
   data: { name: string; description?: string | null; ownerUserId: string },
 ) {
@@ -165,7 +166,7 @@ export async function createCabinet(
   }
 }
 
-export async function updateCabinet(
+async function updateCabinetUnlogged(
   dispensarySlug: string,
   data: { id: string; name: string; description?: string | null },
 ) {
@@ -205,7 +206,7 @@ export async function updateCabinet(
   }
 }
 
-export async function deleteCabinet(dispensarySlug: string, id: string) {
+async function deleteCabinetUnlogged(dispensarySlug: string, id: string) {
   try {
     const auth = await requireDispensaryAdminContext(dispensarySlug);
     if (!auth.ok) {
@@ -268,4 +269,24 @@ export async function getCabinetWithMembers(dispensarySlug: string, cabinetId: s
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement du cabinet');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createCabinet(...args: Parameters<typeof createCabinetUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'cabinets.createCabinet' }, args, () =>
+    createCabinetUnlogged(...args),
+  );
+}
+
+export async function updateCabinet(...args: Parameters<typeof updateCabinetUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'cabinets.updateCabinet' }, args, () =>
+    updateCabinetUnlogged(...args),
+  );
+}
+
+export async function deleteCabinet(...args: Parameters<typeof deleteCabinetUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'cabinets.deleteCabinet' }, args, () =>
+    deleteCabinetUnlogged(...args),
+  );
 }

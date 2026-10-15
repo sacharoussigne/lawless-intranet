@@ -70,9 +70,6 @@ export async function requireTenantServerActionContext(
     return { ok: false, response: { status: tenantResult.status, error: tenantResult.error } };
   }
 
-  const sessionResult = await requireSession();
-  if (!sessionResult.ok) return sessionResult;
-
   if (options.feature) {
     const featureResult = await requireFeature(tenantResult.ctx.shelterId, options.feature);
     if (!featureResult.ok) return featureResult;
@@ -101,5 +98,5 @@ export async function requireTenantServerActionContext(
     if (!permResult.ok) return permResult;
   }
 
-  return { ok: true, session: sessionResult.session, tenant: tenantResult.ctx };
+  return { ok: true, session: tenantResult.session, tenant: tenantResult.ctx };
 }

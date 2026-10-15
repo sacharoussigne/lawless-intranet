@@ -103,6 +103,7 @@ export const routes = {
   platform: {
     dispensaries: '/platform/dispensaries',
     users: '/platform/users',
+    logs: '/platform/logs',
   },
   api: {},
   settings: {

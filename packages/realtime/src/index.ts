@@ -5,7 +5,7 @@ export type {
 } from './types';
 export { REALTIME_DOMAIN } from './types';
 export { getOrCreateRealtimeClientId } from './clientId';
-export { realtimeMutationMeta } from './mutationMeta';
+export { parseRealtimeMutationMeta, realtimeMutationMeta } from './mutationMeta';
 export { realtimeTopics, isValidRealtimeTopic } from './topics';
 export {
   REALTIME_CLOSE_CODE,

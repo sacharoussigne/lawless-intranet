@@ -102,7 +102,7 @@ export async function POST(request: Request, context: RouteContext) {
     update: { accessLevel: parsed.data.accessLevel },
   });
 
-  await emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, agendaId, {
+  emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, agendaId, {
     grantedUserIds: [parsed.data.userId],
   });
 

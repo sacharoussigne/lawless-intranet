@@ -46,10 +46,11 @@ SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir 
 
 ## Temps réel
 
-Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et todos, commandes, ventes, activité hebdo et médiathèque (dispensary) ; liste d'attente et médiathèque (refuge).
-- Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`getRealtimeToken` dans `apps/<dispensary|shelter>/src/app/_actions/realtime.ts`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
-- Le code qui écrit (service ou app hôte) publie après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Exemples : `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/dispensary/src/lib/orders/realtime/broadcast.ts`. En prod, tout publieur rejoint le réseau Docker `realtime` avec `REALTIME_INTERNAL_URL` / `REALTIME_INTERNAL_SECRET`.
-- Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query**, jamais de patch d'état à partir du message. Après chaque (re)connexion, `useRealtimeSocketResync` recharge tout.
+Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et todos, commandes, ventes, activité hebdo et médiathèque (dispensary) ; liste d'attente et médiathèque (refuge). Le détail (lectures GET, mutations, temps réel) est dans `docs/DATA-FLOW.md`.
+- Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`createRealtimeToken` dans `apps/<dispensary|shelter>/src/lib/realtime/token.ts`, servi en GET par `/api/<d|s>/<slug>/realtime-token` et lu par `fetchRealtimeToken`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
+- Le code qui écrit (service ou app hôte) publie après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Les fonctions `emit*` l'appellent dans `after()` (`next/server`) : la requête n'attend pas le serveur temps réel, donc on ne les `await` pas. Exemples : `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/dispensary/src/lib/orders/realtime/broadcast.ts`. En prod, tout publieur rejoint le réseau Docker `realtime` avec `REALTIME_INTERNAL_URL` / `REALTIME_INTERNAL_SECRET`.
+- Une mutation transmet le `clientId` du socket (`realtimeMutationMeta(clientId)` côté client, `parseRealtimeMutationMeta(meta)` côté action) : l'auteur ne reçoit pas son propre écho, puisque son `onSuccess` invalide déjà.
+- Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query** (sans `refetchType: 'all'`), jamais de patch d'état à partir du message. Pour une simple invalidation, `coalesceMs` de `useRealtimeSocketEvents` regroupe les rafales. Après une reconnexion, `useRealtimeSocketResync` recharge tout (différé si l'onglet est caché). La boucle de connexion (`packages/realtime/src/connection.ts`) réutilise le jeton tant qu'il est valide et ne réessaie pas sans jeton.
 - « Voit tout » / « voit les siennes » : un topic par tenant plus un topic par utilisateur dans le tenant (ex. `sales:<id>` et `sales:<id>:user:<userId>`), le jeton n'en reçoit qu'un selon la permission.
 - Pour un nouveau domaine : définir ses topics (`packages/realtime/src/topics.ts`), les ajouter au jeton, publier depuis le code qui écrit, puis consommer avec `useRealtimeSocketEvents`.
 
@@ -68,6 +69,7 @@ pnpm --filter <app> db:generate
 pnpm db:migrate:deploy                    # applique les migrations en attente de toutes les apps (après un pull, un merge…)
 pnpm db:migrate:status                    # état des migrations de toutes les apps
 pnpm db:generate                          # régénère les clients Prisma de toutes les apps
+pnpm db:pull-prod                         # copie les bases de prod en local (.env.prod, voir docs/DB-PULL-PROD.md)
 ```
 
 Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage. En local, après un pull ou un merge qui apporte des migrations, lancer `pnpm db:migrate:deploy`.
@@ -109,6 +111,12 @@ export async function doThing(slug: string, input: unknown) {
 - **Toujours** passer par le garde `requireTenantServerActionContext`, qui vérifie le tenant, la session, la feature et la permission, et **toujours** filtrer les requêtes Prisma par tenant.
 - Sérialiser les `Prisma.Decimal` en `number` avant de les renvoyer au client.
 
+### Logs applicatifs (`docs/APP-LOGS.md`)
+
+- Journal plateforme (`/platform/logs`, table `app_logs`) : **chaque mutation de toutes les features**, quel que soit le résultat ; les erreurs serveur (lectures comprises, automatique via `actionErrorParser` / `serviceActionError`) ; chaque requête du bot Discord. Les lectures ne sont pas loguées sinon.
+- **Toute nouvelle mutation exportée** d'un fichier `_actions` : corps dans `<nom>Unlogged`, export enveloppé par `loggedAction` (schéma dans `docs/APP-LOGS.md`, vérifié par `lib/logs/coverage.test.ts`). Nouvelle route du bot : `withBotRouteLog`, et relancer (`throw`) les erreurs inattendues au lieu de renvoyer leur message brut. Nouvelle page de feature : l'ajouter à `lib/logs/paths.ts`.
+- Ne jamais mettre de secret ni de gros contenu dans le `context` d'un log.
+
 ### Permissions et features
 
 - Il y a deux niveaux. Les **rôles globaux** Better Auth sont dans `packages/auth-permissions`. Les **permissions par tenant** (rôles et membres) sont dans `lib/dispensary/permissions*` et `lib/shelter/permissionsCatalog`, et se vérifient avec `can(perms, resource, action)`.
@@ -117,8 +125,10 @@ export async function doThing(slug: string, input: unknown) {
 
 ### Data fetching client
 
-Pour **tout nouveau code** et toute refonte : **React Query + server actions**. Lire `apps/dispensary/docs/react-query.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
-- `queryFn: () => handleAction(await action(...))`, avec `initialData` venant du SSR et des query keys qui incluent le slug.
+Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/dispensary/docs/react-query.md` et `docs/DATA-FLOW.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
+- Server actions pour les **mutations** et le chargement SSR des `page.tsx`. Next les exécute **une par une par onglet** (dans la file de la navigation) : ne pas s'en servir pour les relectures client.
+- Relectures côté client (`queryFn`, chargements au clic, recherches au fil de la frappe, actions de lecture injectées dans les `*-ui`) : `fetchRead(slug, '<query>', input)` (`lib/read/fetchRead.ts`), une GET same-origin vers `/api/d/<slug>/read/<query>` (refuge : `/api/s/<slug>/read/<query>`) qui réutilise l'action de lecture inscrite dans le registre fermé `lib/read/readRoutes.ts` (auth et permissions restent dans l'action, `Date` conservées ; helpers partagés dans `@lawless-intranet/host-kit/read`). Même forme de résultat : `queryFn: async () => handleAction(await fetchRead(...))`. Toute nouvelle lecture client passe par le registre. Exceptions : une lecture qui écrit (`getOrCreateWeek`) ou dont l'entrée ne tient pas dans une URL (`generateOrderMailPreview`) reste une action. Le middleware ne couvre pas `/api` : le garde de l'action est la seule protection.
+- `initialData` vient du SSR, et les query keys incluent le slug.
 - `useMutation` + invalidation ciblée. Les notifications sont gérées dans le hook de mutation, pas dans la page.
 - À ne pas reproduire : le pattern legacy `useState` + `useEffect` + `loadX()`. `runAsyncEffect` reste admis seulement pour le temps réel ou les effets sans cache.
 

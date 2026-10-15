@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
@@ -49,7 +50,7 @@ const getMailByIdSchema = z.object({
 });
 
 
-export async function createMail(
+async function createMailUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -166,7 +167,7 @@ export async function getMailById(
   }
 }
 
-export async function updateMail(
+async function updateMailUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -203,7 +204,7 @@ export async function updateMail(
   }
 }
 
-export async function deleteMail(dispensarySlug: string, data: { id: string }) {
+async function deleteMailUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'mails',
@@ -222,4 +223,24 @@ export async function deleteMail(dispensarySlug: string, data: { id: string }) {
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression du courrier');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createMail(...args: Parameters<typeof createMailUnlogged>) {
+  return loggedAction({ feature: 'mails', event: 'mails.createMail' }, args, () =>
+    createMailUnlogged(...args),
+  );
+}
+
+export async function updateMail(...args: Parameters<typeof updateMailUnlogged>) {
+  return loggedAction({ feature: 'mails', event: 'mails.updateMail' }, args, () =>
+    updateMailUnlogged(...args),
+  );
+}
+
+export async function deleteMail(...args: Parameters<typeof deleteMailUnlogged>) {
+  return loggedAction({ feature: 'mails', event: 'mails.deleteMail' }, args, () =>
+    deleteMailUnlogged(...args),
+  );
 }

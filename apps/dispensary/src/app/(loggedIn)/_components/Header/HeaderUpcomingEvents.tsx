@@ -1,6 +1,6 @@
 'use client';
 
-import { listAgendaEvents } from '@/app/_actions/agenda/events';
+import { fetchRead } from '@/lib/read/fetchRead';
 import {
   agendaKeys,
   buildAgendaDayViewHref,
@@ -153,7 +153,7 @@ export function HeaderUpcomingEvents({
   const eventsQuery = useQuery({
     queryKey: agendaKeys.upcoming(dispensarySlug, bounds),
     queryFn: async () => {
-      const result = await listAgendaEvents(dispensarySlug, {
+      const result = await fetchRead(dispensarySlug, 'agendaEvents', {
         rangeStart: bounds.rangeStart,
         rangeEnd: bounds.rangeEnd,
       });
@@ -167,7 +167,11 @@ export function HeaderUpcomingEvents({
   const loading = eventsQuery.isPending;
 
   const invalidateEvents = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: agendaKeys.eventsAll(dispensarySlug) });
+    // The agenda page invalidates the same key for the same event: join its refetch.
+    void queryClient.invalidateQueries(
+      { queryKey: agendaKeys.eventsAll(dispensarySlug) },
+      { cancelRefetch: false },
+    );
   }, [dispensarySlug, queryClient]);
 
   // Only topics the user may see reach this client (agenda membership or participation).

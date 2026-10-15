@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { getTemplate } from '@lawless-intranet/documents-client/server';
@@ -60,7 +61,7 @@ function withTemplateSummary<T extends { templateId: string }>(
 }
 
 
-export async function createOrderLetterTemplateAssignment(
+async function createOrderLetterTemplateAssignmentUnlogged(
   dispensarySlug: string,
   data: {
     orderType: OrderType;
@@ -200,7 +201,7 @@ export async function getOrderLetterTemplateAssignmentByTypeAndStatus(
   }
 }
 
-export async function updateOrderLetterTemplateAssignment(
+async function updateOrderLetterTemplateAssignmentUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -249,7 +250,7 @@ export async function updateOrderLetterTemplateAssignment(
   }
 }
 
-export async function deleteOrderLetterTemplateAssignment(
+async function deleteOrderLetterTemplateAssignmentUnlogged(
   dispensarySlug: string,
   data: { id: string },
 ) {
@@ -271,4 +272,36 @@ export async function deleteOrderLetterTemplateAssignment(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression de l\'assignation');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createOrderLetterTemplateAssignment(
+  ...args: Parameters<typeof createOrderLetterTemplateAssignmentUnlogged>
+) {
+  return loggedAction(
+    { feature: 'orders', event: 'orderLetterTemplateAssignments.createOrderLetterTemplateAssignment' },
+    args,
+    () => createOrderLetterTemplateAssignmentUnlogged(...args),
+  );
+}
+
+export async function updateOrderLetterTemplateAssignment(
+  ...args: Parameters<typeof updateOrderLetterTemplateAssignmentUnlogged>
+) {
+  return loggedAction(
+    { feature: 'orders', event: 'orderLetterTemplateAssignments.updateOrderLetterTemplateAssignment' },
+    args,
+    () => updateOrderLetterTemplateAssignmentUnlogged(...args),
+  );
+}
+
+export async function deleteOrderLetterTemplateAssignment(
+  ...args: Parameters<typeof deleteOrderLetterTemplateAssignmentUnlogged>
+) {
+  return loggedAction(
+    { feature: 'orders', event: 'orderLetterTemplateAssignments.deleteOrderLetterTemplateAssignment' },
+    args,
+    () => deleteOrderLetterTemplateAssignmentUnlogged(...args),
+  );
 }

@@ -1,3 +1,4 @@
+import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
 import {
   isDispensaryBotApiAuthorized,
@@ -16,7 +17,7 @@ function jsonError(status: number, error: string) {
  * Auth: Bearer DISPENSARY_BOT_API_SECRET + X-Dispensary-Id
  * Optional query: ?date=YYYY-MM-DD
  */
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
   if (!isDispensaryBotApiAuthorized(req)) {
     return jsonError(401, 'Non autorisé');
@@ -52,46 +53,46 @@ export async function POST(request: Request) {
     upstream.searchParams.set('date', dateParam);
   }
 
-  try {
-    const response = await fetch(upstream, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${botSecret}`,
-        'X-Scope-Type': 'dispensary',
-        'X-Scope-Id': dispensaryId,
-        'X-Dispensary-Id': dispensaryId,
-      },
-      cache: 'no-store',
-    });
+  const response = await fetch(upstream, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${botSecret}`,
+      'X-Scope-Type': 'dispensary',
+      'X-Scope-Id': dispensaryId,
+      'X-Dispensary-Id': dispensaryId,
+    },
+    cache: 'no-store',
+  });
 
-    const body = await response.json().catch(() => ({ error: 'Réponse bank invalide' }));
-    if (!response.ok) {
-      return jsonError(
-        response.status,
-        typeof body.error === 'string' ? body.error : 'Erreur bank service',
-      );
-    }
-
-    const data = body as {
-      date?: string;
-      created?: unknown[];
-      alreadyPending?: unknown[];
-      counts?: { created: number; alreadyPending: number };
-    };
-
-    return NextResponse.json({
-      status: 200,
-      data: {
-        date: data.date?.slice(0, 10),
-        created: data.created ?? [],
-        alreadyPending: data.alreadyPending ?? [],
-        createdCount: data.counts?.created ?? (data.created?.length ?? 0),
-        alreadyPendingCount:
-          data.counts?.alreadyPending ?? (data.alreadyPending?.length ?? 0),
-      },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erreur serveur';
-    return jsonError(500, msg);
+  const body = await response.json().catch(() => ({ error: 'Réponse bank invalide' }));
+  if (!response.ok) {
+    return jsonError(
+      response.status,
+      typeof body.error === 'string' ? body.error : 'Erreur bank service',
+    );
   }
+
+  const data = body as {
+    date?: string;
+    created?: unknown[];
+    alreadyPending?: unknown[];
+    counts?: { created: number; alreadyPending: number };
+  };
+
+  return NextResponse.json({
+    status: 200,
+    data: {
+      date: data.date?.slice(0, 10),
+      created: data.created ?? [],
+      alreadyPending: data.alreadyPending ?? [],
+      createdCount: data.counts?.created ?? (data.created?.length ?? 0),
+      alreadyPendingCount:
+        data.counts?.alreadyPending ?? (data.alreadyPending?.length ?? 0),
+    },
+  });
 }
+
+export const POST = withBotRouteLog(
+  { feature: 'bank', event: 'bot.bank.materializePlanned' },
+  handlePost,
+);

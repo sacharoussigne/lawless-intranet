@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
@@ -16,7 +17,7 @@ import {
 } from '@/app/_actions/cabinet/internals';
 import { enrichAgendaMembers } from '@/lib/enrichUsers';
 
-export async function upsertCabinetMember(
+async function upsertCabinetMemberUnlogged(
   dispensarySlug: string,
   data: { cabinetId: string; userId: string; accessLevel: 'OWNER' | 'WRITE' | 'READ' },
 ) {
@@ -76,7 +77,7 @@ export async function upsertCabinetMember(
   }
 }
 
-export async function removeCabinetMember(
+async function removeCabinetMemberUnlogged(
   dispensarySlug: string,
   data: { cabinetId: string; userId: string },
 ) {
@@ -166,4 +167,30 @@ export async function searchDispensaryUsersForCabinet(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la recherche');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function upsertCabinetMember(...args: Parameters<typeof upsertCabinetMemberUnlogged>) {
+  return loggedAction(
+    {
+      feature: 'cabinet',
+      event: 'members.upsertCabinetMember',
+      target: ([, data]) => data.cabinetId,
+    },
+    args,
+    () => upsertCabinetMemberUnlogged(...args),
+  );
+}
+
+export async function removeCabinetMember(...args: Parameters<typeof removeCabinetMemberUnlogged>) {
+  return loggedAction(
+    {
+      feature: 'cabinet',
+      event: 'members.removeCabinetMember',
+      target: ([, data]) => data.cabinetId,
+    },
+    args,
+    () => removeCabinetMemberUnlogged(...args),
+  );
 }

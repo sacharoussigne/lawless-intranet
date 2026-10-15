@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -83,7 +84,7 @@ export async function getChestStockCheckConfigs(dispensarySlug: string) {
   }
 }
 
-export async function upsertChestStockCheckConfig(
+async function upsertChestStockCheckConfigUnlogged(
   dispensarySlug: string,
   input: {
     chestId: string;
@@ -132,4 +133,20 @@ export async function getStockChecksSummary(dispensarySlug: string) {
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du chargement des vérifications de stock');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function upsertChestStockCheckConfig(
+  ...args: Parameters<typeof upsertChestStockCheckConfigUnlogged>
+) {
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'stockChecks.upsertChestStockCheckConfig',
+      target: ([, input]) => input.chestId,
+    },
+    args,
+    () => upsertChestStockCheckConfigUnlogged(...args),
+  );
 }

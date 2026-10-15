@@ -6,6 +6,7 @@ import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
 import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
 import { listAccessibleDispensaries } from '@/lib/dispensary/context';
+import { QueryProvider } from '@/lib/react-query/QueryProvider';
 
 export default async function PlatformLayout({ children }: { children: React.ReactNode }) {
   const session = await getAuthSession();
@@ -25,7 +26,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
           impersonatorDisplayName={impersonatorDisplayName}
         />
         <div className="flex-1 w-full min-w-0 disp-mobile-safe-space">
-          {children}
+          <QueryProvider>{children}</QueryProvider>
         </div>
       </LoggedInShell>
     </PermissionsProvider>

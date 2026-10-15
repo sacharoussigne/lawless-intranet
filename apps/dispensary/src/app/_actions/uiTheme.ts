@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
@@ -25,7 +26,7 @@ export async function getMyTheme() {
   }
 }
 
-export async function setMyTheme(themeId: string) {
+async function setMyThemeUnlogged(themeId: string) {
   try {
     const sessionResult = await requireSession();
     if (!sessionResult.ok) return sessionResult.response;
@@ -41,4 +42,12 @@ export async function setMyTheme(themeId: string) {
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de l’enregistrement du thème');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function setMyTheme(...args: Parameters<typeof setMyThemeUnlogged>) {
+  return loggedAction({ feature: 'account', event: 'uiTheme.setMyTheme' }, args, () =>
+    setMyThemeUnlogged(...args),
+  );
 }

@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -64,7 +65,7 @@ export async function getCraftRecipesByItemId(
   }
 }
 
-export async function createCraftRecipe(
+async function createCraftRecipeUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -92,7 +93,7 @@ export async function createCraftRecipe(
   }
 }
 
-export async function updateCraftRecipe(
+async function updateCraftRecipeUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -120,7 +121,7 @@ export async function updateCraftRecipe(
   }
 }
 
-export async function deleteCraftRecipe(dispensarySlug: string, data: { id: string }) {
+async function deleteCraftRecipeUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -136,4 +137,30 @@ export async function deleteCraftRecipe(dispensarySlug: string, data: { id: stri
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression de la recette de craft');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createCraftRecipe(...args: Parameters<typeof createCraftRecipeUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'craftRecipes.createCraftRecipe' },
+    args,
+    () => createCraftRecipeUnlogged(...args),
+  );
+}
+
+export async function updateCraftRecipe(...args: Parameters<typeof updateCraftRecipeUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'craftRecipes.updateCraftRecipe' },
+    args,
+    () => updateCraftRecipeUnlogged(...args),
+  );
+}
+
+export async function deleteCraftRecipe(...args: Parameters<typeof deleteCraftRecipeUnlogged>) {
+  return loggedAction(
+    { feature: 'management', event: 'craftRecipes.deleteCraftRecipe' },
+    args,
+    () => deleteCraftRecipeUnlogged(...args),
+  );
 }

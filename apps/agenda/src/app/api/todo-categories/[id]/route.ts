@@ -64,7 +64,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     include: { tasks: { orderBy: { order: 'asc' } } },
   });
 
-  await emitAgendaTodosChange(
+  emitAgendaTodosChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,
@@ -108,7 +108,7 @@ export async function DELETE(request: Request, context: RouteContext) {
 
   await prisma.agendaTodoCategory.delete({ where: { id } });
 
-  await emitAgendaTodosChange(
+  emitAgendaTodosChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,

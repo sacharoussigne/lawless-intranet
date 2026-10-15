@@ -5,7 +5,6 @@ import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createItem,
-  getItems,
   updateItem,
   deleteItem,
   reorderItems,
@@ -14,9 +13,9 @@ import {
   createCraftRecipe,
   updateCraftRecipe,
   deleteCraftRecipe,
-  getCraftRecipesByItemId,
 } from '@/app/_actions/craftRecipes';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { itemsKeys } from '@/lib/items/queryKeys';
@@ -27,7 +26,7 @@ import type {
 } from '@/types/items';
 
 async function fetchManagementItems(dispensarySlug: string) {
-  const result = await getItems(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'items', {});
   return handleAction(result) as ItemWithRelations[];
 }
 
@@ -187,7 +186,7 @@ export function useCraftRecipesQuery(itemId: string | null, enabled: boolean) {
     queryKey: itemsKeys.craftRecipes(dispensarySlug, itemId ?? ''),
     queryFn: async () => {
       if (!itemId) throw new Error('itemId is required');
-      const result = await getCraftRecipesByItemId(dispensarySlug, itemId);
+      const result = await fetchRead(dispensarySlug, 'craftRecipes', { itemId });
       return handleAction(result) as CraftRecipeWithIngredients[];
     },
     enabled: Boolean(dispensarySlug && itemId && enabled),

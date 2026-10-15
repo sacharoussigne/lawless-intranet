@@ -106,7 +106,7 @@ export async function DELETE(request: Request, context: RouteContext) {
     select: { scopeType: true, scopeId: true },
   });
   if (agenda) {
-    await emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, agendaId, {
+    emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, agendaId, {
       revokedUserIds: [userId],
     });
   }

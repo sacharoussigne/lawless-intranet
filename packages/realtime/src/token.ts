@@ -16,7 +16,9 @@ export type RealtimeTokenPayload = {
   exp: number;
 };
 
-export const REALTIME_TOKEN_DEFAULT_TTL_MS = 10 * 60 * 1000;
+// Access changes do not wait for expiry: `access` events renew the token and
+// revoked topics are dropped server side, so it can live a while.
+export const REALTIME_TOKEN_DEFAULT_TTL_MS = 30 * 60 * 1000;
 
 const VERSION = 'v1';
 

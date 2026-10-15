@@ -7,6 +7,7 @@
     "./errors": "./src/errors.ts",
     "./service-error": "./src/serviceError.ts",
     "./query": "./src/QueryProvider.tsx",
+    "./read": "./src/read.ts",
     "./realtime": "./src/realtime.ts",
     "./middleware": "./src/middleware.ts",
     "./service-host": "./src/serviceHost.ts",

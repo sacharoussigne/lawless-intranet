@@ -5,12 +5,12 @@ import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createCategoryItem,
-  getManagementCategoryItems,
   updateCategoryItem,
   deleteCategoryItem,
   reorderCategoryItems,
 } from '@/app/_actions/categoryItems';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { categoryItemsKeys } from '@/lib/categoryItems/queryKeys';
@@ -19,7 +19,7 @@ import type { CategoryItemWithCount } from '@/types/categoryItems';
 import type { CategoryItemRecord } from '@lawless-intranet/types';
 
 async function fetchManagementCategoryItems(dispensarySlug: string) {
-  const result = await getManagementCategoryItems(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'managementCategoryItems');
   return handleAction(result) as CategoryItemWithCount[];
 }
 

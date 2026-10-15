@@ -3,11 +3,11 @@
 import { useCallback, type ReactNode } from 'react';
 import { REALTIME_DOMAIN } from '@lawless-intranet/realtime';
 import {
+  fetchRealtimeToken,
   RealtimeSocketProvider,
   useOptionalRealtimeSocket,
   useRealtimeSocketEvents,
 } from '@lawless-intranet/realtime/socket';
-import { getRealtimeToken } from '@/app/_actions/realtime';
 
 const ACCESS_TYPES = ['access'] as const;
 const AGENDA_DOMAINS = [REALTIME_DOMAIN.agenda] as const;
@@ -41,10 +41,10 @@ export function DispensaryRealtimeSocketShell({
   url: string;
   children: ReactNode;
 }) {
-  const getToken = useCallback(async () => {
-    const result = await getRealtimeToken(dispensarySlug);
-    return result.status === 200 && 'data' in result && result.data ? result.data : null;
-  }, [dispensarySlug]);
+  const getToken = useCallback(
+    () => fetchRealtimeToken(`/api/d/${encodeURIComponent(dispensarySlug)}/realtime-token`),
+    [dispensarySlug],
+  );
 
   return (
     <RealtimeSocketProvider url={url} getToken={getToken} clientIdKey="dispensary">

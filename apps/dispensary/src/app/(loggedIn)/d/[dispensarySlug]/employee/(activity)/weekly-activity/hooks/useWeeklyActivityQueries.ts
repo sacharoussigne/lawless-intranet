@@ -7,16 +7,13 @@ import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createDispensaryWeeklyActivity,
   deleteDispensaryWeeklyActivity,
-  getDispensaryWeeklyActivityHistory,
-  getDispensaryWeeklyHoursRecap,
   incrementOwnWeeklyCounter,
-  listDispensaryWeeklyActivities,
-  listDispensaryWeeklyActivityTargets,
   markOwnWeeklyChestToday,
   markOwnWeeklyPresenceToday,
   updateDispensaryWeeklyActivity,
   updateDispensaryDiscordProfile,
 } from '@/app/_actions/dispensaryWeeklyActivity';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { handleAction } from '@/lib/action';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import {
@@ -73,7 +70,7 @@ async function fetchWeeklyActivities(
   bounds: WeeklyActivityWeekBounds,
 ): Promise<WeeklyActivityListItem[]> {
   const normalized = normalizeWeeklyActivityWeekBounds(bounds);
-  const result = await listDispensaryWeeklyActivities(dispensarySlug, normalized);
+  const result = await fetchRead(dispensarySlug, 'weeklyActivities', normalized);
   const data = handleAction(result);
   return Array.isArray(data) ? data : [];
 }
@@ -82,7 +79,7 @@ async function fetchWeeklyActivityHistory(
   dispensarySlug: string,
   activityId: string,
 ): Promise<WeeklyActivityHistoryEntry[]> {
-  const result = await getDispensaryWeeklyActivityHistory(dispensarySlug, { id: activityId });
+  const result = await fetchRead(dispensarySlug, 'weeklyActivityHistory', { id: activityId });
   const data = handleAction(result);
   return Array.isArray(data) ? data : [];
 }
@@ -92,7 +89,7 @@ async function fetchWeeklyHoursRecap(
   periodStart: Date,
   discordUserId: string | null,
 ): Promise<WeeklyHoursRecapBundleDto> {
-  const result = await getDispensaryWeeklyHoursRecap(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'weeklyHoursRecap', {
     periodStart,
     discordUserId,
   });
@@ -103,7 +100,7 @@ async function fetchWeeklyHoursRecap(
 async function fetchWeeklyActivityTargets(
   dispensarySlug: string,
 ): Promise<WeeklyActivityTargetUser[]> {
-  const result = await listDispensaryWeeklyActivityTargets(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'weeklyActivityTargets');
   const data = handleAction(result) as { users?: WeeklyActivityTargetUser[] } | undefined;
   return data?.users ?? [];
 }

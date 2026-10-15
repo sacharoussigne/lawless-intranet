@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, type ReactNode } from 'react';
-import { RealtimeSocketProvider } from '@lawless-intranet/realtime/socket';
-import { getRealtimeToken } from '@/app/_actions/realtime';
+import { fetchRealtimeToken, RealtimeSocketProvider } from '@lawless-intranet/realtime/socket';
 
 /** Websocket transport for every realtime domain of the shelter (media library, waitlist). */
 export function ShelterRealtimeSocketShell({
@@ -15,10 +14,10 @@ export function ShelterRealtimeSocketShell({
   url: string;
   children: ReactNode;
 }) {
-  const getToken = useCallback(async () => {
-    const result = await getRealtimeToken(shelterSlug);
-    return result.status === 200 && 'data' in result && result.data ? result.data : null;
-  }, [shelterSlug]);
+  const getToken = useCallback(
+    () => fetchRealtimeToken(`/api/s/${encodeURIComponent(shelterSlug)}/realtime-token`),
+    [shelterSlug],
+  );
 
   return (
     <RealtimeSocketProvider url={url} getToken={getToken} clientIdKey="shelter">

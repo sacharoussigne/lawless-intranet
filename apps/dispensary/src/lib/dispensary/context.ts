@@ -69,6 +69,26 @@ export async function userCanAccessDispensary(
   return member != null;
 }
 
+/** One query for both `userCanAccessDispensary` and `getEffectiveRoleForDispensary` (every action runs it). */
+async function resolveDispensaryMembership(
+  session: SessionLike,
+  dispensaryId: string,
+): Promise<{ allowed: boolean; role: string | null }> {
+  if (!session?.user?.id) {
+    return { allowed: false, role: null };
+  }
+  if (isPlatformAdmin(session.user.role)) {
+    return { allowed: true, role: Role.ADMIN };
+  }
+  const member = await prisma.dispensaryMember.findUnique({
+    where: {
+      dispensaryId_userId: { dispensaryId, userId: session.user.id },
+    },
+    select: { role: true },
+  });
+  return { allowed: member != null, role: member?.role ?? null };
+}
+
 export async function requireDispensaryFromSlug(slug: string): Promise<DispensaryContext> {
   const dispensary = await resolveDispensaryFromSlug(slug);
   if (!dispensary) {
@@ -86,11 +106,10 @@ export async function requireDispensaryAccess(
   effectivePermissions: string[];
 }> {
   const dispensary = await requireDispensaryFromSlug(slug);
-  const allowed = await userCanAccessDispensary(session, dispensary.id);
+  const { allowed, role: effectiveRole } = await resolveDispensaryMembership(session, dispensary.id);
   if (!allowed) {
     throw new Error('DISPENSARY_ACCESS_DENIED');
   }
-  const effectiveRole = await getEffectiveRoleForDispensary(session, dispensary.id);
   const effectivePermissions = await resolveEffectivePermissionsForDispensary(
     session,
     dispensary.id,

@@ -5,13 +5,11 @@ import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createCompanyGroup,
-  getCompanyGroups,
-  getCompanyGroupsForOrders,
-  getCompanyGroupsForSelect,
   updateCompanyGroup,
   deleteCompanyGroup,
 } from '@/app/_actions/companyGroups';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { companyGroupsKeys } from '@/lib/companyGroups/queryKeys';
@@ -21,17 +19,17 @@ import type { CompanyGroupForOrders, CompanyGroupWithRelations } from '@/types/c
 import type { CompanyGroupSelect } from '@/types/items';
 
 async function fetchManagementCompanyGroups(dispensarySlug: string) {
-  const result = await getCompanyGroups(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'companyGroups');
   return handleAction(result) as CompanyGroupWithRelations[];
 }
 
 async function fetchCompanyGroupsForSelect(dispensarySlug: string) {
-  const result = await getCompanyGroupsForSelect(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'companyGroupsForSelect');
   return handleAction(result) as CompanyGroupSelect[];
 }
 
 async function fetchCompanyGroupsForOrders(dispensarySlug: string) {
-  const result = await getCompanyGroupsForOrders(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'companyGroupsForOrders');
   return handleAction(result) as CompanyGroupForOrders[];
 }
 

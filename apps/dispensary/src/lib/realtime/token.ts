@@ -1,5 +1,3 @@
-'use server';
-
 import { realtimeTopics } from '@lawless-intranet/realtime';
 import { signRealtimeToken } from '@lawless-intranet/realtime/token';
 import { getAgendaAccess } from '@lawless-intranet/agenda-client/server';
@@ -19,8 +17,9 @@ import { getRealtimeTokenSecret } from '@/lib/realtime/socketConfig';
  * Signs a short-lived token listing the realtime topics the current user may
  * receive in this dispensary. The websocket server trusts it as-is, so every
  * topic must be checked here.
+ * Served by GET `/api/d/<slug>/realtime-token`.
  */
-export async function getRealtimeToken(dispensarySlug: string) {
+export async function createRealtimeToken(dispensarySlug: string) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;

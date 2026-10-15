@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
@@ -95,7 +96,7 @@ async function saveCabinetConfiguration(
   });
 }
 
-export async function saveFormSchemaEntity(
+async function saveFormSchemaEntityUnlogged(
   dispensarySlug: string,
   data: {
     cabinetId: string;
@@ -166,4 +167,20 @@ export async function saveFormSchemaEntity(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la sauvegarde du schéma');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function saveFormSchemaEntity(
+  ...args: Parameters<typeof saveFormSchemaEntityUnlogged>
+) {
+  return loggedAction(
+    {
+      feature: 'cabinet',
+      event: 'formSchema.saveFormSchemaEntity',
+      target: ([, data]) => data.cabinetId,
+    },
+    args,
+    () => saveFormSchemaEntityUnlogged(...args),
+  );
 }

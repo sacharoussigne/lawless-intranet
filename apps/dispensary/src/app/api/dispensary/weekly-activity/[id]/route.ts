@@ -1,3 +1,4 @@
+import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import type { DispensaryWeeklyActivity } from '@prisma/client';
@@ -53,7 +54,7 @@ async function loadActivityForBot(
   return { activity: initial };
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
+async function handleGet(request: NextRequest, context: RouteContext) {
   if (!isDispensaryBotApiAuthorized(request)) {
     return jsonError(401, 'Non autorisé');
   }
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   return NextResponse.json({ status: 200, data });
 }
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function handlePatch(request: NextRequest, context: RouteContext) {
   if (!isDispensaryBotApiAuthorized(request)) {
     return jsonError(401, 'Non autorisé');
   }
@@ -152,11 +153,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (msg.includes('Unique constraint')) {
       return jsonError(409, 'Conflit de période');
     }
-    return jsonError(500, msg);
+    throw e;
   }
 }
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
+async function handleDelete(request: NextRequest, context: RouteContext) {
   if (!isDispensaryBotApiAuthorized(request)) {
     return jsonError(401, 'Non autorisé');
   }
@@ -180,16 +181,26 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return loaded.error;
   }
 
-  try {
-    await deleteDispensaryWeeklyActivityWithHistory(id, {
-      source: 'DISCORD_BOT',
-      actorUserId: null,
-      actorDiscordUserId: discordUserId,
-      dispensaryId: dispensaryCtx.dispensaryId,
-    });
-    return NextResponse.json({ status: 200, data: { ok: true } });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erreur serveur';
-    return jsonError(500, msg);
-  }
+  await deleteDispensaryWeeklyActivityWithHistory(id, {
+    source: 'DISCORD_BOT',
+    actorUserId: null,
+    actorDiscordUserId: discordUserId,
+    dispensaryId: dispensaryCtx.dispensaryId,
+  });
+  return NextResponse.json({ status: 200, data: { ok: true } });
 }
+
+export const GET = withBotRouteLog(
+  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.get' },
+  handleGet,
+);
+
+export const PATCH = withBotRouteLog(
+  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.update' },
+  handlePatch,
+);
+
+export const DELETE = withBotRouteLog(
+  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.delete' },
+  handleDelete,
+);

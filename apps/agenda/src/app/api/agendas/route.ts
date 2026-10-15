@@ -198,7 +198,7 @@ export async function POST(request: Request) {
     return created;
   });
 
-  await emitAgendaAccessChange(scopeType, scopeId, agenda.id, {
+  emitAgendaAccessChange(scopeType, scopeId, agenda.id, {
     grantedUserIds: [ownerUserId],
   });
 

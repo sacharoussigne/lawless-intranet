@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -38,7 +39,7 @@ const deleteCompanySchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-export async function createCompany(
+async function createCompanyUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -102,7 +103,7 @@ export async function getCompanies(dispensarySlug: string) {
   }
 }
 
-export async function updateCompany(
+async function updateCompanyUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -134,7 +135,7 @@ export async function updateCompany(
   }
 }
 
-export async function deleteCompany(dispensarySlug: string, data: { id: string }) {
+async function deleteCompanyUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -150,4 +151,24 @@ export async function deleteCompany(dispensarySlug: string, data: { id: string }
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression de l\'entreprise');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createCompany(...args: Parameters<typeof createCompanyUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'companies.createCompany' }, args, () =>
+    createCompanyUnlogged(...args),
+  );
+}
+
+export async function updateCompany(...args: Parameters<typeof updateCompanyUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'companies.updateCompany' }, args, () =>
+    updateCompanyUnlogged(...args),
+  );
+}
+
+export async function deleteCompany(...args: Parameters<typeof deleteCompanyUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'companies.deleteCompany' }, args, () =>
+    deleteCompanyUnlogged(...args),
+  );
 }

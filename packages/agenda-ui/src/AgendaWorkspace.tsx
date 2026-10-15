@@ -281,7 +281,11 @@ export function AgendaWorkspace({
   }, [eventModalOpen, selectedEvent?.id]);
 
   const invalidateEvents = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: agendaKeys.eventsAll(scopeKey) });
+    // The header invalidates the same key for the same event: join its refetch.
+    void queryClient.invalidateQueries(
+      { queryKey: agendaKeys.eventsAll(scopeKey) },
+      { cancelRefetch: false },
+    );
   }, [queryClient, scopeKey]);
 
   const { clientId } = useAgendaRealtime({

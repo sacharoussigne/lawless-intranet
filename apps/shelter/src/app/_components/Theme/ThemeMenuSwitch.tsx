@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { Box, Group, Menu, SegmentedControl, Text, Tooltip, VisuallyHidden } from '@mantine/core';
 import { IconMoon, IconSun } from '@tabler/icons-react';
 import { useAppTheme } from '@lawless-intranet/host-kit/theme';
-import { getMyTheme } from '@/app/_actions/uiTheme';
 import { SHELTER_DARK_THEME_ID, SHELTER_LIGHT_THEME_ID } from '@/lib/themes';
 
 /**
@@ -15,9 +14,11 @@ export function AccountThemeSync() {
   const { setTheme } = useAppTheme();
   useEffect(() => {
     let cancelled = false;
-    void getMyTheme()
+    // GET route, not the server action: it would queue behind the page's other actions.
+    void fetch('/api/me/theme', { cache: 'no-store', credentials: 'same-origin' })
+      .then((response) => response.json() as Promise<{ data?: unknown }>)
       .then((result) => {
-        if (!cancelled && 'data' in result && typeof result.data === 'string') {
+        if (!cancelled && typeof result.data === 'string') {
           setTheme(result.data, { persist: false, animate: false });
         }
       })

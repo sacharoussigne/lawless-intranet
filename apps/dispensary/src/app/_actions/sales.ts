@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import type {
   SaleItemSource as SaleItemSourceType,
@@ -59,15 +60,15 @@ function parseMutationMeta(meta: unknown): SalesMutationMeta | undefined {
   return { originClientId: parsed.data.originClientId };
 }
 
-async function emitSaleRealtime(
+function emitSaleRealtime(
   dispensaryId: string,
   sale: { id: string; userId: string; createdAt: Date | string },
   meta?: SalesMutationMeta,
-) {
+): void {
   const createdAt =
     typeof sale.createdAt === 'string' ? new Date(sale.createdAt) : sale.createdAt;
   const bounds = getBankWeekBounds(createdAt);
-  await emitWeeklySalesChange(
+  emitWeeklySalesChange(
     dispensaryId,
     saleToWeeklySalesRealtimePayload({
       id: sale.id,
@@ -172,7 +173,7 @@ function mapWeeklySaleRow(
   };
 }
 
-export async function createSale(
+async function createSaleUnlogged(
   dispensarySlug: string,
   rawData: z.infer<typeof createSaleSchema>,
   meta?: unknown,
@@ -218,7 +219,7 @@ export async function createSale(
     // Inventory createSale returns the list-item shape (with totals / item names).
     const listItem = sale as unknown as Parameters<typeof mapWeeklySaleRow>[0];
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       { id: listItem.id, userId: listItem.userId, createdAt: listItem.createdAt },
       mutationMeta,
@@ -236,7 +237,7 @@ export async function createSale(
   }
 }
 
-export async function cancelSale(
+async function cancelSaleUnlogged(
   dispensarySlug: string,
   saleId: string,
   meta?: unknown,
@@ -268,7 +269,7 @@ export async function cancelSale(
       await inventoryCookie(),
     );
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       {
         id: saleId,
@@ -284,7 +285,7 @@ export async function cancelSale(
   }
 }
 
-export async function depositSaleInCashRegister(
+async function depositSaleInCashRegisterUnlogged(
   dispensarySlug: string,
   saleId: string,
   meta?: unknown,
@@ -317,7 +318,7 @@ export async function depositSaleInCashRegister(
       await inventoryCookie(),
     );
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       {
         id: saleId,
@@ -333,7 +334,7 @@ export async function depositSaleInCashRegister(
   }
 }
 
-export async function deleteSale(
+async function deleteSaleUnlogged(
   dispensarySlug: string,
   saleId: string,
   meta?: unknown,
@@ -368,7 +369,7 @@ export async function deleteSale(
       await inventoryCookie(),
     );
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       { id: saleId, userId, createdAt: new Date() },
       mutationMeta,
@@ -470,4 +471,32 @@ export async function getSellableItems(dispensarySlug: string) {
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération des objets vendables');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createSale(...args: Parameters<typeof createSaleUnlogged>) {
+  return loggedAction({ feature: 'sales', event: 'sales.createSale' }, args, () =>
+    createSaleUnlogged(...args),
+  );
+}
+
+export async function cancelSale(...args: Parameters<typeof cancelSaleUnlogged>) {
+  return loggedAction({ feature: 'sales', event: 'sales.cancelSale' }, args, () =>
+    cancelSaleUnlogged(...args),
+  );
+}
+
+export async function depositSaleInCashRegister(
+  ...args: Parameters<typeof depositSaleInCashRegisterUnlogged>
+) {
+  return loggedAction({ feature: 'sales', event: 'sales.depositSaleInCashRegister' }, args, () =>
+    depositSaleInCashRegisterUnlogged(...args),
+  );
+}
+
+export async function deleteSale(...args: Parameters<typeof deleteSaleUnlogged>) {
+  return loggedAction({ feature: 'sales', event: 'sales.deleteSale' }, args, () =>
+    deleteSaleUnlogged(...args),
+  );
 }

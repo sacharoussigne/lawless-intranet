@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
@@ -123,7 +124,7 @@ export async function getCareEpisode(dispensarySlug: string, episodeId: string) 
   }
 }
 
-export async function createCareEpisode(
+async function createCareEpisodeUnlogged(
   dispensarySlug: string,
   data: {
     patientId: string;
@@ -185,7 +186,7 @@ export async function createCareEpisode(
   }
 }
 
-export async function updateCareEpisode(
+async function updateCareEpisodeUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -250,7 +251,7 @@ export async function updateCareEpisode(
   }
 }
 
-export async function deleteCareEpisode(dispensarySlug: string, id: string) {
+async function deleteCareEpisodeUnlogged(dispensarySlug: string, id: string) {
   try {
     const ctx = await getCabinetSessionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -284,4 +285,24 @@ export async function deleteCareEpisode(dispensarySlug: string, id: string) {
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression de la prise en charge');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createCareEpisode(...args: Parameters<typeof createCareEpisodeUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'careEpisodes.createCareEpisode' }, args, () =>
+    createCareEpisodeUnlogged(...args),
+  );
+}
+
+export async function updateCareEpisode(...args: Parameters<typeof updateCareEpisodeUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'careEpisodes.updateCareEpisode' }, args, () =>
+    updateCareEpisodeUnlogged(...args),
+  );
+}
+
+export async function deleteCareEpisode(...args: Parameters<typeof deleteCareEpisodeUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'careEpisodes.deleteCareEpisode' }, args, () =>
+    deleteCareEpisodeUnlogged(...args),
+  );
 }

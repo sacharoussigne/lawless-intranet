@@ -16,7 +16,6 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { listCaseManagerOptions } from '@/app/_actions/animals';
 import { createAnimalFollowUp, listAnimalFollowUps } from '@/app/_actions/followUps';
 import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
@@ -36,6 +35,7 @@ import {
 } from '../types';
 import classes from './FollowUps.module.scss';
 import type { FollowUpDTO } from './followUpTypes';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 function compareFollowUpsRecentFirst(a: FollowUpDTO, b: FollowUpDTO): number {
   if (a.date !== b.date) return b.date.localeCompare(a.date);
@@ -76,8 +76,8 @@ export function AnimalFollowUpsSection({
       setLoading(true);
       try {
         const [followRes, managersRes, session] = await Promise.all([
-          listAnimalFollowUps(shelterSlug, animalId),
-          listCaseManagerOptions(shelterSlug),
+          fetchRead(shelterSlug, 'animalFollowUps', { animalId }),
+          fetchRead(shelterSlug, 'caseManagerOptions'),
           authClient.getSession(),
         ]);
         if (cancelled) return;

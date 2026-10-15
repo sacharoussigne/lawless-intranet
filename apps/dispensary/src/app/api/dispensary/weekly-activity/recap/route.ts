@@ -1,3 +1,4 @@
+import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isDispensaryBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/dispensaryWeeklyActivityApiAuth';
@@ -12,7 +13,7 @@ function jsonError(status: number, error: string) {
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   if (!isDispensaryBotApiAuthorized(request)) {
     return jsonError(401, 'Non autorisé');
   }
@@ -61,3 +62,8 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
+export const GET = withBotRouteLog(
+  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.recap' },
+  handleGet,
+);

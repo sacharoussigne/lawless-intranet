@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
@@ -177,7 +178,7 @@ export async function getConsultationDocumentTemplate(
   }
 }
 
-export async function createConsultationDocumentTemplate(
+async function createConsultationDocumentTemplateUnlogged(
   dispensarySlug: string,
   data: {
     cabinetId: string;
@@ -221,7 +222,7 @@ export async function createConsultationDocumentTemplate(
   }
 }
 
-export async function updateConsultationDocumentTemplate(
+async function updateConsultationDocumentTemplateUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -272,7 +273,7 @@ export async function updateConsultationDocumentTemplate(
   }
 }
 
-export async function deleteConsultationDocumentTemplate(
+async function deleteConsultationDocumentTemplateUnlogged(
   dispensarySlug: string,
   data: { id: string; cabinetId: string },
 ) {
@@ -302,4 +303,36 @@ export async function deleteConsultationDocumentTemplate(
       'Erreur lors de la suppression du template de document',
     );
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createConsultationDocumentTemplate(
+  ...args: Parameters<typeof createConsultationDocumentTemplateUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'consultationDocumentTemplates.createConsultationDocumentTemplate' },
+    args,
+    () => createConsultationDocumentTemplateUnlogged(...args),
+  );
+}
+
+export async function updateConsultationDocumentTemplate(
+  ...args: Parameters<typeof updateConsultationDocumentTemplateUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'consultationDocumentTemplates.updateConsultationDocumentTemplate' },
+    args,
+    () => updateConsultationDocumentTemplateUnlogged(...args),
+  );
+}
+
+export async function deleteConsultationDocumentTemplate(
+  ...args: Parameters<typeof deleteConsultationDocumentTemplateUnlogged>
+) {
+  return loggedAction(
+    { feature: 'cabinet', event: 'consultationDocumentTemplates.deleteConsultationDocumentTemplate' },
+    args,
+    () => deleteConsultationDocumentTemplateUnlogged(...args),
+  );
 }

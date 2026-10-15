@@ -5,12 +5,11 @@ import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createCompany,
-  getCompanies,
-  getCompaniesForSelect,
   updateCompany,
   deleteCompany,
 } from '@/app/_actions/companies';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { companiesKeys } from '@/lib/companies/queryKeys';
@@ -19,12 +18,12 @@ import { sortCompanies } from '@/lib/companies/sortCompanies';
 import type { CompanySelect, CompanyWithRelations } from '@/types/companies';
 
 async function fetchManagementCompanies(dispensarySlug: string) {
-  const result = await getCompanies(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'companies');
   return handleAction(result) as CompanyWithRelations[];
 }
 
 async function fetchCompaniesForSelect(dispensarySlug: string) {
-  const result = await getCompaniesForSelect(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'companiesForSelect');
   return handleAction(result) as CompanySelect[];
 }
 

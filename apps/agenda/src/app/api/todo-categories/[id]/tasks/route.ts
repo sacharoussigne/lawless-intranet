@@ -70,7 +70,7 @@ export async function POST(request: Request, context: RouteContext) {
     },
   });
 
-  await emitAgendaTodosChange(
+  emitAgendaTodosChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,

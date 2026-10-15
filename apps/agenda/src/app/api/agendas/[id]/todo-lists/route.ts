@@ -131,7 +131,7 @@ export async function POST(request: Request, context: RouteContext) {
     include: todoListInclude,
   });
 
-  await emitAgendaTodosChange(
+  emitAgendaTodosChange(
     agenda.scopeType,
     agenda.scopeId,
     agendaId,

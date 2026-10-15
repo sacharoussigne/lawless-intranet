@@ -1,9 +1,23 @@
 import type { AuthSession, AuthUserPublic } from '@lawless-intranet/types';
 import { authFetch } from './config';
+import { createSessionCache, readSessionCookieKey } from './sessionCache';
 
+const SESSION_CACHE_TTL_MS = 15_000;
+const sessionCache = createSessionCache<AuthSession>({ ttlMs: SESSION_CACHE_TTL_MS, maxEntries: 500 });
+
+/** Session of the request cookie, reused for a few seconds (see sessionCache). */
 export async function getSession(
   cookieHeader?: string | null,
 ): Promise<AuthSession | null> {
+  const key = readSessionCookieKey(cookieHeader);
+  // No recognisable session cookie: ask auth as before rather than guessing.
+  if (!key) return fetchSession(cookieHeader);
+  const session = await sessionCache.get(key, () => fetchSession(cookieHeader));
+  // Callers get their own copy: the cached object is shared between requests.
+  return session ? structuredClone(session) : null;
+}
+
+async function fetchSession(cookieHeader?: string | null): Promise<AuthSession | null> {
   const response = await authFetch('/api/session', {
     cookieHeader,
   });

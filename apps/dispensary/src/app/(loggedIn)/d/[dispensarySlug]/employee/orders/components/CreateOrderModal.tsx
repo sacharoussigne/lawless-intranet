@@ -28,10 +28,10 @@ import { useCompanyGroupsForOrders } from '@/app/(loggedIn)/d/[dispensarySlug]/m
 import { getAvailableItemsForOrder } from '@/lib/orders/getAvailableItemsForOrder';
 import type { ActiveOrderSummary } from '@/types/orders';
 import {
-  getIndividualCustomers,
   createIndividualCustomer,
   deleteIndividualCustomerByName,
 } from '@/app/_actions/individualCustomers';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { SuggestionAutocomplete } from '@/app/_components/SuggestionAutocomplete/SuggestionAutocomplete';
 import { handleAction } from '@/lib/action';
 import {
@@ -106,7 +106,7 @@ export default function CreateOrderModal({
     const loadIndividualCustomers = async () => {
       try {
         setLoadingData(true);
-        const individualsResult = await getIndividualCustomers(dispensarySlug);
+        const individualsResult = await fetchRead(dispensarySlug, 'individualCustomers');
         const individualsData = handleAction(individualsResult);
         if (individualsData) {
           setIndividualCustomers(individualsData);

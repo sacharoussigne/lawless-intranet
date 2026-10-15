@@ -25,9 +25,9 @@ import {
 } from '@/app/_actions/cabinet/patients';
 import {
   deleteCareEpisode,
-  listCareEpisodes,
 } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import {
   canWriteCabinet,
   type CareEpisodeSummaryDTO,
@@ -113,7 +113,7 @@ export function PatientDetailPageClient({
   const t = tenantRoutes(dispensarySlug);
 
   const reloadEpisodes = useCallback(async () => {
-    const result = await listCareEpisodes(dispensarySlug, patient.id);
+    const result = await fetchRead(dispensarySlug, 'careEpisodes', { patientId: patient.id });
     const data = handleAction(result);
     if (data) setEpisodes(data);
   }, [dispensarySlug, patient.id]);

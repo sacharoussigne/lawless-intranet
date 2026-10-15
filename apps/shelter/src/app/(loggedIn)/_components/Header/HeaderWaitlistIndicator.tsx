@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,12 +13,15 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconClipboardList } from '@tabler/icons-react';
-import { listOpenWaitRequestsPreview } from '@/app/_actions/animalWaitRequests';
 import { formatRpDate } from '@/lib/rpCalendar';
-import { subscribeWaitlistLocalRefresh } from '@/lib/realtime/waitlist/localRefresh';
-import { useWaitlistRealtime } from '@/lib/realtime/waitlist/useWaitlistRealtime';
+import {
+  useOpenWaitRequestsPreview,
+  useWaitlistRealtimeInvalidation,
+} from '@/lib/waitlist/useWaitlistQueries';
 import type { OpenWaitRequestsPreview } from '@/types/animalWaitRequests';
 import { parseIsoDateOnly } from '@/app/(loggedIn)/s/[shelterSlug]/employee/animals/types';
+
+const EMPTY_PREVIEW: OpenWaitRequestsPreview = { count: 0, items: [] };
 
 type HeaderWaitlistIndicatorProps = {
   shelterSlug: string;
@@ -38,62 +41,18 @@ export function HeaderWaitlistIndicator({
 }: HeaderWaitlistIndicatorProps) {
   const router = useRouter();
   const [opened, setOpened] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [preview, setPreview] = useState<OpenWaitRequestsPreview>({
-    count: 0,
-    items: [],
-  });
+  const previewQuery = useOpenWaitRequestsPreview(shelterSlug);
+  const preview = previewQuery.data ?? EMPTY_PREVIEW;
+  const loading = previewQuery.isPending;
+  useWaitlistRealtimeInvalidation(shelterSlug);
 
-  const fetchPreview = useCallback(async () => {
-    const result = await listOpenWaitRequestsPreview(shelterSlug);
-    if (result.status === 200 && result.data) {
-      setPreview(result.data);
-      return result.data;
-    }
-    return null;
-  }, [shelterSlug]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const data = await fetchPreview();
-      if (cancelled) return;
-      if (data) setPreview(data);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchPreview]);
-
-  useEffect(() => {
-    return subscribeWaitlistLocalRefresh(() => {
-      void fetchPreview().then((data) => {
-        if (data) setPreview(data);
-        setLoading(false);
-      });
-    });
-  }, [fetchPreview]);
-
-  const refreshFromRealtime = useCallback(() => {
-    void fetchPreview();
-  }, [fetchPreview]);
-
-  useWaitlistRealtime({
-    enabled: true,
-    onChange: refreshFromRealtime,
-    onResync: refreshFromRealtime,
-  });
-
+  const { refetch } = previewQuery;
   const handlePopoverChange = useCallback(
     (value: boolean) => {
       setOpened(value);
-      if (!value) return;
-      void fetchPreview().then((data) => {
-        if (data) setPreview(data);
-      });
+      if (value) void refetch();
     },
-    [fetchPreview],
+    [refetch],
   );
 
   const hasOpen = preview.count > 0;

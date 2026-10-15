@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
 import {
@@ -127,7 +128,7 @@ export async function checkAgendaModuleAccess(dispensarySlug: string) {
   }
 }
 
-export async function createAgenda(
+async function createAgendaUnlogged(
   dispensarySlug: string,
   data: { name: string; description?: string | null; ownerUserId: string },
 ) {
@@ -167,7 +168,7 @@ export async function createAgenda(
   }
 }
 
-export async function updateAgenda(
+async function updateAgendaUnlogged(
   dispensarySlug: string,
   data: { id: string; name: string; description?: string | null },
 ) {
@@ -194,7 +195,7 @@ export async function updateAgenda(
   }
 }
 
-export async function deleteAgenda(dispensarySlug: string, id: string) {
+async function deleteAgendaUnlogged(dispensarySlug: string, id: string) {
   try {
     const auth = await requireDispensaryAdminContext(dispensarySlug);
     if (!auth.ok) {
@@ -241,4 +242,24 @@ export async function getAgendaWithMembers(dispensarySlug: string, agendaId: str
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du chargement de l\'agenda');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createAgenda(...args: Parameters<typeof createAgendaUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'agendas.createAgenda' }, args, () =>
+    createAgendaUnlogged(...args),
+  );
+}
+
+export async function updateAgenda(...args: Parameters<typeof updateAgendaUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'agendas.updateAgenda' }, args, () =>
+    updateAgendaUnlogged(...args),
+  );
+}
+
+export async function deleteAgenda(...args: Parameters<typeof deleteAgendaUnlogged>) {
+  return loggedAction({ feature: 'agenda', event: 'agendas.deleteAgenda' }, args, () =>
+    deleteAgendaUnlogged(...args),
+  );
 }

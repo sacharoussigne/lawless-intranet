@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { z } from 'zod';
 import {
   applicationPermissionCatalog,
@@ -77,7 +78,7 @@ export async function getDispensaryRolePermissionsMatrix(dispensarySlug: string)
   };
 }
 
-export async function setDispensaryRolePermissions(
+async function setDispensaryRolePermissionsUnlogged(
   dispensarySlug: string,
   data: z.infer<typeof setRolePermissionsSchema>,
 ) {
@@ -115,7 +116,7 @@ export async function setDispensaryRolePermissions(
   }
 }
 
-export async function resetDispensaryRolePermissions(dispensarySlug: string) {
+async function resetDispensaryRolePermissionsUnlogged(dispensarySlug: string) {
   try {
     const auth = await requireDispensaryAdminContext(dispensarySlug);
     if (!auth.ok) {
@@ -167,7 +168,7 @@ export async function getDispensaryMemberPermissionOverrides(
   };
 }
 
-export async function setDispensaryMemberPermissionOverrides(
+async function setDispensaryMemberPermissionOverridesUnlogged(
   dispensarySlug: string,
   data: z.infer<typeof setMemberOverridesSchema>,
 ) {
@@ -214,4 +215,40 @@ export async function setDispensaryMemberPermissionOverrides(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la mise à jour des overrides');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function setDispensaryRolePermissions(
+  ...args: Parameters<typeof setDispensaryRolePermissionsUnlogged>
+) {
+  return loggedAction(
+    { feature: 'settings', event: 'dispensaryPermissions.setDispensaryRolePermissions' },
+    args,
+    () => setDispensaryRolePermissionsUnlogged(...args),
+  );
+}
+
+export async function resetDispensaryRolePermissions(
+  ...args: Parameters<typeof resetDispensaryRolePermissionsUnlogged>
+) {
+  return loggedAction(
+    { feature: 'settings', event: 'dispensaryPermissions.resetDispensaryRolePermissions' },
+    args,
+    () => resetDispensaryRolePermissionsUnlogged(...args),
+  );
+}
+
+export async function setDispensaryMemberPermissionOverrides(
+  ...args: Parameters<typeof setDispensaryMemberPermissionOverridesUnlogged>
+) {
+  return loggedAction(
+    {
+      feature: 'settings',
+      event: 'dispensaryPermissions.setDispensaryMemberPermissionOverrides',
+      target: ([, data]) => data.userId,
+    },
+    args,
+    () => setDispensaryMemberPermissionOverridesUnlogged(...args),
+  );
 }

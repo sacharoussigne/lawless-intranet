@@ -70,6 +70,26 @@ export async function userCanAccessShelter(
   return member != null;
 }
 
+/** One query for both `userCanAccessShelter` and `getEffectiveRoleForShelter` (every action runs it). */
+async function resolveShelterMembership(
+  session: SessionLike,
+  shelterId: string,
+): Promise<{ allowed: boolean; role: string | null }> {
+  if (!session?.user?.id) {
+    return { allowed: false, role: null };
+  }
+  if (isPlatformAdmin(session.user.role)) {
+    return { allowed: true, role: Role.ADMIN };
+  }
+  const member = await prisma.shelterMember.findUnique({
+    where: {
+      shelterId_userId: { shelterId, userId: session.user.id },
+    },
+    select: { role: true },
+  });
+  return { allowed: member != null, role: member?.role ?? null };
+}
+
 export async function requireShelterFromSlug(slug: string): Promise<ShelterContext> {
   const shelter = await resolveShelterFromSlug(slug);
   if (!shelter) {
@@ -87,11 +107,10 @@ export async function requireShelterAccess(
   effectivePermissions: string[];
 }> {
   const shelter = await requireShelterFromSlug(slug);
-  const allowed = await userCanAccessShelter(session, shelter.id);
+  const { allowed, role: effectiveRole } = await resolveShelterMembership(session, shelter.id);
   if (!allowed) {
     throw new Error('SHELTER_ACCESS_DENIED');
   }
-  const effectiveRole = await getEffectiveRoleForShelter(session, shelter.id);
   const effectivePermissions = await resolveEffectivePermissionsForShelter(
     session,
     shelter.id,
