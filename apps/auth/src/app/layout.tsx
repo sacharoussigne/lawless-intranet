@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Lawless Auth',
-  description: 'Identity provider for Lawless Intranet',
+  title: 'Connexion · Lawless — Intranet RP',
+  description: 'Connexion à l’intranet du serveur RP Lawless : dispensaire et refuge.',
 };
 
 /** Phones: the login page often opens inside the installed dispensary app (Safari sheet). */
