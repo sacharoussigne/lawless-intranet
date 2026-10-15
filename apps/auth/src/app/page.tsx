@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getAuthSession } from '@/lib/auth';
 
 export const metadata: Metadata = {
-  title: 'Lawless Auth',
+  title: 'Connexion · Lawless — Intranet RP',
 };
 
 export default async function HomePage() {

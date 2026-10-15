@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { AuthPageShell } from '@/app/_components/AuthPageShell';
 import { authClient, signInWithDiscord } from '@/lib/client';
 import { getSafeCallbackUrl } from '@/lib/callbackUrl';
 
@@ -14,6 +15,8 @@ export default function LoginForm() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
+  // Discord is the usual way in: the email form stays folded until asked for.
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -38,33 +41,39 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <h1 className="text-center text-2xl font-semibold">Bon retour !</h1>
-      <p className="mt-2 text-center text-sm text-zinc-500">
-        Pas encore de compte ?{' '}
-        <Link
-          href={`/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-          className="text-blue-600 hover:underline"
-        >
-          Créer un compte
-        </Link>
+    <AuthPageShell
+      title="Connexion"
+      subtitle={
+        <>
+          Pas encore de compte ?{' '}
+          <Link
+            href={`/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            className="text-blue-600 hover:underline"
+          >
+            Créer un compte
+          </Link>
+        </>
+      }
+    >
+      <button
+        type="button"
+        onClick={() => signInWithDiscord(callbackUrl)}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#5865F2] px-4 py-3 text-base font-medium sm:py-2.5 sm:text-sm text-white hover:bg-[#4752C4]"
+      >
+        Continuer avec Discord
+      </button>
+      <p className="mt-2 text-center text-xs text-zinc-500">
+        Vous serez redirigé vers discord.com pour autoriser l&apos;accès. Nous ne voyons jamais votre
+        mot de passe Discord.
       </p>
 
-      <div className="mt-8 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <button
-          type="button"
-          onClick={() => signInWithDiscord(callbackUrl)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#5865F2] px-4 py-3 text-base font-medium sm:py-2.5 sm:text-sm text-white hover:bg-[#4752C4]"
-        >
-          Continuer avec Discord
-        </button>
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-zinc-200" />
+        <span className="text-xs text-zinc-500">Ou</span>
+        <div className="h-px flex-1 bg-zinc-200" />
+      </div>
 
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-zinc-200" />
-          <span className="text-xs text-zinc-500">Ou continuer avec l&apos;email</span>
-          <div className="h-px flex-1 bg-zinc-200" />
-        </div>
-
+      {showEmailForm ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium">
@@ -75,6 +84,7 @@ export default function LoginForm() {
               autoComplete="username"
               type="email"
               required
+              autoFocus
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-base sm:text-sm"
@@ -104,7 +114,15 @@ export default function LoginForm() {
             {isLoading ? 'Connexion…' : 'Se connecter'}
           </button>
         </form>
-      </div>
-    </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowEmailForm(true)}
+          className="w-full text-center text-sm text-blue-600 hover:underline"
+        >
+          Se connecter avec un email
+        </button>
+      )}
+    </AuthPageShell>
   );
 }
