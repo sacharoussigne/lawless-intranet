@@ -3,7 +3,10 @@
     "private": true,
     "packageManager": "pnpm@11.6.0",
     "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo watch dev:local",
+    "dev:dispensary": "turbo watch dev:local --filter=dispensary --filter=realtime --filter=auth --filter=documents --filter=agenda --filter=bank --filter=inventory --filter=media",
+    "dev:shelter": "turbo watch dev:local --filter=shelter --filter=realtime --filter=auth --filter=documents --filter=bank --filter=media",
+    "dev:full": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",

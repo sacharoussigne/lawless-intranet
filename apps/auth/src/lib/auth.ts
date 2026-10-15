@@ -49,6 +49,9 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  // Production build on a dev machine (`LAWLESS_LOCAL=1`, see docs/DEV-LOCAL.md): every
+  // request comes from localhost, so the production rate limit would block sign-ins.
+  ...(process.env.LAWLESS_LOCAL === '1' ? { rateLimit: { enabled: false } } : {}),
   plugins: [
     nextCookies(),
     openAPI(),

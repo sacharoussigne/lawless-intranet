@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "prisma generate && next dev -p 3000",
+    "dev:local": "pnpm run dev",
     "build": "prisma generate && next build --webpack",
     "start": "next start -p 3000",
     "lint": "eslint .",

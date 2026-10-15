@@ -1,7 +1,9 @@
 /**
  * Zero-config defaults for local development (everything on localhost).
  * Never used when NODE_ENV === 'production': production must set the
- * REALTIME_* variables explicitly and fails fast otherwise.
+ * REALTIME_* variables explicitly and fails fast otherwise. Exception:
+ * `LAWLESS_LOCAL=1`, a production build running on a dev machine (`pnpm dev`
+ * runs the services that way, see docs/DEV-LOCAL.md). Never set it in production.
  */
 export const REALTIME_DEV_DEFAULTS = {
   wsPort: 3007,
@@ -13,7 +15,7 @@ export const REALTIME_DEV_DEFAULTS = {
 } as const;
 
 export function isRealtimeProduction(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NODE_ENV === 'production';
+  return env.NODE_ENV === 'production' && env.LAWLESS_LOCAL !== '1';
 }
 
 /** Explicit value, else the dev default outside production, else undefined. */

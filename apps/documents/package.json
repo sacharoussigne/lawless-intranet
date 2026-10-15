@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "prisma generate && next dev -p 3002 --webpack",
+    "dev:local": "LAWLESS_LOCAL=1 next start -p 3002",
     "build": "prisma generate && next build --webpack",
     "start": "next start -p 3002",
     "lint": "eslint",

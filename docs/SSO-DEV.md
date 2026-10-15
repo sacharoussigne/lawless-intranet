@@ -16,7 +16,7 @@ Add to your hosts file (required for SSO cookie sharing on `.localhost`):
 
 On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 
-`pnpm dev` binds to all interfaces on ports 3000–3006; use the hostnames above in the browser (not `127.0.0.1`) so Better Auth `crossSubDomainCookies` work.
+`pnpm dev` (front apps in `next dev`, services as production builds: see `docs/DEV-LOCAL.md`) binds to all interfaces on ports 3000–3009; use the hostnames above in the browser (not `127.0.0.1`) so Better Auth `crossSubDomainCookies` work.
 
 ## Apps
 

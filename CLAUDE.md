@@ -42,7 +42,7 @@ Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, san
 - `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services) et `topics.ts` (noms des topics).
 - `mail-template-engine` : parseur et moteur de rendu des templates (variables, conditions).
 
-SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir `docs/SSO-DEV.md`. Docker et déploiement : `docs/DOCKER.md` (le serveur `realtime` a son propre `docker/realtime.Dockerfile`).
+SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir `docs/SSO-DEV.md`. Dev local (quoi relancer et quand) : `docs/DEV-LOCAL.md`. Docker et déploiement : `docs/DOCKER.md` (le serveur `realtime` a son propre `docker/realtime.Dockerfile`).
 
 ## Temps réel
 
@@ -58,7 +58,10 @@ Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et t
 
 ```bash
 pnpm install
-pnpm dev                                  # toutes les apps (turbo), serveur realtime compris (aucune config en dev)
+pnpm dev                                  # fronts en next dev, services en build de prod (rebuild + relance auto), realtime ; voir docs/DEV-LOCAL.md
+pnpm dev:dispensary                       # dispensary + ses services + realtime
+pnpm dev:shelter                          # shelter + ses services + realtime
+pnpm dev:full                             # tout en next dev (HMR sur les services, plus de RAM)
 pnpm --filter dispensary dev              # une seule app
 pnpm --filter <app> typecheck             # tsc --noEmit
 pnpm --filter <app> lint
@@ -70,6 +73,8 @@ pnpm db:migrate:deploy                    # applique les migrations en attente d
 pnpm db:migrate:status                    # état des migrations de toutes les apps
 pnpm db:generate                          # régénère les clients Prisma de toutes les apps
 ```
+
+**Dev local (`docs/DEV-LOCAL.md`)** : dans `pnpm dev` (`turbo watch`), les services (auth, documents, agenda, bank, inventory, media) tournent en build de prod, **sans HMR** : quand leur code, un package qu'ils utilisent ou leur `.env` change, turbo les reconstruit et les relance seul (15 à 60 s). Le signaler à l'utilisateur après une modification de service ; `pnpm dev:full` pour le HMR sur un service. Les fronts et `realtime` se rechargent seuls.
 
 Après une modification de `prisma/schema.prisma`, créer une migration avec `db:migrate` dans l'app concernée. En prod, le conteneur exécute `prisma migrate deploy` au démarrage. En local, après un pull ou un merge qui apporte des migrations, lancer `pnpm db:migrate:deploy`.
 
