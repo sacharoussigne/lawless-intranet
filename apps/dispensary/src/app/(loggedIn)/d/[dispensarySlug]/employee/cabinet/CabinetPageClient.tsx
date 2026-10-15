@@ -19,8 +19,7 @@ import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
-import { deleteCabinetPatient, listCabinetPatients } from '@/app/_actions/cabinet/patients';
-import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySettings';
+import { deleteCabinetPatient } from '@/app/_actions/cabinet/patients';
 import { handleAction } from '@/lib/action';
 import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 import { createDefaultDisplaySettings } from '@/lib/cabinet/displaySettings';
@@ -36,6 +35,7 @@ import { CabinetSelector } from './components/CabinetSelector';
 import { CabinetMembersModal } from './components/CabinetMembersModal';
 import { PatientFormModal } from './components/PatientFormModal';
 import { CabinetDisplaySettingsModal } from './components/CabinetDisplaySettingsModal';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 interface CabinetPageClientProps {
   dispensarySlug: string;
@@ -102,7 +102,7 @@ export function CabinetPageClient({
     if (!selectedCabinetId) return;
     setLoading(true);
     try {
-      const result = await listCabinetPatients(dispensarySlug, {
+      const result = await fetchRead(dispensarySlug, 'cabinetPatients', {
         cabinetId: selectedCabinetId,
         search: debouncedSearch.trim() || undefined,
       });
@@ -139,7 +139,9 @@ export function CabinetPageClient({
     setDisplaySettingsModalOpen(true);
     setLoadingDisplaySettings(true);
     try {
-      const result = await getCabinetDisplaySettings(dispensarySlug, selectedCabinetId);
+      const result = await fetchRead(dispensarySlug, 'cabinetDisplaySettings', {
+        cabinetId: selectedCabinetId,
+      });
       const data = handleAction(result);
       if (data) {
         setDisplaySettings(data.displaySettings);

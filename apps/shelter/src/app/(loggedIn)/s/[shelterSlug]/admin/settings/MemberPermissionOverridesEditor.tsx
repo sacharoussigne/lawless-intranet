@@ -10,9 +10,9 @@ import {
   permissionKey,
 } from '@/lib/shelter/permissionsCatalog';
 import {
-  getShelterMemberPermissionOverrides,
   setShelterMemberPermissionOverrides,
 } from '@/app/_actions/shelterPermissions';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type OverrideEffect = 'grant' | 'deny' | 'none';
 
@@ -32,7 +32,7 @@ export function MemberPermissionOverridesEditor({
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const result = await getShelterMemberPermissionOverrides(shelterSlug, userId);
+      const result = await fetchRead(shelterSlug, 'memberPermissionOverrides', { userId });
       if (cancelled) return;
       const next: Record<string, OverrideEffect> = {};
       for (const key of catalogKeys) {

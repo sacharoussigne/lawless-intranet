@@ -23,13 +23,13 @@ import { RpDatePicker } from '@/app/_components/RpDatePicker/RpDatePicker';
 import {
   createConsultation,
   deleteConsultation,
-  listConsultations,
 } from '@/app/_actions/cabinet/consultations';
 import {
   updateCareEpisode,
   deleteCareEpisode,
 } from '@/app/_actions/cabinet/careEpisodes';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import {
   canWriteCabinet,
   type ConsultationSummaryDTO,
@@ -119,7 +119,7 @@ export function CareEpisodeDetailPageClient({
   const t = tenantRoutes(dispensarySlug);
 
   const reloadConsultations = useCallback(async () => {
-    const result = await listConsultations(dispensarySlug, episode.id);
+    const result = await fetchRead(dispensarySlug, 'consultations', { careEpisodeId: episode.id });
     const data = handleAction(result);
     if (data) setConsultations(data);
   }, [dispensarySlug, episode.id]);

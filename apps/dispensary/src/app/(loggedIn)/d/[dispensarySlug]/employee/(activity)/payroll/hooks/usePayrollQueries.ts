@@ -7,12 +7,10 @@ import { useTenantRoutes, useRequiredDispensarySlug } from '@/app/_contexts/Perm
 import {
   createPayrollReportFromForm,
   deletePayrollReport,
-  getPayrollReportById,
-  listPayrollImportableActivityWeeks,
-  listPayrollReports,
   updatePayrollReportResultJson,
 } from '@/app/_actions/payrollReports';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import type {
   SerializedPayrollReportDetail,
   SerializedPayrollReportListItem,
@@ -31,7 +29,7 @@ export type PayrollImportableWeek = {
 };
 
 async function fetchPayrollReports(dispensarySlug: string): Promise<PayrollReportListItem[]> {
-  const result = await listPayrollReports(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'payrollReports');
   const data = handleAction(result) as { reports?: PayrollReportListItem[] } | undefined;
   return data?.reports ?? [];
 }
@@ -40,7 +38,7 @@ async function fetchPayrollReportDetail(
   dispensarySlug: string,
   reportId: string,
 ): Promise<PayrollReportDetail> {
-  const result = await getPayrollReportById(dispensarySlug, reportId);
+  const result = await fetchRead(dispensarySlug, 'payrollReport', { id: reportId });
   const data = handleAction(result) as { report?: PayrollReportDetail } | undefined;
   if (!data?.report) {
     throw new Error('Rapport introuvable');
@@ -51,7 +49,7 @@ async function fetchPayrollReportDetail(
 async function fetchPayrollImportableActivityWeeks(
   dispensarySlug: string,
 ): Promise<PayrollImportableWeek[]> {
-  const result = await listPayrollImportableActivityWeeks(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'payrollImportableWeeks');
   const data = handleAction(result) as { weeks?: PayrollImportableWeek[] } | undefined;
   return data?.weeks ?? [];
 }

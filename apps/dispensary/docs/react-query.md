@@ -5,7 +5,8 @@ Ce guide décrit le standard du projet pour charger et muter des données serveu
 ## Stack
 
 - **Next.js App Router** — pages Server Components pour le chargement initial
-- **Server actions** (`'use server'`) — source de vérité serveur (pas de routes API REST internes)
+- **Server actions** (`'use server'`) — source de vérité serveur : mutations et chargement SSR des `page.tsx`
+- **Lectures GET** (`fetchRead`) — relectures côté client, via une route GET générique qui réutilise les actions de lecture (pas d'API REST par feature, voir ci-dessous)
 - **@tanstack/react-query v5** — cache, déduplication, invalidation côté client
 
 ## Setup
@@ -18,6 +19,18 @@ Le `QueryProvider` est monté dans le layout dispensary :
 Valeurs par défaut : `staleTime: 5s`, `refetchOnWindowFocus: false`.
 
 Le `QueryClient` du navigateur survit aux navigations client, et `initialData` (SSR) est **ignoré** dès que la clé est déjà en cache. Le `staleTime` court garantit qu’en revenant sur une page (retour ou lien) les données sont rechargées en arrière-plan au lieu d’afficher l’ancien état. Ne pas le rallonger sans cette contrainte en tête.
+
+## Pourquoi des lectures en GET
+
+Next exécute les server actions **une par une par onglet**, dans la file de la navigation. Une relecture React Query, une recherche au fil de la frappe ou le jeton temps réel attendent donc la mutation en cours, et inversement. Les relectures client passent par :
+
+- `src/lib/read/readRoutes.ts` : registre fermé `clé → action de lecture` (seules les clés listées existent) ;
+- `src/app/api/d/[dispensarySlug]/read/[query]/route.ts` : la route GET (`createReadRouteHandler` de `@lawless-intranet/host-kit/read`) ;
+- `src/lib/read/fetchRead.ts` : le client typé, `fetchRead(slug, '<clé>', input)`.
+
+L'action est réutilisée telle quelle : auth, tenant, feature et permission restent dans l'action (le middleware ne couvre pas `/api`). L'entrée passe en query string (`?input=`), les `Date` sont conservées. Même forme de résultat qu'une action : `{ status, data?, error? }`.
+
+Pour une nouvelle lecture : l'inscrire au registre, puis l'appeler avec `fetchRead`. Une lecture qui écrit (`getOrCreateWeek`) ou dont l'entrée est trop grosse pour une URL reste une action.
 
 ## Pattern lecture (SSR + client)
 

@@ -8,13 +8,9 @@ import {
   completeOrder,
   createOrder,
   deleteOrder,
-  getActiveOrdersForCompanyGroup,
-  getOrderById,
   updateOrder,
 } from '@/app/_actions/orders';
 import { fetchRead } from '@/lib/read/fetchRead';
-import { getItems } from '@/app/_actions/items';
-import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
 import { handleAction } from '@/lib/action';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import {
@@ -23,7 +19,8 @@ import {
   defaultActiveOrdersPageFilters,
   type OrdersPageFilters,
 } from '@/lib/orders/queryKeys';
-import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
+import { realtimeMutationMeta } from '@lawless-intranet/realtime';
+import { useOptionalRealtimeSocket, useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
 import { useOrdersRealtime } from '@/lib/orders/realtime/client/useOrdersRealtime';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import { normalizeItemPrice } from '@/lib/orders/calculateOrderPriceFromItems';
@@ -62,7 +59,7 @@ async function fetchOrdersPage(dispensarySlug: string, filters: OrdersPageFilter
 }
 
 async function fetchOrderById(dispensarySlug: string, orderId: string) {
-  const result = await getOrderById(dispensarySlug, { id: orderId });
+  const result = await fetchRead(dispensarySlug, 'order', { id: orderId });
   return handleAction(result) as OrderWithRelations;
 }
 
@@ -70,14 +67,14 @@ async function fetchActiveOrdersForGroup(
   dispensarySlug: string,
   companyGroupId: string,
 ) {
-  const result = await getActiveOrdersForCompanyGroup(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'activeOrdersForCompanyGroup', {
     companyGroupId,
   });
   return handleAction(result);
 }
 
 async function fetchOrderLetterAssignments(dispensarySlug: string) {
-  const result = await getOrderLetterTemplateAssignments(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'orderLetterAssignments');
   return handleAction(result) as OrderMailTemplateAssignment[];
 }
 
@@ -85,10 +82,7 @@ async function fetchOrderFormItems(
   dispensarySlug: string,
   companyGroupId: string | null,
 ) {
-  const result = await getItems(
-    dispensarySlug,
-    companyGroupId ? { companyGroupId } : undefined,
-  );
+  const result = await fetchRead(dispensarySlug, 'items', companyGroupId ? { companyGroupId } : {});
   const itemsData = handleAction(result);
   if (!itemsData) {
     return [];
@@ -184,10 +178,13 @@ function invalidateAllOrdersQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   dispensarySlug: string,
 ) {
-  void queryClient.invalidateQueries({
-    queryKey: ordersKeys.all(dispensarySlug),
-    refetchType: 'all',
-  });
+  // Active queries only: the bridge runs on every page, inactive ones refetch when shown.
+  void queryClient.invalidateQueries({ queryKey: ordersKeys.all(dispensarySlug) });
+}
+
+/** Tags our mutations so the realtime echo is skipped (onSuccess already invalidates). */
+function useOrdersMutationMeta() {
+  return realtimeMutationMeta(useOptionalRealtimeSocket()?.clientId);
 }
 
 export function useInvalidateOrders() {
@@ -216,12 +213,13 @@ export function useOrdersRealtimeInvalidation(enabled = true) {
 }
 
 export function useCreateOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
 
   return useMutation({
     mutationFn: async (vars: Parameters<typeof createOrder>[1]) => {
-      const result = await createOrder(dispensarySlug, vars);
+      const result = await createOrder(dispensarySlug, vars, mutationMeta);
       handleAction(result);
       return vars;
     },
@@ -244,12 +242,13 @@ export function useCreateOrderMutation() {
 }
 
 export function useUpdateOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
 
   return useMutation({
     mutationFn: async (vars: Parameters<typeof updateOrder>[1]) => {
-      const result = await updateOrder(dispensarySlug, vars);
+      const result = await updateOrder(dispensarySlug, vars, mutationMeta);
       handleAction(result);
       return vars;
     },
@@ -272,12 +271,13 @@ export function useUpdateOrderMutation() {
 }
 
 export function useDeleteOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
 
   return useMutation({
     mutationFn: async (vars: { id: string }) => {
-      const result = await deleteOrder(dispensarySlug, vars);
+      const result = await deleteOrder(dispensarySlug, vars, mutationMeta);
       handleAction(result);
       return vars;
     },
@@ -300,6 +300,7 @@ export function useDeleteOrderMutation() {
 }
 
 export function useCompleteOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
   const queryClient = useQueryClient();
@@ -309,7 +310,7 @@ export function useCompleteOrderMutation() {
       vars: Parameters<typeof completeOrder>[1] & { affectedChestIds?: string[] },
     ) => {
       const { affectedChestIds: _affectedChestIds, ...payload } = vars;
-      const result = await completeOrder(dispensarySlug, payload);
+      const result = await completeOrder(dispensarySlug, payload, mutationMeta);
       handleAction(result);
       return { vars };
     },

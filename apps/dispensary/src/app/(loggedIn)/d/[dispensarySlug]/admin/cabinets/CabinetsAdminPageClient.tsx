@@ -13,8 +13,8 @@ import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconPlus, IconTrash, IconUsers } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
-import { listCabinetsForAdmin } from '@/app/_actions/cabinet/cabinets';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { CabinetMembersModal } from '../../employee/cabinet/components/CabinetMembersModal';
 import { CabinetFormModal } from './components/CabinetFormModal';
 import { DeleteCabinetModal } from './components/DeleteCabinetModal';
@@ -47,7 +47,7 @@ export function CabinetsAdminPageClient({
 
   const reload = async () => {
     try {
-      const result = await listCabinetsForAdmin(dispensarySlug);
+      const result = await fetchRead(dispensarySlug, 'adminCabinets');
       const data = handleAction(result);
       if (data) setCabinets(data as AdminCabinet[]);
     } catch (err: unknown) {

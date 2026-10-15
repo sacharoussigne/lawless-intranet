@@ -21,8 +21,6 @@ import type { DataTableSortStatus } from 'mantine-datatable';
 import {
   createAnimal,
   deleteAnimal,
-  listCaseManagerOptions,
-  listSpeciesOptions,
 } from '@/app/_actions/animals';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { BreedVariantSelect } from '@/app/_components/BreedVariantSelect';
@@ -46,6 +44,7 @@ import {
   type CaseManagerOptionDTO,
   type SpeciesOptionDTO,
 } from './types';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 function compareAnimals(
   a: AnimalDTO,
@@ -145,8 +144,8 @@ function CreateAnimalForm({
       setLoadingOptions(true);
       try {
         const [speciesRes, managersRes] = await Promise.all([
-          listSpeciesOptions(shelterSlug),
-          listCaseManagerOptions(shelterSlug),
+          fetchRead(shelterSlug, 'speciesOptions'),
+          fetchRead(shelterSlug, 'caseManagerOptions'),
         ]);
         if (cancelled) return;
         if (speciesRes.status < 400 && 'data' in speciesRes && speciesRes.data) {

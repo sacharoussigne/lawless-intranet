@@ -1,5 +1,6 @@
 'use server';
 
+import { parseRealtimeMutationMeta } from '@lawless-intranet/realtime';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
@@ -69,6 +70,7 @@ export async function createOrder(
     companyGroupId?: string | null;
     items: { itemId: string; quantity: number }[];
   },
+  meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -101,7 +103,7 @@ export async function createOrder(
       await inventoryCookie(),
     );
 
-    await emitOrdersChange(dispensaryId, { orderId: order.id });
+    emitOrdersChange(dispensaryId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
 
     return {
       status: 201,
@@ -322,6 +324,7 @@ export async function updateOrder(
     price?: number | null;
     items?: { itemId: string; quantity: number }[];
   },
+  meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -359,7 +362,7 @@ export async function updateOrder(
       await inventoryCookie(),
     );
 
-    await emitOrdersChange(dispensaryId, { orderId: order.id });
+    emitOrdersChange(dispensaryId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
 
     return {
       status: 200,
@@ -382,6 +385,7 @@ export async function completeOrder(
     skipStock: boolean;
     stockLines?: { itemId: string; quantity: number; chestId: string }[];
   },
+  meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -414,7 +418,7 @@ export async function completeOrder(
       await inventoryCookie(),
     );
 
-    await emitOrdersChange(dispensaryId, { orderId: order.id });
+    emitOrdersChange(dispensaryId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
 
     return {
       status: 200,
@@ -425,7 +429,11 @@ export async function completeOrder(
   }
 }
 
-export async function deleteOrder(dispensarySlug: string, data: { id: string }) {
+export async function deleteOrder(
+  dispensarySlug: string,
+  data: { id: string },
+  meta?: unknown,
+) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'orders',
@@ -446,7 +454,7 @@ export async function deleteOrder(dispensarySlug: string, data: { id: string }) 
       await inventoryCookie(),
     );
 
-    await emitOrdersChange(dispensaryId, { orderId: validatedData.id });
+    emitOrdersChange(dispensaryId, { orderId: validatedData.id }, parseRealtimeMutationMeta(meta));
 
     return {
       status: 200,

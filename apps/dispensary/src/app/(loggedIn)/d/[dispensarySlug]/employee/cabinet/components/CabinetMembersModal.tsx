@@ -15,10 +15,8 @@ import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
 import {
   removeCabinetMember,
-  searchDispensaryUsersForCabinet,
   upsertCabinetMember,
 } from '@/app/_actions/cabinet/members';
-import { getCabinetWithMembers } from '@/app/_actions/cabinet/cabinets';
 import { handleAction } from '@/lib/action';
 import {
   CABINET_ACCESS_LEVELS,
@@ -26,6 +24,7 @@ import {
   type CabinetMemberDTO,
 } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 interface CabinetMembersModalProps {
   opened: boolean;
@@ -55,7 +54,7 @@ export function CabinetMembersModal({
     if (!cabinetId) return;
     setLoading(true);
     try {
-      const result = await getCabinetWithMembers(dispensarySlug, cabinetId);
+      const result = await fetchRead(dispensarySlug, 'cabinetWithMembers', { cabinetId });
       const data = handleAction(result);
       if (data) {
         setMembers(data.members as CabinetMemberDTO[]);
@@ -73,7 +72,7 @@ export function CabinetMembersModal({
 
   const searchCabinetUsers = useCallback(
     async (query: string) => {
-      const result = await searchDispensaryUsersForCabinet(dispensarySlug, query);
+      const result = await fetchRead(dispensarySlug, 'cabinetUserSearch', { query });
       const data = handleAction(result);
       return data ?? [];
     },

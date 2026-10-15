@@ -5,16 +5,12 @@ import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   deleteMail,
-  getMailById,
-  getMailsPage,
 } from '@/app/_actions/mails';
 import {
   deleteUserMailTemplate,
-  getUserMailTemplateById,
-  getUserMailTemplateOptions,
-  getUserMailTemplatesPage,
 } from '@/app/_actions/mailTemplates';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { mailsKeys, mailTemplatesKeys } from '@/lib/mails/queryKeys';
 import type {
@@ -60,7 +56,7 @@ function isDefaultMailTemplatesPage(filters: MailTemplatesPageFilters): boolean 
 }
 
 async function fetchMailsPage(dispensarySlug: string, filters: MailsPageFilters) {
-  const result = await getMailsPage(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'mailsPage', {
     page: filters.page,
     pageSize: filters.pageSize,
     nameSearch: filters.nameSearch || undefined,
@@ -73,7 +69,7 @@ async function fetchMailTemplatesPage(
   dispensarySlug: string,
   filters: MailTemplatesPageFilters,
 ) {
-  const result = await getUserMailTemplatesPage(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'userMailTemplatesPage', {
     page: filters.page,
     pageSize: filters.pageSize,
     nameSearch: filters.nameSearch || undefined,
@@ -82,7 +78,7 @@ async function fetchMailTemplatesPage(
 }
 
 async function fetchMailById(dispensarySlug: string, mailId: string) {
-  const result = await getMailById(dispensarySlug, { id: mailId });
+  const result = await fetchRead(dispensarySlug, 'mail', { id: mailId });
   return handleAction(result) as Mail;
 }
 
@@ -90,12 +86,12 @@ async function fetchUserMailTemplateById(
   dispensarySlug: string,
   templateId: string,
 ) {
-  const result = await getUserMailTemplateById(dispensarySlug, { id: templateId });
+  const result = await fetchRead(dispensarySlug, 'userMailTemplate', { id: templateId });
   return handleAction(result) as MailTemplate;
 }
 
 async function fetchUserMailTemplateOptions(dispensarySlug: string) {
-  const result = await getUserMailTemplateOptions(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'userMailTemplateOptions');
   return handleAction(result) as MailTemplateOption[];
 }
 

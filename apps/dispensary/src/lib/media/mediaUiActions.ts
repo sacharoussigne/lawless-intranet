@@ -6,10 +6,6 @@ import {
   deleteMediaLibraryFile,
   deleteMediaLibraryFolder,
   deleteMediaLibraryItems,
-  getMediaContents,
-  getMediaLibraryDownloadUrl,
-  getMediaTree,
-  getMediaUserName,
   moveMediaLibraryItems,
   requestMediaUpload,
   shareMediaLibraryFile,
@@ -17,12 +13,14 @@ import {
   updateMediaLibraryFile,
   updateMediaLibraryFolder,
 } from '@/app/_actions/media';
+import { fetchRead } from '@/lib/read/fetchRead';
 
-/** Binds the dispensary server actions to the media-ui action contract. */
+/** Binds the dispensary server actions to the media-ui action contract (reads over GET, see lib/read). */
 export function createDispensaryMediaActions(dispensarySlug: string): MediaUiActions {
   return {
-    getFolderContents: (folderId) => toUiResult(getMediaContents(dispensarySlug, folderId)),
-    getFolderTree: () => toUiResult(getMediaTree(dispensarySlug)),
+    getFolderContents: (folderId) =>
+      toUiResult(fetchRead(dispensarySlug, 'mediaContents', { folderId })),
+    getFolderTree: () => toUiResult(fetchRead(dispensarySlug, 'mediaTree')),
     createFolder: (input) => toUiResult(createMediaLibraryFolder(dispensarySlug, input)),
     updateFolder: (input) => toUiResult(updateMediaLibraryFolder(dispensarySlug, input)),
     deleteFolder: (id) => toUiResult(deleteMediaLibraryFolder(dispensarySlug, id)),
@@ -30,11 +28,11 @@ export function createDispensaryMediaActions(dispensarySlug: string): MediaUiAct
     completeUpload: (fileId) => toUiResult(completeMediaLibraryUpload(dispensarySlug, fileId)),
     updateFile: (input) => toUiResult(updateMediaLibraryFile(dispensarySlug, input)),
     deleteFile: (id) => toUiResult(deleteMediaLibraryFile(dispensarySlug, id)),
-    getDownloadUrl: (id) => toUiResult(getMediaLibraryDownloadUrl(dispensarySlug, id)),
+    getDownloadUrl: (id) => toUiResult(fetchRead(dispensarySlug, 'mediaDownloadUrl', { id })),
     moveItems: (input) => toUiResult(moveMediaLibraryItems(dispensarySlug, input)),
     deleteItems: (input) => toUiResult(deleteMediaLibraryItems(dispensarySlug, input)),
     shareFile: (id) => toUiResult(shareMediaLibraryFile(dispensarySlug, id)),
     unshareFile: (id) => toUiResult(unshareMediaLibraryFile(dispensarySlug, id)),
-    getUserName: (userId) => toUiResult(getMediaUserName(dispensarySlug, userId)),
+    getUserName: (userId) => toUiResult(fetchRead(dispensarySlug, 'mediaUserName', { userId })),
   };
 }

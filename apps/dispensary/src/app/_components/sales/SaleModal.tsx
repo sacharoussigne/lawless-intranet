@@ -23,13 +23,10 @@ import { IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
-import { createSale, getSellableItems } from '@/app/_actions/sales';
-import { searchIndividualCustomers } from '@/app/_actions/individualCustomers';
+import { createSale } from '@/app/_actions/sales';
 import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
 import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
-import { getChestsList } from '@/app/_actions/chests';
-import { getItemsWithStock } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
 import { getEffectiveStockQuantity } from '@/lib/stock/ensureTodayStock';
 import { stockKeys } from '@/lib/stock/queryKeys';
@@ -37,6 +34,7 @@ import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import type { ChestListItem } from '@/types/chests';
 import type { ItemWithRelations } from '@/types/stock';
 import { SaleItemSource } from '@lawless-intranet/inventory-client';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type SaleLine = {
   key: string;
@@ -80,14 +78,14 @@ export function SaleModal({
 
   const sellableQuery = useQuery({
     queryKey: ['sellable-items', dispensarySlug],
-    queryFn: async () => handleAction(await getSellableItems(dispensarySlug)) as SellableItem[],
+    queryFn: async () => handleAction(await fetchRead(dispensarySlug, 'sellableItems')) as SellableItem[],
     enabled: opened && Boolean(dispensarySlug),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 
   const chestsQuery = useQuery({
     queryKey: ['chests-list', dispensarySlug, true],
-    queryFn: async () => handleAction(await getChestsList(dispensarySlug, true)) as ChestListItem[],
+    queryFn: async () => handleAction(await fetchRead(dispensarySlug, 'chestsList', { onlyEnabled: true })) as ChestListItem[],
     enabled: opened && Boolean(dispensarySlug) && !chestsProp,
     staleTime: DEFAULT_STALE_TIME_MS,
   });
@@ -96,7 +94,9 @@ export function SaleModal({
     queryKey: ['individual-customers-search', dispensarySlug, debouncedCustomerQuery],
     queryFn: async () =>
       handleAction(
-        await searchIndividualCustomers(dispensarySlug, debouncedCustomerQuery),
+        await fetchRead(dispensarySlug, 'individualCustomerSearch', {
+          query: debouncedCustomerQuery,
+        }),
       ) as Array<{ id: string; name: string }>,
     enabled: opened && Boolean(dispensarySlug) && debouncedCustomerQuery.length >= 2,
     staleTime: 30_000,
@@ -117,7 +117,7 @@ export function SaleModal({
     queries: trackedChestIds.map((chestId) => ({
       queryKey: stockKeys.items(dispensarySlug, chestId),
       queryFn: async () =>
-        handleAction(await getItemsWithStock(dispensarySlug, chestId)) as ItemWithRelations[],
+        handleAction(await fetchRead(dispensarySlug, 'itemsWithStock', { chestId })) as ItemWithRelations[],
       enabled: opened && Boolean(dispensarySlug && chestId),
       staleTime: DEFAULT_STALE_TIME_MS,
     })),

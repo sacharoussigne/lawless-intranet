@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   ActionIcon,
@@ -38,15 +39,18 @@ import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import {
   createAnimalWaitRequest,
   deleteAnimalWaitRequest,
-  listAnimalWaitRequests,
-  listAnimalsForWaitlistLink,
   setAnimalWaitRequestStatus,
   updateAnimalWaitRequest,
 } from '@/app/_actions/animalWaitRequests';
 import { handleAction } from '@/lib/action';
 import { formatRpDate } from '@/lib/rpCalendar';
-import { notifyWaitlistLocalRefresh } from '@/lib/realtime/waitlist/localRefresh';
-import { useWaitlistRealtime } from '@/lib/realtime/waitlist/useWaitlistRealtime';
+import { fetchRead } from '@/lib/read/fetchRead';
+import { waitlistKeys } from '@/lib/waitlist/queryKeys';
+import {
+  useInvalidateWaitlist,
+  useWaitRequests,
+  useWaitlistRealtimeInvalidation,
+} from '@/lib/waitlist/useWaitlistQueries';
 import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { parseIsoDateOnly } from '@/app/(loggedIn)/s/[shelterSlug]/employee/animals/types';
 import {
@@ -124,7 +128,10 @@ export function WaitlistPageClient({
   const t = useTenantRoutes();
   const realtimeClientId = useOptionalRealtimeSocket()?.clientId;
   const mutationMeta = realtimeMutationMeta(realtimeClientId);
-  const [requests, setRequests] = useState(initialRequests);
+  const queryClient = useQueryClient();
+  const requests = useWaitRequests(shelterSlug, initialRequests).data;
+  const invalidateWaitlist = useInvalidateWaitlist(shelterSlug);
+  useWaitlistRealtimeInvalidation(shelterSlug);
   const [statusFilter, setStatusFilter] = useState<string | null>('open');
   const [requesterFilter, setRequesterFilter] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState<string | null>(null);
@@ -149,22 +156,17 @@ export function WaitlistPageClient({
   const [detailOpen, setDetailOpen] = useState(false);
   const [viewingDetail, setViewingDetail] = useState<AnimalWaitRequestListItem | null>(null);
 
-  const refreshRequests = useCallback(async () => {
-    const result = await listAnimalWaitRequests(shelterSlug);
-    if (result.status === 200 && 'data' in result && result.data) {
-      setRequests(result.data);
-    }
-  }, [shelterSlug]);
-
-  const refreshFromRealtime = useCallback(() => {
-    void refreshRequests();
-  }, [refreshRequests]);
-
-  useWaitlistRealtime({
-    enabled: true,
-    onChange: refreshFromRealtime,
-    onResync: refreshFromRealtime,
-  });
+  /** Shows our own change at once, then refetches the list and the header preview. */
+  const applyLocalChange = useCallback(
+    (update: (current: AnimalWaitRequestListItem[]) => AnimalWaitRequestListItem[]) => {
+      queryClient.setQueryData<AnimalWaitRequestListItem[]>(
+        waitlistKeys.requests(shelterSlug),
+        (current) => update(current ?? []),
+      );
+      invalidateWaitlist();
+    },
+    [invalidateWaitlist, queryClient, shelterSlug],
+  );
 
   const form = useForm<RequestFormValues>({
     initialValues: {
@@ -262,12 +264,11 @@ export function WaitlistPageClient({
         : await createAnimalWaitRequest(shelterSlug, payload);
       const saved = handleAction(result) as AnimalWaitRequestListItem;
 
-      setRequests((current) =>
+      applyLocalChange((current) =>
         editing
           ? current.map((item) => (item.id === saved.id ? saved : item))
           : [saved, ...current],
       );
-      notifyWaitlistLocalRefresh();
       notifications.show({
         title: editing ? 'Demande mise à jour' : 'Demande créée',
         message: '',
@@ -291,7 +292,7 @@ export function WaitlistPageClient({
     setFulfillOpen(true);
     setLoadingAnimals(true);
     try {
-      const result = await listAnimalsForWaitlistLink(shelterSlug);
+      const result = await fetchRead(shelterSlug, 'animalsForWaitlistLink');
       if (result.status === 200 && 'data' in result && result.data) {
         setAnimalOptions(
           result.data.map((animal: { id: string; label: string }) => ({
@@ -320,10 +321,9 @@ export function WaitlistPageClient({
         ...mutationMeta,
       });
       const updated = handleAction(result) as AnimalWaitRequestListItem;
-      setRequests((current) =>
+      applyLocalChange((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
-      notifyWaitlistLocalRefresh();
       notifications.show({
         title:
           status === 'fulfilled'
@@ -352,8 +352,7 @@ export function WaitlistPageClient({
         ...mutationMeta,
       });
       handleAction(result);
-      setRequests((current) => current.filter((item) => item.id !== request.id));
-      notifyWaitlistLocalRefresh();
+      applyLocalChange((current) => current.filter((item) => item.id !== request.id));
       notifications.show({
         title: 'Demande supprimée',
         message: '',

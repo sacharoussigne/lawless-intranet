@@ -21,9 +21,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconKey, IconTrash, IconUsers } from '@tabler/icons-react';
 import {
-  listShelterMembers,
   removeShelterMember,
-  searchUsersForShelterInvite,
   upsertShelterMember,
 } from '@/app/_actions/shelterMembers';
 import {
@@ -34,6 +32,7 @@ import {
   rolesAsString,
 } from '@/types/enum/roles';
 import { MemberPermissionOverridesEditor } from './MemberPermissionOverridesEditor';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 const ROLE_OPTIONS = SHELTER_MEMBER_ROLES.map((role) => ({
   value: role,
@@ -153,7 +152,7 @@ export function ShelterMembersPanel({
 
   const searchUsers = useCallback(
     async (query: string) => {
-      const result = await searchUsersForShelterInvite(shelterSlug, query);
+      const result = await fetchRead(shelterSlug, 'memberInviteUserSearch', { query });
       if (result.status === 200 && result.data) {
         return result.data;
       }
@@ -163,7 +162,7 @@ export function ShelterMembersPanel({
   );
 
   const refresh = async () => {
-    const result = await listShelterMembers(shelterSlug);
+    const result = await fetchRead(shelterSlug, 'shelterMembers');
     if (result.status === 200 && result.data) {
       const rows = result.data as ShelterMemberRow[];
       setMembers(rows);

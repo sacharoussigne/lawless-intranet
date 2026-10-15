@@ -1,24 +1,19 @@
 import type { InventoryActionResult, InventoryUiActions } from '@lawless-intranet/inventory-ui';
 import { toUiResult } from '@lawless-intranet/host-kit/action';
-import { getCraftRecipesByItemId } from '@/app/_actions/craftRecipes';
 import { craftItem, updateStock } from '@/app/_actions/stock/mutations';
-import {
-  getItemsWithStock,
-  getLastStockDaysByChest,
-} from '@/app/_actions/stock/queries';
 import { moveItemsWithChests } from '@/app/_actions/stock/take';
 import { transferMultipleStock } from '@/app/_actions/stock/transfer';
-import { getStockChecksSummary } from '@/app/_actions/stockChecks';
 import {
-  getChestStockVisibility,
   setChestCategoryHidden,
   setChestItemHidden,
 } from '@/app/_actions/stockVisibility';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 export function createDispensaryInventoryActions(dispensarySlug: string): InventoryUiActions {
   return {
+    // Reads go over GET (lib/read): they do not queue behind server actions.
     getItemsWithStock: (chestId) =>
-      toUiResult(getItemsWithStock(dispensarySlug, chestId)),
+      toUiResult(fetchRead(dispensarySlug, 'itemsWithStock', { chestId })),
     updateStock: (input) =>
       toUiResult(
         updateStock(dispensarySlug, input.stockData, input.targetChestId, {
@@ -46,16 +41,16 @@ export function createDispensaryInventoryActions(dispensarySlug: string): Invent
       toUiResult(moveItemsWithChests(dispensarySlug, input)) as Promise<
         InventoryActionResult<{ success: true; count: number; mode: 'take' | 'deposit' }>
       >,
-    getStockChecksSummary: () => toUiResult(getStockChecksSummary(dispensarySlug)),
+    getStockChecksSummary: () => toUiResult(fetchRead(dispensarySlug, 'stockChecksSummary')),
     getChestStockVisibility: (chestId) =>
-      toUiResult(getChestStockVisibility(dispensarySlug, chestId)),
+      toUiResult(fetchRead(dispensarySlug, 'chestStockVisibility', { chestId })),
     setChestCategoryHidden: (input) =>
       toUiResult(setChestCategoryHidden(dispensarySlug, input)),
     setChestItemHidden: (input) => toUiResult(setChestItemHidden(dispensarySlug, input)),
-    getLastStockDaysByChest: () => toUiResult(getLastStockDaysByChest(dispensarySlug)),
+    getLastStockDaysByChest: () => toUiResult(fetchRead(dispensarySlug, 'lastStockDaysByChest')),
     getCraftRecipesByItemId: async (itemId, onlyEnabled) => {
       const result = await toUiResult(
-        getCraftRecipesByItemId(dispensarySlug, itemId, onlyEnabled),
+        fetchRead(dispensarySlug, 'craftRecipes', { itemId, onlyEnabled }),
       );
       if (result.data === undefined) {
         return { status: result.status, error: result.error ?? 'Erreur' };

@@ -27,6 +27,7 @@ export function useOrdersRealtime({
   useRealtimeSocketEvents({
     enabled,
     domains: DOMAINS,
+    coalesceMs: 200,
     onEvent: handleEvent,
   });
 }

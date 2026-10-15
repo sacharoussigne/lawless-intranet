@@ -153,7 +153,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     },
   });
 
-  await emitAgendaListChange(agenda.scopeType, agenda.scopeId, id);
+  emitAgendaListChange(agenda.scopeType, agenda.scopeId, id);
 
   return jsonResponse(request, serializeDates(updated));
 }
@@ -204,7 +204,7 @@ export async function DELETE(request: Request, context: RouteContext) {
 
   await prisma.agenda.delete({ where: { id } });
 
-  await emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, id, {
+  emitAgendaAccessChange(agenda.scopeType, agenda.scopeId, id, {
     revokedUserIds: members.map((member) => member.userId),
   });
 

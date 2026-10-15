@@ -6,17 +6,15 @@ import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createMailTemplate,
   deleteMailTemplate,
-  getMailTemplates,
-  getManagementMailTemplateById,
   updateMailTemplate,
 } from '@/app/_actions/mailTemplates';
 import {
   createOrderLetterTemplateAssignment,
   deleteOrderLetterTemplateAssignment,
-  getOrderLetterTemplateAssignments,
   updateOrderLetterTemplateAssignment,
 } from '@/app/_actions/orderLetterTemplateAssignments';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { mailTemplatesKeys } from '@/lib/mails/queryKeys';
@@ -45,17 +43,17 @@ function toMailTemplateListItem(template: MailTemplate): MailTemplateListItem {
 }
 
 async function fetchManagementMailTemplates(dispensarySlug: string) {
-  const result = await getMailTemplates(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'mailTemplates');
   return handleAction(result) as MailTemplateListItem[];
 }
 
 async function fetchManagementMailTemplateById(dispensarySlug: string, templateId: string) {
-  const result = await getManagementMailTemplateById(dispensarySlug, { id: templateId });
+  const result = await fetchRead(dispensarySlug, 'managementMailTemplate', { id: templateId });
   return handleAction(result) as MailTemplate;
 }
 
 async function fetchOrderLetterAssignments(dispensarySlug: string) {
-  const result = await getOrderLetterTemplateAssignments(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'orderLetterAssignments');
   return handleAction(result) as OrderLetterTemplateAssignmentWithTemplate[];
 }
 

@@ -5,21 +5,19 @@ import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createChest,
-  getChests,
   updateChest,
   deleteChest,
   reorderChests,
 } from '@/app/_actions/chests';
 import {
-  getRoleChestAccesses,
   upsertRoleChestAccess,
   type RoleChestAccessRow,
 } from '@/app/_actions/chestAccess';
 import {
-  getChestStockCheckForm,
   upsertChestStockCheckConfig,
 } from '@/app/_actions/stockChecks';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { chestsKeys } from '@/lib/chests/queryKeys';
@@ -29,17 +27,17 @@ import type { ChestWithStockHistory } from '@/types/chests';
 import type { ChestStockCheckFormResponse } from '@/app/_actions/stockChecks';
 
 async function fetchManagementChests(dispensarySlug: string) {
-  const result = await getChests(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'chests');
   return handleAction(result) as ChestWithStockHistory[];
 }
 
 async function fetchRoleChestAccesses(dispensarySlug: string) {
-  const result = await getRoleChestAccesses(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'roleChestAccesses');
   return handleAction(result) as RoleChestAccessRow[];
 }
 
 async function fetchChestStockCheckForm(dispensarySlug: string, chestId: string) {
-  const result = await getChestStockCheckForm(dispensarySlug, chestId);
+  const result = await fetchRead(dispensarySlug, 'chestStockCheckForm', { chestId });
   return handleAction(result) as ChestStockCheckFormResponse;
 }
 

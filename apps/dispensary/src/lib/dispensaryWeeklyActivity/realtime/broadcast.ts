@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { realtimeTopics } from '@lawless-intranet/realtime';
 import { publishRealtime } from '@lawless-intranet/realtime/publish';
 import { findUserIdByDiscordId } from '@lawless-intranet/auth-client/internal';
@@ -24,30 +25,32 @@ async function resolveOwnerUserId(
 }
 
 /** Tells `edit_all` viewers and the owner (topics checked in the realtime token) to refetch. */
-export async function emitWeeklyActivityChange(
+export function emitWeeklyActivityChange(
   dispensaryId: string,
   event: Omit<WeeklyActivityRealtimeEvent, 'originClientId' | 'type'> & {
     type?: 'weeklyActivity';
   },
   meta?: WeeklyActivityMutationMeta,
-): Promise<void> {
-  const ownerUserId = await resolveOwnerUserId(event.ownerUserId, event.ownerDiscordUserId);
-  const topics = [realtimeTopics.weeklyActivity(dispensaryId)];
-  if (ownerUserId) topics.push(realtimeTopics.weeklyActivityOfUser(dispensaryId, ownerUserId));
+): void {
+  after(async () => {
+    const ownerUserId = await resolveOwnerUserId(event.ownerUserId, event.ownerDiscordUserId);
+    const topics = [realtimeTopics.weeklyActivity(dispensaryId)];
+    if (ownerUserId) topics.push(realtimeTopics.weeklyActivityOfUser(dispensaryId, ownerUserId));
 
-  await publishRealtime(
-    topics,
-    toWeeklyActivityRealtimeEnvelope({
-      type: 'weeklyActivity',
-      activityId: event.activityId,
-      ownerUserId: event.ownerUserId,
-      ownerDiscordUserId: event.ownerDiscordUserId,
-      periodStart: event.periodStart,
-      periodEnd: event.periodEnd,
-      originClientId: meta?.originClientId,
-    }),
-    { logLabel: 'weekly-activity' },
-  );
+    await publishRealtime(
+      topics,
+      toWeeklyActivityRealtimeEnvelope({
+        type: 'weeklyActivity',
+        activityId: event.activityId,
+        ownerUserId: event.ownerUserId,
+        ownerDiscordUserId: event.ownerDiscordUserId,
+        periodStart: event.periodStart,
+        periodEnd: event.periodEnd,
+        originClientId: meta?.originClientId,
+      }),
+      { logLabel: 'weekly-activity' },
+    );
+  });
 }
 
 export function activityToWeeklyActivityRealtimePayload(

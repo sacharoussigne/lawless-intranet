@@ -257,7 +257,7 @@ export async function POST(request: Request) {
     include: eventDetailInclude,
   });
 
-  await emitAgendaEventsChange(
+  emitAgendaEventsChange(
     agenda.scopeType,
     agenda.scopeId,
     validated.agendaId,

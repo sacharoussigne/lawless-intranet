@@ -12,28 +12,29 @@ import {
 } from 'react';
 import { getOrCreateRealtimeClientId } from './clientId';
 import {
-  REALTIME_CLOSE_CODE,
-  type RealtimeClientMessage,
-  type RealtimeServerMessage,
-} from './protocol';
+  computeReconnectDelay,
+  createRealtimeConnection,
+  shouldResyncOnReady,
+  type RealtimeSocketStatus,
+  type RealtimeSocketToken,
+} from './connection';
 import type { RealtimeEnvelope } from './types';
 
 /**
- * Browser websocket client for the realtime server.
+ * Browser websocket client for the realtime server. The connection loop lives in
+ * `./connection` (token reuse, backoff, resync); this file binds it to React and
+ * the DOM:
  *
- * - Fetches a signed token from the host app (`getToken`, usually a server action)
- *   and authenticates with it after each connection.
- * - Reconnects with exponential backoff + jitter, immediately when the tab
- *   becomes visible again or the network comes back.
- * - Calls `resync` handlers after every (re)connection: consumers refetch their
- *   data, so notifications missed while disconnected are never lost.
- * - Refreshes the token before it expires, and on demand (`refreshAccess`)
- *   after an access change, on the same connection (no resync: nothing was missed).
+ * - One socket per tab, shared by every `useRealtimeSocketEvents` subscriber.
+ * - Wakes the connection when the tab becomes visible again or the network comes back.
+ * - `useRealtimeSocketResync` handlers run after a reconnection: consumers
+ *   refetch their data, so notifications missed while disconnected are never lost.
+ * - `status` lives in its own context (`useRealtimeSocketStatus`), so a
+ *   reconnection does not re-render every subscriber.
  */
 
-export type RealtimeSocketStatus = 'connecting' | 'open' | 'closed';
-
-export type RealtimeSocketToken = { token: string; expiresAt: number };
+export type { RealtimeSocketStatus, RealtimeSocketToken };
+export { computeReconnectDelay, shouldResyncOnReady };
 
 type EventHandler = (envelope: RealtimeEnvelope, topic: string) => void;
 
@@ -45,42 +46,13 @@ type Subscription = {
 
 type RealtimeSocketContextValue = {
   clientId: string;
-  status: RealtimeSocketStatus;
   subscribe: (subscription: Subscription) => () => void;
   subscribeResync: (handler: () => void) => () => void;
   refreshAccess: () => void;
 };
 
 const RealtimeSocketContext = createContext<RealtimeSocketContextValue | null>(null);
-
-const PING_INTERVAL_MS = 25_000;
-/** No message (event or pong) for this long means the connection is dead. */
-const STALE_CONNECTION_MS = 60_000;
-const TOKEN_REFRESH_MARGIN_MS = 60_000;
-const BACKOFF_BASE_MS = 1_000;
-const BACKOFF_MAX_MS = 30_000;
-/** Skip the very first resync when the socket opens right after the SSR render. */
-const INITIAL_RESYNC_GRACE_MS = 5_000;
-
-/**
- * `ready` comes after every authentication: the first one of a connection, but
- * also each token refresh on the same connection. Only a new connection may
- * have missed events, so only its first `ready` resyncs (except the very first
- * connection right after the SSR render, whose data is fresh).
- */
-export function shouldResyncOnReady(input: {
-  firstOnSocket: boolean;
-  firstConnection: boolean;
-  sinceMountMs: number;
-}): boolean {
-  if (!input.firstOnSocket) return false;
-  return !input.firstConnection || input.sinceMountMs > INITIAL_RESYNC_GRACE_MS;
-}
-
-export function computeReconnectDelay(attempt: number, random = Math.random): number {
-  const exponential = Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** attempt);
-  return Math.round(exponential / 2 + random() * (exponential / 2));
-}
+const RealtimeSocketStatusContext = createContext<RealtimeSocketStatus>('closed');
 
 export function RealtimeSocketProvider({
   url,
@@ -128,65 +100,6 @@ export function RealtimeSocketProvider({
       return;
     }
 
-    const mountedAt = Date.now();
-    let disposed = false;
-    let socket: WebSocket | null = null;
-    let attempt = 0;
-    let connectedCount = 0;
-    let readyOnCurrentSocket = false;
-    let lastMessageAt = Date.now();
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let tokenTimer: ReturnType<typeof setTimeout> | null = null;
-    let pingTimer: ReturnType<typeof setInterval> | null = null;
-
-    const send = (message: RealtimeClientMessage) => {
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(message));
-      }
-    };
-
-    const clearTimers = () => {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (tokenTimer) clearTimeout(tokenTimer);
-      if (pingTimer) clearInterval(pingTimer);
-      reconnectTimer = null;
-      tokenTimer = null;
-      pingTimer = null;
-    };
-
-    const fetchToken = async (): Promise<RealtimeSocketToken | null> => {
-      try {
-        return await getTokenRef.current();
-      } catch (error) {
-        console.warn('[realtime] failed to get token', error);
-        return null;
-      }
-    };
-
-    const scheduleTokenRefresh = (expiresAt: number) => {
-      if (tokenTimer) clearTimeout(tokenTimer);
-      const delay = Math.max(5_000, expiresAt - Date.now() - TOKEN_REFRESH_MARGIN_MS);
-      tokenTimer = setTimeout(() => {
-        void reauthenticate();
-      }, delay);
-    };
-
-    const reauthenticate = async () => {
-      const next = await fetchToken();
-      if (disposed || !next) return;
-      send({ op: 'auth', token: next.token });
-    };
-
-    const runResync = () => {
-      for (const handler of resyncHandlersRef.current) {
-        try {
-          handler();
-        } catch (error) {
-          console.error('[realtime] resync handler failed', error);
-        }
-      }
-    };
-
     const dispatch = (topic: string, envelope: RealtimeEnvelope) => {
       if (envelope.originClientId && envelope.originClientId === clientId) {
         return;
@@ -206,164 +119,99 @@ export function RealtimeSocketProvider({
       }
     };
 
-    const scheduleReconnect = (immediate = false) => {
-      if (disposed || reconnectTimer) return;
-      const delay = immediate ? 0 : computeReconnectDelay(attempt);
-      attempt += 1;
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        void connect();
-      }, delay);
-    };
-
-    const handleMessage = (raw: MessageEvent) => {
-      lastMessageAt = Date.now();
-      let message: RealtimeServerMessage;
-      try {
-        message = JSON.parse(String(raw.data)) as RealtimeServerMessage;
-      } catch {
-        return;
-      }
-
-      switch (message.op) {
-        case 'ready': {
-          attempt = 0;
-          setStatus('open');
-          scheduleTokenRefresh(message.expiresAt);
-          const firstOnSocket = !readyOnCurrentSocket;
-          readyOnCurrentSocket = true;
-          if (firstOnSocket) connectedCount += 1;
-          if (
-            shouldResyncOnReady({
-              firstOnSocket,
-              firstConnection: connectedCount === 1,
-              sinceMountMs: Date.now() - mountedAt,
-            })
-          ) {
-            runResync();
-          }
-          break;
+    const runResync = () => {
+      for (const handler of resyncHandlersRef.current) {
+        try {
+          handler();
+        } catch (error) {
+          console.error('[realtime] resync handler failed', error);
         }
-        case 'event':
-          dispatch(message.topic, message.envelope);
-          break;
-        case 'error':
-          console.warn('[realtime] server error', message.code, message.message ?? '');
-          break;
-        default:
-          break;
       }
     };
 
-    async function connect() {
-      if (disposed) return;
-      setStatus('connecting');
-
-      const token = await fetchToken();
-      if (disposed) return;
-      if (!token) {
-        setStatus('closed');
-        scheduleReconnect();
-        return;
-      }
-
-      let current: WebSocket;
-      try {
-        current = new WebSocket(url);
-      } catch (error) {
-        console.warn('[realtime] failed to open websocket', error);
-        setStatus('closed');
-        scheduleReconnect();
-        return;
-      }
-      socket = current;
-      readyOnCurrentSocket = false;
-
-      current.addEventListener('open', () => {
-        lastMessageAt = Date.now();
-        current.send(JSON.stringify({ op: 'auth', token: token.token } satisfies RealtimeClientMessage));
-        if (pingTimer) clearInterval(pingTimer);
-        pingTimer = setInterval(() => {
-          if (Date.now() - lastMessageAt > STALE_CONNECTION_MS) {
-            current.close();
-            return;
-          }
-          send({ op: 'ping' });
-        }, PING_INTERVAL_MS);
-      });
-
-      current.addEventListener('message', handleMessage);
-
-      current.addEventListener('close', (event) => {
-        if (socket !== current) return;
-        socket = null;
-        clearTimers();
-        if (disposed) return;
-        setStatus('closed');
-        // Token problems recover with a fresh token on the next attempt.
-        const immediate = event.code === REALTIME_CLOSE_CODE.tokenExpired;
-        scheduleReconnect(immediate);
-      });
-    }
-
-    const reconnectNow = () => {
-      if (disposed) return;
-      if (socket && socket.readyState <= WebSocket.OPEN) return;
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
-      attempt = 0;
-      scheduleReconnect(true);
-    };
+    const connection = createRealtimeConnection({
+      url,
+      getToken: () => getTokenRef.current(),
+      onStatus: setStatus,
+      onEvent: dispatch,
+      onResync: runResync,
+      createSocket: (socketUrl) => new WebSocket(socketUrl),
+      isVisible: () => document.visibilityState === 'visible',
+    });
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') reconnectNow();
+      if (document.visibilityState === 'visible') connection.wake();
     };
 
-    refreshAccessRef.current = () => {
-      void reauthenticate();
-    };
-
+    refreshAccessRef.current = connection.refreshAccess;
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('online', reconnectNow);
-    void connect();
+    window.addEventListener('online', connection.wake);
 
     return () => {
-      disposed = true;
       refreshAccessRef.current = () => {};
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('online', reconnectNow);
-      clearTimers();
-      socket?.close();
-      socket = null;
+      window.removeEventListener('online', connection.wake);
+      connection.dispose();
     };
   }, [clientId, url]);
 
   const value = useMemo<RealtimeSocketContextValue>(
-    () => ({ clientId, status: url ? status : 'closed', subscribe, subscribeResync, refreshAccess }),
-    [clientId, status, url, subscribe, subscribeResync, refreshAccess],
+    () => ({ clientId, subscribe, subscribeResync, refreshAccess }),
+    [clientId, subscribe, subscribeResync, refreshAccess],
   );
 
   return (
-    <RealtimeSocketContext.Provider value={value}>{children}</RealtimeSocketContext.Provider>
+    <RealtimeSocketContext.Provider value={value}>
+      <RealtimeSocketStatusContext.Provider value={url ? status : 'closed'}>
+        {children}
+      </RealtimeSocketStatusContext.Provider>
+    </RealtimeSocketContext.Provider>
   );
+}
+
+/**
+ * `getToken` for a host route answering `{ status, data?: { token, expiresAt } }`
+ * (GET: unlike a server action, it does not wait in the tab's action queue).
+ * A refusal (401, 403, 404, 503) returns null and stops the connection; a
+ * server error or a network failure throws, so the connection retries later.
+ */
+export async function fetchRealtimeToken(path: string): Promise<RealtimeSocketToken | null> {
+  const response = await fetch(path, { cache: 'no-store', credentials: 'same-origin' });
+  if (response.status >= 500 && response.status !== 503) {
+    throw new Error(`Realtime token request failed (${response.status})`);
+  }
+  if (!response.ok) return null;
+  const body = (await response.json()) as { data?: RealtimeSocketToken };
+  return body.data ?? null;
+}
+
+/** Connection status, in its own context: only components that read it re-render. */
+export function useRealtimeSocketStatus(): RealtimeSocketStatus {
+  return useContext(RealtimeSocketStatusContext);
 }
 
 export function useOptionalRealtimeSocket(): RealtimeSocketContextValue | null {
   return useContext(RealtimeSocketContext);
 }
 
-/** Subscribes to realtime envelopes (filtered by domain/type). Own echoes are skipped. */
+/**
+ * Subscribes to realtime envelopes (filtered by domain/type). Own echoes are skipped.
+ *
+ * `coalesceMs`: a burst of events (an upload of N files, a bulk edit) calls
+ * `onEvent` once, with the last envelope, after this much quiet. Only for
+ * handlers that ignore the envelope details, such as a plain invalidation.
+ */
 export function useRealtimeSocketEvents(options: {
   enabled?: boolean;
   domains?: readonly string[];
   types?: readonly string[];
+  coalesceMs?: number;
   onEvent: EventHandler;
 }): void {
   const context = useContext(RealtimeSocketContext);
   const handlerRef = useRef(options.onEvent);
   const enabled = options.enabled ?? true;
+  const coalesceMs = options.coalesceMs ?? 0;
   const domainsKey = options.domains?.join('\0') ?? '';
   const typesKey = options.types?.join('\0') ?? '';
 
@@ -373,12 +221,37 @@ export function useRealtimeSocketEvents(options: {
 
   useEffect(() => {
     if (!context || !enabled) return;
-    return context.subscribe({
+    const forward: EventHandler = (envelope, topic) => handlerRef.current(envelope, topic);
+    const coalesced = coalesceMs > 0 ? coalesce(forward, coalesceMs) : null;
+    const unsubscribe = context.subscribe({
       domains: domainsKey ? domainsKey.split('\0') : undefined,
       types: typesKey ? typesKey.split('\0') : undefined,
-      onEvent: (envelope, topic) => handlerRef.current(envelope, topic),
+      onEvent: coalesced ?? forward,
     });
-  }, [context, enabled, domainsKey, typesKey]);
+    return () => {
+      unsubscribe();
+      coalesced?.cancel();
+    };
+  }, [context, enabled, coalesceMs, domainsKey, typesKey]);
+}
+
+type Coalesced = EventHandler & { cancel: () => void };
+
+/** Trailing debounce: one call with the last arguments after `waitMs` without events. */
+export function coalesce(handler: EventHandler, waitMs: number): Coalesced {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const coalesced = ((envelope: RealtimeEnvelope, topic: string) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      handler(envelope, topic);
+    }, waitMs);
+  }) as Coalesced;
+  coalesced.cancel = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+  };
+  return coalesced;
 }
 
 /** Called after every (re)connection: refetch everything the component shows. */

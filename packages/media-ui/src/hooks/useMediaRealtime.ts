@@ -12,6 +12,7 @@ const DOMAINS = [REALTIME_DOMAIN.media] as const;
  */
 export function useMediaRealtime() {
   const invalidate = useInvalidateMedia();
-  useRealtimeSocketEvents({ domains: DOMAINS, onEvent: () => void invalidate() });
+  // An upload of N files sends N events: refetch once.
+  useRealtimeSocketEvents({ domains: DOMAINS, coalesceMs: 300, onEvent: () => void invalidate() });
   useRealtimeSocketResync(() => void invalidate());
 }

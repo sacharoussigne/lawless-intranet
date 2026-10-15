@@ -35,6 +35,7 @@ export function useWaitlistRealtime({
   useRealtimeSocketEvents({
     enabled,
     domains: DOMAINS,
+    coalesceMs: 200,
     onEvent: handleEvent,
   });
   useRealtimeSocketResync(handleResync, enabled);

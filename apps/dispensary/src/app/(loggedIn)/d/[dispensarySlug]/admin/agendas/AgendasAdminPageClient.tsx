@@ -13,8 +13,8 @@ import { DataTable } from 'mantine-datatable';
 import { IconEdit, IconPlus, IconTrash, IconUsers } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
-import { listAgendasForAdmin } from '@/app/_actions/agenda/agendas';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { AgendaMembersModal } from '../../employee/agenda/components/AgendaMembersModal';
 import { AgendaFormModal } from './components/AgendaFormModal';
 import { DeleteAgendaModal } from './components/DeleteAgendaModal';
@@ -47,7 +47,7 @@ export function AgendasAdminPageClient({
 
   const reload = async () => {
     try {
-      const result = await listAgendasForAdmin(dispensarySlug);
+      const result = await fetchRead(dispensarySlug, 'adminAgendas');
       const data = handleAction(result);
       if (data) setAgendas(data as AdminAgenda[]);
     } catch (err: unknown) {

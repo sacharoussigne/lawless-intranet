@@ -24,12 +24,10 @@ import {
 import {
   grantDocumentAccessAction,
   grantTemplateAccessAction,
-  listDocumentAccessesAction,
-  listTemplateAccessesAction,
   revokeDocumentAccessAction,
   revokeTemplateAccessAction,
-  searchUsersForDocumentAccess,
 } from '@/app/_actions/documentAccesses';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type ManageResourceAccessModalProps = {
   opened: boolean;
@@ -66,8 +64,8 @@ export function ManageResourceAccessModal({
 
     const result =
       resourceType === 'template'
-        ? await listTemplateAccessesAction(dispensarySlug, { templateId: resourceId })
-        : await listDocumentAccessesAction(dispensarySlug, { documentId: resourceId });
+        ? await fetchRead(dispensarySlug, 'templateAccesses', { templateId: resourceId })
+        : await fetchRead(dispensarySlug, 'documentAccesses', { documentId: resourceId });
 
     const data = handleAction(result);
     if (data) {
@@ -89,7 +87,7 @@ export function ManageResourceAccessModal({
 
   const searchUsers = useCallback(
     async (query: string) => {
-      const result = await searchUsersForDocumentAccess(dispensarySlug, query);
+      const result = await fetchRead(dispensarySlug, 'documentAccessUserSearch', { query });
       if (result.status === 200 && 'data' in result && result.data) {
         return result.data;
       }

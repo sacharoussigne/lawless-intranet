@@ -2,31 +2,27 @@ import type { BankActionResult, BankUiActions } from '@lawless-intranet/bank-ui'
 import { toUiResult } from '@lawless-intranet/host-kit/action';
 import {
   getOrCreateWeek,
-  getBankWeeks,
   createTransaction,
   updateTransaction,
   deleteTransaction,
   importTransactions,
-  getNameSuggestions,
-  getDescriptionSuggestions,
   addNameSuggestion,
   addDescriptionSuggestion,
   deleteNameSuggestion,
   deleteDescriptionSuggestion,
-  getPlannedTransactions,
-  getPendingOccurrences,
   createPlannedTransaction,
   updatePlannedTransaction,
   deletePlannedTransaction,
   confirmPlannedOccurrence,
   skipPlannedOccurrence,
-  getBankGlobalStats,
 } from '@/app/_actions/bankAccounts';
+import { fetchRead } from '@/lib/read/fetchRead';
 
+/** Reads go over GET (lib/read); `getOrCreateWeek` may create the week, so it stays an action. */
 export function createShelterBankActions(shelterSlug: string): BankUiActions {
   return {
     getOrCreateWeek: (date) => toUiResult(getOrCreateWeek(shelterSlug, date)),
-    getBankWeeks: () => toUiResult(getBankWeeks(shelterSlug)),
+    getBankWeeks: () => toUiResult(fetchRead(shelterSlug, 'bankWeeks')),
     createTransaction: (data) => toUiResult(createTransaction(shelterSlug, data)),
     updateTransaction: (data) => toUiResult(updateTransaction(shelterSlug, data)),
     deleteTransaction: (data) =>
@@ -34,8 +30,9 @@ export function createShelterBankActions(shelterSlug: string): BankUiActions {
         BankActionResult<{ success: true }>
       >,
     importTransactions: (data) => toUiResult(importTransactions(shelterSlug, data)),
-    getNameSuggestions: () => toUiResult(getNameSuggestions(shelterSlug)),
-    getDescriptionSuggestions: () => toUiResult(getDescriptionSuggestions(shelterSlug)),
+    getNameSuggestions: () => toUiResult(fetchRead(shelterSlug, 'bankNameSuggestions')),
+    getDescriptionSuggestions: () =>
+      toUiResult(fetchRead(shelterSlug, 'bankDescriptionSuggestions')),
     addNameSuggestion: (data) => toUiResult(addNameSuggestion(shelterSlug, data)),
     addDescriptionSuggestion: (data) =>
       toUiResult(addDescriptionSuggestion(shelterSlug, data)),
@@ -47,8 +44,8 @@ export function createShelterBankActions(shelterSlug: string): BankUiActions {
       toUiResult(deleteDescriptionSuggestion(shelterSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
-    getPlannedTransactions: () => toUiResult(getPlannedTransactions(shelterSlug)),
-    getPendingOccurrences: () => toUiResult(getPendingOccurrences(shelterSlug)),
+    getPlannedTransactions: () => toUiResult(fetchRead(shelterSlug, 'bankPlannedTransactions')),
+    getPendingOccurrences: () => toUiResult(fetchRead(shelterSlug, 'bankPendingOccurrences')),
     createPlannedTransaction: (data) =>
       toUiResult(createPlannedTransaction(shelterSlug, data)),
     updatePlannedTransaction: (data) =>
@@ -63,6 +60,6 @@ export function createShelterBankActions(shelterSlug: string): BankUiActions {
       toUiResult(skipPlannedOccurrence(shelterSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
-    getBankGlobalStats: () => toUiResult(getBankGlobalStats(shelterSlug)),
+    getBankGlobalStats: () => toUiResult(fetchRead(shelterSlug, 'bankGlobalStats')),
   };
 }

@@ -26,11 +26,11 @@ import {
   createAnimalDocumentFromTemplate,
   createFreeTextAnimalDocument,
   deleteAnimalDocument,
-  getAnimalDocument,
   updateAnimalDocument,
 } from '@/app/_actions/animalDocuments';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { buildAnimalTemplateVariables } from '@/lib/animals/documents';
 import { formatRpDate } from '@/lib/rpCalendar';
 import type {
@@ -96,7 +96,7 @@ export function AnimalDocumentsSection({
   const loadFullDocument = async (document: AnimalDocumentListItem) => {
     setLoadingDocumentId(document.id);
     try {
-      const result = await getAnimalDocument(shelterSlug, {
+      const result = await fetchRead(shelterSlug, 'animalDocument', {
         id: document.id,
         animalId: animal.id,
       });

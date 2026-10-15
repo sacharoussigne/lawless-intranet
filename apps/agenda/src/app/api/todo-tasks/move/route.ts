@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     );
   });
 
-  await emitAgendaTodosChange(
+  emitAgendaTodosChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,

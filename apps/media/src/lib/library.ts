@@ -170,7 +170,7 @@ export async function createFolder(
       createdById: userId,
     },
   });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   return { ok: true, data: serializeFolder(folder) };
 }
 
@@ -200,7 +200,7 @@ export async function updateFolder(
       ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
     },
   });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   return { ok: true, data: serializeFolder(updated) };
 }
 
@@ -219,7 +219,7 @@ export async function deleteFolder(
   });
 
   await prisma.mediaFolder.delete({ where: { id: folderId } });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   await deleteObjects(files.map((file) => file.storageKey));
   return { ok: true, data: { deletedFiles: files.length } };
 }
@@ -292,7 +292,7 @@ export async function completeUpload(
     where: { id: file.id },
     data: { status: 'READY', size: object.size },
   });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   return { ok: true, data: await serializeFile(ready) };
 }
 
@@ -318,7 +318,7 @@ export async function updateFile(
       ...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
     },
   });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   return { ok: true, data: await serializeFile(updated) };
 }
 
@@ -329,7 +329,7 @@ export async function deleteFile(
   const file = await prisma.mediaFile.findFirst({ where: { id: fileId, ...scopeWhere(scope) } });
   if (!file) return notFound('Fichier introuvable');
   await prisma.mediaFile.delete({ where: { id: file.id } });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   await deleteObjects([file.storageKey]);
   return { ok: true, data: { success: true } };
 }
@@ -367,7 +367,7 @@ export async function moveItems(
       data: { folderId: input.destinationId },
     }),
   ]);
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   return { ok: true, data: { moved: folders.count + files.count } };
 }
 
@@ -397,7 +397,7 @@ export async function deleteItems(
     // Cascade removes subfolders and their files.
     prisma.mediaFolder.deleteMany({ where: { id: { in: folderIds }, ...scopeWhere(scope) } }),
   ]);
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   await deleteObjects(files.map((file) => file.storageKey));
   return { ok: true, data: { deletedFiles: files.length } };
 }
@@ -419,7 +419,7 @@ export async function shareFile(
     where: { id: file.id },
     data: { shareToken: generateShareToken() },
   });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   return { ok: true, data: await serializeFile(shared) };
 }
 
@@ -433,7 +433,7 @@ export async function unshareFile(
   if (!file.shareToken) return { ok: true, data: await serializeFile(file) };
 
   const unshared = await prisma.mediaFile.update({ where: { id: file.id }, data: { shareToken: null } });
-  await notifyMediaChange(scope);
+  notifyMediaChange(scope);
   return { ok: true, data: await serializeFile(unshared) };
 }
 

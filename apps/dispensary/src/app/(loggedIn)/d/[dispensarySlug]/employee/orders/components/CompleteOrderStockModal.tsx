@@ -14,9 +14,8 @@ import {
 } from '@mantine/core';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
-import { getChestsList } from '@/app/_actions/chests';
-import { getItemsWithStock } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { getEffectiveStockQuantity } from '@/lib/stock/ensureTodayStock';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
@@ -117,7 +116,7 @@ function CompleteOrderStockBody({
     queries: trackedChestIds.map((chestId) => ({
       queryKey: stockKeys.items(dispensarySlug, chestId),
       queryFn: async () =>
-        handleAction(await getItemsWithStock(dispensarySlug, chestId)) as ItemWithRelations[],
+        handleAction(await fetchRead(dispensarySlug, 'itemsWithStock', { chestId })) as ItemWithRelations[],
       enabled: !skipStock && Boolean(dispensarySlug && chestId),
       staleTime: DEFAULT_STALE_TIME_MS,
     })),
@@ -403,7 +402,7 @@ export function CompleteOrderStockModal({
   const chestsQuery = useQuery({
     queryKey: ['chests-list', dispensarySlug, true],
     queryFn: async () =>
-      handleAction(await getChestsList(dispensarySlug, true)) as ChestListItem[],
+      handleAction(await fetchRead(dispensarySlug, 'chestsList', { onlyEnabled: true })) as ChestListItem[],
     enabled: opened && Boolean(dispensarySlug),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
