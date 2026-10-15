@@ -318,3 +318,55 @@ model Consultation {
   @@index([careEpisodeId, date])
   @@map("consultation")
 }
+
+enum AppLogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+enum AppLogKind {
+  ACTION
+  ERROR
+  BOT_REQUEST
+}
+
+enum AppLogSource {
+  INTRANET
+  DISCORD_BOT
+  SYSTEM
+}
+
+/// App-wide log (platform admins, /platform/logs): server errors of every feature,
+/// every action of sensitive features, every Discord bot request. See docs/APP-LOGS.md.
+model AppLog {
+  id            String       @id @default(uuid())
+  createdAt     DateTime     @default(now())
+  level         AppLogLevel
+  kind          AppLogKind
+  /// Feature key (AppFeatureKey, or "platform" / "unknown").
+  feature       String
+  /// Stable event name, e.g. weeklyActivity.chest.mark, bot.caisse.
+  event         String
+  /// success | noop | denied | invalid | failure
+  outcome       String?
+  message       String
+  source        AppLogSource
+  /// No foreign key: logs outlive a deleted dispensary.
+  dispensaryId  String?
+  userId        String?
+  discordUserId String?
+  httpStatus    Int?
+  durationMs    Int?
+  /// API route, or the page an action was called from.
+  path          String?
+  context       Json?
+  error         Json?
+
+  @@index([createdAt(sort: Desc)])
+  @@index([dispensaryId, createdAt(sort: Desc)])
+  @@index([feature, createdAt(sort: Desc)])
+  @@index([level, createdAt(sort: Desc)])
+  @@index([discordUserId, createdAt(sort: Desc)])
+  @@map("app_logs")
+}

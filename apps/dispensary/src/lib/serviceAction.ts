@@ -1,6 +1,7 @@
 import { serviceActionError as mapServiceActionError } from '@lawless-intranet/host-kit/service-error';
 import type { ActionResponse } from '@lawless-intranet/host-kit/action';
-import { actionErrorParser } from '@/lib/action';
+import { errorMessage, parseActionError } from '@/lib/action';
+import { reportServerError } from '@/lib/logs/errorReporter';
 import {
   requireTenantServerActionContext,
   type ServerActionGuardOptions,
@@ -9,10 +10,16 @@ import {
 /**
  * Action response for an error thrown while calling a service: the service
  * status and message when it answered, otherwise the generic parser (Zod 422,
- * ErrorWithStatus, 500).
+ * ErrorWithStatus, 500). Server errors go to the app log.
  */
-export function serviceActionError(error: unknown, fallback: string) {
-  return mapServiceActionError(error, fallback, actionErrorParser);
+export function serviceActionError(
+  error: unknown,
+  fallback: string,
+  logContext?: { feature?: string; dispensaryId?: string },
+) {
+  const response = mapServiceActionError(error, fallback, parseActionError);
+  reportServerError({ error, status: response.status, message: errorMessage(response), ...logContext });
+  return response;
 }
 
 /**
@@ -27,11 +34,13 @@ export async function withTenantService<T>(
   call: (tenantId: string) => Promise<T>,
   successStatus = 200,
 ): Promise<ActionResponse<T>> {
+  let dispensaryId: string | undefined;
   try {
     const ctx = await requireTenantServerActionContext(slug, guard);
     if (!ctx.ok) return ctx.response;
-    return { status: successStatus, data: await call(ctx.tenant.dispensaryId) };
+    dispensaryId = ctx.tenant.dispensaryId;
+    return { status: successStatus, data: await call(dispensaryId) };
   } catch (error) {
-    return serviceActionError(error, fallback);
+    return serviceActionError(error, fallback, { feature: guard.feature, dispensaryId });
   }
 }

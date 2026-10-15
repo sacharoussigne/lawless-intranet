@@ -1,3 +1,4 @@
+import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { getAppSettings } from '@/lib/appSettings';
 import { isDispensaryBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/dispensaryWeeklyActivityApiAuth';
 import {
@@ -15,7 +16,7 @@ import { dispensaryWeeklyActivityBotPresenceBodySchema } from '@/lib/dispensaryW
 import { botMarkPresenceForParisRelativeDay } from '@/lib/dispensaryWeeklyActivity/service';
 import { resolveBotDispensaryContext } from '@/lib/dispensaryWeeklyActivity/botRequestContext';
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
   if (!isDispensaryBotApiAuthorized(req)) {
     return jsonBotError(401, 'Non autorisé');
@@ -71,9 +72,11 @@ export async function POST(request: Request) {
     );
     return respondToBotWeekdayFlagResult(dispensaryCtx.dispensaryId, result);
   } catch (e) {
-    const mapped = mapBotRouteError(e);
-    if (mapped) return mapped;
-    const msg = e instanceof Error ? e.message : 'Erreur serveur';
-    return jsonBotError(500, msg);
+    return mapBotRouteError(e);
   }
 }
+
+export const POST = withBotRouteLog(
+  { feature: 'weeklyDispensaryActivity', event: 'bot.presence' },
+  handlePost,
+);

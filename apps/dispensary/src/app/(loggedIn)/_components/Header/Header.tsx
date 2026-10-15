@@ -296,6 +296,9 @@ export default function Header({
                         <Menu.Item component={Link} href={routes.platform.users}>
                           Comptes utilisateurs
                         </Menu.Item>
+                        <Menu.Item component={Link} href={routes.platform.logs}>
+                          Logs
+                        </Menu.Item>
                         <Menu.Divider />
                       </>
                     )}
@@ -367,6 +370,9 @@ export default function Header({
                   </Button>
                   <Button component={Link} href={routes.platform.dispensaries} variant="light">
                     Dispensaires
+                  </Button>
+                  <Button component={Link} href={routes.platform.logs} variant="light">
+                    Logs
                   </Button>
                 </>
               )}

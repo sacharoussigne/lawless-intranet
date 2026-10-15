@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
+import { withLoggedAction } from '@/lib/logs/writer';
 import { can } from '@lawless-intranet/auth-permissions';
 import {
   canEditAllWeeklyDispensaryActivity,
@@ -428,7 +429,7 @@ export async function listDispensaryWeeklyActivityTargets(dispensarySlug: string
   }
 }
 
-export async function createDispensaryWeeklyActivity(
+async function createDispensaryWeeklyActivityUnlogged(
   dispensarySlug: string,
   input: z.infer<typeof createIntranetSchema>,
   meta?: WeeklyActivityMutationMeta,
@@ -542,7 +543,7 @@ export async function createDispensaryWeeklyActivity(
   }
 }
 
-export async function updateDispensaryWeeklyActivity(
+async function updateDispensaryWeeklyActivityUnlogged(
   dispensarySlug: string,
   input: z.infer<typeof idSchema> & z.infer<typeof dispensaryWeeklyActivityUpdateSchema>,
   meta?: WeeklyActivityMutationMeta,
@@ -627,7 +628,7 @@ export async function updateDispensaryWeeklyActivity(
   }
 }
 
-export async function deleteDispensaryWeeklyActivity(
+async function deleteDispensaryWeeklyActivityUnlogged(
   dispensarySlug: string,
   input: z.infer<typeof idSchema>,
   meta?: WeeklyActivityMutationMeta,
@@ -709,7 +710,7 @@ async function serializeQuickActionRow(dispensaryId: string, activityId: string)
   return row;
 }
 
-export async function markOwnWeeklyChestToday(
+async function markOwnWeeklyChestTodayUnlogged(
   dispensarySlug: string,
   meta?: WeeklyActivityMutationMeta,
 ) {
@@ -737,6 +738,7 @@ export async function markOwnWeeklyChestToday(
     const result = await botMarkChestForParisToday(dispensaryId, discordGate.discordUserId, {
       displayName,
       meta: mutationMeta,
+      initiator: { source: 'INTRANET', actorUserId: gate.session.user.id },
     });
 
     const row = await serializeQuickActionRow(dispensaryId, result.activity.id);
@@ -752,7 +754,7 @@ export async function markOwnWeeklyChestToday(
   }
 }
 
-export async function markOwnWeeklyPresenceToday(
+async function markOwnWeeklyPresenceTodayUnlogged(
   dispensarySlug: string,
   meta?: WeeklyActivityMutationMeta,
 ) {
@@ -781,7 +783,11 @@ export async function markOwnWeeklyPresenceToday(
       dispensaryId,
       discordGate.discordUserId,
       'today',
-      { displayName, meta: mutationMeta },
+      {
+        displayName,
+        meta: mutationMeta,
+        initiator: { source: 'INTRANET', actorUserId: gate.session.user.id },
+      },
     );
 
     const row = await serializeQuickActionRow(dispensaryId, result.activity.id);
@@ -797,7 +803,7 @@ export async function markOwnWeeklyPresenceToday(
   }
 }
 
-export async function incrementOwnWeeklyCounter(
+async function incrementOwnWeeklyCounterUnlogged(
   dispensarySlug: string,
   input: { field: z.infer<typeof weeklyCounterFieldSchema> },
   meta?: WeeklyActivityMutationMeta,
@@ -837,6 +843,7 @@ export async function incrementOwnWeeklyCounter(
       discordGate.discordUserId,
       new Date(),
       displayName,
+      { source: 'INTRANET', actorUserId: gate.session.user.id },
     );
 
     const currentValue = existing[parsed.data];
@@ -866,7 +873,7 @@ const updateDiscordProfileSchema = z.object({
   accountNumber: z.number().int().min(1).max(999999).nullable().optional(),
 });
 
-export async function updateDispensaryDiscordProfile(
+async function updateDispensaryDiscordProfileUnlogged(
   dispensarySlug: string,
   input: z.infer<typeof updateDiscordProfileSchema>,
 ) {
@@ -902,4 +909,130 @@ export async function updateDispensaryDiscordProfile(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la mise à jour du profil Discord');
   }
+}
+
+/*
+ * Sensitive feature: every mutation is logged (success, refusal, failure), see docs/APP-LOGS.md.
+ */
+const WEEKLY_ACTIVITY_LOG = 'weeklyDispensaryActivity' as const;
+
+type QuickActionResult = Awaited<ReturnType<typeof markOwnWeeklyChestTodayUnlogged>>;
+
+/** Already ticked: logged as "nothing to do", with the message shown to the user. */
+function describeQuickAction(result: QuickActionResult) {
+  if (result.status !== 200 || !('data' in result) || !result.data) return undefined;
+  const { alreadyDone, row } = result.data;
+  return {
+    outcome: alreadyDone ? ('noop' as const) : ('success' as const),
+    context: { alreadyDone, activityId: row.id },
+  };
+}
+
+export async function createDispensaryWeeklyActivity(
+  dispensarySlug: string,
+  input: z.infer<typeof createIntranetSchema>,
+  meta?: WeeklyActivityMutationMeta,
+) {
+  return withLoggedAction(
+    {
+      feature: WEEKLY_ACTIVITY_LOG,
+      event: 'weeklyActivity.create',
+      label: 'Création d’une activité hebdo',
+      context: input,
+    },
+    () => createDispensaryWeeklyActivityUnlogged(dispensarySlug, input, meta),
+  );
+}
+
+export async function updateDispensaryWeeklyActivity(
+  dispensarySlug: string,
+  input: z.infer<typeof idSchema> & z.infer<typeof dispensaryWeeklyActivityUpdateSchema>,
+  meta?: WeeklyActivityMutationMeta,
+) {
+  return withLoggedAction(
+    {
+      feature: WEEKLY_ACTIVITY_LOG,
+      event: 'weeklyActivity.update',
+      label: 'Modification d’une activité hebdo',
+      context: input,
+    },
+    () => updateDispensaryWeeklyActivityUnlogged(dispensarySlug, input, meta),
+  );
+}
+
+export async function deleteDispensaryWeeklyActivity(
+  dispensarySlug: string,
+  input: z.infer<typeof idSchema>,
+  meta?: WeeklyActivityMutationMeta,
+) {
+  return withLoggedAction(
+    {
+      feature: WEEKLY_ACTIVITY_LOG,
+      event: 'weeklyActivity.delete',
+      label: 'Suppression d’une activité hebdo',
+      context: input,
+    },
+    () => deleteDispensaryWeeklyActivityUnlogged(dispensarySlug, input, meta),
+  );
+}
+
+export async function markOwnWeeklyChestToday(
+  dispensarySlug: string,
+  meta?: WeeklyActivityMutationMeta,
+) {
+  return withLoggedAction(
+    {
+      feature: WEEKLY_ACTIVITY_LOG,
+      event: 'weeklyActivity.chest.mark',
+      label: 'Caisse du jour (intranet)',
+    },
+    () => markOwnWeeklyChestTodayUnlogged(dispensarySlug, meta),
+    describeQuickAction,
+  );
+}
+
+export async function markOwnWeeklyPresenceToday(
+  dispensarySlug: string,
+  meta?: WeeklyActivityMutationMeta,
+) {
+  return withLoggedAction(
+    {
+      feature: WEEKLY_ACTIVITY_LOG,
+      event: 'weeklyActivity.presence.mark',
+      label: 'Présence du jour (intranet)',
+    },
+    () => markOwnWeeklyPresenceTodayUnlogged(dispensarySlug, meta),
+    describeQuickAction,
+  );
+}
+
+export async function incrementOwnWeeklyCounter(
+  dispensarySlug: string,
+  input: { field: z.infer<typeof weeklyCounterFieldSchema> },
+  meta?: WeeklyActivityMutationMeta,
+) {
+  return withLoggedAction(
+    {
+      feature: WEEKLY_ACTIVITY_LOG,
+      event: 'weeklyActivity.counter.increment',
+      label: 'Compteur hebdo +1 (intranet)',
+      context: input,
+    },
+    () => incrementOwnWeeklyCounterUnlogged(dispensarySlug, input, meta),
+  );
+}
+
+export async function updateDispensaryDiscordProfile(
+  dispensarySlug: string,
+  input: z.infer<typeof updateDiscordProfileSchema>,
+) {
+  return withLoggedAction(
+    {
+      feature: WEEKLY_ACTIVITY_LOG,
+      event: 'weeklyActivity.discordProfile.update',
+      label: 'Modification d’un profil Discord',
+      context: input,
+    },
+    () => updateDispensaryDiscordProfileUnlogged(dispensarySlug, input),
+  );
 }

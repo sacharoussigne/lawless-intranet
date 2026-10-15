@@ -1,3 +1,4 @@
+import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
 import { isDispensaryBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/dispensaryWeeklyActivityApiAuth';
 import { dispensaryWeeklyActivityCreateSchema } from '@/lib/dispensaryWeeklyActivity/schemas';
@@ -15,7 +16,7 @@ function jsonError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
 }
 
-export async function GET(request: Request) {
+async function handleGet(request: Request) {
   const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
   if (!isDispensaryBotApiAuthorized(req)) {
     return jsonError(401, 'Non autorisé');
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ status: 200, data });
 }
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
   if (!isDispensaryBotApiAuthorized(req)) {
     return jsonError(401, 'Non autorisé');
@@ -96,6 +97,16 @@ export async function POST(request: Request) {
     if (msg.includes('Unique constraint')) {
       return jsonError(409, 'Une entrée existe déjà pour cette période et ce médecin');
     }
-    return jsonError(500, msg);
+    throw e;
   }
 }
+
+export const GET = withBotRouteLog(
+  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.list' },
+  handleGet,
+);
+
+export const POST = withBotRouteLog(
+  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.create' },
+  handlePost,
+);
