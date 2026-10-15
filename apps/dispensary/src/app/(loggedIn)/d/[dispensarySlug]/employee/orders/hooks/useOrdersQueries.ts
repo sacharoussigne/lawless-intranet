@@ -8,13 +8,9 @@ import {
   completeOrder,
   createOrder,
   deleteOrder,
-  getActiveOrdersForCompanyGroup,
-  getOrderById,
   updateOrder,
 } from '@/app/_actions/orders';
 import { fetchRead } from '@/lib/read/fetchRead';
-import { getItems } from '@/app/_actions/items';
-import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
 import { handleAction } from '@/lib/action';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import {
@@ -63,7 +59,7 @@ async function fetchOrdersPage(dispensarySlug: string, filters: OrdersPageFilter
 }
 
 async function fetchOrderById(dispensarySlug: string, orderId: string) {
-  const result = await getOrderById(dispensarySlug, { id: orderId });
+  const result = await fetchRead(dispensarySlug, 'order', { id: orderId });
   return handleAction(result) as OrderWithRelations;
 }
 
@@ -71,14 +67,14 @@ async function fetchActiveOrdersForGroup(
   dispensarySlug: string,
   companyGroupId: string,
 ) {
-  const result = await getActiveOrdersForCompanyGroup(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'activeOrdersForCompanyGroup', {
     companyGroupId,
   });
   return handleAction(result);
 }
 
 async function fetchOrderLetterAssignments(dispensarySlug: string) {
-  const result = await getOrderLetterTemplateAssignments(dispensarySlug);
+  const result = await fetchRead(dispensarySlug, 'orderLetterAssignments');
   return handleAction(result) as OrderMailTemplateAssignment[];
 }
 
@@ -86,10 +82,7 @@ async function fetchOrderFormItems(
   dispensarySlug: string,
   companyGroupId: string | null,
 ) {
-  const result = await getItems(
-    dispensarySlug,
-    companyGroupId ? { companyGroupId } : undefined,
-  );
+  const result = await fetchRead(dispensarySlug, 'items', companyGroupId ? { companyGroupId } : {});
   const itemsData = handleAction(result);
   if (!itemsData) {
     return [];

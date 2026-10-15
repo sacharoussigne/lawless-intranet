@@ -22,8 +22,15 @@ import { getChestStockVisibility } from '@/app/_actions/stockVisibility';
 import { searchDispensaryUsersForCabinet } from '@/app/_actions/cabinet/members';
 import { searchUsersForDispensaryInvite } from '@/app/_actions/dispensaryMembers';
 import { searchUsersForDocumentAccess } from '@/app/_actions/documentAccesses';
-import { searchIndividualCustomers } from '@/app/_actions/individualCustomers';
-import { getOrdersPage } from '@/app/_actions/orders';
+import { getIndividualCustomers, searchIndividualCustomers } from '@/app/_actions/individualCustomers';
+import {
+  getMediaContents,
+  getMediaLibraryDownloadUrl,
+  getMediaTree,
+  getMediaUserName,
+} from '@/app/_actions/media';
+import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
+import { getActiveOrdersForCompanyGroup, getOrderById, getOrdersPage } from '@/app/_actions/orders';
 
 /**
  * Reads exposed as GET (`/api/d/<slug>/read/<query>`) for React Query refetches.
@@ -38,6 +45,12 @@ export const readRoutes = {
     listDispensaryWeeklyActivityTargets(slug),
   weeklySales: (slug: string, input: { weekDate?: Date }) => listWeeklySales(slug, input?.weekDate),
   ordersPage: (slug: string, input: Parameters<typeof getOrdersPage>[1]) => getOrdersPage(slug, input),
+  order: (slug: string, input: { id: string }) => getOrderById(slug, input),
+  activeOrdersForCompanyGroup: (slug: string, input: { companyGroupId: string }) =>
+    getActiveOrdersForCompanyGroup(slug, input),
+  orderLetterAssignments: (slug: string, _input?: undefined) =>
+    getOrderLetterTemplateAssignments(slug),
+  individualCustomers: (slug: string, _input?: undefined) => getIndividualCustomers(slug),
 
   // Agenda and to-dos (agenda-ui, see lib/agenda/agendaUiActions)
   agendaEvents: (slug: string, input: Parameters<typeof listAgendaEvents>[1]) =>
@@ -87,6 +100,14 @@ export const readRoutes = {
   ) => getStockMovementReconciliation(slug, input),
   stockConsumptionStats: (slug: string, input: { from: Date; to: Date }) =>
     getStockConsumptionStats(slug, input),
+
+  // Media library (media-ui, see lib/media/mediaUiActions)
+  mediaContents: (slug: string, input: { folderId: string | null }) =>
+    getMediaContents(slug, input?.folderId ?? null),
+  mediaTree: (slug: string, _input?: undefined) => getMediaTree(slug),
+  mediaDownloadUrl: (slug: string, input: { id: string }) =>
+    getMediaLibraryDownloadUrl(slug, input?.id),
+  mediaUserName: (slug: string, input: { userId: string }) => getMediaUserName(slug, input?.userId),
 } satisfies ReadRegistry;
 
 export type ReadRoutes = typeof readRoutes;
