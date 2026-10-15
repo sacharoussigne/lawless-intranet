@@ -107,14 +107,24 @@ export async function setChestCategoryHidden(
   ...args: Parameters<typeof setChestCategoryHiddenUnlogged>
 ) {
   return loggedAction(
-    { feature: 'stock', event: 'stockVisibility.setChestCategoryHidden' },
+    {
+      feature: 'stock',
+      event: 'stockVisibility.setChestCategoryHidden',
+      target: ([, input]) => input.chestId,
+    },
     args,
     () => setChestCategoryHiddenUnlogged(...args),
   );
 }
 
 export async function setChestItemHidden(...args: Parameters<typeof setChestItemHiddenUnlogged>) {
-  return loggedAction({ feature: 'stock', event: 'stockVisibility.setChestItemHidden' }, args, () =>
-    setChestItemHiddenUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'stockVisibility.setChestItemHidden',
+      target: ([, input]) => input.chestId,
+    },
+    args,
+    () => setChestItemHiddenUnlogged(...args),
   );
 }

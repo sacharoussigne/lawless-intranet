@@ -243,7 +243,11 @@ export async function setDispensaryMemberPermissionOverrides(
   ...args: Parameters<typeof setDispensaryMemberPermissionOverridesUnlogged>
 ) {
   return loggedAction(
-    { feature: 'settings', event: 'dispensaryPermissions.setDispensaryMemberPermissionOverrides' },
+    {
+      feature: 'settings',
+      event: 'dispensaryPermissions.setDispensaryMemberPermissionOverrides',
+      target: ([, data]) => data.userId,
+    },
     args,
     () => setDispensaryMemberPermissionOverridesUnlogged(...args),
   );

@@ -19,6 +19,8 @@ const listAppLogsSchema = z.object({
   search: z.string().trim().max(200).optional(),
   /** User id or Discord id (exact). */
   actor: z.string().trim().max(100).optional(),
+  /** Id of the object an action touched (exact): its whole history. */
+  targetId: z.string().trim().max(200).optional(),
   from: z.date().optional(),
   to: z.date().optional(),
 });
@@ -41,6 +43,7 @@ export type AppLogRow = {
   httpStatus: number | null;
   durationMs: number | null;
   path: string | null;
+  targetId: string | null;
   context: unknown;
   error: unknown;
 };
@@ -64,6 +67,7 @@ export async function listAppLogs(input: ListAppLogsInput) {
       ...(filters.actor
         ? { OR: [{ userId: filters.actor }, { discordUserId: filters.actor }] }
         : {}),
+      ...(filters.targetId ? { targetId: filters.targetId } : {}),
       ...(filters.from || filters.to
         ? {
             createdAt: {

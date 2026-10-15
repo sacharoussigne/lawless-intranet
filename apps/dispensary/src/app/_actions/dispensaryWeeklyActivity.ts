@@ -925,6 +925,7 @@ function describeQuickAction(result: QuickActionResult) {
   return {
     outcome: alreadyDone ? ('noop' as const) : ('success' as const),
     context: { alreadyDone, activityId: row.id },
+    targetId: row.id,
   };
 }
 
@@ -1019,6 +1020,7 @@ export async function incrementOwnWeeklyCounter(
       context: input,
     },
     () => incrementOwnWeeklyCounterUnlogged(dispensarySlug, input, meta),
+    (result) => ('data' in result ? { targetId: result.data.row.id } : undefined),
   );
 }
 

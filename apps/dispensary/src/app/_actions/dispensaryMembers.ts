@@ -143,7 +143,11 @@ export async function upsertDispensaryMember(
   ...args: Parameters<typeof upsertDispensaryMemberUnlogged>
 ) {
   return loggedAction(
-    { feature: 'settings', event: 'dispensaryMembers.upsertDispensaryMember' },
+    {
+      feature: 'settings',
+      event: 'dispensaryMembers.upsertDispensaryMember',
+      target: ([, data]) => data.userId,
+    },
     args,
     () => upsertDispensaryMemberUnlogged(...args),
   );

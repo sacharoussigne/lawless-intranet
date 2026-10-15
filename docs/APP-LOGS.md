@@ -12,9 +12,31 @@ Journal **à l'échelle de l'application** (pas d'un dispensaire), lu par les ad
 
 Les **lectures** (`get…`, `list…`, `search…`), rappelées en permanence par React Query et le temps réel, ne sont loguées qu'en cas d'erreur serveur. Une page qui recharge ses données ne crée donc aucune ligne.
 
-Chaque ligne (`AppLog`, table `app_logs`) porte : date, niveau, type, feature, événement (`weeklyActivity.chest.mark`, `bot.caisse`…), résultat (`success`, `noop`, `denied`, `invalid`, `failure`), message, source (intranet, bot, système), dispensaire, utilisateur, Discord id, statut HTTP, durée, chemin, `context` (entrée nettoyée, résumé du résultat) et `error` (nom, message, code, stack, cause).
+Chaque ligne (`AppLog`, table `app_logs`) porte : date, niveau, type, feature, événement (`weeklyActivity.chest.mark`, `bot.caisse`…), résultat (`success`, `noop`, `denied`, `invalid`, `failure`), message, source (intranet, bot, système), dispensaire, utilisateur, Discord id, statut HTTP, durée, chemin, **objet visé** (`targetId`), `context` (entrée nettoyée, résumé du résultat) et `error` (nom, message, code, stack, cause).
 
-Une modification en échec donne **deux lignes** : l'action (`ACTION`, `failure`) et l'erreur serveur (`ERROR`, avec la stack).
+Une modification en échec donne **deux lignes** : l'action (`ACTION`, `failure`) et l'erreur serveur (`ERROR`, avec la stack). Les deux portent le même objet visé quand il est connu.
+
+## Objet visé (`targetId`)
+
+Chaque ligne d'action porte, quand on peut le connaître, l'**id de l'objet touché** (entreprise créée, vente annulée, coffre modifié…). Le champ « Objet (id) » de la page, ou « Voir son historique » dans le détail d'une ligne, affiche tout l'historique de cet objet : création, modifications, suppression, refus et échecs.
+
+Règles par défaut (`defaultTargetId`, `src/lib/logs/target.ts`), appliquées à l'argument qui suit le slug :
+1. l'`id` de l'objet d'entrée (`data: { id }`) : modifications, suppressions ;
+2. l'argument lui-même s'il s'agit d'une chaîne (`id: string`, `saleId: string`) ;
+3. l'`id` des données du résultat : créations réussies.
+
+Il n'y a donc pas d'id pour une création en échec (l'objet n'existe pas, son entrée reste dans `context`) ni pour une action groupée (réordonnancement, déplacement de plusieurs fichiers : les ids sont dans `context`). En cas d'exception, seul l'id de l'entrée est connu.
+
+Quand ces règles se trompent (pas d'`id`, ou un objet parent plus parlant), passer `target` :
+
+```ts
+loggedAction(
+  { feature: 'agenda', event: 'members.upsertAgendaMember', target: ([, data]) => data.agendaId },
+  args,
+  () => upsertAgendaMemberUnlogged(...args),
+);
+```
+`target(args, result)` reçoit tous les arguments (slug compris) et le résultat (`undefined` si l'action a levé une exception). Avec `withLoggedAction`, le défaut est l'`id` de `context` puis celui du résultat ; `describe` peut renvoyer `targetId`.
 
 ## Lire un cas « le bot n'a rien fait »
 

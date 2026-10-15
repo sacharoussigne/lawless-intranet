@@ -174,7 +174,13 @@ async function saveFormSchemaEntityUnlogged(
 export async function saveFormSchemaEntity(
   ...args: Parameters<typeof saveFormSchemaEntityUnlogged>
 ) {
-  return loggedAction({ feature: 'cabinet', event: 'formSchema.saveFormSchemaEntity' }, args, () =>
-    saveFormSchemaEntityUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'cabinet',
+      event: 'formSchema.saveFormSchemaEntity',
+      target: ([, data]) => data.cabinetId,
+    },
+    args,
+    () => saveFormSchemaEntityUnlogged(...args),
   );
 }

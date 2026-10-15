@@ -8,6 +8,13 @@ import { LOG_FEATURE_LABELS } from './labels';
 import { dispensarySlugFromPath, featureFromPath } from './paths';
 import { sanitizeLogContext, serializeError } from './sanitize';
 import {
+  currentActionTargetId,
+  defaultTargetId,
+  runWithActionTarget,
+  toTargetId,
+  type TargetResolver,
+} from './target';
+import {
   levelFromOutcome,
   outcomeFromStatus,
   type AppLogEntry,
@@ -49,6 +56,7 @@ async function persist(entry: AppLogEntry): Promise<void> {
       httpStatus: entry.httpStatus ?? null,
       durationMs: entry.durationMs ?? null,
       path: entry.path?.slice(0, 500) ?? null,
+      targetId: entry.targetId ?? null,
       context: toJson(sanitizeLogContext(entry.context)),
       error: toJson(entry.error),
     },
@@ -101,6 +109,8 @@ type ActionLogInput = {
   error?: unknown;
   httpStatus?: number;
   durationMs?: number;
+  /** Id of the object the action touched (created, updated, deleted…), when known. */
+  targetId?: string | null;
   dispensaryId?: string | null;
   /** Tenant slug of the action: resolves the dispensary when `dispensaryId` is not given. */
   dispensarySlug?: string | null;
@@ -135,6 +145,7 @@ export function logAction(input: ActionLogInput): void {
       httpStatus: input.httpStatus ?? null,
       durationMs: input.durationMs ?? null,
       path: request.path,
+      targetId: input.targetId ?? null,
       context: input.context,
       error: input.error === undefined ? undefined : serializeError(input.error),
     })),
@@ -150,6 +161,8 @@ export function logServerError(input: {
   dispensaryId?: string;
   event?: string;
 }): void {
+  // Read now, inside the action: same object id as its `ACTION` line.
+  const targetId = currentActionTargetId();
   writeAppLog(
     resolveRequestLogContext().then((request) => ({
       level: 'ERROR' as const,
@@ -163,6 +176,7 @@ export function logServerError(input: {
       userId: request.userId,
       httpStatus: input.status,
       path: request.path,
+      targetId,
       error: serializeError(input.error),
     })),
   );
@@ -184,16 +198,27 @@ type LoggedRunMeta = {
   label: string;
   context?: unknown;
   dispensarySlug?: string;
+  /** Object id from the result, or from the input only when the action threw (no result). */
+  target: (result: ActionResult | undefined) => unknown;
 };
+
+/** Never throws: a wrong target rule must not break the action. */
+function safeTargetId(meta: LoggedRunMeta, result: ActionResult | undefined): string | null {
+  try {
+    return toTargetId(meta.target(result));
+  } catch {
+    return null;
+  }
+}
 
 async function runLogged<R extends ActionResult>(
   meta: LoggedRunMeta,
   run: () => Promise<R>,
-  describe?: (result: R) => { outcome?: LogOutcome; context?: unknown } | undefined,
+  describe?: (result: R) => { outcome?: LogOutcome; context?: unknown; targetId?: unknown } | undefined,
 ): Promise<R> {
   const startedAt = Date.now();
   try {
-    const result = await run();
+    const result = await runWithActionTarget(safeTargetId(meta, undefined), run);
     const extra = describe?.(result);
     const outcome = extra?.outcome ?? outcomeFromStatus(result.status);
     const reason = typeof result.error === 'string' ? ` : ${result.error}` : '';
@@ -205,6 +230,7 @@ async function runLogged<R extends ActionResult>(
       httpStatus: result.status,
       durationMs: Date.now() - startedAt,
       dispensarySlug: meta.dispensarySlug,
+      targetId: extra?.targetId === undefined ? safeTargetId(meta, result) : toTargetId(extra.targetId),
       context: { input: meta.context, ...(extra?.context === undefined ? {} : { result: extra.context }) },
     });
     return result;
@@ -216,6 +242,7 @@ async function runLogged<R extends ActionResult>(
       message: `${meta.label} (échec) : ${error instanceof Error ? error.message : String(error)}`,
       durationMs: Date.now() - startedAt,
       dispensarySlug: meta.dispensarySlug,
+      targetId: safeTargetId(meta, undefined),
       context: { input: meta.context },
       error,
     });
@@ -226,14 +253,19 @@ async function runLogged<R extends ActionResult>(
 /**
  * Runs a server action of a sensitive feature and logs its result: success,
  * refusal (401/403), invalid input (other 4xx) or failure (5xx or exception,
- * rethrown). `describe` adds details from the result (outcome override, context).
+ * rethrown). `describe` adds details from the result (outcome override, context,
+ * target id). By default the target is the `id` of `context`, else of the result data.
  */
 export async function withLoggedAction<R extends ActionResult>(
   meta: { feature: LogFeature; event: string; label: string; context?: unknown },
   run: () => Promise<R>,
-  describe?: (result: R) => { outcome?: LogOutcome; context?: unknown } | undefined,
+  describe?: (result: R) => { outcome?: LogOutcome; context?: unknown; targetId?: unknown } | undefined,
 ): Promise<R> {
-  return runLogged(meta, run, describe);
+  return runLogged(
+    { ...meta, target: (result) => defaultTargetId(meta.context, result) },
+    run,
+    describe,
+  );
 }
 
 /** Features whose actions take the dispensary slug as first argument. */
@@ -244,9 +276,17 @@ const NON_TENANT_FEATURES = new Set<LogFeature>(['platform', 'account']);
  * docs/APP-LOGS.md). `args` are the action arguments: the first one is the
  * dispensary slug for tenant features, the rest goes to the log context
  * (sanitized). Pass `context` instead when arguments hold secrets or large content.
+ * The target id follows `defaultTargetId` (input `id`, string id argument, created
+ * `id`); pass `target` when it guesses wrong (see docs/APP-LOGS.md).
  */
 export async function loggedAction<A extends unknown[], R extends ActionResult>(
-  meta: { feature: LogFeature; event: string; label?: string; context?: unknown },
+  meta: {
+    feature: LogFeature;
+    event: string;
+    label?: string;
+    context?: unknown;
+    target?: TargetResolver<A, R>;
+  },
   args: A,
   run: () => Promise<R>,
 ): Promise<R> {
@@ -259,6 +299,8 @@ export async function loggedAction<A extends unknown[], R extends ActionResult>(
       label: meta.label ?? `${LOG_FEATURE_LABELS[meta.feature]} · ${actionName}`,
       dispensarySlug: tenant ? (args[0] as string) : undefined,
       context: 'context' in meta ? meta.context : tenant ? args.slice(1) : args,
+      target: (result) =>
+        meta.target ? meta.target(args, result as R | undefined) : defaultTargetId(args[tenant ? 1 : 0], result),
     },
     run,
   );

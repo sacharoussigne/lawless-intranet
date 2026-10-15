@@ -360,6 +360,8 @@ model AppLog {
   durationMs    Int?
   /// API route, or the page an action was called from.
   path          String?
+  /// Id of the object the action touched (created, updated, deleted…), when known.
+  targetId      String?
   context       Json?
   error         Json?
 
@@ -368,5 +370,6 @@ model AppLog {
   @@index([feature, createdAt(sort: Desc)])
   @@index([level, createdAt(sort: Desc)])
   @@index([discordUserId, createdAt(sort: Desc)])
+  @@index([targetId, createdAt(sort: Desc)])
   @@map("app_logs")
 }

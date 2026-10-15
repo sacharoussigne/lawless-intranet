@@ -129,7 +129,11 @@ export async function upsertRoleChestAccess(
   ...args: Parameters<typeof upsertRoleChestAccessUnlogged>
 ) {
   return loggedAction(
-    { feature: 'management', event: 'chestAccess.upsertRoleChestAccess' },
+    {
+      feature: 'management',
+      event: 'chestAccess.upsertRoleChestAccess',
+      target: ([, data]) => data.role,
+    },
     args,
     () => upsertRoleChestAccessUnlogged(...args),
   );

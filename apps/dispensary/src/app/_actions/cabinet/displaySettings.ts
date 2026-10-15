@@ -104,7 +104,11 @@ export async function updateCabinetDisplaySettings(
   ...args: Parameters<typeof updateCabinetDisplaySettingsUnlogged>
 ) {
   return loggedAction(
-    { feature: 'cabinet', event: 'displaySettings.updateCabinetDisplaySettings' },
+    {
+      feature: 'cabinet',
+      event: 'displaySettings.updateCabinetDisplaySettings',
+      target: ([, data]) => data.cabinetId,
+    },
     args,
     () => updateCabinetDisplaySettingsUnlogged(...args),
   );

@@ -172,13 +172,25 @@ export async function searchDispensaryUsersForCabinet(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function upsertCabinetMember(...args: Parameters<typeof upsertCabinetMemberUnlogged>) {
-  return loggedAction({ feature: 'cabinet', event: 'members.upsertCabinetMember' }, args, () =>
-    upsertCabinetMemberUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'cabinet',
+      event: 'members.upsertCabinetMember',
+      target: ([, data]) => data.cabinetId,
+    },
+    args,
+    () => upsertCabinetMemberUnlogged(...args),
   );
 }
 
 export async function removeCabinetMember(...args: Parameters<typeof removeCabinetMemberUnlogged>) {
-  return loggedAction({ feature: 'cabinet', event: 'members.removeCabinetMember' }, args, () =>
-    removeCabinetMemberUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'cabinet',
+      event: 'members.removeCabinetMember',
+      target: ([, data]) => data.cabinetId,
+    },
+    args,
+    () => removeCabinetMemberUnlogged(...args),
   );
 }

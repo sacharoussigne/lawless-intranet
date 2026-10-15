@@ -210,8 +210,14 @@ export async function deleteMediaLibraryFolder(
 }
 
 export async function requestMediaUpload(...args: Parameters<typeof requestMediaUploadUnlogged>) {
-  return loggedAction({ feature: 'media', event: 'media.requestMediaUpload' }, args, () =>
-    requestMediaUploadUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'media',
+      event: 'media.requestMediaUpload',
+      target: (_args, result) => (result && 'data' in result ? result.data?.fileId : null),
+    },
+    args,
+    () => requestMediaUploadUnlogged(...args),
   );
 }
 

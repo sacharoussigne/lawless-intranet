@@ -241,7 +241,11 @@ export async function grantTemplateAccessAction(
   ...args: Parameters<typeof grantTemplateAccessActionUnlogged>
 ) {
   return loggedAction(
-    { feature: 'mails', event: 'documentAccesses.grantTemplateAccessAction' },
+    {
+      feature: 'mails',
+      event: 'documentAccesses.grantTemplateAccessAction',
+      target: ([, data]) => data.templateId,
+    },
     args,
     () => grantTemplateAccessActionUnlogged(...args),
   );
@@ -251,7 +255,11 @@ export async function revokeTemplateAccessAction(
   ...args: Parameters<typeof revokeTemplateAccessActionUnlogged>
 ) {
   return loggedAction(
-    { feature: 'mails', event: 'documentAccesses.revokeTemplateAccessAction' },
+    {
+      feature: 'mails',
+      event: 'documentAccesses.revokeTemplateAccessAction',
+      target: ([, data]) => data.templateId,
+    },
     args,
     () => revokeTemplateAccessActionUnlogged(...args),
   );
@@ -261,7 +269,11 @@ export async function grantDocumentAccessAction(
   ...args: Parameters<typeof grantDocumentAccessActionUnlogged>
 ) {
   return loggedAction(
-    { feature: 'mails', event: 'documentAccesses.grantDocumentAccessAction' },
+    {
+      feature: 'mails',
+      event: 'documentAccesses.grantDocumentAccessAction',
+      target: ([, data]) => data.documentId,
+    },
     args,
     () => grantDocumentAccessActionUnlogged(...args),
   );
@@ -271,7 +283,11 @@ export async function revokeDocumentAccessAction(
   ...args: Parameters<typeof revokeDocumentAccessActionUnlogged>
 ) {
   return loggedAction(
-    { feature: 'mails', event: 'documentAccesses.revokeDocumentAccessAction' },
+    {
+      feature: 'mails',
+      event: 'documentAccesses.revokeDocumentAccessAction',
+      target: ([, data]) => data.documentId,
+    },
     args,
     () => revokeDocumentAccessActionUnlogged(...args),
   );

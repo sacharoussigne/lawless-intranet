@@ -30,6 +30,8 @@ export type AppLogEntry = {
   httpStatus?: number | null;
   durationMs?: number | null;
   path?: string | null;
+  /** Id of the object the action touched, when known (see target.ts). */
+  targetId?: string | null;
   context?: unknown;
   error?: unknown;
 };

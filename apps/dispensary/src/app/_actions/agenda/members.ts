@@ -125,13 +125,25 @@ export async function searchDispensaryUsersForAgenda(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function upsertAgendaMember(...args: Parameters<typeof upsertAgendaMemberUnlogged>) {
-  return loggedAction({ feature: 'agenda', event: 'members.upsertAgendaMember' }, args, () =>
-    upsertAgendaMemberUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'agenda',
+      event: 'members.upsertAgendaMember',
+      target: ([, data]) => data.agendaId,
+    },
+    args,
+    () => upsertAgendaMemberUnlogged(...args),
   );
 }
 
 export async function removeAgendaMember(...args: Parameters<typeof removeAgendaMemberUnlogged>) {
-  return loggedAction({ feature: 'agenda', event: 'members.removeAgendaMember' }, args, () =>
-    removeAgendaMemberUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'agenda',
+      event: 'members.removeAgendaMember',
+      target: ([, data]) => data.agendaId,
+    },
+    args,
+    () => removeAgendaMemberUnlogged(...args),
   );
 }

@@ -458,7 +458,13 @@ export async function reorderAgendaTodoCategories(
 }
 
 export async function moveAgendaTodoTask(...args: Parameters<typeof moveAgendaTodoTaskUnlogged>) {
-  return loggedAction({ feature: 'agenda', event: 'todoLists.moveAgendaTodoTask' }, args, () =>
-    moveAgendaTodoTaskUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'agenda',
+      event: 'todoLists.moveAgendaTodoTask',
+      target: ([, data]) => data.taskId,
+    },
+    args,
+    () => moveAgendaTodoTaskUnlogged(...args),
   );
 }

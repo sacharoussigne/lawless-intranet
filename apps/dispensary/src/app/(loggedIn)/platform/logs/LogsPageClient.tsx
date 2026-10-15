@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Code,
   Container,
@@ -99,7 +100,16 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-function LogDetail({ log, dispensaryName }: { log: AppLogRow; dispensaryName: string | null }) {
+function LogDetail({
+  log,
+  dispensaryName,
+  onShowTargetHistory,
+}: {
+  log: AppLogRow;
+  dispensaryName: string | null;
+  onShowTargetHistory: (targetId: string) => void;
+}) {
+  const { targetId } = log;
   const facts: [string, string | null][] = [
     ['Date (heure réelle)', formatLogDate(log.createdAt)],
     ['Type', LOG_KIND_LABELS[log.kind]],
@@ -129,6 +139,17 @@ function LogDetail({ log, dispensaryName }: { log: AppLogRow; dispensaryName: st
             </Text>
           ))}
       </SimpleGrid>
+      {targetId && (
+        <Text size="sm">
+          <Text span c="dimmed" size="sm">
+            Objet :{' '}
+          </Text>
+          <Code>{targetId}</Code>{' '}
+          <Anchor component="button" type="button" size="sm" onClick={() => onShowTargetHistory(targetId)}>
+            Voir son historique
+          </Anchor>
+        </Text>
+      )}
       <JsonBlock label="Contexte" value={log.context} />
       <JsonBlock label="Erreur" value={log.error} />
     </Stack>
@@ -145,8 +166,10 @@ export function LogsPageClient({
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
   const [actor, setActor] = useState('');
+  const [targetId, setTargetId] = useState('');
   const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
   const [debouncedActor] = useDebouncedValue(actor.trim(), 300);
+  const [debouncedTargetId] = useDebouncedValue(targetId.trim(), 300);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AppLogRow | null>(null);
 
@@ -155,10 +178,11 @@ export function LogsPageClient({
     page === 1 &&
     !debouncedSearch &&
     !debouncedActor &&
+    !debouncedTargetId &&
     Object.entries(filters).every(([key, value]) => value === EMPTY_FILTERS[key as keyof Filters]);
 
   const logsQuery = useQuery({
-    queryKey: ['platform', 'appLogs', filters, debouncedSearch, debouncedActor, page],
+    queryKey: ['platform', 'appLogs', filters, debouncedSearch, debouncedActor, debouncedTargetId, page],
     queryFn: async () => {
       const input: ListAppLogsInput = {
         page,
@@ -172,6 +196,7 @@ export function LogsPageClient({
         outcome: (filters.outcome as ListAppLogsInput['outcome']) ?? undefined,
         search: debouncedSearch || undefined,
         actor: debouncedActor || undefined,
+        targetId: debouncedTargetId || undefined,
       };
       return handleAction(await fetchPlatformRead('', 'appLogs', input)) as LogsPage;
     },
@@ -276,6 +301,15 @@ export function LogsPageClient({
               setPage(1);
             }}
           />
+          <TextInput
+            label="Objet (id)"
+            placeholder="Id exact : tout son historique"
+            value={targetId}
+            onChange={(event) => {
+              setTargetId(event.currentTarget.value);
+              setPage(1);
+            }}
+          />
         </SimpleGrid>
         <TextInput
           leftSection={<IconSearch size={16} />}
@@ -360,6 +394,15 @@ export function LogsPageClient({
           <LogDetail
             log={selected}
             dispensaryName={selected.dispensaryId ? dispensaryNames.get(selected.dispensaryId) ?? null : null}
+            onShowTargetHistory={(id) => {
+              // Whole history of the object: any period, no other filter.
+              setFilters({ ...EMPTY_FILTERS, period: '90d' });
+              setSearch('');
+              setActor('');
+              setTargetId(id);
+              setPage(1);
+              setSelected(null);
+            }}
           />
         )}
       </AppModal>

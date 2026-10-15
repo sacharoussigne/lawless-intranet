@@ -135,21 +135,39 @@ async function overwriteStockForDateUnlogged(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function updateStock(...args: Parameters<typeof updateStockUnlogged>) {
-  return loggedAction({ feature: 'stock', event: 'mutations.updateStock' }, args, () =>
-    updateStockUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'mutations.updateStock',
+      target: ([, , chestId]) => chestId,
+    },
+    args,
+    () => updateStockUnlogged(...args),
   );
 }
 
 export async function craftItem(...args: Parameters<typeof craftItemUnlogged>) {
-  return loggedAction({ feature: 'stock', event: 'mutations.craftItem' }, args, () =>
-    craftItemUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'mutations.craftItem',
+      target: ([, data]) => data.recipeId,
+    },
+    args,
+    () => craftItemUnlogged(...args),
   );
 }
 
 export async function overwriteStockForDate(
   ...args: Parameters<typeof overwriteStockForDateUnlogged>
 ) {
-  return loggedAction({ feature: 'stock', event: 'mutations.overwriteStockForDate' }, args, () =>
-    overwriteStockForDateUnlogged(...args),
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'mutations.overwriteStockForDate',
+      target: ([, data]) => data.chestId,
+    },
+    args,
+    () => overwriteStockForDateUnlogged(...args),
   );
 }
