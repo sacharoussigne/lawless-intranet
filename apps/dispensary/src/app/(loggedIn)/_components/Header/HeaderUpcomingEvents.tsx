@@ -167,7 +167,11 @@ export function HeaderUpcomingEvents({
   const loading = eventsQuery.isPending;
 
   const invalidateEvents = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: agendaKeys.eventsAll(dispensarySlug) });
+    // The agenda page invalidates the same key for the same event: join its refetch.
+    void queryClient.invalidateQueries(
+      { queryKey: agendaKeys.eventsAll(dispensarySlug) },
+      { cancelRefetch: false },
+    );
   }, [dispensarySlug, queryClient]);
 
   // Only topics the user may see reach this client (agenda membership or participation).

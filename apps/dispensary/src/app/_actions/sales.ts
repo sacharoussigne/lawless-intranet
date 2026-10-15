@@ -59,15 +59,15 @@ function parseMutationMeta(meta: unknown): SalesMutationMeta | undefined {
   return { originClientId: parsed.data.originClientId };
 }
 
-async function emitSaleRealtime(
+function emitSaleRealtime(
   dispensaryId: string,
   sale: { id: string; userId: string; createdAt: Date | string },
   meta?: SalesMutationMeta,
-) {
+): void {
   const createdAt =
     typeof sale.createdAt === 'string' ? new Date(sale.createdAt) : sale.createdAt;
   const bounds = getBankWeekBounds(createdAt);
-  await emitWeeklySalesChange(
+  emitWeeklySalesChange(
     dispensaryId,
     saleToWeeklySalesRealtimePayload({
       id: sale.id,
@@ -218,7 +218,7 @@ export async function createSale(
     // Inventory createSale returns the list-item shape (with totals / item names).
     const listItem = sale as unknown as Parameters<typeof mapWeeklySaleRow>[0];
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       { id: listItem.id, userId: listItem.userId, createdAt: listItem.createdAt },
       mutationMeta,
@@ -268,7 +268,7 @@ export async function cancelSale(
       await inventoryCookie(),
     );
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       {
         id: saleId,
@@ -317,7 +317,7 @@ export async function depositSaleInCashRegister(
       await inventoryCookie(),
     );
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       {
         id: saleId,
@@ -368,7 +368,7 @@ export async function deleteSale(
       await inventoryCookie(),
     );
 
-    await emitSaleRealtime(
+    emitSaleRealtime(
       dispensaryId,
       { id: saleId, userId, createdAt: new Date() },
       mutationMeta,

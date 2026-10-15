@@ -274,7 +274,7 @@ export async function createAnimalWaitRequest(
     });
 
     revalidateWaitlist(shelterSlug);
-    await emitWaitlistChange(auth.tenant.shelterId, {}, {
+    emitWaitlistChange(auth.tenant.shelterId, {}, {
       originClientId: parsed.originClientId,
     });
     return { status: 200, data: mapWaitRequest(row) };
@@ -319,7 +319,7 @@ export async function updateAnimalWaitRequest(
     });
 
     revalidateWaitlist(shelterSlug);
-    await emitWaitlistChange(auth.tenant.shelterId, {}, {
+    emitWaitlistChange(auth.tenant.shelterId, {}, {
       originClientId: parsed.originClientId,
     });
     return { status: 200, data: mapWaitRequest(row) };
@@ -369,7 +369,7 @@ export async function setAnimalWaitRequestStatus(
     });
 
     revalidateWaitlist(shelterSlug);
-    await emitWaitlistChange(auth.tenant.shelterId, {}, {
+    emitWaitlistChange(auth.tenant.shelterId, {}, {
       originClientId: parsed.originClientId,
     });
     return { status: 200, data: mapWaitRequest(row) };
@@ -397,7 +397,7 @@ export async function deleteAnimalWaitRequest(
 
     await prisma.animalWaitRequest.delete({ where: { id: existing.id } });
     revalidateWaitlist(shelterSlug);
-    await emitWaitlistChange(auth.tenant.shelterId, {}, {
+    emitWaitlistChange(auth.tenant.shelterId, {}, {
       originClientId: parsed.originClientId,
     });
     return { status: 200, data: { id: existing.id } };

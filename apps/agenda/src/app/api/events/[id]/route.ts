@@ -237,7 +237,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     });
   });
 
-  await emitAgendaEventsChange(
+  emitAgendaEventsChange(
     existing.agenda.scopeType,
     existing.agenda.scopeId,
     existing.agendaId,
@@ -290,7 +290,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   const participantUserIds = await listEventParticipantIds(id);
   await prisma.agendaEvent.delete({ where: { id } });
 
-  await emitAgendaEventsChange(
+  emitAgendaEventsChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,

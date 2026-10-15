@@ -259,7 +259,7 @@ export async function createDispensaryWeeklyActivityWithHistory(
     return row;
   });
 
-  await emitWeeklyActivityChange(
+  emitWeeklyActivityChange(
     dispensaryId,
     activityToWeeklyActivityRealtimePayload(synced),
     actor.meta,
@@ -372,7 +372,7 @@ export async function updateDispensaryWeeklyActivityWithHistory(
   });
 
   if (finalRow.changed) {
-    await emitWeeklyActivityChange(
+    emitWeeklyActivityChange(
       finalRow.row.dispensaryId,
       activityToWeeklyActivityRealtimePayload(finalRow.row),
       actor.meta,
@@ -408,7 +408,7 @@ export async function deleteDispensaryWeeklyActivityWithHistory(
     return row;
   });
 
-  await emitWeeklyActivityChange(
+  emitWeeklyActivityChange(
     existing.dispensaryId,
     activityToWeeklyActivityRealtimePayload(existing),
     actor.meta,
@@ -599,7 +599,7 @@ export async function botSetWeekdayFlag(
   });
 
   if (result.outcome === 'ok') {
-    await emitWeeklyActivityChange(
+    emitWeeklyActivityChange(
       dispensaryId,
       activityToWeeklyActivityRealtimePayload(result.activity),
       options?.meta,

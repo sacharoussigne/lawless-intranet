@@ -112,7 +112,7 @@ export async function POST(request: Request, context: RouteContext) {
     },
   });
 
-  await emitAgendaEventTodosChange(
+  emitAgendaEventTodosChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,

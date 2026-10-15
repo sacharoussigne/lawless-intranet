@@ -65,7 +65,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     include: todoListInclude,
   });
 
-  await emitAgendaTodosChange(
+  emitAgendaTodosChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,
@@ -109,7 +109,7 @@ export async function DELETE(request: Request, context: RouteContext) {
 
   await prisma.agendaTodoList.delete({ where: { id } });
 
-  await emitAgendaTodosChange(
+  emitAgendaTodosChange(
     resolved.scopeType,
     resolved.scopeId,
     resolved.agendaId,

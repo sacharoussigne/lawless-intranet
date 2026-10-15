@@ -23,7 +23,8 @@ import {
   defaultActiveOrdersPageFilters,
   type OrdersPageFilters,
 } from '@/lib/orders/queryKeys';
-import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
+import { realtimeMutationMeta } from '@lawless-intranet/realtime';
+import { useOptionalRealtimeSocket, useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
 import { useOrdersRealtime } from '@/lib/orders/realtime/client/useOrdersRealtime';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import { normalizeItemPrice } from '@/lib/orders/calculateOrderPriceFromItems';
@@ -184,10 +185,13 @@ function invalidateAllOrdersQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   dispensarySlug: string,
 ) {
-  void queryClient.invalidateQueries({
-    queryKey: ordersKeys.all(dispensarySlug),
-    refetchType: 'all',
-  });
+  // Active queries only: the bridge runs on every page, inactive ones refetch when shown.
+  void queryClient.invalidateQueries({ queryKey: ordersKeys.all(dispensarySlug) });
+}
+
+/** Tags our mutations so the realtime echo is skipped (onSuccess already invalidates). */
+function useOrdersMutationMeta() {
+  return realtimeMutationMeta(useOptionalRealtimeSocket()?.clientId);
 }
 
 export function useInvalidateOrders() {
@@ -216,12 +220,13 @@ export function useOrdersRealtimeInvalidation(enabled = true) {
 }
 
 export function useCreateOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
 
   return useMutation({
     mutationFn: async (vars: Parameters<typeof createOrder>[1]) => {
-      const result = await createOrder(dispensarySlug, vars);
+      const result = await createOrder(dispensarySlug, vars, mutationMeta);
       handleAction(result);
       return vars;
     },
@@ -244,12 +249,13 @@ export function useCreateOrderMutation() {
 }
 
 export function useUpdateOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
 
   return useMutation({
     mutationFn: async (vars: Parameters<typeof updateOrder>[1]) => {
-      const result = await updateOrder(dispensarySlug, vars);
+      const result = await updateOrder(dispensarySlug, vars, mutationMeta);
       handleAction(result);
       return vars;
     },
@@ -272,12 +278,13 @@ export function useUpdateOrderMutation() {
 }
 
 export function useDeleteOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
 
   return useMutation({
     mutationFn: async (vars: { id: string }) => {
-      const result = await deleteOrder(dispensarySlug, vars);
+      const result = await deleteOrder(dispensarySlug, vars, mutationMeta);
       handleAction(result);
       return vars;
     },
@@ -300,6 +307,7 @@ export function useDeleteOrderMutation() {
 }
 
 export function useCompleteOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
   const dispensarySlug = useRequiredDispensarySlug();
   const invalidateOrders = useInvalidateOrders();
   const queryClient = useQueryClient();
@@ -309,7 +317,7 @@ export function useCompleteOrderMutation() {
       vars: Parameters<typeof completeOrder>[1] & { affectedChestIds?: string[] },
     ) => {
       const { affectedChestIds: _affectedChestIds, ...payload } = vars;
-      const result = await completeOrder(dispensarySlug, payload);
+      const result = await completeOrder(dispensarySlug, payload, mutationMeta);
       handleAction(result);
       return { vars };
     },
