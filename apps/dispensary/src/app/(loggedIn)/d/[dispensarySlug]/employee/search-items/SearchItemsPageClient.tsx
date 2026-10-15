@@ -14,8 +14,8 @@ import {
   Badge,
   LoadingOverlay,
 } from '@mantine/core';
-import { getItemsWithDetailedStock } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { getStockPreviousColumnLabel, getStockTotalPreviousLabel } from '@/lib/stock/stockPreviousLabel';
 import { notifications } from '@mantine/notifications';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
@@ -49,7 +49,9 @@ export default function SearchItemsPageClient({
 
     try {
       setLoading(true);
-      const result = await getItemsWithDetailedStock(dispensarySlug, selectedItemIds);
+      const result = await fetchRead(dispensarySlug, 'itemsWithDetailedStock', {
+        itemIds: selectedItemIds,
+      });
       const data = handleAction(result);
       if (data) {
         setItemsWithStock(data);

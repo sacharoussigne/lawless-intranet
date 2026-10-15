@@ -2,8 +2,9 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
-import { getItemsWithStockForDate, overwriteStockForDate } from '@/app/_actions/stock';
+import { overwriteStockForDate } from '@/app/_actions/stock';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import type { ItemWithStock } from '@/types/overwriteStock';
 import { notifications } from '@mantine/notifications';
@@ -30,7 +31,10 @@ export function useOverwriteStockItems(
     queryKey: overwriteStockKeys.items(dispensarySlug, selectedDate, selectedChestId),
     queryFn: async () => {
       const date = dayjs(selectedDate).toDate();
-      const result = await getItemsWithStockForDate(dispensarySlug, date, selectedChestId);
+      const result = await fetchRead(dispensarySlug, 'itemsWithStockForDate', {
+        date,
+        chestId: selectedChestId,
+      });
       return handleAction(result) as ItemWithStock[];
     },
     initialData: isInitial ? initialItems : undefined,

@@ -5,13 +5,10 @@ import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   deleteStockMovements,
-  getStockMovementReconciliation,
-  getStockMovementsPage,
   updateStockMovement,
 } from '@/app/_actions/stock';
-import { getChestsList } from '@/app/_actions/chests';
-import { getItems } from '@/app/_actions/items';
 import { handleAction } from '@/lib/action';
+import { fetchRead } from '@/lib/read/fetchRead';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import type {
@@ -46,7 +43,7 @@ async function fetchStockMovementsPage(
   dispensarySlug: string,
   filters: StockMovementsPageFilters,
 ) {
-  const result = await getStockMovementsPage(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'stockMovementsPage', {
     page: filters.page,
     pageSize: filters.pageSize,
     itemSearch: filters.itemSearch || undefined,
@@ -84,7 +81,7 @@ export function useChestsListForMovements() {
   return useQuery({
     queryKey: [...stockKeys.all(dispensarySlug), 'chests-list'] as const,
     queryFn: async () => {
-      const result = await getChestsList(dispensarySlug, true);
+      const result = await fetchRead(dispensarySlug, 'chestsList', { onlyEnabled: true });
       return handleAction(result) as { id: string; name: string; order: number }[];
     },
     enabled: Boolean(dispensarySlug),
@@ -98,7 +95,7 @@ export function useItemsListForMovements() {
   return useQuery({
     queryKey: [...stockKeys.all(dispensarySlug), 'items-list'] as const,
     queryFn: async () => {
-      const result = await getItems(dispensarySlug);
+      const result = await fetchRead(dispensarySlug, 'items', {});
       return handleAction(result) as { id: string; name: string; category: { name: string } }[];
     },
     enabled: Boolean(dispensarySlug),
@@ -126,7 +123,7 @@ export function useStockMovementReconciliation(
       if (!filters.itemId || !filters.from || !filters.to) {
         throw new Error('itemId, from and to are required');
       }
-      const result = await getStockMovementReconciliation(dispensarySlug, {
+      const result = await fetchRead(dispensarySlug, 'stockMovementReconciliation', {
         itemId: filters.itemId,
         chestFilter: filters.chestFilter,
         from: new Date(filters.from),
