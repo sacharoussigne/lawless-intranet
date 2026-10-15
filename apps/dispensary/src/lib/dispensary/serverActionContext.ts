@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthSession } from '@/lib/authSession';
+import { getAuthSession, type AuthSession } from '@/lib/authSession';
 import {
   requireDispensaryAccess,
   requireDispensaryFromSlug,
@@ -21,7 +21,7 @@ export type TenantActionContext = {
 export async function requireTenantActionContext(
   dispensarySlug: string,
 ): Promise<
-  | { ok: true; ctx: TenantActionContext }
+  | { ok: true; ctx: TenantActionContext; session: AuthSession }
   | { ok: false; status: 401 | 403 | 404; error: string }
 > {
   const session = await getAuthSession();
@@ -43,6 +43,7 @@ export async function requireTenantActionContext(
         effectivePermissions,
         userId: session.user.id,
       },
+      session,
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : '';
