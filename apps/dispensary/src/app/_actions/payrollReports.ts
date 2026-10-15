@@ -25,6 +25,9 @@ import type {
 } from '@/lib/payroll/apiRow';
 import { extractPayrollListSummary } from '@/lib/payroll/listSummary';
 import { fetchUserProfiles } from '@/lib/authUsers';
+import { actionErrorParser } from '@/lib/action';
+import { reportServerError } from '@/lib/logs/errorReporter';
+import { withLoggedAction } from '@/lib/logs/writer';
 
 const MAX_CAISSE_PRICE_USD = 1_000_000;
 const MAX_HTML_CHARS = 600_000;
@@ -130,7 +133,7 @@ export async function getPayrollReportById(dispensarySlug: string, id: string) {
   return { status: 200, data: { report: serialized } };
 }
 
-export async function createPayrollReportFromForm(dispensarySlug: string, formData: FormData) {
+async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formData: FormData) {
   const ctx = await requireTenantServerActionContext(dispensarySlug, payrollCreateGuardOptions);
   if (!ctx.ok) return ctx.response;
   const { dispensaryId } = ctx.tenant;
@@ -313,6 +316,7 @@ export async function createPayrollReportFromForm(dispensarySlug: string, formDa
     return { status: 200, data: { id: reportId } };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
+    reportServerError({ error: e, status: 500, message: msg, feature: 'payroll', dispensaryId });
     await prisma.payrollWeeklyReport.create({
       data: {
         id: reportId,
@@ -328,7 +332,19 @@ export async function createPayrollReportFromForm(dispensarySlug: string, formDa
   }
 }
 
-export async function updatePayrollReportResultJson(
+async function updatePayrollReportResultJsonUnlogged(
+  dispensarySlug: string,
+  id: string,
+  resultJson: unknown,
+) {
+  try {
+    return await updatePayrollReportResultJsonInner(dispensarySlug, id, resultJson);
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la modification du rapport de paie');
+  }
+}
+
+async function updatePayrollReportResultJsonInner(
   dispensarySlug: string,
   id: string,
   resultJson: unknown,
@@ -369,7 +385,15 @@ export async function updatePayrollReportResultJson(
   return { status: 200, data: { resultJson: recalculated } };
 }
 
-export async function deletePayrollReport(dispensarySlug: string, id: string) {
+async function deletePayrollReportUnlogged(dispensarySlug: string, id: string) {
+  try {
+    return await deletePayrollReportInner(dispensarySlug, id);
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la suppression du rapport de paie');
+  }
+}
+
+async function deletePayrollReportInner(dispensarySlug: string, id: string) {
   const ctx = await requireTenantServerActionContext(dispensarySlug, payrollCreateGuardOptions);
   if (!ctx.ok) return ctx.response;
   const { dispensaryId } = ctx.tenant;
@@ -411,4 +435,62 @@ export async function listPayrollImportableActivityWeeks(dispensarySlug: string)
       })),
     },
   };
+}
+
+/*
+ * Sensitive feature: every mutation is logged (success, refusal, failure), see docs/APP-LOGS.md.
+ */
+
+/** Form fields for the log: short values as they are, long ones (the pasted HTML) by size only. */
+function summarizePayrollForm(formData: FormData): Record<string, unknown> {
+  const summary: Record<string, unknown> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value !== 'string') {
+      summary[key] = { file: value.name, size: value.size };
+    } else {
+      summary[key] = value.length > 200 ? `[${value.length} caractères]` : value;
+    }
+  }
+  return summary;
+}
+
+export async function createPayrollReportFromForm(dispensarySlug: string, formData: FormData) {
+  return withLoggedAction(
+    {
+      feature: 'payroll',
+      event: 'payroll.report.create',
+      label: 'Création d’un rapport de paie',
+      context: summarizePayrollForm(formData),
+    },
+    () => createPayrollReportFromFormUnlogged(dispensarySlug, formData),
+    (result) => ('data' in result && result.data ? { context: result.data } : undefined),
+  );
+}
+
+export async function updatePayrollReportResultJson(
+  dispensarySlug: string,
+  id: string,
+  resultJson: unknown,
+) {
+  return withLoggedAction(
+    {
+      feature: 'payroll',
+      event: 'payroll.report.update',
+      label: 'Modification d’un rapport de paie',
+      context: { id },
+    },
+    () => updatePayrollReportResultJsonUnlogged(dispensarySlug, id, resultJson),
+  );
+}
+
+export async function deletePayrollReport(dispensarySlug: string, id: string) {
+  return withLoggedAction(
+    {
+      feature: 'payroll',
+      event: 'payroll.report.delete',
+      label: 'Suppression d’un rapport de paie',
+      context: { id },
+    },
+    () => deletePayrollReportUnlogged(dispensarySlug, id),
+  );
 }

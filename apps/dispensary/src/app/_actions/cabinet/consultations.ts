@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
@@ -142,7 +143,7 @@ export async function getConsultation(dispensarySlug: string, consultationId: st
   }
 }
 
-export async function createConsultation(
+async function createConsultationUnlogged(
   dispensarySlug: string,
   data: {
     careEpisodeId: string;
@@ -203,7 +204,7 @@ export async function createConsultation(
   }
 }
 
-export async function updateConsultation(
+async function updateConsultationUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -270,7 +271,7 @@ export async function updateConsultation(
   }
 }
 
-export async function deleteConsultation(dispensarySlug: string, id: string) {
+async function deleteConsultationUnlogged(dispensarySlug: string, id: string) {
   try {
     const ctx = await getCabinetSessionContext(dispensarySlug);
     if (!ctx.ok) return ctx.response;
@@ -306,4 +307,24 @@ export async function deleteConsultation(dispensarySlug: string, id: string) {
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression de la consultation');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createConsultation(...args: Parameters<typeof createConsultationUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'consultations.createConsultation' }, args, () =>
+    createConsultationUnlogged(...args),
+  );
+}
+
+export async function updateConsultation(...args: Parameters<typeof updateConsultationUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'consultations.updateConsultation' }, args, () =>
+    updateConsultationUnlogged(...args),
+  );
+}
+
+export async function deleteConsultation(...args: Parameters<typeof deleteConsultationUnlogged>) {
+  return loggedAction({ feature: 'cabinet', event: 'consultations.deleteConsultation' }, args, () =>
+    deleteConsultationUnlogged(...args),
+  );
 }

@@ -110,6 +110,12 @@ export async function doThing(slug: string, input: unknown) {
 - **Toujours** passer par le garde `requireTenantServerActionContext`, qui vérifie le tenant, la session, la feature et la permission, et **toujours** filtrer les requêtes Prisma par tenant.
 - Sérialiser les `Prisma.Decimal` en `number` avant de les renvoyer au client.
 
+### Logs applicatifs (`docs/APP-LOGS.md`)
+
+- Journal plateforme (`/platform/logs`, table `app_logs`) : **chaque mutation de toutes les features**, quel que soit le résultat ; les erreurs serveur (lectures comprises, automatique via `actionErrorParser` / `serviceActionError`) ; chaque requête du bot Discord. Les lectures ne sont pas loguées sinon.
+- **Toute nouvelle mutation exportée** d'un fichier `_actions` : corps dans `<nom>Unlogged`, export enveloppé par `loggedAction` (schéma dans `docs/APP-LOGS.md`, vérifié par `lib/logs/coverage.test.ts`). Nouvelle route du bot : `withBotRouteLog`, et relancer (`throw`) les erreurs inattendues au lieu de renvoyer leur message brut. Nouvelle page de feature : l'ajouter à `lib/logs/paths.ts`.
+- Ne jamais mettre de secret ni de gros contenu dans le `context` d'un log.
+
 ### Permissions et features
 
 - Il y a deux niveaux. Les **rôles globaux** Better Auth sont dans `packages/auth-permissions`. Les **permissions par tenant** (rôles et membres) sont dans `lib/dispensary/permissions*` et `lib/shelter/permissionsCatalog`, et se vérifient avec `can(perms, resource, action)`.

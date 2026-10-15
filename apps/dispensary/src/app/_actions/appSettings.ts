@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { revalidatePath } from 'next/cache';
 import { updateTag } from 'next/cache';
 import { z } from 'zod/v3';
@@ -82,7 +83,7 @@ export async function getAppSettingsForAdmin(
   }
 }
 
-export async function updateAppSettings(
+async function updateAppSettingsUnlogged(
   dispensarySlug: string,
   input: z.infer<typeof updateSchema>,
 ): Promise<
@@ -214,4 +215,12 @@ export async function updateAppSettings(
           : 'Erreur lors de la mise à jour des paramètres',
     };
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function updateAppSettings(...args: Parameters<typeof updateAppSettingsUnlogged>) {
+  return loggedAction({ feature: 'settings', event: 'appSettings.updateAppSettings' }, args, () =>
+    updateAppSettingsUnlogged(...args),
+  );
 }

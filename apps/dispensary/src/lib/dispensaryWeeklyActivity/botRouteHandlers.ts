@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
+import { getAppSettings } from '@/lib/appSettings';
+import { serializeDispensaryWeeklyActivityApiRow } from '@/lib/dispensaryWeeklyActivity/apiRow';
 import { BotDayEditError, resolveParisDayAnchor } from '@/lib/dispensaryWeeklyActivity/botDayEdit';
+import {
+  redactSerializedWeeklyActivityRow,
+  weeklyActivityFieldVisibilityFromSettings,
+} from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import { loadSerializedWeeklyActivityByIdForDispensary } from '@/lib/dispensaryWeeklyActivity/loadSerializedRow';
+import { logServerError } from '@/lib/logs/writer';
 import type { BotWeekdayFlagMarkResult } from '@/lib/dispensaryWeeklyActivity/service';
 import { botSetWeekdayFlag } from '@/lib/dispensaryWeeklyActivity/service';
 
@@ -8,17 +15,43 @@ export function jsonBotError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
 }
 
+/**
+ * The write is already committed here: if reloading the full row fails, answer
+ * from the row we have (without the Discord profile enrichment) instead of a
+ * 500 that would make the bot report a failure. The reload error is logged.
+ */
+async function serializeFlagResultActivity(dispensaryId: string, result: BotWeekdayFlagMarkResult) {
+  try {
+    const loaded = await loadSerializedWeeklyActivityByIdForDispensary(result.activity.id, dispensaryId);
+    if (loaded) return loaded;
+  } catch (error) {
+    logServerError({
+      error,
+      status: 500,
+      message: 'Rechargement de l’activité impossible après la mise à jour (réponse dégradée)',
+      feature: 'weeklyDispensaryActivity',
+      dispensaryId,
+      event: 'bot.weeklyActivity.reload',
+    });
+  }
+  const row = result.activity;
+  const visibility = weeklyActivityFieldVisibilityFromSettings(await getAppSettings(dispensaryId));
+  return redactSerializedWeeklyActivityRow(
+    serializeDispensaryWeeklyActivityApiRow({
+      ...row,
+      resolvedDisplayName: row.displayName,
+      discordProfileRole: null,
+      discordProfileAccountNumber: null,
+    }),
+    visibility,
+  );
+}
+
 export async function respondToBotWeekdayFlagResult(
   dispensaryId: string,
   result: BotWeekdayFlagMarkResult,
 ) {
-  const serialized = await loadSerializedWeeklyActivityByIdForDispensary(
-    result.activity.id,
-    dispensaryId,
-  );
-  if (!serialized) {
-    return jsonBotError(500, 'Erreur après mise à jour');
-  }
+  const serialized = await serializeFlagResultActivity(dispensaryId, result);
   if (result.outcome === 'already_done') {
     return NextResponse.json({
       status: 200,
@@ -31,11 +64,12 @@ export async function respondToBotWeekdayFlagResult(
   });
 }
 
-export function mapBotRouteError(e: unknown): NextResponse | null {
+/** Expected errors become a 4xx for the bot; anything else is rethrown (logged with its stack by withBotRouteLog). */
+export function mapBotRouteError(e: unknown): NextResponse {
   if (e instanceof BotDayEditError) {
     return jsonBotError(400, e.message);
   }
-  return null;
+  throw e;
 }
 
 export async function botEditWeekdayFlag(

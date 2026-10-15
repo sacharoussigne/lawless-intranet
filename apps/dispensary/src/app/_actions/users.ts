@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { z } from 'zod';
 import { z as zv3 } from 'zod/v3';
 import {
@@ -86,7 +87,7 @@ export async function listUsers(params?: {
   }
 }
 
-export async function createUser(data: z.infer<typeof createUserSchema>) {
+async function createUserUnlogged(data: z.infer<typeof createUserSchema>) {
   try {
     const validated = createUserSchema.parse(data);
     const authContext = await getAuthRequestContext();
@@ -113,7 +114,7 @@ export async function createUser(data: z.infer<typeof createUserSchema>) {
   }
 }
 
-export async function updateUser(data: z.infer<typeof updateUserSchema>) {
+async function updateUserUnlogged(data: z.infer<typeof updateUserSchema>) {
   try {
     const validated = updateUserSchema.parse(data);
     const authContext = await getAuthRequestContext();
@@ -147,7 +148,7 @@ export async function updateUser(data: z.infer<typeof updateUserSchema>) {
   }
 }
 
-export async function setPassword(data: z.infer<typeof setPasswordSchema>) {
+async function setPasswordUnlogged(data: z.infer<typeof setPasswordSchema>) {
   try {
     const validated = setPasswordSchema.parse(data);
     const authContext = await getAuthRequestContext();
@@ -169,7 +170,7 @@ export async function setPassword(data: z.infer<typeof setPasswordSchema>) {
   }
 }
 
-export async function deleteUser(data: z.infer<typeof deleteUserSchema>) {
+async function deleteUserUnlogged(data: z.infer<typeof deleteUserSchema>) {
   try {
     const validated = deleteUserSchema.parse(data);
     const authContext = await getAuthRequestContext();
@@ -185,7 +186,7 @@ export async function deleteUser(data: z.infer<typeof deleteUserSchema>) {
   }
 }
 
-export async function impersonateUser(userId: string) {
+async function impersonateUserUnlogged(userId: string) {
   try {
     const authContext = await getAuthRequestContext();
     const result = await impersonateUserAdmin({ userId }, authContext);
@@ -231,7 +232,7 @@ const updateMyProfileSchema = zv3.object({
     }, 'Image invalide (URL ou Data URL base64 ≤ 1MB)'),
 });
 
-export async function updateMyProfile(data: zv3.infer<typeof updateMyProfileSchema>) {
+async function updateMyProfileUnlogged(data: zv3.infer<typeof updateMyProfileSchema>) {
   try {
     const session = await getAuthSession();
     if (!session) {
@@ -266,7 +267,7 @@ const changeMyPasswordSchema = zv3.object({
   newPassword: zv3.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
 });
 
-export async function changeMyPassword(data: zv3.infer<typeof changeMyPasswordSchema>) {
+async function changeMyPasswordUnlogged(data: zv3.infer<typeof changeMyPasswordSchema>) {
   try {
     const session = await getAuthSession();
     if (!session) {
@@ -295,4 +296,54 @@ export async function changeMyPassword(data: zv3.infer<typeof changeMyPasswordSc
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du changement de mot de passe');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createUser(...args: Parameters<typeof createUserUnlogged>) {
+  return loggedAction({ feature: 'platform', event: 'users.createUser' }, args, () =>
+    createUserUnlogged(...args),
+  );
+}
+
+export async function updateUser(...args: Parameters<typeof updateUserUnlogged>) {
+  return loggedAction({ feature: 'platform', event: 'users.updateUser' }, args, () =>
+    updateUserUnlogged(...args),
+  );
+}
+
+export async function setPassword(...args: Parameters<typeof setPasswordUnlogged>) {
+  // Arguments hold a password: not logged.
+  return loggedAction(
+    { feature: 'platform', event: 'users.setPassword', context: null },
+    args,
+    () => setPasswordUnlogged(...args),
+  );
+}
+
+export async function deleteUser(...args: Parameters<typeof deleteUserUnlogged>) {
+  return loggedAction({ feature: 'platform', event: 'users.deleteUser' }, args, () =>
+    deleteUserUnlogged(...args),
+  );
+}
+
+export async function impersonateUser(...args: Parameters<typeof impersonateUserUnlogged>) {
+  return loggedAction({ feature: 'platform', event: 'users.impersonateUser' }, args, () =>
+    impersonateUserUnlogged(...args),
+  );
+}
+
+export async function updateMyProfile(...args: Parameters<typeof updateMyProfileUnlogged>) {
+  return loggedAction({ feature: 'platform', event: 'users.updateMyProfile' }, args, () =>
+    updateMyProfileUnlogged(...args),
+  );
+}
+
+export async function changeMyPassword(...args: Parameters<typeof changeMyPasswordUnlogged>) {
+  // Arguments hold a password: not logged.
+  return loggedAction(
+    { feature: 'platform', event: 'users.changeMyPassword', context: null },
+    args,
+    () => changeMyPasswordUnlogged(...args),
+  );
 }

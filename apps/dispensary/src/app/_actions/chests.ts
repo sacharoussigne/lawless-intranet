@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -43,7 +44,7 @@ export type GetChestsListOptions = {
   bypassAccessFilter?: boolean;
 };
 
-export async function createChest(
+async function createChestUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -114,7 +115,7 @@ export async function getChestsList(
   }
 }
 
-export async function updateChest(
+async function updateChestUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -140,7 +141,7 @@ export async function updateChest(
   }
 }
 
-export async function deleteChest(
+async function deleteChestUnlogged(
   dispensarySlug: string,
   data: { id: string; targetChestId: string },
 ) {
@@ -161,7 +162,7 @@ export async function deleteChest(
   }
 }
 
-export async function reorderChests(
+async function reorderChestsUnlogged(
   dispensarySlug: string,
   data: { items: { id: string; order: number }[] },
 ) {
@@ -180,4 +181,30 @@ export async function reorderChests(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du réordonnancement des coffres');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createChest(...args: Parameters<typeof createChestUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'chests.createChest' }, args, () =>
+    createChestUnlogged(...args),
+  );
+}
+
+export async function updateChest(...args: Parameters<typeof updateChestUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'chests.updateChest' }, args, () =>
+    updateChestUnlogged(...args),
+  );
+}
+
+export async function deleteChest(...args: Parameters<typeof deleteChestUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'chests.deleteChest' }, args, () =>
+    deleteChestUnlogged(...args),
+  );
+}
+
+export async function reorderChests(...args: Parameters<typeof reorderChestsUnlogged>) {
+  return loggedAction({ feature: 'management', event: 'chests.reorderChests' }, args, () =>
+    reorderChestsUnlogged(...args),
+  );
 }

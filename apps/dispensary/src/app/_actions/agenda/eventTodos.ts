@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import {
   createEventTodoTaskSchema,
@@ -48,7 +49,7 @@ export async function listAgendaEventTodoTasks(
   }
 }
 
-export async function createAgendaEventTodoTask(
+async function createAgendaEventTodoTaskUnlogged(
   dispensarySlug: string,
   data: { eventId: string; title: string; description?: string | null },
   meta?: AgendaMutationMeta,
@@ -74,7 +75,7 @@ export async function createAgendaEventTodoTask(
   }
 }
 
-export async function updateAgendaEventTodoTask(
+async function updateAgendaEventTodoTaskUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -106,7 +107,7 @@ export async function updateAgendaEventTodoTask(
   }
 }
 
-export async function deleteAgendaEventTodoTask(
+async function deleteAgendaEventTodoTaskUnlogged(
   dispensarySlug: string,
   id: string,
   meta?: AgendaMutationMeta,
@@ -126,4 +127,36 @@ export async function deleteAgendaEventTodoTask(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression de la tâche');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createAgendaEventTodoTask(
+  ...args: Parameters<typeof createAgendaEventTodoTaskUnlogged>
+) {
+  return loggedAction(
+    { feature: 'agenda', event: 'eventTodos.createAgendaEventTodoTask' },
+    args,
+    () => createAgendaEventTodoTaskUnlogged(...args),
+  );
+}
+
+export async function updateAgendaEventTodoTask(
+  ...args: Parameters<typeof updateAgendaEventTodoTaskUnlogged>
+) {
+  return loggedAction(
+    { feature: 'agenda', event: 'eventTodos.updateAgendaEventTodoTask' },
+    args,
+    () => updateAgendaEventTodoTaskUnlogged(...args),
+  );
+}
+
+export async function deleteAgendaEventTodoTask(
+  ...args: Parameters<typeof deleteAgendaEventTodoTaskUnlogged>
+) {
+  return loggedAction(
+    { feature: 'agenda', event: 'eventTodos.deleteAgendaEventTodoTask' },
+    args,
+    () => deleteAgendaEventTodoTaskUnlogged(...args),
+  );
 }

@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { z } from 'zod/v3';
 import {
   completeMediaUpload,
@@ -63,7 +64,7 @@ export async function getMediaTree(dispensarySlug: string) {
   );
 }
 
-export async function createMediaLibraryFolder(
+async function createMediaLibraryFolderUnlogged(
   dispensarySlug: string,
   input: { parentId: string | null; name: string },
 ) {
@@ -73,7 +74,7 @@ export async function createMediaLibraryFolder(
   });
 }
 
-export async function updateMediaLibraryFolder(
+async function updateMediaLibraryFolderUnlogged(
   dispensarySlug: string,
   input: { id: string; name?: string; parentId?: string | null },
 ) {
@@ -85,13 +86,13 @@ export async function updateMediaLibraryFolder(
   });
 }
 
-export async function deleteMediaLibraryFolder(dispensarySlug: string, id: string) {
+async function deleteMediaLibraryFolderUnlogged(dispensarySlug: string, id: string) {
   return withMedia(dispensarySlug, 'Erreur lors de la suppression du dossier', (scope, options) =>
     deleteMediaFolder(scope, idSchema.parse(id), options),
   );
 }
 
-export async function requestMediaUpload(
+async function requestMediaUploadUnlogged(
   dispensarySlug: string,
   input: { folderId: string | null; name: string; mimeType: string; size: number },
 ) {
@@ -108,13 +109,13 @@ export async function requestMediaUpload(
   });
 }
 
-export async function completeMediaLibraryUpload(dispensarySlug: string, fileId: string) {
+async function completeMediaLibraryUploadUnlogged(dispensarySlug: string, fileId: string) {
   return withMedia(dispensarySlug, "Erreur lors de la finalisation de l'import", (scope, options) =>
     completeMediaUpload(scope, idSchema.parse(fileId), options),
   );
 }
 
-export async function updateMediaLibraryFile(
+async function updateMediaLibraryFileUnlogged(
   dispensarySlug: string,
   input: { id: string; name?: string; folderId?: string | null },
 ) {
@@ -126,7 +127,7 @@ export async function updateMediaLibraryFile(
   });
 }
 
-export async function deleteMediaLibraryFile(dispensarySlug: string, id: string) {
+async function deleteMediaLibraryFileUnlogged(dispensarySlug: string, id: string) {
   return withMedia(dispensarySlug, 'Erreur lors de la suppression du fichier', (scope, options) =>
     deleteMediaFile(scope, idSchema.parse(id), options),
   );
@@ -138,19 +139,19 @@ export async function getMediaLibraryDownloadUrl(dispensarySlug: string, id: str
   );
 }
 
-export async function shareMediaLibraryFile(dispensarySlug: string, id: string) {
+async function shareMediaLibraryFileUnlogged(dispensarySlug: string, id: string) {
   return withMedia(dispensarySlug, 'Erreur lors du partage du fichier', (scope, options) =>
     shareMediaFile(scope, idSchema.parse(id), options),
   );
 }
 
-export async function unshareMediaLibraryFile(dispensarySlug: string, id: string) {
+async function unshareMediaLibraryFileUnlogged(dispensarySlug: string, id: string) {
   return withMedia(dispensarySlug, 'Erreur lors de la désactivation du lien', (scope, options) =>
     unshareMediaFile(scope, idSchema.parse(id), options),
   );
 }
 
-export async function moveMediaLibraryItems(
+async function moveMediaLibraryItemsUnlogged(
   dispensarySlug: string,
   input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
 ) {
@@ -160,7 +161,7 @@ export async function moveMediaLibraryItems(
   });
 }
 
-export async function deleteMediaLibraryItems(
+async function deleteMediaLibraryItemsUnlogged(
   dispensarySlug: string,
   input: { folderIds: string[]; fileIds: string[] },
 ) {
@@ -180,4 +181,98 @@ export async function getMediaUserName(dispensarySlug: string, userId: string) {
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement de l’utilisateur');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createMediaLibraryFolder(
+  ...args: Parameters<typeof createMediaLibraryFolderUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.createMediaLibraryFolder' }, args, () =>
+    createMediaLibraryFolderUnlogged(...args),
+  );
+}
+
+export async function updateMediaLibraryFolder(
+  ...args: Parameters<typeof updateMediaLibraryFolderUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.updateMediaLibraryFolder' }, args, () =>
+    updateMediaLibraryFolderUnlogged(...args),
+  );
+}
+
+export async function deleteMediaLibraryFolder(
+  ...args: Parameters<typeof deleteMediaLibraryFolderUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.deleteMediaLibraryFolder' }, args, () =>
+    deleteMediaLibraryFolderUnlogged(...args),
+  );
+}
+
+export async function requestMediaUpload(...args: Parameters<typeof requestMediaUploadUnlogged>) {
+  return loggedAction(
+    {
+      feature: 'media',
+      event: 'media.requestMediaUpload',
+      target: (_args, result) => (result && 'data' in result ? result.data?.fileId : null),
+    },
+    args,
+    () => requestMediaUploadUnlogged(...args),
+  );
+}
+
+export async function completeMediaLibraryUpload(
+  ...args: Parameters<typeof completeMediaLibraryUploadUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.completeMediaLibraryUpload' }, args, () =>
+    completeMediaLibraryUploadUnlogged(...args),
+  );
+}
+
+export async function updateMediaLibraryFile(
+  ...args: Parameters<typeof updateMediaLibraryFileUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.updateMediaLibraryFile' }, args, () =>
+    updateMediaLibraryFileUnlogged(...args),
+  );
+}
+
+export async function deleteMediaLibraryFile(
+  ...args: Parameters<typeof deleteMediaLibraryFileUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.deleteMediaLibraryFile' }, args, () =>
+    deleteMediaLibraryFileUnlogged(...args),
+  );
+}
+
+export async function shareMediaLibraryFile(
+  ...args: Parameters<typeof shareMediaLibraryFileUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.shareMediaLibraryFile' }, args, () =>
+    shareMediaLibraryFileUnlogged(...args),
+  );
+}
+
+export async function unshareMediaLibraryFile(
+  ...args: Parameters<typeof unshareMediaLibraryFileUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.unshareMediaLibraryFile' }, args, () =>
+    unshareMediaLibraryFileUnlogged(...args),
+  );
+}
+
+export async function moveMediaLibraryItems(
+  ...args: Parameters<typeof moveMediaLibraryItemsUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.moveMediaLibraryItems' }, args, () =>
+    moveMediaLibraryItemsUnlogged(...args),
+  );
+}
+
+export async function deleteMediaLibraryItems(
+  ...args: Parameters<typeof deleteMediaLibraryItemsUnlogged>
+) {
+  return loggedAction({ feature: 'media', event: 'media.deleteMediaLibraryItems' }, args, () =>
+    deleteMediaLibraryItemsUnlogged(...args),
+  );
 }

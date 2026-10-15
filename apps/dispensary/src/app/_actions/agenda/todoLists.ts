@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import type { AgendaTodoListDTO } from '@/types/agenda';
 import {
@@ -93,7 +94,7 @@ export async function listAgendaTodoLists(
   }
 }
 
-export async function createAgendaTodoList(
+async function createAgendaTodoListUnlogged(
   dispensarySlug: string,
   data: { agendaId: string; name: string },
   meta?: AgendaMutationMeta,
@@ -116,7 +117,7 @@ export async function createAgendaTodoList(
   }
 }
 
-export async function updateAgendaTodoList(
+async function updateAgendaTodoListUnlogged(
   dispensarySlug: string,
   data: { id: string; name: string },
   meta?: AgendaMutationMeta,
@@ -139,7 +140,7 @@ export async function updateAgendaTodoList(
   }
 }
 
-export async function deleteAgendaTodoList(
+async function deleteAgendaTodoListUnlogged(
   dispensarySlug: string,
   id: string,
   meta?: AgendaMutationMeta,
@@ -161,7 +162,7 @@ export async function deleteAgendaTodoList(
   }
 }
 
-export async function createAgendaTodoCategory(
+async function createAgendaTodoCategoryUnlogged(
   dispensarySlug: string,
   data: { listId: string; name: string },
   meta?: AgendaMutationMeta,
@@ -184,7 +185,7 @@ export async function createAgendaTodoCategory(
   }
 }
 
-export async function updateAgendaTodoCategory(
+async function updateAgendaTodoCategoryUnlogged(
   dispensarySlug: string,
   data: { id: string; name: string },
   meta?: AgendaMutationMeta,
@@ -207,7 +208,7 @@ export async function updateAgendaTodoCategory(
   }
 }
 
-export async function deleteAgendaTodoCategory(
+async function deleteAgendaTodoCategoryUnlogged(
   dispensarySlug: string,
   id: string,
   meta?: AgendaMutationMeta,
@@ -229,7 +230,7 @@ export async function deleteAgendaTodoCategory(
   }
 }
 
-export async function createAgendaTodoTask(
+async function createAgendaTodoTaskUnlogged(
   dispensarySlug: string,
   data: { categoryId: string; title: string; description?: string | null },
   meta?: AgendaMutationMeta,
@@ -255,7 +256,7 @@ export async function createAgendaTodoTask(
   }
 }
 
-export async function updateAgendaTodoTask(
+async function updateAgendaTodoTaskUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -291,7 +292,7 @@ export async function updateAgendaTodoTask(
   }
 }
 
-export async function deleteAgendaTodoTask(
+async function deleteAgendaTodoTaskUnlogged(
   dispensarySlug: string,
   id: string,
   meta?: AgendaMutationMeta,
@@ -313,7 +314,7 @@ export async function deleteAgendaTodoTask(
   }
 }
 
-export async function reorderAgendaTodoCategories(
+async function reorderAgendaTodoCategoriesUnlogged(
   dispensarySlug: string,
   data: { items: { id: string; order: number }[] },
   meta?: AgendaMutationMeta,
@@ -338,7 +339,7 @@ export async function reorderAgendaTodoCategories(
   }
 }
 
-export async function moveAgendaTodoTask(
+async function moveAgendaTodoTaskUnlogged(
   dispensarySlug: string,
   data: {
     taskId: string;
@@ -364,4 +365,106 @@ export async function moveAgendaTodoTask(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du déplacement de la tâche');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createAgendaTodoList(
+  ...args: Parameters<typeof createAgendaTodoListUnlogged>
+) {
+  return loggedAction({ feature: 'agenda', event: 'todoLists.createAgendaTodoList' }, args, () =>
+    createAgendaTodoListUnlogged(...args),
+  );
+}
+
+export async function updateAgendaTodoList(
+  ...args: Parameters<typeof updateAgendaTodoListUnlogged>
+) {
+  return loggedAction({ feature: 'agenda', event: 'todoLists.updateAgendaTodoList' }, args, () =>
+    updateAgendaTodoListUnlogged(...args),
+  );
+}
+
+export async function deleteAgendaTodoList(
+  ...args: Parameters<typeof deleteAgendaTodoListUnlogged>
+) {
+  return loggedAction({ feature: 'agenda', event: 'todoLists.deleteAgendaTodoList' }, args, () =>
+    deleteAgendaTodoListUnlogged(...args),
+  );
+}
+
+export async function createAgendaTodoCategory(
+  ...args: Parameters<typeof createAgendaTodoCategoryUnlogged>
+) {
+  return loggedAction(
+    { feature: 'agenda', event: 'todoLists.createAgendaTodoCategory' },
+    args,
+    () => createAgendaTodoCategoryUnlogged(...args),
+  );
+}
+
+export async function updateAgendaTodoCategory(
+  ...args: Parameters<typeof updateAgendaTodoCategoryUnlogged>
+) {
+  return loggedAction(
+    { feature: 'agenda', event: 'todoLists.updateAgendaTodoCategory' },
+    args,
+    () => updateAgendaTodoCategoryUnlogged(...args),
+  );
+}
+
+export async function deleteAgendaTodoCategory(
+  ...args: Parameters<typeof deleteAgendaTodoCategoryUnlogged>
+) {
+  return loggedAction(
+    { feature: 'agenda', event: 'todoLists.deleteAgendaTodoCategory' },
+    args,
+    () => deleteAgendaTodoCategoryUnlogged(...args),
+  );
+}
+
+export async function createAgendaTodoTask(
+  ...args: Parameters<typeof createAgendaTodoTaskUnlogged>
+) {
+  return loggedAction({ feature: 'agenda', event: 'todoLists.createAgendaTodoTask' }, args, () =>
+    createAgendaTodoTaskUnlogged(...args),
+  );
+}
+
+export async function updateAgendaTodoTask(
+  ...args: Parameters<typeof updateAgendaTodoTaskUnlogged>
+) {
+  return loggedAction({ feature: 'agenda', event: 'todoLists.updateAgendaTodoTask' }, args, () =>
+    updateAgendaTodoTaskUnlogged(...args),
+  );
+}
+
+export async function deleteAgendaTodoTask(
+  ...args: Parameters<typeof deleteAgendaTodoTaskUnlogged>
+) {
+  return loggedAction({ feature: 'agenda', event: 'todoLists.deleteAgendaTodoTask' }, args, () =>
+    deleteAgendaTodoTaskUnlogged(...args),
+  );
+}
+
+export async function reorderAgendaTodoCategories(
+  ...args: Parameters<typeof reorderAgendaTodoCategoriesUnlogged>
+) {
+  return loggedAction(
+    { feature: 'agenda', event: 'todoLists.reorderAgendaTodoCategories' },
+    args,
+    () => reorderAgendaTodoCategoriesUnlogged(...args),
+  );
+}
+
+export async function moveAgendaTodoTask(...args: Parameters<typeof moveAgendaTodoTaskUnlogged>) {
+  return loggedAction(
+    {
+      feature: 'agenda',
+      event: 'todoLists.moveAgendaTodoTask',
+      target: ([, data]) => data.taskId,
+    },
+    args,
+    () => moveAgendaTodoTaskUnlogged(...args),
+  );
 }

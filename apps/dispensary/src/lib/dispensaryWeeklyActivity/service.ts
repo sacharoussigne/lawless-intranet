@@ -421,6 +421,7 @@ export async function findOrCreateDispensaryActivityForParisDay(
   discordUserId: string,
   dayAnchor: Date,
   preferredDisplayName?: string,
+  initiator: WeeklyActivityInitiator = DISCORD_BOT_INITIATOR,
 ): Promise<DispensaryWeeklyActivity> {
   const preferred =
     preferredDisplayName !== undefined && preferredDisplayName.trim().length > 0
@@ -428,8 +429,8 @@ export async function findOrCreateDispensaryActivityForParisDay(
       : undefined;
 
   const actor: ActorContext = {
-    source: 'DISCORD_BOT',
-    actorUserId: null,
+    source: initiator.source,
+    actorUserId: initiator.actorUserId,
     actorDiscordUserId: discordUserId,
     dispensaryId,
   };
@@ -493,7 +494,17 @@ export type BotWeekdayFlagMarkResult =
   | { outcome: 'already_done'; message: string; activity: DispensaryWeeklyActivity }
   | { outcome: 'ok'; activity: DispensaryWeeklyActivity };
 
+/** Who triggered a quick action: the Discord bot, or a signed-in user on the intranet. */
+export type WeeklyActivityInitiator = {
+  source: DispensaryWeeklyActivityHistorySource;
+  actorUserId: string | null;
+};
+
+const DISCORD_BOT_INITIATOR: WeeklyActivityInitiator = { source: 'DISCORD_BOT', actorUserId: null };
+
 export type BotWeeklyActivityRequestOptions = {
+  /** History source and actor; the Discord bot when omitted. */
+  initiator?: WeeklyActivityInitiator;
   /** RP / Discord display name; updates stored `displayName` when different (trim, 1–200 chars). */
   displayName?: string;
   /** When false, allows editing days outside the current Paris week (legacy presence yesterday). */
@@ -533,6 +544,7 @@ export async function botSetWeekdayFlag(
     discordUserId,
     createAnchor,
     options?.displayName,
+    options?.initiator,
   );
 
   if (requireCurrentWeek) {
@@ -587,8 +599,8 @@ export async function botSetWeekdayFlag(
       data: {
         activityId: synced.id,
         action: historyAction,
-        source: 'DISCORD_BOT',
-        actorUserId: null,
+        source: options?.initiator?.source ?? DISCORD_BOT_INITIATOR.source,
+        actorUserId: options?.initiator?.actorUserId ?? null,
         actorDiscordUserId: discordUserId,
         previousValues: previousValues as Prisma.InputJsonValue,
         nextValues: nextValues as Prisma.InputJsonValue,

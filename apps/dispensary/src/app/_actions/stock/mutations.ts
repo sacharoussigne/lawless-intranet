@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import {
   craftItem as craftItemApi,
@@ -12,7 +13,7 @@ import {
 } from '@/lib/inventory/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 
-export async function updateStock(
+async function updateStockUnlogged(
   dispensarySlug: string,
   data: { itemId: string; quantity: number }[],
   chestId?: string | null,
@@ -54,7 +55,7 @@ export async function updateStock(
   }
 }
 
-export async function craftItem(
+async function craftItemUnlogged(
   dispensarySlug: string,
   data: {
     craftedItemId: string;
@@ -100,7 +101,7 @@ export async function craftItem(
   }
 }
 
-export async function overwriteStockForDate(
+async function overwriteStockForDateUnlogged(
   dispensarySlug: string,
   data: {
     date: Date;
@@ -129,4 +130,44 @@ export async function overwriteStockForDate(
   } catch (error) {
     return serviceActionError(error, "Erreur lors de l'écrasement des stocks");
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function updateStock(...args: Parameters<typeof updateStockUnlogged>) {
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'mutations.updateStock',
+      target: ([, , chestId]) => chestId,
+    },
+    args,
+    () => updateStockUnlogged(...args),
+  );
+}
+
+export async function craftItem(...args: Parameters<typeof craftItemUnlogged>) {
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'mutations.craftItem',
+      target: ([, data]) => data.recipeId,
+    },
+    args,
+    () => craftItemUnlogged(...args),
+  );
+}
+
+export async function overwriteStockForDate(
+  ...args: Parameters<typeof overwriteStockForDateUnlogged>
+) {
+  return loggedAction(
+    {
+      feature: 'stock',
+      event: 'mutations.overwriteStockForDate',
+      target: ([, data]) => data.chestId,
+    },
+    args,
+    () => overwriteStockForDateUnlogged(...args),
+  );
 }

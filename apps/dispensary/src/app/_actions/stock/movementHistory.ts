@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod';
 import type { StockMovementKind as StockMovementKindType } from '@lawless-intranet/types';
@@ -136,7 +137,7 @@ export async function getStockMovementsPage(
   }
 }
 
-export async function updateStockMovement(
+async function updateStockMovementUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -179,14 +180,14 @@ export async function updateStockMovement(
   }
 }
 
-export async function deleteStockMovement(
+async function deleteStockMovementUnlogged(
   dispensarySlug: string,
   data: { id: string },
 ) {
   return deleteStockMovements(dispensarySlug, { ids: [data.id] });
 }
 
-export async function deleteStockMovements(
+async function deleteStockMovementsUnlogged(
   dispensarySlug: string,
   data: { ids: string[] },
 ) {
@@ -266,4 +267,32 @@ export async function getStockMovementReconciliation(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la réconciliation des mouvements');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function updateStockMovement(...args: Parameters<typeof updateStockMovementUnlogged>) {
+  return loggedAction(
+    { feature: 'stock', event: 'movementHistory.updateStockMovement' },
+    args,
+    () => updateStockMovementUnlogged(...args),
+  );
+}
+
+export async function deleteStockMovement(...args: Parameters<typeof deleteStockMovementUnlogged>) {
+  return loggedAction(
+    { feature: 'stock', event: 'movementHistory.deleteStockMovement' },
+    args,
+    () => deleteStockMovementUnlogged(...args),
+  );
+}
+
+export async function deleteStockMovements(
+  ...args: Parameters<typeof deleteStockMovementsUnlogged>
+) {
+  return loggedAction(
+    { feature: 'stock', event: 'movementHistory.deleteStockMovements' },
+    args,
+    () => deleteStockMovementsUnlogged(...args),
+  );
 }

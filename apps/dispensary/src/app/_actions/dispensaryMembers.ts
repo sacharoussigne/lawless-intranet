@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { actionErrorParser } from '@/lib/action';
@@ -49,7 +50,7 @@ export async function listDispensaryMembers(dispensarySlug: string) {
   return { status: 200, data: enriched };
 }
 
-export async function upsertDispensaryMember(
+async function upsertDispensaryMemberUnlogged(
   dispensarySlug: string,
   data: {
     userId: string;
@@ -97,7 +98,7 @@ export async function upsertDispensaryMember(
   }
 }
 
-export async function removeDispensaryMember(dispensarySlug: string, userId: string) {
+async function removeDispensaryMemberUnlogged(dispensarySlug: string, userId: string) {
   try {
     const auth = await requireDispensaryAdminContext(dispensarySlug);
     if (!auth.ok) {
@@ -134,4 +135,30 @@ export async function searchUsersForDispensaryInvite(dispensarySlug: string, que
     status: 200,
     data: users.map((user) => ({ id: user.id, name: user.name })),
   };
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function upsertDispensaryMember(
+  ...args: Parameters<typeof upsertDispensaryMemberUnlogged>
+) {
+  return loggedAction(
+    {
+      feature: 'settings',
+      event: 'dispensaryMembers.upsertDispensaryMember',
+      target: ([, data]) => data.userId,
+    },
+    args,
+    () => upsertDispensaryMemberUnlogged(...args),
+  );
+}
+
+export async function removeDispensaryMember(
+  ...args: Parameters<typeof removeDispensaryMemberUnlogged>
+) {
+  return loggedAction(
+    { feature: 'settings', event: 'dispensaryMembers.removeDispensaryMember' },
+    args,
+    () => removeDispensaryMemberUnlogged(...args),
+  );
 }

@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { parseRealtimeMutationMeta } from '@lawless-intranet/realtime';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -57,7 +58,7 @@ const createOrderSchema = z
     { message: 'Indiquez une entreprise ou un particulier', path: ['companyId'] },
   );
 
-export async function createOrder(
+async function createOrderUnlogged(
   dispensarySlug: string,
   data: {
     name?: string;
@@ -313,7 +314,7 @@ export async function getActiveOrdersForCompanyGroup(
   }
 }
 
-export async function updateOrder(
+async function updateOrderUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -373,7 +374,7 @@ export async function updateOrder(
   }
 }
 
-export async function completeOrder(
+async function completeOrderUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -429,7 +430,7 @@ export async function completeOrder(
   }
 }
 
-export async function deleteOrder(
+async function deleteOrderUnlogged(
   dispensarySlug: string,
   data: { id: string },
   meta?: unknown,
@@ -463,4 +464,30 @@ export async function deleteOrder(
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression de la commande');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createOrder(...args: Parameters<typeof createOrderUnlogged>) {
+  return loggedAction({ feature: 'orders', event: 'orders.createOrder' }, args, () =>
+    createOrderUnlogged(...args),
+  );
+}
+
+export async function updateOrder(...args: Parameters<typeof updateOrderUnlogged>) {
+  return loggedAction({ feature: 'orders', event: 'orders.updateOrder' }, args, () =>
+    updateOrderUnlogged(...args),
+  );
+}
+
+export async function completeOrder(...args: Parameters<typeof completeOrderUnlogged>) {
+  return loggedAction({ feature: 'orders', event: 'orders.completeOrder' }, args, () =>
+    completeOrderUnlogged(...args),
+  );
+}
+
+export async function deleteOrder(...args: Parameters<typeof deleteOrderUnlogged>) {
+  return loggedAction({ feature: 'orders', event: 'orders.deleteOrder' }, args, () =>
+    deleteOrderUnlogged(...args),
+  );
 }

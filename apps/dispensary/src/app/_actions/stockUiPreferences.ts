@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
@@ -57,7 +58,7 @@ export async function getMyStockUiPreferences() {
   }
 }
 
-export async function updateMyStockUiPreferences(
+async function updateMyStockUiPreferencesUnlogged(
   input: z.infer<typeof updateMyStockUiPreferencesSchema>,
 ) {
   try {
@@ -104,4 +105,16 @@ export async function updateMyStockUiPreferences(
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la sauvegarde des préférences de stock');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function updateMyStockUiPreferences(
+  ...args: Parameters<typeof updateMyStockUiPreferencesUnlogged>
+) {
+  return loggedAction(
+    { feature: 'stock', event: 'stockUiPreferences.updateMyStockUiPreferences' },
+    args,
+    () => updateMyStockUiPreferencesUnlogged(...args),
+  );
 }

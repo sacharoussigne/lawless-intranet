@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
@@ -53,7 +54,7 @@ export async function listDispensariesForPlatform() {
   return { status: 200, data: rows };
 }
 
-export async function createDispensary(data: { name: string; slug?: string }) {
+async function createDispensaryUnlogged(data: { name: string; slug?: string }) {
   try {
     const auth = await requirePlatformAdminContext();
     if (!auth.ok) {
@@ -97,7 +98,7 @@ export async function createDispensary(data: { name: string; slug?: string }) {
   }
 }
 
-export async function deleteDispensary(data: { id: string }) {
+async function deleteDispensaryUnlogged(data: { id: string }) {
   try {
     const auth = await requirePlatformAdminContext();
     if (!auth.ok) {
@@ -171,4 +172,18 @@ export async function deleteDispensary(data: { id: string }) {
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression du dispensaire');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createDispensary(...args: Parameters<typeof createDispensaryUnlogged>) {
+  return loggedAction({ feature: 'platform', event: 'dispensaries.createDispensary' }, args, () =>
+    createDispensaryUnlogged(...args),
+  );
+}
+
+export async function deleteDispensary(...args: Parameters<typeof deleteDispensaryUnlogged>) {
+  return loggedAction({ feature: 'platform', event: 'dispensaries.deleteDispensary' }, args, () =>
+    deleteDispensaryUnlogged(...args),
+  );
 }

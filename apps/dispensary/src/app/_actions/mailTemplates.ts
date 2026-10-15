@@ -1,5 +1,6 @@
 'use server';
 
+import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
 import {
@@ -73,7 +74,7 @@ const getUserMailTemplateByIdSchema = z.object({
 });
 
 
-export async function createMailTemplate(
+async function createMailTemplateUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -177,7 +178,7 @@ export async function getManagementMailTemplateById(
   }
 }
 
-export async function updateMailTemplate(
+async function updateMailTemplateUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -235,7 +236,7 @@ export async function updateMailTemplate(
   }
 }
 
-export async function deleteMailTemplate(dispensarySlug: string, data: { id: string }) {
+async function deleteMailTemplateUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'mails',
@@ -501,7 +502,7 @@ export async function getUserMailTemplateOptions(dispensarySlug: string) {
   }
 }
 
-export async function createUserMailTemplate(
+async function createUserMailTemplateUnlogged(
   dispensarySlug: string,
   data: {
     name: string;
@@ -542,7 +543,7 @@ export async function createUserMailTemplate(
   }
 }
 
-export async function updateUserMailTemplate(
+async function updateUserMailTemplateUnlogged(
   dispensarySlug: string,
   data: {
     id: string;
@@ -600,7 +601,7 @@ export async function updateUserMailTemplate(
   }
 }
 
-export async function deleteUserMailTemplate(dispensarySlug: string, data: { id: string }) {
+async function deleteUserMailTemplateUnlogged(dispensarySlug: string, data: { id: string }) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
       feature: 'mails',
@@ -638,4 +639,54 @@ export async function deleteUserMailTemplate(dispensarySlug: string, data: { id:
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la suppression du modèle de courrier');
   }
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function createMailTemplate(...args: Parameters<typeof createMailTemplateUnlogged>) {
+  return loggedAction({ feature: 'mails', event: 'mailTemplates.createMailTemplate' }, args, () =>
+    createMailTemplateUnlogged(...args),
+  );
+}
+
+export async function updateMailTemplate(...args: Parameters<typeof updateMailTemplateUnlogged>) {
+  return loggedAction({ feature: 'mails', event: 'mailTemplates.updateMailTemplate' }, args, () =>
+    updateMailTemplateUnlogged(...args),
+  );
+}
+
+export async function deleteMailTemplate(...args: Parameters<typeof deleteMailTemplateUnlogged>) {
+  return loggedAction({ feature: 'mails', event: 'mailTemplates.deleteMailTemplate' }, args, () =>
+    deleteMailTemplateUnlogged(...args),
+  );
+}
+
+export async function createUserMailTemplate(
+  ...args: Parameters<typeof createUserMailTemplateUnlogged>
+) {
+  return loggedAction(
+    { feature: 'mails', event: 'mailTemplates.createUserMailTemplate' },
+    args,
+    () => createUserMailTemplateUnlogged(...args),
+  );
+}
+
+export async function updateUserMailTemplate(
+  ...args: Parameters<typeof updateUserMailTemplateUnlogged>
+) {
+  return loggedAction(
+    { feature: 'mails', event: 'mailTemplates.updateUserMailTemplate' },
+    args,
+    () => updateUserMailTemplateUnlogged(...args),
+  );
+}
+
+export async function deleteUserMailTemplate(
+  ...args: Parameters<typeof deleteUserMailTemplateUnlogged>
+) {
+  return loggedAction(
+    { feature: 'mails', event: 'mailTemplates.deleteUserMailTemplate' },
+    args,
+    () => deleteUserMailTemplateUnlogged(...args),
+  );
 }
