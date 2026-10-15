@@ -19,9 +19,9 @@ import {
   type ApplicationResource,
 } from '@lawless-intranet/auth-permissions';
 import {
-  getDispensaryMemberPermissionOverrides,
   setDispensaryMemberPermissionOverrides,
 } from '@/app/_actions/dispensaryPermissions';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type OverrideEffect = 'inherit' | 'grant' | 'deny';
 
@@ -46,7 +46,7 @@ export function MemberPermissionOverridesEditor({
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const result = await getDispensaryMemberPermissionOverrides(dispensarySlug, userId);
+      const result = await fetchRead(dispensarySlug, 'memberPermissionOverrides', { userId });
       if (cancelled) return;
       const next: Record<string, OverrideEffect> = {};
       for (const entry of catalogEntries) {

@@ -20,7 +20,6 @@ import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { deleteCabinetPatient } from '@/app/_actions/cabinet/patients';
-import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySettings';
 import { handleAction } from '@/lib/action';
 import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 import { createDefaultDisplaySettings } from '@/lib/cabinet/displaySettings';
@@ -140,7 +139,9 @@ export function CabinetPageClient({
     setDisplaySettingsModalOpen(true);
     setLoadingDisplaySettings(true);
     try {
-      const result = await getCabinetDisplaySettings(dispensarySlug, selectedCabinetId);
+      const result = await fetchRead(dispensarySlug, 'cabinetDisplaySettings', {
+        cabinetId: selectedCabinetId,
+      });
       const data = handleAction(result);
       if (data) {
         setDisplaySettings(data.displaySettings);

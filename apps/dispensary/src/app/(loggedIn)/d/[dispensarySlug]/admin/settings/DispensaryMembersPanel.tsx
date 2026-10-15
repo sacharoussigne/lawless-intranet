@@ -18,7 +18,6 @@ import { IconKey, IconTrash, IconUsers } from '@tabler/icons-react';
 import { UserPseudoSearch } from '@/app/_components/UserPseudoSearch/UserPseudoSearch';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import {
-  listDispensaryMembers,
   removeDispensaryMember,
   upsertDispensaryMember,
 } from '@/app/_actions/dispensaryMembers';
@@ -86,7 +85,7 @@ export function DispensaryMembersPanel({
   );
 
   const refresh = async () => {
-    const result = await listDispensaryMembers(dispensarySlug);
+    const result = await fetchRead(dispensarySlug, 'dispensaryMembers');
     if (result.status === 200 && result.data) {
       const rows = result.data as DispensaryMemberRow[];
       setMembers(rows);

@@ -17,7 +17,6 @@ import {
   removeCabinetMember,
   upsertCabinetMember,
 } from '@/app/_actions/cabinet/members';
-import { getCabinetWithMembers } from '@/app/_actions/cabinet/cabinets';
 import { handleAction } from '@/lib/action';
 import {
   CABINET_ACCESS_LEVELS,
@@ -55,7 +54,7 @@ export function CabinetMembersModal({
     if (!cabinetId) return;
     setLoading(true);
     try {
-      const result = await getCabinetWithMembers(dispensarySlug, cabinetId);
+      const result = await fetchRead(dispensarySlug, 'cabinetWithMembers', { cabinetId });
       const data = handleAction(result);
       if (data) {
         setMembers(data.members as CabinetMemberDTO[]);

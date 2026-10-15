@@ -5,6 +5,7 @@ import {
   listDispensaryWeeklyActivities,
   listDispensaryWeeklyActivityTargets,
 } from '@/app/_actions/dispensaryWeeklyActivity';
+import { getAgendaWithMembers, listAgendasForAdmin } from '@/app/_actions/agenda/agendas';
 import { getAgendaEvent, listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaEventTodoTasks } from '@/app/_actions/agenda/eventTodos';
 import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
@@ -17,6 +18,10 @@ import {
   getPendingOccurrences,
   getPlannedTransactions,
 } from '@/app/_actions/bankAccounts';
+import { getCabinetWithMembers, listCabinetsForAdmin } from '@/app/_actions/cabinet/cabinets';
+import { listCareEpisodes } from '@/app/_actions/cabinet/careEpisodes';
+import { listConsultations } from '@/app/_actions/cabinet/consultations';
+import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySettings';
 import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
 import { getManagementCategoryItems } from '@/app/_actions/categoryItems';
 import { getRoleChestAccesses } from '@/app/_actions/chestAccess';
@@ -41,7 +46,8 @@ import { getStockConsumptionStats } from '@/app/_actions/stock/statistics';
 import { getChestStockCheckForm, getStockChecksSummary } from '@/app/_actions/stockChecks';
 import { getChestStockVisibility } from '@/app/_actions/stockVisibility';
 import { searchDispensaryUsersForCabinet } from '@/app/_actions/cabinet/members';
-import { searchUsersForDispensaryInvite } from '@/app/_actions/dispensaryMembers';
+import { listDispensaryMembers, searchUsersForDispensaryInvite } from '@/app/_actions/dispensaryMembers';
+import { getDispensaryMemberPermissionOverrides } from '@/app/_actions/dispensaryPermissions';
 import {
   listDocumentAccessesAction,
   listTemplateAccessesAction,
@@ -193,6 +199,27 @@ export const readRoutes = {
   companyGroupsForOrders: (slug: string, _input?: undefined) => getCompanyGroupsForOrders(slug),
   companies: (slug: string, _input?: undefined) => getCompanies(slug),
   companiesForSelect: (slug: string, _input?: undefined) => getCompaniesForSelect(slug),
+
+  // Cabinet
+  cabinetDisplaySettings: (slug: string, input: { cabinetId: string }) =>
+    getCabinetDisplaySettings(slug, input?.cabinetId),
+  cabinetWithMembers: (slug: string, input: { cabinetId: string }) =>
+    getCabinetWithMembers(slug, input?.cabinetId),
+  careEpisodes: (slug: string, input: { patientId: string }) =>
+    listCareEpisodes(slug, input?.patientId),
+  consultations: (slug: string, input: { careEpisodeId: string }) =>
+    listConsultations(slug, input?.careEpisodeId),
+
+  // Agenda members
+  agendaWithMembers: (slug: string, input: { agendaId: string }) =>
+    getAgendaWithMembers(slug, input?.agendaId),
+
+  // Dispensary admin
+  adminCabinets: (slug: string, _input?: undefined) => listCabinetsForAdmin(slug),
+  adminAgendas: (slug: string, _input?: undefined) => listAgendasForAdmin(slug),
+  dispensaryMembers: (slug: string, _input?: undefined) => listDispensaryMembers(slug),
+  memberPermissionOverrides: (slug: string, input: { userId: string }) =>
+    getDispensaryMemberPermissionOverrides(slug, input?.userId),
 } satisfies ReadRegistry;
 
 export type ReadRoutes = typeof readRoutes;
