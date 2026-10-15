@@ -1,5 +1,10 @@
 import type { ReadRegistry } from '@lawless-intranet/host-kit/read';
-import { listDispensaryWeeklyActivities, listDispensaryWeeklyActivityTargets } from '@/app/_actions/dispensaryWeeklyActivity';
+import {
+  getDispensaryWeeklyActivityHistory,
+  getDispensaryWeeklyHoursRecap,
+  listDispensaryWeeklyActivities,
+  listDispensaryWeeklyActivityTargets,
+} from '@/app/_actions/dispensaryWeeklyActivity';
 import { getAgendaEvent, listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaEventTodoTasks } from '@/app/_actions/agenda/eventTodos';
 import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
@@ -21,7 +26,24 @@ import { getStockChecksSummary } from '@/app/_actions/stockChecks';
 import { getChestStockVisibility } from '@/app/_actions/stockVisibility';
 import { searchDispensaryUsersForCabinet } from '@/app/_actions/cabinet/members';
 import { searchUsersForDispensaryInvite } from '@/app/_actions/dispensaryMembers';
-import { searchUsersForDocumentAccess } from '@/app/_actions/documentAccesses';
+import {
+  listDocumentAccessesAction,
+  listTemplateAccessesAction,
+  searchUsersForDocumentAccess,
+} from '@/app/_actions/documentAccesses';
+import { getMailById, getMailsPage } from '@/app/_actions/mails';
+import {
+  getMailTemplates,
+  getManagementMailTemplateById,
+  getUserMailTemplateById,
+  getUserMailTemplateOptions,
+  getUserMailTemplatesPage,
+} from '@/app/_actions/mailTemplates';
+import {
+  getPayrollReportById,
+  listPayrollImportableActivityWeeks,
+  listPayrollReports,
+} from '@/app/_actions/payrollReports';
 import { getIndividualCustomers, searchIndividualCustomers } from '@/app/_actions/individualCustomers';
 import {
   getMediaContents,
@@ -43,6 +65,12 @@ export const readRoutes = {
     listDispensaryWeeklyActivities(slug, input),
   weeklyActivityTargets: (slug: string, _input?: undefined) =>
     listDispensaryWeeklyActivityTargets(slug),
+  weeklyActivityHistory: (
+    slug: string,
+    input: Parameters<typeof getDispensaryWeeklyActivityHistory>[1],
+  ) => getDispensaryWeeklyActivityHistory(slug, input),
+  weeklyHoursRecap: (slug: string, input: Parameters<typeof getDispensaryWeeklyHoursRecap>[1]) =>
+    getDispensaryWeeklyHoursRecap(slug, input),
   weeklySales: (slug: string, input: { weekDate?: Date }) => listWeeklySales(slug, input?.weekDate),
   ordersPage: (slug: string, input: Parameters<typeof getOrdersPage>[1]) => getOrdersPage(slug, input),
   order: (slug: string, input: { id: string }) => getOrderById(slug, input),
@@ -108,6 +136,27 @@ export const readRoutes = {
   mediaDownloadUrl: (slug: string, input: { id: string }) =>
     getMediaLibraryDownloadUrl(slug, input?.id),
   mediaUserName: (slug: string, input: { userId: string }) => getMediaUserName(slug, input?.userId),
+
+  // Mails and templates
+  mailsPage: (slug: string, input: Parameters<typeof getMailsPage>[1]) => getMailsPage(slug, input),
+  mail: (slug: string, input: { id: string }) => getMailById(slug, input),
+  userMailTemplatesPage: (slug: string, input: Parameters<typeof getUserMailTemplatesPage>[1]) =>
+    getUserMailTemplatesPage(slug, input),
+  userMailTemplate: (slug: string, input: { id: string }) => getUserMailTemplateById(slug, input),
+  userMailTemplateOptions: (slug: string, _input?: undefined) => getUserMailTemplateOptions(slug),
+  mailTemplates: (slug: string, _input?: undefined) => getMailTemplates(slug),
+  managementMailTemplate: (slug: string, input: { id: string }) =>
+    getManagementMailTemplateById(slug, input),
+  templateAccesses: (slug: string, input: { templateId: string }) =>
+    listTemplateAccessesAction(slug, input),
+  documentAccesses: (slug: string, input: { documentId: string }) =>
+    listDocumentAccessesAction(slug, input),
+
+  // Payroll
+  payrollReports: (slug: string, _input?: undefined) => listPayrollReports(slug),
+  payrollReport: (slug: string, input: { id: string }) => getPayrollReportById(slug, input?.id),
+  payrollImportableWeeks: (slug: string, _input?: undefined) =>
+    listPayrollImportableActivityWeeks(slug),
 } satisfies ReadRegistry;
 
 export type ReadRoutes = typeof readRoutes;

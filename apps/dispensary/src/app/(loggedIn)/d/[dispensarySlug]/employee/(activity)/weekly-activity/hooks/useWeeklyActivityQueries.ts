@@ -7,8 +7,6 @@ import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
 import {
   createDispensaryWeeklyActivity,
   deleteDispensaryWeeklyActivity,
-  getDispensaryWeeklyActivityHistory,
-  getDispensaryWeeklyHoursRecap,
   incrementOwnWeeklyCounter,
   markOwnWeeklyChestToday,
   markOwnWeeklyPresenceToday,
@@ -81,7 +79,7 @@ async function fetchWeeklyActivityHistory(
   dispensarySlug: string,
   activityId: string,
 ): Promise<WeeklyActivityHistoryEntry[]> {
-  const result = await getDispensaryWeeklyActivityHistory(dispensarySlug, { id: activityId });
+  const result = await fetchRead(dispensarySlug, 'weeklyActivityHistory', { id: activityId });
   const data = handleAction(result);
   return Array.isArray(data) ? data : [];
 }
@@ -91,7 +89,7 @@ async function fetchWeeklyHoursRecap(
   periodStart: Date,
   discordUserId: string | null,
 ): Promise<WeeklyHoursRecapBundleDto> {
-  const result = await getDispensaryWeeklyHoursRecap(dispensarySlug, {
+  const result = await fetchRead(dispensarySlug, 'weeklyHoursRecap', {
     periodStart,
     discordUserId,
   });

@@ -24,8 +24,6 @@ import {
 import {
   grantDocumentAccessAction,
   grantTemplateAccessAction,
-  listDocumentAccessesAction,
-  listTemplateAccessesAction,
   revokeDocumentAccessAction,
   revokeTemplateAccessAction,
 } from '@/app/_actions/documentAccesses';
@@ -66,8 +64,8 @@ export function ManageResourceAccessModal({
 
     const result =
       resourceType === 'template'
-        ? await listTemplateAccessesAction(dispensarySlug, { templateId: resourceId })
-        : await listDocumentAccessesAction(dispensarySlug, { documentId: resourceId });
+        ? await fetchRead(dispensarySlug, 'templateAccesses', { templateId: resourceId })
+        : await fetchRead(dispensarySlug, 'documentAccesses', { documentId: resourceId });
 
     const data = handleAction(result);
     if (data) {
