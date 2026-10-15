@@ -6,10 +6,6 @@ import {
   deleteMediaLibraryFile,
   deleteMediaLibraryFolder,
   deleteMediaLibraryItems,
-  getMediaContents,
-  getMediaLibraryDownloadUrl,
-  getMediaTree,
-  getMediaUserName,
   moveMediaLibraryItems,
   requestMediaUpload,
   shareMediaLibraryFile,
@@ -17,12 +13,14 @@ import {
   updateMediaLibraryFile,
   updateMediaLibraryFolder,
 } from '@/app/_actions/media';
+import { fetchRead } from '@/lib/read/fetchRead';
 
-/** Binds the shelter server actions to the media-ui action contract. */
+/** Binds the shelter server actions to the media-ui action contract (reads over GET, see lib/read). */
 export function createShelterMediaActions(shelterSlug: string): MediaUiActions {
   return {
-    getFolderContents: (folderId) => toUiResult(getMediaContents(shelterSlug, folderId)),
-    getFolderTree: () => toUiResult(getMediaTree(shelterSlug)),
+    getFolderContents: (folderId) =>
+      toUiResult(fetchRead(shelterSlug, 'mediaContents', { folderId })),
+    getFolderTree: () => toUiResult(fetchRead(shelterSlug, 'mediaTree')),
     createFolder: (input) => toUiResult(createMediaLibraryFolder(shelterSlug, input)),
     updateFolder: (input) => toUiResult(updateMediaLibraryFolder(shelterSlug, input)),
     deleteFolder: (id) => toUiResult(deleteMediaLibraryFolder(shelterSlug, id)),
@@ -30,11 +28,11 @@ export function createShelterMediaActions(shelterSlug: string): MediaUiActions {
     completeUpload: (fileId) => toUiResult(completeMediaLibraryUpload(shelterSlug, fileId)),
     updateFile: (input) => toUiResult(updateMediaLibraryFile(shelterSlug, input)),
     deleteFile: (id) => toUiResult(deleteMediaLibraryFile(shelterSlug, id)),
-    getDownloadUrl: (id) => toUiResult(getMediaLibraryDownloadUrl(shelterSlug, id)),
+    getDownloadUrl: (id) => toUiResult(fetchRead(shelterSlug, 'mediaDownloadUrl', { id })),
     moveItems: (input) => toUiResult(moveMediaLibraryItems(shelterSlug, input)),
     deleteItems: (input) => toUiResult(deleteMediaLibraryItems(shelterSlug, input)),
     shareFile: (id) => toUiResult(shareMediaLibraryFile(shelterSlug, id)),
     unshareFile: (id) => toUiResult(unshareMediaLibraryFile(shelterSlug, id)),
-    getUserName: (userId) => toUiResult(getMediaUserName(shelterSlug, userId)),
+    getUserName: (userId) => toUiResult(fetchRead(shelterSlug, 'mediaUserName', { userId })),
   };
 }

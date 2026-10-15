@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { listAnimals } from '@/app/_actions/animals';
 import type { AnimalDTO } from '@/app/(loggedIn)/s/[shelterSlug]/employee/animals/types';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 type AnimalSpotlightContextValue = {
   animals: AnimalDTO[];
@@ -28,7 +28,7 @@ export function AnimalSpotlightProvider({
   const open = () => {
     setOpened(true);
     setLoading(true);
-    void listAnimals(shelterSlug).then((result) => {
+    void fetchRead(shelterSlug, 'animals').then((result) => {
       if ('data' in result && Array.isArray(result.data)) {
         setAnimals(result.data as AnimalDTO[]);
       }

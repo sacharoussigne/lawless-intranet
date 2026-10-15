@@ -36,9 +36,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   deleteAnimal,
-  listAnimalHistory,
-  listCaseManagerOptions,
-  listSpeciesOptions,
   updateAnimal,
 } from '@/app/_actions/animals';
 import { BreedVariantSelect } from '@/app/_components/BreedVariantSelect';
@@ -67,6 +64,7 @@ import type {
   AnimalDocumentListItem,
   AnimalDocumentTemplateListItem,
 } from '@/types/animalDocuments';
+import { fetchRead } from '@/lib/read/fetchRead';
 
 const HISTORY_ACTION_LABELS: Record<string, string> = {
   create: 'Création',
@@ -257,8 +255,8 @@ export function AnimalDetailPageClient({
   const loadOptions = useCallback(async () => {
     if (optionsLoaded) return;
     const [speciesRes, managersRes] = await Promise.all([
-      listSpeciesOptions(shelterSlug),
-      listCaseManagerOptions(shelterSlug),
+      fetchRead(shelterSlug, 'speciesOptions'),
+      fetchRead(shelterSlug, 'caseManagerOptions'),
     ]);
     if (speciesRes.status < 400 && 'data' in speciesRes && speciesRes.data) {
       setSpeciesOptions(speciesRes.data);
@@ -441,7 +439,7 @@ export function AnimalDetailPageClient({
     setHistoryOpen(true);
     setHistoryLoading(true);
     startTransition(async () => {
-      const result = await listAnimalHistory(shelterSlug, animal.id);
+      const result = await fetchRead(shelterSlug, 'animalHistory', { animalId: animal.id });
       setHistoryLoading(false);
       if (result.status >= 400 || !('data' in result) || !result.data) {
         notifications.show({
