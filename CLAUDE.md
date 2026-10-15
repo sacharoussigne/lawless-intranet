@@ -46,7 +46,7 @@ SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir 
 
 ## Temps réel
 
-Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et todos, commandes, ventes, activité hebdo et médiathèque (dispensary) ; liste d'attente et médiathèque (refuge).
+Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et todos, commandes, ventes, activité hebdo et médiathèque (dispensary) ; liste d'attente et médiathèque (refuge). Le détail (lectures GET, mutations, temps réel) est dans `docs/DATA-FLOW.md`.
 - Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`createRealtimeToken` dans `apps/<dispensary|shelter>/src/lib/realtime/token.ts`, servi en GET par `/api/<d|s>/<slug>/realtime-token` et lu par `fetchRealtimeToken`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
 - Le code qui écrit (service ou app hôte) publie après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Les fonctions `emit*` l'appellent dans `after()` (`next/server`) : la requête n'attend pas le serveur temps réel, donc on ne les `await` pas. Exemples : `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/dispensary/src/lib/orders/realtime/broadcast.ts`. En prod, tout publieur rejoint le réseau Docker `realtime` avec `REALTIME_INTERNAL_URL` / `REALTIME_INTERNAL_SECRET`.
 - Une mutation transmet le `clientId` du socket (`realtimeMutationMeta(clientId)` côté client, `parseRealtimeMutationMeta(meta)` côté action) : l'auteur ne reçoit pas son propre écho, puisque son `onSuccess` invalide déjà.
@@ -118,7 +118,7 @@ export async function doThing(slug: string, input: unknown) {
 
 ### Data fetching client
 
-Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/dispensary/docs/react-query.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
+Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/dispensary/docs/react-query.md` et `docs/DATA-FLOW.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
 - Server actions pour les **mutations** et le chargement SSR des `page.tsx`. Next les exécute **une par une par onglet** (dans la file de la navigation) : ne pas s'en servir pour les relectures client.
 - Relectures côté client (`queryFn`, chargements au clic, recherches au fil de la frappe, actions de lecture injectées dans les `*-ui`) : `fetchRead(slug, '<query>', input)` (`lib/read/fetchRead.ts`), une GET same-origin vers `/api/d/<slug>/read/<query>` (refuge : `/api/s/<slug>/read/<query>`) qui réutilise l'action de lecture inscrite dans le registre fermé `lib/read/readRoutes.ts` (auth et permissions restent dans l'action, `Date` conservées ; helpers partagés dans `@lawless-intranet/host-kit/read`). Même forme de résultat : `queryFn: async () => handleAction(await fetchRead(...))`. Toute nouvelle lecture client passe par le registre. Exceptions : une lecture qui écrit (`getOrCreateWeek`) ou dont l'entrée ne tient pas dans une URL (`generateOrderMailPreview`) reste une action. Le middleware ne couvre pas `/api` : le garde de l'action est la seule protection.
 - `initialData` vient du SSR, et les query keys incluent le slug.
