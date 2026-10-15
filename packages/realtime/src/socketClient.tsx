@@ -169,6 +169,22 @@ export function RealtimeSocketProvider({
   );
 }
 
+/**
+ * `getToken` for a host route answering `{ status, data?: { token, expiresAt } }`
+ * (GET: unlike a server action, it does not wait in the tab's action queue).
+ * A refusal (401, 403, 404, 503) returns null and stops the connection; a
+ * server error or a network failure throws, so the connection retries later.
+ */
+export async function fetchRealtimeToken(path: string): Promise<RealtimeSocketToken | null> {
+  const response = await fetch(path, { cache: 'no-store', credentials: 'same-origin' });
+  if (response.status >= 500 && response.status !== 503) {
+    throw new Error(`Realtime token request failed (${response.status})`);
+  }
+  if (!response.ok) return null;
+  const body = (await response.json()) as { data?: RealtimeSocketToken };
+  return body.data ?? null;
+}
+
 /** Connection status, in its own context: only components that read it re-render. */
 export function useRealtimeSocketStatus(): RealtimeSocketStatus {
   return useContext(RealtimeSocketStatusContext);
