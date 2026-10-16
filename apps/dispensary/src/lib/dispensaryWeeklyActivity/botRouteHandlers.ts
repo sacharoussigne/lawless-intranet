@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { findFixedDisplayName } from '@/lib/dispensaryDiscordProfile/service';
+import prisma from '@/lib/prisma';
 import { getAppSettings } from '@/lib/appSettings';
 import { serializeDispensaryWeeklyActivityApiRow } from '@/lib/dispensaryWeeklyActivity/apiRow';
 import { BotDayEditError, resolveParisDayAnchor } from '@/lib/dispensaryWeeklyActivity/botDayEdit';
@@ -39,7 +41,8 @@ async function serializeFlagResultActivity(dispensaryId: string, result: BotWeek
   return redactSerializedWeeklyActivityRow(
     serializeDispensaryWeeklyActivityApiRow({
       ...row,
-      resolvedDisplayName: row.displayName,
+      resolvedDisplayName:
+        (await findFixedDisplayName(prisma, dispensaryId, row.discordUserId)) ?? row.displayName,
       discordProfileRole: null,
       discordProfileAccountNumber: null,
     }),

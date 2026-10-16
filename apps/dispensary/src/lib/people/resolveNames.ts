@@ -1,46 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
-import {
-  resolveDiscordIdsForUserIds,
-  resolveUsersByDiscordIds,
-} from '@lawless-intranet/auth-client/internal';
-import { applyFixedNames } from '@/lib/people/displayName';
+import { lookupDiscordIdsByUserIds } from '@/lib/people/accountLinks';
+import { getLatestDiscordDisplayName } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import { applyFixedNames, pickProfileDisplayName } from '@/lib/people/displayName';
 
 type ProfileDb = Pick<PrismaClient, 'dispensaryDiscordProfile'>;
-
-/**
- * Links the profiles that have no account yet to the account now holding their
- * Discord ID (a person who signed up after being added). Same Discord ID, so
- * same profile: no duplicate, history kept.
- */
-async function linkProfiles(
-  client: ProfileDb,
-  dispensaryId: string,
-  links: { discordUserId: string; userId: string }[],
-): Promise<void> {
-  await Promise.all(
-    links.map(({ discordUserId, userId }) =>
-      client.dispensaryDiscordProfile.updateMany({
-        where: { dispensaryId, discordUserId, userId: null },
-        data: { userId },
-      }),
-    ),
-  );
-}
-
-/** Links every profile of the dispensary that has no account yet, when one exists. */
-export async function linkUnlinkedProfiles(client: ProfileDb, dispensaryId: string): Promise<void> {
-  const unlinked = await client.dispensaryDiscordProfile.findMany({
-    where: { dispensaryId, userId: null },
-    select: { discordUserId: true },
-  });
-  if (unlinked.length === 0) return;
-  const accounts = await resolveUsersByDiscordIds(unlinked.map((p) => p.discordUserId));
-  await linkProfiles(
-    client,
-    dispensaryId,
-    accounts.map((a) => ({ discordUserId: a.discordId, userId: a.userId })),
-  );
-}
 
 /** Fixed names of intranet accounts (userId → name), through their Discord profile. */
 export async function loadFixedNamesForUsers(
@@ -52,37 +15,37 @@ export async function loadFixedNamesForUsers(
   const names = new Map<string, string>();
   if (unique.length === 0) return names;
 
-  const linked = await client.dispensaryDiscordProfile.findMany({
-    where: { dispensaryId, userId: { in: unique } },
-    select: { userId: true, fixedDisplayName: true },
+  // The person of an account is its current Discord id (cached lookup); the
+  // stored `userId` is only a fallback when auth does not answer.
+  const discordByUser = await lookupDiscordIdsByUserIds(unique);
+  const currentDiscordIds = [...(discordByUser?.values() ?? [])].filter(
+    (id): id is string => Boolean(id),
+  );
+
+  const profiles = await client.dispensaryDiscordProfile.findMany({
+    where: {
+      dispensaryId,
+      fixedDisplayName: { not: null },
+      OR: [
+        { discordUserId: { in: currentDiscordIds } },
+        ...(discordByUser ? [] : [{ userId: { in: unique } }]),
+      ],
+    },
+    orderBy: { updatedAt: 'desc' },
+    select: { discordUserId: true, userId: true, fixedDisplayName: true },
   });
-  for (const profile of linked) {
-    const fixed = profile.fixedDisplayName?.trim();
-    if (profile.userId && fixed) names.set(profile.userId, fixed);
-  }
+  const byDiscord = new Map(profiles.map((p) => [p.discordUserId, p]));
 
-  // Accounts without a linked profile: maybe a profile created before the account.
-  const linkedUserIds = new Set(linked.map((p) => p.userId));
-  const missing = unique.filter((id) => !linkedUserIds.has(id));
-  if (missing.length === 0) return names;
-
-  const discordByUser = await resolveDiscordIdsForUserIds(missing);
-  if (discordByUser.size === 0) return names;
-  const userByDiscord = new Map([...discordByUser].map(([userId, discordId]) => [discordId, userId]));
-
-  const unlinked = await client.dispensaryDiscordProfile.findMany({
-    where: { dispensaryId, userId: null, discordUserId: { in: [...userByDiscord.keys()] } },
-    select: { discordUserId: true, fixedDisplayName: true },
-  });
-  const links = unlinked.flatMap((profile) => {
-    const userId = userByDiscord.get(profile.discordUserId);
-    if (!userId) return [];
-    const fixed = profile.fixedDisplayName?.trim();
+  for (const userId of unique) {
+    const discordId = discordByUser?.get(userId);
+    const profile = discordByUser
+      ? discordId
+        ? byDiscord.get(discordId)
+        : undefined
+      : profiles.find((p) => p.userId === userId);
+    const fixed = profile?.fixedDisplayName?.trim();
     if (fixed) names.set(userId, fixed);
-    return [{ discordUserId: profile.discordUserId, userId }];
-  });
-  await linkProfiles(client, dispensaryId, links);
-
+  }
   return names;
 }
 
@@ -102,4 +65,47 @@ export async function applyDispensaryNamesToUsers<T extends { name: string }>(
   } catch {
     return usersById;
   }
+}
+
+/**
+ * Name of a Discord id in this dispensary: fixed name, then the latest name of
+ * its profile or rows here, then `fallback` (SSO name, « Médecin <id> »…).
+ */
+export async function resolveDiscordPersonName(
+  client: ProfileDb & Pick<PrismaClient, 'dispensaryWeeklyActivity'>,
+  dispensaryId: string,
+  discordUserId: string,
+  fallback: string,
+): Promise<string> {
+  const [profile, latest] = await Promise.all([
+    client.dispensaryDiscordProfile.findUnique({
+      where: { dispensaryId_discordUserId: { dispensaryId, discordUserId } },
+      select: { fixedDisplayName: true, lastDisplayName: true },
+    }),
+    getLatestDiscordDisplayName(client, dispensaryId, discordUserId),
+  ]);
+  return pickProfileDisplayName(profile, latest ?? fallback);
+}
+
+/** Accounts whose name in this dispensary (fixed or bot name) contains `query`: pickers find people by it too. */
+export async function findUserIdsByDispensaryName(
+  client: ProfileDb,
+  dispensaryId: string,
+  query: string,
+): Promise<string[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const profiles = await client.dispensaryDiscordProfile.findMany({
+    where: {
+      dispensaryId,
+      userId: { not: null },
+      OR: [
+        { fixedDisplayName: { contains: q, mode: 'insensitive' } },
+        { lastDisplayName: { contains: q, mode: 'insensitive' } },
+      ],
+    },
+    select: { userId: true },
+    take: 50,
+  });
+  return profiles.map((p) => p.userId).filter((id): id is string => Boolean(id));
 }

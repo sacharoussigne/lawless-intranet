@@ -1,5 +1,6 @@
 'use server';
 
+import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/dispensaryDiscordProfile/constants';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
@@ -13,15 +14,13 @@ import {
   isWeeklyActivityOwner,
 } from '@/lib/dispensaryWeeklyActivity/access';
 import {
-  findLinkedUserIdByDiscordAccount,
   genericDoctorFallbackName,
   getDiscordAccountIdForUser,
   getDiscordAccountIdsForUsers,
   getLatestDiscordDisplayNames,
   mergeResolvedDisplayNames,
-  resolveDiscordDisplayName,
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
-import { fetchDiscordLinkedUsers, fetchUserProfile, fetchUserProfiles } from '@/lib/authUsers';
+import { fetchUserProfiles } from '@/lib/authUsers';
 import { listSerializedWeeklyActivities } from '@/lib/dispensaryWeeklyActivity/listSerialized';
 import {
   dispensaryWeeklyActivityCreateSchema,
@@ -39,13 +38,17 @@ import {
   WEEKLY_ACTIVITY_DUPLICATE_MESSAGE,
 } from '@/lib/dispensaryWeeklyActivity/service';
 import { loadSerializedWeeklyActivityByIdForDispensary } from '@/lib/dispensaryWeeklyActivity/loadSerializedRow';
+import { attachDiscordProfilesToActivities } from '@/lib/dispensaryDiscordProfile/attachProfiles';
 import {
   DiscordProfileConflictError,
+  DiscordProfileNotFoundError,
   loadDiscordProfilesByIds,
   updateDiscordProfileFields,
 } from '@/lib/dispensaryDiscordProfile/service';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
-import { applyDispensaryNamesToUsers } from '@/lib/people/resolveNames';
+import { applyDispensaryNamesToUsers, resolveDiscordPersonName } from '@/lib/people/resolveNames';
+import { accountIdOfDiscord } from '@/lib/people/accountLinks';
+import { discordUserIdSchema } from '@/lib/people/discordId';
 import {
   applyVisibilityToCreateInput,
   applyVisibilityToUpdateInput,
@@ -109,52 +112,20 @@ async function requireWeeklyActivityEdit(dispensarySlug: string) {
   return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
 }
 
-async function listWhereForSession(
+/**
+ * Rows the viewer may see: all of them with edit-all, otherwise the rows of
+ * their current Discord id (a row belongs to a Discord id, not to `userId`).
+ */
+function listWhereForSession(
   dispensaryId: string,
-  sessionUserId: string,
+  viewerDiscordId: string | null,
   effectivePermissions: Iterable<string> | null | undefined,
-) {
+): Prisma.DispensaryWeeklyActivityWhereInput {
   const tenantFilter = tenantWhere(dispensaryId);
   if (canEditAllWeeklyDispensaryActivity(effectivePermissions)) {
     return tenantFilter;
   }
-  const discordId = await getDiscordAccountIdForUser(prisma, sessionUserId);
-  if (!discordId) {
-    return { ...tenantFilter, userId: sessionUserId };
-  }
-  return {
-    ...tenantFilter,
-    OR: [{ userId: sessionUserId }, { discordUserId: discordId }],
-  };
-}
-
-async function appendOwnWeeklyRowByDiscordIfMissing(
-  dispensaryId: string,
-  rows: Awaited<ReturnType<typeof listSerializedWeeklyActivities>>,
-  discordUserId: string | null,
-  periodStart: Date,
-  periodEnd: Date,
-) {
-  if (!discordUserId || rows.some((row) => row.discordUserId === discordUserId)) {
-    return rows;
-  }
-
-  const extra = await listSerializedWeeklyActivities(
-    {
-      ...tenantWhere(dispensaryId),
-      discordUserId,
-      periodStart: { lte: periodEnd },
-      periodEnd: { gte: periodStart },
-    },
-    dispensaryId,
-  );
-
-  if (extra.length === 0) {
-    return rows;
-  }
-
-  const knownIds = new Set(rows.map((row) => row.id));
-  return [...rows, ...extra.filter((row) => !knownIds.has(row.id))];
+  return { ...tenantFilter, discordUserId: viewerDiscordId ?? { in: [] } };
 }
 
 export async function listDispensaryWeeklyActivities(
@@ -169,8 +140,8 @@ export async function listDispensaryWeeklyActivities(
     const { session, tenant } = gate;
     const { dispensaryId } = tenant;
 
-    const where = await listWhereForSession(dispensaryId, session.user.id, tenant.effectivePermissions);
     const viewerDiscordId = await getDiscordAccountIdForUser(prisma, session.user.id);
+    const where = listWhereForSession(dispensaryId, viewerDiscordId, tenant.effectivePermissions);
 
     if (options) {
       Object.assign(where, {
@@ -179,17 +150,7 @@ export async function listDispensaryWeeklyActivities(
       });
     }
 
-    let data = await listSerializedWeeklyActivities(where, dispensaryId);
-
-    if (options && viewerDiscordId) {
-      data = await appendOwnWeeklyRowByDiscordIfMissing(
-        dispensaryId,
-        data,
-        viewerDiscordId,
-        options.periodStart,
-        options.periodEnd,
-      );
-    }
+    const data = await listSerializedWeeklyActivities(where, dispensaryId);
 
     return {
       status: 200 as const,
@@ -204,7 +165,7 @@ const idSchema = z.object({ id: z.string().uuid('ID invalide') });
 
 const hoursRecapInputSchema = z.object({
   periodStart: z.coerce.date(),
-  discordUserId: z.string().min(1).max(128).nullable().optional(),
+  discordUserId: discordUserIdSchema.nullable().optional(),
 });
 
 export async function getDispensaryWeeklyHoursRecap(
@@ -226,9 +187,9 @@ export async function getDispensaryWeeklyHoursRecap(
     const { start: periodStart, end: periodEnd } = getBankWeekBounds(parsed.data.periodStart);
     const discordUserId = parsed.data.discordUserId ?? null;
 
-    const where = await listWhereForSession(
+    const where = listWhereForSession(
       dispensaryId,
-      gate.session.user.id,
+      await getDiscordAccountIdForUser(prisma, gate.session.user.id),
       gate.tenant.effectivePermissions,
     );
     Object.assign(where, {
@@ -237,10 +198,7 @@ export async function getDispensaryWeeklyHoursRecap(
       ...(discordUserId ? { discordUserId } : {}),
     });
 
-    const activities = await prisma.dispensaryWeeklyActivity.findMany({
-      where,
-      orderBy: { displayName: 'asc' },
-    });
+    const activities = await prisma.dispensaryWeeklyActivity.findMany({ where });
 
     if (activities.length === 0) {
       return {
@@ -249,7 +207,13 @@ export async function getDispensaryWeeklyHoursRecap(
       };
     }
 
-    const withNames = await mergeResolvedDisplayNames(prisma, activities);
+    // Same names as the table (fixed name first), sorted on the shown name.
+    const withNames = (
+      await attachDiscordProfilesToActivities(
+        prisma,
+        await mergeResolvedDisplayNames(prisma, dispensaryId, activities),
+      )
+    ).sort((a, b) => a.resolvedDisplayName.localeCompare(b.resolvedDisplayName, 'fr'));
     const activityIds = withNames.map((a) => a.id);
 
     const history = await prisma.dispensaryWeeklyActivityHistory.findMany({
@@ -332,7 +296,11 @@ export async function getDispensaryWeeklyActivityHistory(
     const [userIdToDiscordId, ssoActorProfiles] = await Promise.all([
       getDiscordAccountIdsForUsers(actorUserIdsWithoutDiscord),
       fetchUserProfiles([
-        ...new Set(history.map((h) => h.actorUserId).filter(Boolean) as string[]),
+        ...new Set(
+          history
+            .flatMap((h) => [h.actorUserId, h.actorImpersonatedById])
+            .filter(Boolean) as string[],
+        ),
       ]),
     ]);
     const actorProfiles = await applyDispensaryNamesToUsers(prisma, dispensaryId, ssoActorProfiles);
@@ -352,7 +320,7 @@ export async function getDispensaryWeeklyActivityHistory(
     }
 
     const [discordIdToName, actorDiscordProfiles] = await Promise.all([
-      getLatestDiscordDisplayNames(prisma, [...actorDiscordIds]),
+      getLatestDiscordDisplayNames(prisma, dispensaryId, [...actorDiscordIds]),
       loadDiscordProfilesByIds(prisma, dispensaryId, [...actorDiscordIds]),
     ]);
 
@@ -379,6 +347,10 @@ export async function getDispensaryWeeklyActivityHistory(
             : null,
           actorDiscordUserId,
           actorResolvedName,
+          /** Platform admin who acted as this person (impersonation), if any. */
+          actorImpersonatedByName: h.actorImpersonatedById
+            ? ssoActorProfiles.get(h.actorImpersonatedById)?.name ?? h.actorImpersonatedById
+            : null,
           createdAt: h.createdAt.toISOString(),
           previousValues: h.previousValues,
           nextValues: h.nextValues,
@@ -395,7 +367,8 @@ const createIntranetSchema = dispensaryWeeklyActivityMetricsSchema
     z.object({
       periodStart: z.coerce.date(),
       periodEnd: z.coerce.date(),
-      targetUserId: z.string().trim().min(1).max(191).optional(),
+      /** Person (Discord id) of the row, with or without an account: edit-all only. */
+      targetDiscordUserId: discordUserIdSchema.optional(),
       displayName: z.string().trim().min(1).max(200).optional(),
     }),
   )
@@ -403,6 +376,65 @@ const createIntranetSchema = dispensaryWeeklyActivityMetricsSchema
     message: 'La fin de période doit être après le début',
     path: ['periodEnd'],
   });
+
+export type WeeklyActivityTarget = {
+  /** Discord id: the person. */
+  id: string;
+  /** Intranet account name, if any. */
+  name: string | null;
+  /** Name shown in the dispensary (fixed name first). */
+  discordDisplayName: string;
+  hasAccount: boolean;
+};
+
+/**
+ * People an edit-all doctor can create a row for: the dispensary's people
+ * (Gestion › Personnes, with or without an account) and its members with
+ * Discord who have no profile yet. Not every Discord account of the platform.
+ */
+async function loadWeeklyActivityTargets(dispensaryId: string): Promise<WeeklyActivityTarget[]> {
+  const [profiles, members] = await Promise.all([
+    prisma.dispensaryDiscordProfile.findMany({
+      where: { dispensaryId },
+      select: { discordUserId: true, userId: true, fixedDisplayName: true, lastDisplayName: true },
+    }),
+    prisma.dispensaryMember.findMany({ where: { dispensaryId }, select: { userId: true } }),
+  ]);
+  const memberIds = members.map((m) => m.userId);
+  const [accounts, memberDiscordIds] = await Promise.all([
+    fetchUserProfiles([
+      ...new Set([...memberIds, ...profiles.map((p) => p.userId).filter((id): id is string => Boolean(id))]),
+    ]),
+    getDiscordAccountIdsForUsers(memberIds),
+  ]);
+
+  const targets = new Map<string, WeeklyActivityTarget>();
+  for (const profile of profiles) {
+    const account = profile.userId ? accounts.get(profile.userId) : undefined;
+    targets.set(profile.discordUserId, {
+      id: profile.discordUserId,
+      name: account?.name ?? null,
+      discordDisplayName: pickProfileDisplayName(
+        profile,
+        account?.name ?? genericDoctorFallbackName(profile.discordUserId),
+      ),
+      hasAccount: Boolean(profile.userId),
+    });
+  }
+  for (const [userId, discordUserId] of memberDiscordIds) {
+    if (targets.has(discordUserId)) continue;
+    const name = accounts.get(userId)?.name ?? null;
+    targets.set(discordUserId, {
+      id: discordUserId,
+      name,
+      discordDisplayName: name ?? genericDoctorFallbackName(discordUserId),
+      hasAccount: true,
+    });
+  }
+  return [...targets.values()].sort((a, b) =>
+    a.discordDisplayName.localeCompare(b.discordDisplayName, 'fr', { sensitivity: 'base' }),
+  );
+}
 
 export async function listDispensaryWeeklyActivityTargets(dispensarySlug: string) {
   try {
@@ -414,32 +446,10 @@ export async function listDispensaryWeeklyActivityTargets(dispensarySlug: string
       return { status: 403 as const, error: 'Permission refusée' };
     }
 
-    const users = await fetchDiscordLinkedUsers();
-
-    const discordUserIds = users
-      .map((user) => user.discordId)
-      .filter((id): id is string => Boolean(id));
-    const discordDisplayNames = await getLatestDiscordDisplayNames(prisma, discordUserIds);
-
-    const enriched = users
-      .map((user) => {
-        const discordUserId = user.discordId;
-        const discordDisplayName = discordUserId
-          ? discordDisplayNames.get(discordUserId) ?? genericDoctorFallbackName(discordUserId)
-          : genericDoctorFallbackName('unknown');
-        return {
-          id: user.id,
-          name: user.name,
-          discordDisplayName,
-        };
-      })
-      .sort((a, b) =>
-        a.discordDisplayName.localeCompare(b.discordDisplayName, 'fr', { sensitivity: 'base' }),
-      );
-
-    return { status: 200 as const, data: { users: enriched } };
+    const users = await loadWeeklyActivityTargets(gate.tenant.dispensaryId);
+    return { status: 200 as const, data: { users } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors du chargement des utilisateurs');
+    return actionErrorParser(error, 'Erreur lors du chargement des personnes');
   }
 }
 
@@ -465,8 +475,6 @@ async function createDispensaryWeeklyActivityUnlogged(
     const editAll = canEditAllWeeklyDispensaryActivity(perms);
 
     let discordUserId: string;
-    let displayName: string;
-    let resolvedUserId: string | null;
     const actorDiscordUserId = await getDiscordAccountIdForUser(prisma, session.user.id);
 
     if (!editAll) {
@@ -477,34 +485,30 @@ async function createDispensaryWeeklyActivityUnlogged(
         };
       }
       discordUserId = actorDiscordUserId;
-      displayName =
-        parsed.data.displayName?.trim() ||
-        (await resolveDiscordDisplayName(prisma, actorDiscordUserId));
-      resolvedUserId = session.user.id;
     } else {
-      if (!parsed.data.targetUserId) {
-        return { status: 400 as const, error: 'Sélectionnez un médecin' };
+      if (!parsed.data.targetDiscordUserId) {
+        return { status: 400 as const, error: 'Sélectionnez une personne' };
       }
-      const target = await fetchUserProfile(parsed.data.targetUserId);
-      if (!target) {
-        return { status: 400 as const, error: 'Utilisateur introuvable' };
-      }
-      const targetDiscord = await getDiscordAccountIdForUser(prisma, target.id);
-      if (!targetDiscord) {
+      const targets = await loadWeeklyActivityTargets(dispensaryId);
+      if (!targets.some((t) => t.id === parsed.data.targetDiscordUserId)) {
         return {
           status: 400 as const,
-          error: 'Ce compte intranet n’a pas de Discord lié.',
+          error: 'Cette personne n’est pas dans le dispensaire (ajoutez-la dans Gestion › Personnes).',
         };
       }
-      discordUserId = targetDiscord;
-      displayName =
-        parsed.data.displayName?.trim() ||
-        (await resolveDiscordDisplayName(prisma, targetDiscord));
-      resolvedUserId = target.id;
+      discordUserId = parsed.data.targetDiscordUserId;
     }
 
-    const linked = await findLinkedUserIdByDiscordAccount(prisma, discordUserId);
-    const userIdForRow = resolvedUserId ?? linked ?? null;
+    // The name typed in the modal, else the person's name in this dispensary.
+    const displayName =
+      (editAll ? parsed.data.displayName?.trim() : undefined) ||
+      (await resolveDiscordPersonName(
+        prisma,
+        dispensaryId,
+        discordUserId,
+        genericDoctorFallbackName(discordUserId),
+      ));
+    const userIdForRow = (await accountIdOfDiscord(discordUserId)) ?? null;
 
     const validated = dispensaryWeeklyActivityCreateSchema.safeParse({
       periodStart: parsed.data.periodStart,
@@ -540,6 +544,7 @@ async function createDispensaryWeeklyActivityUnlogged(
     const created = await createDispensaryWeeklyActivityWithHistory(createInput, {
       source: 'INTRANET',
       actorUserId: session.user.id,
+      actorImpersonatedById: session.session?.impersonatedBy ?? null,
       actorDiscordUserId: actorDiscordUserId ?? null,
       dispensaryId,
       meta: mutationMeta,
@@ -629,6 +634,7 @@ async function updateDispensaryWeeklyActivityUnlogged(
     await updateDispensaryWeeklyActivityWithHistory(parsedId.data.id, updateInput, {
       source: 'INTRANET',
       actorUserId: gate.session.user.id,
+      actorImpersonatedById: gate.session.session?.impersonatedBy ?? null,
       actorDiscordUserId: actorDiscordUserId ?? null,
       meta: mutationMeta,
     });
@@ -683,6 +689,7 @@ async function deleteDispensaryWeeklyActivityUnlogged(
     await deleteDispensaryWeeklyActivityWithHistory(parsed.data.id, {
       source: 'INTRANET',
       actorUserId: gate.session.user.id,
+      actorImpersonatedById: gate.session.session?.impersonatedBy ?? null,
       actorDiscordUserId: actorDiscordUserId ?? null,
       meta: mutationMeta,
     });
@@ -748,11 +755,13 @@ async function markOwnWeeklyChestTodayUnlogged(
     }
 
     const mutationMeta = parseMutationMeta(meta);
-    const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
     const result = await botMarkChestForParisToday(dispensaryId, discordGate.discordUserId, {
-      displayName,
       meta: mutationMeta,
-      initiator: { source: 'INTRANET', actorUserId: gate.session.user.id },
+      initiator: {
+        source: 'INTRANET',
+        actorUserId: gate.session.user.id,
+        actorImpersonatedById: gate.session.session?.impersonatedBy ?? null,
+      },
     });
 
     const row = await serializeQuickActionRow(dispensaryId, result.activity.id);
@@ -792,15 +801,17 @@ async function markOwnWeeklyPresenceTodayUnlogged(
     }
 
     const mutationMeta = parseMutationMeta(meta);
-    const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
     const result = await botMarkPresenceForParisRelativeDay(
       dispensaryId,
       discordGate.discordUserId,
       'today',
       {
-        displayName,
         meta: mutationMeta,
-        initiator: { source: 'INTRANET', actorUserId: gate.session.user.id },
+        initiator: {
+        source: 'INTRANET',
+        actorUserId: gate.session.user.id,
+        actorImpersonatedById: gate.session.session?.impersonatedBy ?? null,
+      },
       },
     );
 
@@ -850,14 +861,18 @@ async function incrementOwnWeeklyCounterUnlogged(
     }
 
     const mutationMeta = parseMutationMeta(meta);
-    const displayName = await resolveDiscordDisplayName(prisma, discordGate.discordUserId);
     const existing = await findOrCreateDispensaryActivityForParisDay(
       prisma,
       dispensaryId,
       discordGate.discordUserId,
       new Date(),
-      displayName,
-      { source: 'INTRANET', actorUserId: gate.session.user.id },
+      // An existing row keeps its name; a new one takes the latest name known here.
+      undefined,
+      {
+        source: 'INTRANET',
+        actorUserId: gate.session.user.id,
+        actorImpersonatedById: gate.session.session?.impersonatedBy ?? null,
+      },
     );
 
     const currentValue = existing[parsed.data];
@@ -869,6 +884,7 @@ async function incrementOwnWeeklyCounterUnlogged(
       {
         source: 'INTRANET',
         actorUserId: gate.session.user.id,
+        actorImpersonatedById: gate.session.session?.impersonatedBy ?? null,
         actorDiscordUserId,
         meta: mutationMeta,
       },
@@ -882,12 +898,13 @@ async function incrementOwnWeeklyCounterUnlogged(
 }
 
 const updateDiscordProfileSchema = z.object({
-  discordUserId: z.string().min(1).max(128),
+  discordUserId: discordUserIdSchema,
   fixedDisplayName: z.string().max(200).nullable().optional(),
-  role: z.string().max(100).nullable().optional(),
+  role: z.enum(PAYROLL_EMPLOYEE_ROLES).nullable().optional(),
   accountNumber: z.number().int().min(1).max(999999).nullable().optional(),
 });
 
+/** Name, grade and account number feed the payroll: edit-all only. */
 async function updateDispensaryDiscordProfileUnlogged(
   dispensarySlug: string,
   input: z.infer<typeof updateDiscordProfileSchema>,
@@ -897,37 +914,31 @@ async function updateDispensaryDiscordProfileUnlogged(
     if (!gate.ok) {
       return gate.response;
     }
+    if (!canEditAllWeeklyDispensaryActivity(gate.tenant.effectivePermissions)) {
+      return {
+        status: 403 as const,
+        error: 'Permission refusée : le grade et le n° de compte sont modifiés par la direction',
+      };
+    }
 
     const parsed = updateDiscordProfileSchema.safeParse(input);
     if (!parsed.success) {
-      return { status: 400 as const, error: 'Données invalides' };
+      return { status: 400 as const, error: parsed.error.issues[0]?.message ?? 'Données invalides' };
     }
-
-    const { dispensaryId } = gate.tenant;
-    const perms = gate.tenant.effectivePermissions;
-
-    if (!canEditAllWeeklyDispensaryActivity(perms)) {
-      const discordId = await getDiscordAccountIdForUser(prisma, gate.session.user.id);
-      if (!discordId || discordId !== parsed.data.discordUserId) {
-        return { status: 403 as const, error: 'Permission refusée' };
-      }
-    }
-
-    // Without edit-all, a doctor can only change their own grade and account number.
-    const fixedDisplayName = canEditAllWeeklyDispensaryActivity(perms)
-      ? parsed.data.fixedDisplayName
-      : undefined;
 
     const profile = await updateDiscordProfileFields(prisma, {
-      dispensaryId,
+      dispensaryId: gate.tenant.dispensaryId,
       discordUserId: parsed.data.discordUserId,
-      fixedDisplayName,
+      fixedDisplayName: parsed.data.fixedDisplayName,
       role: parsed.data.role,
       accountNumber: parsed.data.accountNumber,
     });
 
     return { status: 200 as const, data: profile };
   } catch (error) {
+    if (error instanceof DiscordProfileNotFoundError) {
+      return { status: 404 as const, error: error.message };
+    }
     if (error instanceof DiscordProfileConflictError) {
       return { status: 409 as const, error: error.message };
     }

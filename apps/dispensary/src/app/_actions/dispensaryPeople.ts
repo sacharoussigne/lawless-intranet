@@ -1,20 +1,26 @@
 'use server';
 
 import { z } from 'zod/v3';
-import { findUserIdByDiscordId } from '@lawless-intranet/auth-client/internal';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { loggedAction } from '@/lib/logs/writer';
-import { fetchDiscordLinkedUsers, fetchUserProfiles } from '@/lib/authUsers';
+import { fetchUserProfiles } from '@/lib/authUsers';
+import { accountIdOfDiscord, reconcileAccountLinks } from '@/lib/people/accountLinks';
+import {
+  getDiscordAccountIdsForUsers,
+  getLatestDiscordDisplayName,
+} from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import {
   createDiscordProfile,
   DiscordProfileConflictError,
+  DiscordProfileNotFoundError,
   updateDiscordProfileFields,
   type DiscordProfileSnapshot,
 } from '@/lib/dispensaryDiscordProfile/service';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
-import { linkUnlinkedProfiles } from '@/lib/people/resolveNames';
+import { discordUserIdSchema } from '@/lib/people/discordId';
+import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/dispensaryDiscordProfile/constants';
 import type { DispensaryPerson, DispensaryPeopleList } from '@/lib/people/types';
 
 const peopleGuard = {
@@ -26,13 +32,9 @@ const peopleGuard = {
   },
 };
 
-const discordUserIdSchema = z
-  .string()
-  .trim()
-  .regex(/^\d{17,20}$/, 'Discord ID invalide (17 à 20 chiffres)');
 
 const displayNameSchema = z.string().trim().min(1, 'Le nom est requis').max(200);
-const roleSchema = z.string().trim().max(100).nullable().optional();
+const roleSchema = z.enum(PAYROLL_EMPLOYEE_ROLES).nullable().optional();
 const accountNumberSchema = z
   .number()
   .int('N° de compte invalide')
@@ -99,35 +101,42 @@ export async function listDispensaryPeople(dispensarySlug: string) {
     if (!ctx.ok) return ctx.response;
     const { dispensaryId } = ctx.tenant;
 
-    // People added before they had an account: link them to the account now holding their Discord ID.
-    try {
-      await linkUnlinkedProfiles(prisma, dispensaryId);
-    } catch {
-      // The auth service did not answer: the list still loads, links are retried next time.
-    }
-
-    const [profiles, members, discordUsers] = await Promise.all([
-      prisma.dispensaryDiscordProfile.findMany({
-        where: { dispensaryId },
-        select: profileSelect,
-      }),
+    const [initialProfiles, members] = await Promise.all([
+      prisma.dispensaryDiscordProfile.findMany({ where: { dispensaryId }, select: profileSelect }),
       prisma.dispensaryMember.findMany({ where: { dispensaryId }, select: { userId: true } }),
-      fetchDiscordLinkedUsers(),
     ]);
 
+    // Accounts created (or unlinked) since the people were added; best effort, cached.
+    const links = await reconcileAccountLinks(
+      prisma,
+      dispensaryId,
+      initialProfiles.map((p) => p.discordUserId),
+    );
+    const profiles = initialProfiles.map((profile) => {
+      const userId = links?.get(profile.discordUserId);
+      return userId === undefined ? profile : { ...profile, userId };
+    });
+
+    const memberIds = members.map((m) => m.userId);
     const accountIds = profiles.map((p) => p.userId).filter((id): id is string => Boolean(id));
-    const accounts = await fetchUserProfiles(accountIds);
+    const [accounts, memberDiscordIds] = await Promise.all([
+      fetchUserProfiles([...new Set([...accountIds, ...memberIds])]),
+      getDiscordAccountIdsForUsers(memberIds),
+    ]);
 
     const people = profiles
       .map((profile) => toPerson(profile, profile.userId ? accounts.get(profile.userId)?.name ?? null : null))
       .sort((a, b) => a.displayName.localeCompare(b.displayName, 'fr'));
 
     // Members with Discord but no profile yet: offered in the « Ajouter » modal.
-    const memberIds = new Set(members.map((m) => m.userId));
     const profileDiscordIds = new Set(profiles.map((p) => p.discordUserId));
-    const membersWithoutProfile = discordUsers
-      .filter((user) => user.discordId && memberIds.has(user.id) && !profileDiscordIds.has(user.discordId))
-      .map((user) => ({ userId: user.id, name: user.name, discordUserId: user.discordId as string }))
+    const membersWithoutProfile = [...memberDiscordIds]
+      .filter(([, discordUserId]) => !profileDiscordIds.has(discordUserId))
+      .map(([userId, discordUserId]) => ({
+        userId,
+        name: accounts.get(userId)?.name ?? 'Utilisateur',
+        discordUserId,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 
     const data: DispensaryPeopleList = { people, membersWithoutProfile };
@@ -144,14 +153,11 @@ async function createDispensaryPersonUnlogged(dispensarySlug: string, input: unk
     const { dispensaryId } = ctx.tenant;
     const data = createPersonSchema.parse(input);
 
-    let userId: string | null = null;
-    try {
-      userId = await findUserIdByDiscordId(data.discordUserId);
-    } catch {
-      // No answer from the auth service: the account is linked later, on the next list.
-    }
+    // No answer from the auth service: the account is linked later, on the next list.
+    const userId = (await accountIdOfDiscord(data.discordUserId)) ?? null;
 
     await createDiscordProfile(prisma, {
+      lastKnownName: await getLatestDiscordDisplayName(prisma, dispensaryId, data.discordUserId),
       dispensaryId,
       discordUserId: data.discordUserId,
       displayName: data.displayName,
@@ -187,6 +193,9 @@ async function updateDispensaryPersonUnlogged(dispensarySlug: string, input: unk
 
     return { status: 200 as const, data: await loadPerson(dispensaryId, data.discordUserId) };
   } catch (error) {
+    if (error instanceof DiscordProfileNotFoundError) {
+      return { status: 404 as const, error: error.message };
+    }
     if (error instanceof DiscordProfileConflictError) {
       return { status: 409 as const, error: error.message };
     }

@@ -1,4 +1,5 @@
 import Header from '@/app/(loggedIn)/_components/Header/Header';
+import { getDispensaryUserName } from '@/lib/people/userProfiles';
 import { MobileTabBar } from '@/app/(loggedIn)/_components/MobileTabBar/MobileTabBar';
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
@@ -70,6 +71,11 @@ export default async function DispensaryLayout({
   );
   const permissions = calculatePermissionsFromEffective(effectivePermissions);
   const userId = session?.user?.id;
+  const username = await getDispensaryUserName(
+    dispensary.id,
+    userId,
+    session?.user.name ?? 'Utilisateur',
+  );
   const agendaModuleAccess = userId
     ? await userHasAnyAgendaAccess(
         dispensary.id,
@@ -120,7 +126,7 @@ export default async function DispensaryLayout({
         <QueryProvider>
           <OrdersRealtimeBridge />
           <MailTemplateProvider
-            username={session?.user.name ?? 'Utilisateur'}
+            username={username}
             userDescription={memberDescription}
             userGender={session?.user.gender ?? 'male'}
           >

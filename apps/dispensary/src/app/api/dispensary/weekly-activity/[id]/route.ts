@@ -14,7 +14,7 @@ import prisma from '@/lib/prisma';
 import { dispensaryWeeklyActivityBotPatchSchema } from '@/lib/dispensaryWeeklyActivity/schemas';
 import {
   deleteDispensaryWeeklyActivityWithHistory,
-  syncActivityUserIdFromDiscordIfMissing,
+  reconcileActivityUserIds,
   updateDispensaryWeeklyActivityWithHistory,
 } from '@/lib/dispensaryWeeklyActivity/service';
 import { resolveBotDispensaryContext } from '@/lib/dispensaryWeeklyActivity/botRequestContext';
@@ -47,11 +47,9 @@ async function loadActivityForBot(
     return { error: jsonError(403, 'Accès refusé') };
   }
 
-  if (!initial.userId) {
-    await syncActivityUserIdFromDiscordIfMissing(prisma, initial);
-  }
+  const [activity] = await reconcileActivityUserIds([initial]);
 
-  return { activity: initial };
+  return { activity };
 }
 
 async function handleGet(request: NextRequest, context: RouteContext) {

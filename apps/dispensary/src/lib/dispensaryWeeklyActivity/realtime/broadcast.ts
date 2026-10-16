@@ -1,7 +1,7 @@
 import { after } from 'next/server';
 import { realtimeTopics } from '@lawless-intranet/realtime';
 import { publishRealtime } from '@lawless-intranet/realtime/publish';
-import { findUserIdByDiscordId } from '@lawless-intranet/auth-client/internal';
+import { accountIdOfDiscord } from '@/lib/people/accountLinks';
 import { toWeeklyActivityRealtimeEnvelope } from '@/lib/dispensaryWeeklyActivity/realtime/envelope';
 import type {
   WeeklyActivityMutationMeta,
@@ -9,19 +9,15 @@ import type {
 } from '@/lib/dispensaryWeeklyActivity/realtime/types';
 
 /**
- * Rows from the Discord bot may only know the Discord account: find the linked
- * user so they still get their own updates (tenant-wide viewers get it anyway).
+ * The owner is the account holding the row's Discord id today (cached lookup);
+ * the stored `userId` is only used when auth does not answer.
  */
 async function resolveOwnerUserId(
   ownerUserId: string | null,
   ownerDiscordUserId: string,
 ): Promise<string | null> {
-  if (ownerUserId) return ownerUserId;
-  try {
-    return await findUserIdByDiscordId(ownerDiscordUserId);
-  } catch {
-    return null;
-  }
+  const current = await accountIdOfDiscord(ownerDiscordUserId);
+  return current === undefined ? ownerUserId : current;
 }
 
 /** Tells `edit_all` viewers and the owner (topics checked in the realtime token) to refetch. */

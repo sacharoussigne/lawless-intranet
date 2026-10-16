@@ -1,5 +1,6 @@
 'use server';
 
+import { getDispensaryUserName } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -360,7 +361,11 @@ export async function generateOrderMailPreview(
       template.content,
       buildUserTemplateRenderContext({
         inputs: {},
-        username: ctx.session.user.name || 'Utilisateur',
+        username: await getDispensaryUserName(
+          ctx.tenant.dispensaryId,
+          ctx.session.user.id,
+          ctx.session.user.name || 'Utilisateur',
+        ),
         userDescription: memberDescription,
         userGender: ctx.session.user.gender ?? 'male',
         variables: buildOrderMailVariables(order),
@@ -425,7 +430,7 @@ export async function getUserMailTemplatesPage(
     return {
       status: 200,
       data: {
-        items: await attachOwnerNames(mappedItems),
+        items: await attachOwnerNames(ctx.tenant.dispensaryId, mappedItems),
         totalCount: result.totalCount,
         page: result.page,
         pageSize: result.pageSize,

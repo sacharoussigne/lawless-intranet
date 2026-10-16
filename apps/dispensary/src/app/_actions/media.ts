@@ -1,5 +1,6 @@
 'use server';
 
+import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { z } from 'zod/v3';
 import {
@@ -20,7 +21,6 @@ import {
   updateMediaFolder,
 } from '@lawless-intranet/media-client/server';
 import { actionErrorParser } from '@/lib/action';
-import { fetchUserProfile } from '@/lib/authUsers';
 import { mediaActionAuth } from '@/lib/media/auth';
 import { mediaCookie, mediaScope } from '@/lib/media/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -176,7 +176,7 @@ export async function getMediaUserName(dispensarySlug: string, userId: string) {
     const ctx = await requireTenantServerActionContext(dispensarySlug, mediaActionAuth);
     if (!ctx.ok) return ctx.response;
     const id = z.string().min(1).max(255).parse(userId);
-    const profile = await fetchUserProfile(id);
+    const profile = (await fetchDispensaryUserProfiles(ctx.tenant.dispensaryId, [id])).get(id);
     return { status: 200, data: profile?.name ?? null };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement de l’utilisateur');

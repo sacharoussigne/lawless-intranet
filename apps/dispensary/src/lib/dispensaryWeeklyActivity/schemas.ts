@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DISCORD_USER_ID_PATTERN } from '@/lib/people/discordId';
 import { WEEKDAY_KEYS, weekdayFlagsSchema } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
 
 const parisDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
@@ -81,7 +82,7 @@ export const dispensaryWeeklyActivityCreateSchema = z
     periodStart: z.coerce.date(),
     periodEnd: z.coerce.date(),
     displayName: z.string().trim().min(1).max(200),
-    discordUserId: z.string().trim().min(1).max(40),
+    discordUserId: z.string().trim().regex(DISCORD_USER_ID_PATTERN, 'Discord ID invalide (17 à 20 chiffres)'),
     userId: z.string().trim().min(1).optional().nullable(),
   })
   .merge(dispensaryWeeklyActivityMetricsSchema)

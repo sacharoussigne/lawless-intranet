@@ -18,7 +18,7 @@ export async function loadSerializedWeeklyActivityById(
     where: { id },
   });
   if (!full) return null;
-  const [withName] = await mergeResolvedDisplayNames(prisma, [full]);
+  const [withName] = await mergeResolvedDisplayNames(prisma, full.dispensaryId, [full]);
   const [withProfile] = await attachDiscordProfilesToActivities(prisma, [withName]);
   return serializeDispensaryWeeklyActivityApiRow({
     id: withProfile.id,

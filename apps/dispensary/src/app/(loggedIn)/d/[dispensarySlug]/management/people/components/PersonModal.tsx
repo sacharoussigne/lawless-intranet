@@ -3,7 +3,7 @@
 import { Button, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
-import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/dispensaryDiscordProfile/constants';
+import { PAYROLL_EMPLOYEE_ROLES, toPayrollEmployeeRole } from '@/lib/dispensaryDiscordProfile/constants';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { handleApiZodError } from '@/lib/services/zod';
 import type { DispensaryPerson, MemberWithoutProfile } from '@/lib/people/types';
@@ -91,7 +91,7 @@ function PersonForm({
     run(() => {
       const shared = {
         accountNumber: values.accountNumber === '' ? null : toAccountNumber(values.accountNumber),
-        role: values.role?.trim() ? values.role.trim() : null,
+        role: toPayrollEmployeeRole(values.role),
       };
       if (person) {
         const name = values.displayName.trim();
@@ -116,7 +116,7 @@ function PersonForm({
         discordUserId: person.discordUserId,
         fixedDisplayName: null,
         accountNumber: person.accountNumber,
-        role: person.role,
+        role: toPayrollEmployeeRole(person.role),
       }),
     );
 
@@ -159,7 +159,7 @@ function PersonForm({
           maxLength={200}
           {...form.getInputProps('displayName')}
         />
-        {person?.fixedDisplayName && person.lastDisplayName !== person.fixedDisplayName && (
+        {person?.fixedDisplayName && person.lastDisplayName && person.lastDisplayName !== person.fixedDisplayName && (
           <Text size="xs" c="dimmed">
             Dernier nom envoyé par le bot : {person.lastDisplayName}
           </Text>

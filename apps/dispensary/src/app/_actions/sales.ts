@@ -229,7 +229,14 @@ async function createSaleUnlogged(
       status: 200,
       data: mapWeeklySaleRow(
         listItem,
-        new Map([[userId, ctx.session.user.name ?? 'Utilisateur']]),
+        new Map([
+          [
+            userId,
+            (await fetchDispensaryUserProfiles(dispensaryId, [userId])).get(userId)?.name ??
+              ctx.session.user.name ??
+              'Utilisateur',
+          ],
+        ]),
       ),
     };
   } catch (error) {

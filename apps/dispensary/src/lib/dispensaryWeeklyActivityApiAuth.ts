@@ -1,3 +1,4 @@
+import { isDiscordUserId } from '@/lib/people/discordId';
 import { timingSafeEqual } from 'crypto';
 import type { NextRequest } from 'next/server';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
@@ -22,10 +23,10 @@ export function isDispensaryBotApiAuthorized(request: NextRequest): boolean {
   }
 }
 
+/** Discord id sent by the bot; anything that is not a Discord id (17-20 digits) counts as missing. */
 export function getDiscordUserIdFromBotRequest(request: NextRequest): string | null {
-  const raw = request.headers.get('x-discord-user-id');
-  const id = raw?.trim();
-  return id && id.length > 0 ? id : null;
+  const id = request.headers.get('x-discord-user-id')?.trim();
+  return id && isDiscordUserId(id) ? id : null;
 }
 
 export function getDispensaryIdFromBotRequest(request: NextRequest): string | null {
