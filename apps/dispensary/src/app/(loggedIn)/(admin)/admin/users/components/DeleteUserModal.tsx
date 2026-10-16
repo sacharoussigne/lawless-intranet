@@ -48,14 +48,14 @@ export function DeleteUserModal({
           Êtes-vous sûr de vouloir supprimer l'utilisateur{' '}
           <strong>{userToDelete?.name}</strong> ({userToDelete?.email}) ?
         </Text>
-        <Text size="sm" c="red">
+        <Text size="sm" c="danger">
           Cette action est irréversible.
         </Text>
         <Group justify="flex-end" mt="md">
           <Button variant="subtle" onClick={onClose}>
             Annuler
           </Button>
-          <Button color="red" onClick={handleDelete}>
+          <Button color="danger" onClick={handleDelete}>
             Supprimer
           </Button>
         </Group>

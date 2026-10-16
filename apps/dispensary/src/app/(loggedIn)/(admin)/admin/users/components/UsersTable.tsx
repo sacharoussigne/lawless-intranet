@@ -67,7 +67,7 @@ export function UsersTable({
               <Group gap="xs" wrap="nowrap">
                 <Text>{user.name}</Text>
                 {currentUserId === user.id && (
-                  <Badge color="blue" variant="light" size="sm">
+                  <Badge color="denim" variant="light" size="sm">
                     Vous
                   </Badge>
                 )}
@@ -105,7 +105,7 @@ export function UsersTable({
                 .sort((a, b) => a.localeCompare(b)) as string[];
 
               if (rawRoles.length === 0) {
-                return <Badge color="gray">Aucun</Badge>;
+                return <Badge color="slate">Aucun</Badge>;
               }
 
               return (
@@ -191,7 +191,7 @@ export function UsersTable({
               <Group gap="xs" wrap="nowrap" justify="flex-end">
                 <Menu shadow="md" width={200}>
                   <Menu.Target>
-                    <ActionIcon variant="light" color="gray">
+                    <ActionIcon variant="light" color="slate">
                       <IconDots size={16} />
                     </ActionIcon>
                   </Menu.Target>
@@ -219,7 +219,7 @@ export function UsersTable({
                         <Menu.Divider />
                         <Menu.Item
                           leftSection={<IconTrash size={16} />}
-                          color="red"
+                          color="danger"
                           onClick={() => onDelete(user)}
                         >
                           Supprimer

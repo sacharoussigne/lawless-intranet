@@ -40,7 +40,7 @@ export function UploadQueue({ items, onClear }: UploadQueueProps) {
               <Text size="xs" lineClamp={1} style={{ flex: 1 }}>
                 {item.name}
               </Text>
-              {item.status === 'done' ? <IconCheck size={14} color="var(--mantine-color-moss-6)" /> : null}
+              {item.status === 'done' ? <IconCheck size={14} color="var(--mantine-color-moss-text)" /> : null}
             </Group>
             {item.status === 'error' ? (
               <Text size="xs" c="danger">

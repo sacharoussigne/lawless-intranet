@@ -31,14 +31,18 @@ export const refugeTheme: ThemeDefinition = {
 
     uiBg: '#F0E6D6',
     uiSurface: '#FBF6EE',
+    uiSurfaceRaised: '#FBF6EE',
     uiBorder: '#DCCBB3',
     uiInk: '#3E3B39',
     uiMuted: '#6A635C',
     uiTableHeader: '#E8DCC8',
     uiTableZebra: '#F5EDE0',
+    uiShadowXs: '0 1px 2px rgba(62, 59, 57, 0.04)',
     uiShadowCard: '0 1px 2px rgba(62, 59, 57, 0.05), 0 2px 6px rgba(62, 59, 57, 0.04)',
     uiShadowHeader: '0 1px 0 rgba(220, 203, 179, 0.9), 0 2px 6px rgba(62, 59, 57, 0.04)',
     uiShadowElevated: '0 3px 12px rgba(62, 59, 57, 0.08)',
+    uiShadowLg: '0 8px 24px rgba(62, 59, 57, 0.1)',
+    uiShadowXl: '0 12px 32px rgba(62, 59, 57, 0.12)',
   },
   soft: Object.fromEntries(Object.entries(SHELTER_SOFT_PALETTES).map(([name, palette]) => [name, lightSoftColors(palette)])),
 };

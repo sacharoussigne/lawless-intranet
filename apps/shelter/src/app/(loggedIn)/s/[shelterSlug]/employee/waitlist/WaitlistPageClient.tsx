@@ -556,7 +556,7 @@ export function WaitlistPageClient({
                       <>
                         <ActionIcon
                           variant="light"
-                          color="teal"
+                          color="moss"
                           aria-label="Marquer comme honorée"
                           onClick={() => void openFulfill(request)}
                         >
@@ -564,7 +564,7 @@ export function WaitlistPageClient({
                         </ActionIcon>
                         <ActionIcon
                           variant="light"
-                          color="gray"
+                          color="slate"
                           aria-label="Annuler la demande"
                           onClick={() => void handleSetStatus(request, 'cancelled')}
                         >
@@ -677,7 +677,7 @@ export function WaitlistPageClient({
             {...form.getInputProps('comment')}
           />
           <Group justify="flex-end">
-            <Button variant="subtle" color="gray" onClick={() => setEditorOpen(false)}>
+            <Button variant="subtle" color="slate" onClick={() => setEditorOpen(false)}>
               Annuler
             </Button>
             <Button color="terracotta" loading={submitting} onClick={() => void handleSubmit()}>
@@ -712,7 +712,7 @@ export function WaitlistPageClient({
           <Group justify="flex-end">
             <Button
               variant="subtle"
-              color="gray"
+              color="slate"
               onClick={() => {
                 setFulfillOpen(false);
                 setFulfilling(null);
@@ -777,7 +777,7 @@ export function WaitlistPageClient({
             <Group justify="flex-end">
               <Button
                 variant="subtle"
-                color="gray"
+                color="slate"
                 onClick={() => {
                   setDetailOpen(false);
                   setViewingDetail(null);

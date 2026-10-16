@@ -9,6 +9,7 @@ export const apothecaryTheme: ThemeDefinition = {
   tokens: {
     bg: '#F7F3EB',
     surface: '#FFFCF6',
+    surfaceRaised: '#FFFCF6',
     surfaceBorder: '#E8DFD0',
     ink: '#3D3429',
     inkMuted: '#6B5F52',
@@ -18,10 +19,13 @@ export const apothecaryTheme: ThemeDefinition = {
     danger: '#9B4D4D',
     tableHeader: '#F0EBE3',
     tableZebra: '#FAF6EF',
+    shadowXs: '0 1px 2px rgba(61, 52, 41, 0.04)',
     shadowCard: '0 1px 3px rgba(61, 52, 41, 0.06), 0 2px 8px rgba(61, 52, 41, 0.04)',
     shadowHeader: '0 1px 0 rgba(232, 223, 208, 0.8), 0 2px 8px rgba(61, 52, 41, 0.04)',
     shadowElevated: '0 4px 16px rgba(61, 52, 41, 0.08)',
     shadowHover: '0 4px 12px rgba(61, 52, 41, 0.08)',
+    shadowLg: '0 8px 24px rgba(61, 52, 41, 0.1)',
+    shadowXl: '0 12px 32px rgba(61, 52, 41, 0.12)',
   },
   soft: Object.fromEntries(Object.entries(DISP_SOFT_PALETTES).map(([name, palette]) => [name, lightSoftColors(palette)])),
 };

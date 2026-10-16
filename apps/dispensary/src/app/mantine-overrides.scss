@@ -334,7 +334,7 @@ html[data-mantine-color-scheme] body {
 
   &[data-active] {
     background-color: var(--mantine-color-sage-filled) !important;
-    color: #fff !important;
+    color: var(--mantine-color-white) !important;
     border-color: transparent !important;
   }
 }
@@ -345,4 +345,14 @@ html[data-mantine-color-scheme] body {
   --tooltip-color: var(--disp-ink);
   border: 1px solid var(--mantine-color-dark-4);
   box-shadow: var(--disp-shadow-elevated);
+}
+
+/*
+ * Cards and papers nested in a card, a paper or a modal (all Paper roots):
+ * one step lighter so they stand out in the dark theme (same color as the
+ * surface in the light theme). The theme's Paper / Card styles read this
+ * variable, so an explicit `bg` still wins.
+ */
+.mantine-Paper-root .mantine-Paper-root {
+  --disp-paper-bg: var(--disp-surface-raised);
 }

@@ -141,7 +141,7 @@ export function ShelterPermissionsPanel({
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={3}>Permissions par rôle</Title>
-        <Button variant="light" color="gray" loading={resetting} onClick={() => void handleReset()}>
+        <Button variant="light" color="slate" loading={resetting} onClick={() => void handleReset()}>
           Réinitialiser
         </Button>
       </Group>

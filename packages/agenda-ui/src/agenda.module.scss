@@ -55,12 +55,12 @@
     flex-direction: column;
     height: 100%;
     padding: var(--mantine-spacing-sm);
-    border: 1px solid var(--disp-border);
+    border: 1px solid var(--disp-surface-border);
     border-radius: var(--mantine-radius-sm);
-    background: var(--disp-paper-muted, var(--disp-slate-soft));
+    background: light-dark(var(--disp-slate-soft), var(--disp-surface-raised));
 
     &:last-of-type {
-      border-bottom: 1px solid var(--disp-border);
+      border-bottom: 1px solid var(--disp-surface-border);
     }
   }
 
@@ -80,7 +80,7 @@
 
 .agendaLayoutControls {
   padding: 2px;
-  border: 1px solid var(--disp-border);
+  border: 1px solid var(--disp-surface-border);
   border-radius: var(--mantine-radius-sm);
   background: var(--disp-surface);
 }
@@ -98,7 +98,7 @@
   min-width: 0;
   height: var(--agenda-panel-height, 620px);
   max-height: var(--agenda-panel-height, 620px);
-  border: 1px solid var(--disp-border);
+  border: 1px solid var(--disp-surface-border);
   border-radius: var(--mantine-radius-sm);
   background: var(--disp-surface);
   padding: var(--mantine-spacing-md);
@@ -124,7 +124,7 @@
   :global(.rbc-toolbar button) {
     font-family: var(--disp-font-ui);
     color: var(--disp-ink);
-    border-color: var(--disp-border);
+    border-color: var(--disp-surface-border);
   }
 
   :global(.rbc-toolbar button:hover),
@@ -139,12 +139,12 @@
     padding: 0.5rem;
     font-family: var(--disp-font-display);
     font-weight: 400;
-    border-color: var(--disp-border);
+    border-color: var(--disp-surface-border);
   }
 
   :global(.rbc-time-view .rbc-time-header) {
     align-items: stretch;
-    border-bottom: 1px solid var(--disp-border);
+    border-bottom: 1px solid var(--disp-surface-border);
   }
 
   :global(.rbc-time-view .rbc-time-header.rbc-overflowing) {
@@ -156,7 +156,7 @@
     width: 3.5rem;
     min-width: 3.5rem;
     align-self: stretch;
-    border-right: 1px solid var(--disp-border);
+    border-right: 1px solid var(--disp-surface-border);
     border-bottom: none !important;
     background: var(--disp-surface);
   }
@@ -198,7 +198,7 @@
   }
 
   :global(.rbc-off-range-bg) {
-    background: var(--disp-paper-muted, var(--disp-slate-soft));
+    background: light-dark(var(--disp-slate-soft), var(--disp-surface-raised));
   }
 
   :global(.rbc-time-view .rbc-allday-cell) {
@@ -233,12 +233,76 @@
   :global(.rbc-month-view),
   :global(.rbc-time-view),
   :global(.rbc-agenda-view) {
-    border-color: var(--disp-border);
+    border-color: var(--disp-surface-border);
   }
 
   :global(.rbc-day-bg + .rbc-day-bg),
   :global(.rbc-month-row + .rbc-month-row) {
-    border-color: var(--disp-border);
+    border-color: var(--disp-surface-border);
+  }
+
+  /* react-big-calendar ships light grays (#ddd, #f7f7f7, #fff…): follow the theme. */
+  :global(.rbc-header + .rbc-header),
+  :global(.rbc-time-content),
+  :global(.rbc-time-content > * + * > *),
+  :global(.rbc-timeslot-group),
+  :global(.rbc-day-slot .rbc-time-slot),
+  :global(.rbc-agenda-view table.rbc-agenda-table),
+  :global(.rbc-agenda-view table.rbc-agenda-table tbody > tr > td + td),
+  :global(.rbc-agenda-view table.rbc-agenda-table tbody > tr + tr),
+  :global(.rbc-agenda-view table.rbc-agenda-table thead > tr > th) {
+    border-color: var(--disp-surface-border);
+  }
+
+  :global(.rbc-day-slot .rbc-time-slot) {
+    border-top-color: color-mix(in srgb, var(--disp-surface-border) 50%, transparent);
+  }
+
+  :global(.rbc-time-gutter),
+  :global(.rbc-label) {
+    color: var(--mantine-color-dimmed);
+  }
+
+  :global(.rbc-button-link),
+  :global(.rbc-date-cell) {
+    color: var(--disp-ink);
+  }
+
+  :global(.rbc-off-range) {
+    color: var(--mantine-color-dimmed);
+  }
+
+  :global(.rbc-show-more) {
+    background: transparent;
+    color: var(--disp-sage);
+  }
+
+  :global(.rbc-show-more:hover),
+  :global(.rbc-show-more:focus) {
+    color: var(--disp-ink);
+  }
+
+  :global(.rbc-slot-selection),
+  :global(.rbc-selected-cell) {
+    background: var(--disp-sage-soft-strong);
+    color: var(--disp-ink);
+  }
+
+  :global(.rbc-current-time-indicator) {
+    background-color: var(--disp-danger);
+  }
+
+  :global(.rbc-overlay) {
+    background: var(--disp-surface-raised);
+    border: 1px solid var(--disp-surface-border);
+    border-radius: var(--mantine-radius-sm);
+    box-shadow: var(--disp-shadow-elevated);
+    color: var(--disp-ink);
+  }
+
+  :global(.rbc-overlay-header) {
+    border-bottom-color: var(--disp-surface-border);
+    color: var(--disp-ink-muted);
   }
 }
 
@@ -281,7 +345,7 @@
 
 .todoCategoryFilterChipActive {
   color: var(--disp-ink);
-  border-color: var(--disp-border);
+  border-color: var(--disp-surface-border);
   background: var(--disp-sage-soft);
 }
 
@@ -315,7 +379,7 @@
 
 .todoListTabActive {
   color: var(--disp-ink);
-  border-color: var(--disp-border);
+  border-color: var(--disp-surface-border);
   background: var(--disp-sage-soft);
 }
 
@@ -350,7 +414,7 @@
 .todoCategory {
   padding: var(--mantine-spacing-sm) 0;
   border: none;
-  border-bottom: 1px solid var(--disp-border);
+  border-bottom: 1px solid var(--disp-surface-border);
   background: transparent;
 
   &:last-of-type {
@@ -388,7 +452,7 @@
 .todoCategoryDragOverlay {
   padding: 0.35rem 0.65rem;
   background: var(--disp-surface);
-  border: 1px solid var(--disp-border);
+  border: 1px solid var(--disp-surface-border);
   border-radius: var(--mantine-radius-sm);
   box-shadow: var(--disp-shadow-header);
   cursor: grabbing;
@@ -607,7 +671,7 @@
 
 .archiveListHeader {
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid var(--disp-border);
+  border-bottom: 1px solid var(--disp-surface-border);
 }
 
 .archiveListName {
@@ -618,7 +682,7 @@
 }
 
 .archiveCategory {
-  border: 1px solid var(--disp-border);
+  border: 1px solid var(--disp-surface-border);
   border-radius: var(--mantine-radius-sm);
   background: var(--disp-surface);
   overflow: hidden;
@@ -646,7 +710,7 @@
 }
 
 .archiveTasks {
-  border-top: 1px solid var(--disp-border);
+  border-top: 1px solid var(--disp-surface-border);
 }
 
 .archiveTask {
@@ -656,7 +720,7 @@
   padding: 0.45rem 0.6rem;
 
   & + & {
-    border-top: 1px dashed var(--disp-border);
+    border-top: 1px dashed var(--disp-surface-border);
   }
 
   &:hover {
@@ -671,7 +735,7 @@
 .archiveTaskIcon {
   flex-shrink: 0;
   margin-top: 0.15rem;
-  color: var(--mantine-color-sage-6);
+  color: var(--disp-sage);
 }
 
 .archiveTaskBody {

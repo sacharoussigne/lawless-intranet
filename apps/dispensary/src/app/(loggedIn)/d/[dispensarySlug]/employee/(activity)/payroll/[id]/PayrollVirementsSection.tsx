@@ -33,7 +33,7 @@ export function PayrollVirementsSection({ draft, wireDescription }: PayrollVirem
       <Text size="sm" c="dimmed" mb="sm">
         Montants et libellés à utiliser pour les virements bancaires.
       </Text>
-      <Box mb="sm" pl="xs" ml={2} style={{ borderLeft: '2px solid var(--mantine-color-slate-3)' }}>
+      <Box mb="sm" pl="xs" ml={2} style={{ borderLeft: '2px solid var(--disp-slate-soft-border)' }}>
         <Text size="xs" c="dimmed" lh={1.45} mb={4}>
           Dépôt des caisses d&apos;export de bandage — motif à indiquer&nbsp;:
         </Text>

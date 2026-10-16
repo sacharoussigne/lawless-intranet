@@ -8,6 +8,8 @@ export const dispTokens = {
   colors: {
     background: 'var(--disp-bg)',
     surface: 'var(--disp-surface)',
+    /** Cards nested in a card or a modal (same as `surface` in the light theme). */
+    surfaceRaised: 'var(--disp-surface-raised)',
     surfaceBorder: 'var(--disp-surface-border)',
     ink: 'var(--disp-ink)',
     inkMuted: 'var(--disp-ink-muted)',
@@ -25,9 +27,12 @@ export const dispTokens = {
     modal: '14px',
   },
   shadows: {
+    xs: 'var(--disp-shadow-xs)',
     card: 'var(--disp-shadow-card)',
     header: 'var(--disp-shadow-header)',
     elevated: 'var(--disp-shadow-elevated)',
+    lg: 'var(--disp-shadow-lg)',
+    xl: 'var(--disp-shadow-xl)',
   },
   fonts: {
     display: 'var(--font-display), var(--font-ui), "Courier New", Courier, monospace',

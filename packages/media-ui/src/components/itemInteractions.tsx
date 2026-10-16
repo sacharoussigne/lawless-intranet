@@ -193,7 +193,7 @@ export function KebabMenu({ label, children }: { label: string; children: ReactN
 export function fileTypeIcon(mimeType: string) {
   const kind = getFileKind(mimeType);
   return kind === 'pdf'
-    ? { kind, Icon: IconFileTypePdf, color: 'var(--mantine-color-danger-6)' }
+    ? { kind, Icon: IconFileTypePdf, color: 'var(--mantine-color-danger-text)' }
     : { kind, Icon: IconPhoto, color: 'var(--mantine-primary-color-filled)' };
 }
 

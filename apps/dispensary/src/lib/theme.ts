@@ -12,8 +12,12 @@ import {
   slatePalette,
   winePalette,
 } from '@/lib/design-tokens';
+import { DISP_SOFT_PALETTES } from '@/lib/themes/palettes';
 
 const { colors: c, radius: r, shadows: s } = dispTokens;
+
+/** Surface of cards and papers; nested ones get `--disp-paper-bg` (see `mantine-overrides.scss`). */
+const paperBackground = `var(--disp-paper-bg, ${c.surface})`;
 
 const selectLikeInput = {
   backgroundColor: c.surface,
@@ -79,14 +83,14 @@ const theme = createTheme({
     dark: [
       '#ECE3D2',
       '#D3C8B6',
-      '#B0A493',
-      '#8A7F70',
-      '#4A4035',
-      '#3B3329',
-      '#2D2720',
-      '#26201A',
-      '#1C1814',
-      '#15120F',
+      '#BFB3A1',
+      '#9A8E7E',
+      '#4A4036',
+      '#3D352B',
+      '#342C23',
+      '#262019',
+      '#14110E',
+      '#0F0D0A',
     ],
     blue: [
       '#e3f4fd',
@@ -129,11 +133,11 @@ const theme = createTheme({
   },
 
   shadows: {
-    xs: '0 1px 2px rgba(61, 52, 41, 0.04)',
+    xs: s.xs,
     sm: s.card,
     md: s.elevated,
-    lg: '0 8px 24px rgba(61, 52, 41, 0.1)',
-    xl: '0 12px 32px rgba(61, 52, 41, 0.12)',
+    lg: s.lg,
+    xl: s.xl,
   },
 
   fontSizes: {
@@ -254,7 +258,7 @@ const theme = createTheme({
       },
       styles: {
         root: {
-          backgroundColor: c.surface,
+          backgroundColor: paperBackground,
           borderColor: c.surfaceBorder,
           borderRadius: r.lg,
           boxShadow: s.card,
@@ -265,7 +269,7 @@ const theme = createTheme({
     Paper: {
       styles: {
         root: {
-          backgroundColor: c.surface,
+          backgroundColor: paperBackground,
           borderColor: c.surfaceBorder,
           borderRadius: r.lg,
         },
@@ -514,13 +518,35 @@ const themeMantineVariables = {
   '--mantine-color-disabled-border': c.surfaceBorder,
 };
 
+/**
+ * Dark scheme: Mantine's defaults (text = shade 4, filled = shade 5) are too
+ * dim on brown surfaces. Colored text uses shade 3 and filled backgrounds use
+ * shade 6, so that cream labels stay readable.
+ */
+const darkFilledShade: Record<string, number> = { amber: 7 };
+
+const darkPaletteVariables = Object.fromEntries(
+  Object.keys(DISP_SOFT_PALETTES).flatMap((name) => {
+    const filled = darkFilledShade[name] ?? 6;
+    return [
+      [`--mantine-color-${name}-text`, `var(--mantine-color-${name}-3)`],
+      [`--mantine-color-${name}-filled`, `var(--mantine-color-${name}-${filled})`],
+      [`--mantine-color-${name}-filled-hover`, `var(--mantine-color-${name}-${filled + 1})`],
+    ];
+  }),
+);
+
 export const dispCssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
     '--mantine-font-family': dispTokens.fonts.ui,
     '--mantine-font-family-monospace': dispTokens.fonts.mono,
   },
   light: themeMantineVariables,
-  dark: themeMantineVariables,
+  dark: {
+    ...themeMantineVariables,
+    ...darkPaletteVariables,
+    '--mantine-color-anchor': 'var(--mantine-color-sage-3)',
+  },
 });
 
 export default theme;

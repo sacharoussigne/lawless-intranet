@@ -102,7 +102,7 @@ export default function DispensarySettingsPageClient({
 
         <Tabs.Panel value="permissions" pt="xl">
           {permissionsError ? (
-            <p style={{ color: 'var(--mantine-color-danger-6)' }}>{permissionsError}</p>
+            <p style={{ color: 'var(--disp-danger)' }}>{permissionsError}</p>
           ) : (
             <DispensaryPermissionsPanel
               dispensarySlug={dispensarySlug}

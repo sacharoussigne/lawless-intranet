@@ -360,8 +360,7 @@ export const TemplateFormGenerator = forwardRef<
               fw={700}
               tt="uppercase"
               lts="0.05em"
-              c="denim.7"
-              style={{ flexShrink: 0 }}
+              style={{ flexShrink: 0, color: 'light-dark(var(--mantine-color-denim-7), var(--mantine-color-denim-3))' }}
             >
               {section.title}
             </Text>
