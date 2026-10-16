@@ -1,5 +1,6 @@
 'use client';
 
+import { peopleKeys } from '@/lib/people/queryKeys';
 import { useCallback } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
@@ -314,12 +315,14 @@ export function useUpdateDiscordProfileMutation() {
   return useMutation({
     mutationFn: async (vars: {
       discordUserId: string;
+      fixedDisplayName?: string;
       role: string | null;
       accountNumber: number | null;
       weekBounds: WeeklyActivityWeekBounds;
     }) => {
       const result = await updateDispensaryDiscordProfile(dispensarySlug, {
         discordUserId: vars.discordUserId,
+        fixedDisplayName: vars.fixedDisplayName,
         role: vars.role,
         accountNumber: vars.accountNumber,
       });
@@ -334,6 +337,7 @@ export function useUpdateDiscordProfileMutation() {
           weeklyActivityWeekKey(weekBounds),
         ),
       });
+      void queryClient.invalidateQueries({ queryKey: peopleKeys.all(dispensarySlug) });
       notifications.show({ title: 'Profil enregistré', message: '', color: 'moss' });
     },
     onError: (error: Error) => {

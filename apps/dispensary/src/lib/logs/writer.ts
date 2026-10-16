@@ -4,6 +4,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { getAuthSession } from '@/lib/authSession';
 import { resolveDispensaryFromSlug } from '@/lib/dispensary/context';
 import prisma from '@/lib/prisma';
+import { discordIdForLog } from './actorDiscordId';
 import { LOG_FEATURE_LABELS } from './labels';
 import { dispensarySlugFromPath, featureFromPath } from './paths';
 import { sanitizeLogContext, serializeError } from './sanitize';
@@ -141,7 +142,7 @@ export function logAction(input: ActionLogInput): void {
       source: input.source ?? 'INTRANET',
       dispensaryId: await resolveDispensaryId(input, request),
       userId: input.userId ?? request.userId,
-      discordUserId: input.discordUserId ?? null,
+      discordUserId: input.discordUserId ?? (await discordIdForLog(input.userId ?? request.userId)),
       httpStatus: input.httpStatus ?? null,
       durationMs: input.durationMs ?? null,
       path: request.path,
@@ -164,7 +165,7 @@ export function logServerError(input: {
   // Read now, inside the action: same object id as its `ACTION` line.
   const targetId = currentActionTargetId();
   writeAppLog(
-    resolveRequestLogContext().then((request) => ({
+    resolveRequestLogContext().then(async (request) => ({
       level: 'ERROR' as const,
       kind: 'ERROR' as const,
       feature: (input.feature as LogFeature | undefined) ?? request.feature,
@@ -174,6 +175,7 @@ export function logServerError(input: {
       source: 'INTRANET' as const,
       dispensaryId: input.dispensaryId ?? request.dispensaryId,
       userId: request.userId,
+      discordUserId: await discordIdForLog(request.userId),
       httpStatus: input.status,
       path: request.path,
       targetId,

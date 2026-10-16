@@ -25,6 +25,7 @@ import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySetting
 import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
 import { getManagementCategoryItems } from '@/app/_actions/categoryItems';
 import { getRoleChestAccesses } from '@/app/_actions/chestAccess';
+import { listDispensaryPeople } from '@/app/_actions/dispensaryPeople';
 import { getCompanies, getCompaniesForSelect } from '@/app/_actions/companies';
 import {
   getCompanyGroups,
@@ -191,6 +192,7 @@ export const readRoutes = {
   // Management catalog
   managementCategoryItems: (slug: string, _input?: undefined) => getManagementCategoryItems(slug),
   chests: (slug: string, _input?: undefined) => getChests(slug),
+  dispensaryPeople: (slug: string, _input?: undefined) => listDispensaryPeople(slug),
   roleChestAccesses: (slug: string, _input?: undefined) => getRoleChestAccesses(slug),
   chestStockCheckForm: (slug: string, input: { chestId: string }) =>
     getChestStockCheckForm(slug, input?.chestId),

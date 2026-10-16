@@ -6,12 +6,13 @@ import {
   IconBuildingStore,
   IconSettings,
   IconClipboardText,
+  IconUsers,
 } from '@tabler/icons-react';
 import { getAuthSession } from '@/lib/authSession';
-import { hasRole } from '@lawless-intranet/auth-permissions';
+import { can, hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { dispensarySiteTitle, getAppSettings } from '@/lib/appSettings';
-import { requireDispensaryFromSlug } from '@/lib/dispensary/context';
+import { requireDispensaryAccess } from '@/lib/dispensary/context';
 import { ModuleCard, type ModuleCardProps } from '@/app/_components/ModuleCard/ModuleCard';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 
@@ -21,9 +22,9 @@ export default async function ManagementPage({
   params: Promise<{ dispensarySlug: string }>;
 }) {
   const { dispensarySlug } = await params;
-  const dispensary = await requireDispensaryFromSlug(dispensarySlug);
   const t = tenantRoutes(dispensarySlug);
   const session = await getAuthSession();
+  const { dispensary, effectivePermissions } = await requireDispensaryAccess(session, dispensarySlug);
   const settings = await getAppSettings(dispensary.id);
   const showAdminSettings = hasRole(session?.user?.role, Role.ADMIN);
   const siteTitle = dispensarySiteTitle(settings);
@@ -52,6 +53,16 @@ export default async function ManagementPage({
       icon: IconBuildingStore,
       href: t.management.companies(),
       visible: true,
+    },
+    {
+      title: 'Personnes',
+      description:
+        'Fixez le nom des personnes, avec ou sans compte intranet, et ajoutez-en à partir de leur Discord ID.',
+      icon: IconUsers,
+      href: t.management.people,
+      visible:
+        settings.featureWeeklyDispensaryActivityEnabled &&
+        can(effectivePermissions, 'weekly_dispensary_activity', 'edit_all'),
     },
     {
       title: 'Courriers',

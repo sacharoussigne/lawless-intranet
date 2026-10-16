@@ -16,27 +16,27 @@ model Dispensary {
   updatedAt   DateTime @updatedAt
   createdById String?
 
-  members                      DispensaryMember[]
-  rolePermissions              DispensaryRolePermission[]
-  settings                     AppSettings?
-  payrollWeeklyReports         PayrollWeeklyReport[]
-  dispensaryWeeklyActivities   DispensaryWeeklyActivity[]
-  dispensaryDiscordProfiles    DispensaryDiscordProfile[]
-  cabinets                     Cabinet[]
+  members                    DispensaryMember[]
+  rolePermissions            DispensaryRolePermission[]
+  settings                   AppSettings?
+  payrollWeeklyReports       PayrollWeeklyReport[]
+  dispensaryWeeklyActivities DispensaryWeeklyActivity[]
+  dispensaryDiscordProfiles  DispensaryDiscordProfile[]
+  cabinets                   Cabinet[]
 
   @@index([createdById])
   @@map("dispensary")
 }
 
 model DispensaryMember {
-  id           String     @id @default(uuid())
+  id           String                       @id @default(uuid())
   dispensaryId String
   userId       String
   role         String
   description  String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+  dispensary   Dispensary                   @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   permissions  DispensaryMemberPermission[]
 
   @@unique([dispensaryId, userId])
@@ -65,14 +65,14 @@ enum MemberPermissionEffect {
 }
 
 model DispensaryMemberPermission {
-  id        String                  @id @default(uuid())
+  id        String                 @id @default(uuid())
   memberId  String
   resource  String
   action    String
   effect    MemberPermissionEffect
-  createdAt DateTime                @default(now())
-  updatedAt DateTime                @updatedAt
-  member    DispensaryMember        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  member    DispensaryMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, resource, action])
   @@index([memberId])
@@ -101,49 +101,49 @@ model PayrollWeeklyReport {
 }
 
 model UserUiPreferences {
-  id                  String   @id @default(uuid())
-  userId              String   @unique
+  id     String @id @default(uuid())
+  userId String @unique
 
-  lowStockCraftableBg String   @default("#fff3cd")
-  lowStockNormalBg    String   @default("#f8d7da")
+  lowStockCraftableBg String  @default("#fff3cd")
+  lowStockNormalBg    String  @default("#f8d7da")
   okStockBg           String?
   unknownStockBg      String?
 
-  doneTodayBadgeBg    String?
+  doneTodayBadgeBg String?
 
   /// Interface theme id (src/lib/themes), e.g. "apothecary" or "nuit".
-  theme               String   @default("apothecary")
+  theme String @default("apothecary")
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@map("user_ui_preferences")
 }
 
 model AppSettings {
-  dispensaryId                             String     @id
-  dispensary                               Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  dispensaryName                           String     @default("Saint-Denis")
-  featureStockEnabled                      Boolean    @default(true)
-  featureBankEnabled                       Boolean    @default(true)
-  featureOrdersEnabled                     Boolean    @default(true)
-  featureSearchEnabled                     Boolean    @default(true)
-  featureMailsEnabled                      Boolean    @default(true)
-  featurePayrollEnabled                    Boolean    @default(true)
-  featureWeeklyDispensaryActivityEnabled   Boolean    @default(true)
-  featureAgendaEnabled                     Boolean    @default(true)
-  featureCabinetEnabled                    Boolean    @default(true)
-  featureSalesEnabled                      Boolean    @default(true)
-  featureMediaEnabled                      Boolean    @default(true)
-  weeklyActivityChestDaysVisible           Boolean    @default(true)
-  weeklyActivityPresenceDaysVisible        Boolean    @default(true)
-  weeklyActivityPatientsVisible            Boolean    @default(true)
-  weeklyActivitySherifsVisible             Boolean    @default(true)
-  weeklyActivityInfusionsVisible           Boolean    @default(true)
-  weeklyActivityPoppyMilkVisible           Boolean    @default(true)
-  createdAt                                DateTime   @default(now())
-  updatedAt                                DateTime   @updatedAt
+  dispensaryId                           String     @id
+  dispensary                             Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  dispensaryName                         String     @default("Saint-Denis")
+  featureStockEnabled                    Boolean    @default(true)
+  featureBankEnabled                     Boolean    @default(true)
+  featureOrdersEnabled                   Boolean    @default(true)
+  featureSearchEnabled                   Boolean    @default(true)
+  featureMailsEnabled                    Boolean    @default(true)
+  featurePayrollEnabled                  Boolean    @default(true)
+  featureWeeklyDispensaryActivityEnabled Boolean    @default(true)
+  featureAgendaEnabled                   Boolean    @default(true)
+  featureCabinetEnabled                  Boolean    @default(true)
+  featureSalesEnabled                    Boolean    @default(true)
+  featureMediaEnabled                    Boolean    @default(true)
+  weeklyActivityChestDaysVisible         Boolean    @default(true)
+  weeklyActivityPresenceDaysVisible      Boolean    @default(true)
+  weeklyActivityPatientsVisible          Boolean    @default(true)
+  weeklyActivitySherifsVisible           Boolean    @default(true)
+  weeklyActivityInfusionsVisible         Boolean    @default(true)
+  weeklyActivityPoppyMilkVisible         Boolean    @default(true)
+  createdAt                              DateTime   @default(now())
+  updatedAt                              DateTime   @updatedAt
 
   @@map("app_settings")
 }
@@ -174,23 +174,23 @@ enum DispensaryWeeklyActivityHistorySource {
 }
 
 model DispensaryWeeklyActivity {
-  id            String   @id @default(uuid())
-  dispensaryId  String
-  dispensary    Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  periodStart   DateTime
-  periodEnd     DateTime
-  displayName   String
-  discordUserId String
-  userId        String?
-  chestDays     Json
-  presenceDays  Json
-  sherifCount   Int      @default(0)
-  patientsCount Int      @default(0)
-  infusionsCount Int     @default(0)
-  poppyMilkCount Int     @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  history       DispensaryWeeklyActivityHistory[]
+  id             String                            @id @default(uuid())
+  dispensaryId   String
+  dispensary     Dispensary                        @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  periodStart    DateTime
+  periodEnd      DateTime
+  displayName    String
+  discordUserId  String
+  userId         String?
+  chestDays      Json
+  presenceDays   Json
+  sherifCount    Int                               @default(0)
+  patientsCount  Int                               @default(0)
+  infusionsCount Int                               @default(0)
+  poppyMilkCount Int                               @default(0)
+  createdAt      DateTime                          @default(now())
+  updatedAt      DateTime                          @updatedAt
+  history        DispensaryWeeklyActivityHistory[]
 
   @@unique([dispensaryId, discordUserId, periodStart, periodEnd])
   @@index([discordUserId])
@@ -201,16 +201,16 @@ model DispensaryWeeklyActivity {
 }
 
 model DispensaryWeeklyActivityHistory {
-  id                 String                            @id @default(uuid())
+  id                 String                                @id @default(uuid())
   activityId         String?
-  activity           DispensaryWeeklyActivity?         @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  activity           DispensaryWeeklyActivity?             @relation(fields: [activityId], references: [id], onDelete: SetNull)
   action             DispensaryWeeklyActivityHistoryAction
   source             DispensaryWeeklyActivityHistorySource
   actorUserId        String?
   actorDiscordUserId String?
   previousValues     Json?
   nextValues         Json?
-  createdAt          DateTime                          @default(now())
+  createdAt          DateTime                              @default(now())
 
   @@index([activityId])
   @@index([activityId, createdAt])
@@ -219,19 +219,25 @@ model DispensaryWeeklyActivityHistory {
 }
 
 model DispensaryDiscordProfile {
-  id              String     @id @default(uuid())
-  dispensaryId    String
-  dispensary      Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  discordUserId   String
-  lastDisplayName String
-  role            String?
-  accountNumber   Int?
-  userId          String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id               String     @id @default(uuid())
+  dispensaryId     String
+  dispensary       Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  discordUserId    String
+  /// Latest name sent by the bot or the activity form (history, fallback).
+  lastDisplayName  String
+  /// Name set by hand (Gestion › Personnes): shown everywhere, never overwritten by the bot.
+  fixedDisplayName String?
+  role             String?
+  accountNumber    Int?
+  /// SSO account linked to this Discord ID, filled as soon as one exists.
+  userId           String?
+  createdById      String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   @@unique([dispensaryId, discordUserId])
   @@index([dispensaryId])
+  @@index([dispensaryId, userId])
   @@map("dispensary_discord_profile")
 }
 
@@ -242,15 +248,15 @@ enum CabinetAccessLevel {
 }
 
 model Cabinet {
-  id              String   @id @default(uuid())
+  id              String           @id @default(uuid())
   dispensaryId    String
-  dispensary      Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  dispensary      Dispensary       @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
   name            String
   description     String?
   formSchemas     Json
-  displaySettings Json     @default("{}")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  displaySettings Json             @default("{}")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   members         CabinetMember[]
   patients        CabinetPatient[]
 
@@ -370,6 +376,7 @@ model AppLog {
   @@index([feature, createdAt(sort: Desc)])
   @@index([level, createdAt(sort: Desc)])
   @@index([discordUserId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
   @@index([targetId, createdAt(sort: Desc)])
   @@map("app_logs")
 }

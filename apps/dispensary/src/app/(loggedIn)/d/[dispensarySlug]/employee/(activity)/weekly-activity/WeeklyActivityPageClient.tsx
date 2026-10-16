@@ -272,7 +272,11 @@ export default function WeeklyActivityPageClient({
         fieldVisibility={fieldVisibility}
       />
 
-      <EditDiscordProfileModal row={profileRow} onClose={() => setProfileRow(null)} />
+      <EditDiscordProfileModal
+        row={profileRow}
+        onClose={() => setProfileRow(null)}
+        canEditAll={canEditAll}
+      />
 
       <EditWeeklyActivityModal
         row={editRow}

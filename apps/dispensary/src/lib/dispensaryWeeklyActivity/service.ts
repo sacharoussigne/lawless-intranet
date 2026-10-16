@@ -6,7 +6,10 @@ import type {
   PrismaClient,
 } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { upsertDiscordProfileFromActivity } from '@/lib/dispensaryDiscordProfile/service';
+import {
+  findFixedDisplayName,
+  upsertDiscordProfileFromActivity,
+} from '@/lib/dispensaryDiscordProfile/service';
 import {
   findLinkedUserIdByDiscordAccount,
   resolveBotWeeklyActivityDisplayName,
@@ -423,10 +426,13 @@ export async function findOrCreateDispensaryActivityForParisDay(
   preferredDisplayName?: string,
   initiator: WeeklyActivityInitiator = DISCORD_BOT_INITIATOR,
 ): Promise<DispensaryWeeklyActivity> {
+  // A name set by hand (Gestion › Personnes) wins over the nickname sent by the bot.
+  const fixedDisplayName = await findFixedDisplayName(prisma, dispensaryId, discordUserId);
   const preferred =
-    preferredDisplayName !== undefined && preferredDisplayName.trim().length > 0
+    fixedDisplayName ??
+    (preferredDisplayName !== undefined && preferredDisplayName.trim().length > 0
       ? preferredDisplayName.trim().slice(0, 200)
-      : undefined;
+      : undefined);
 
   const actor: ActorContext = {
     source: initiator.source,
