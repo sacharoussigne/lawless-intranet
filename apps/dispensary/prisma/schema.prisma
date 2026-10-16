@@ -376,6 +376,7 @@ model AppLog {
   @@index([feature, createdAt(sort: Desc)])
   @@index([level, createdAt(sort: Desc)])
   @@index([discordUserId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
   @@index([targetId, createdAt(sort: Desc)])
   @@map("app_logs")
 }

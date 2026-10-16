@@ -41,7 +41,24 @@ import { DEFAULT_LOG_PERIOD, LOG_PERIODS, logPeriodStart, type LogPeriod } from 
 const PAGE_SIZE = 50;
 const AUTO_REFRESH_MS = 30_000;
 
-type LogsPage = { rows: AppLogRow[]; total: number };
+type LogsPage = { rows: AppLogRow[]; total: number; actorNames?: Record<string, string> };
+
+/** `Name (id)`, or the id alone when no name is known. */
+function withName(id: string | null, names: Record<string, string>): string | null {
+  if (!id) return null;
+  return names[id] ? `${names[id]} (${id})` : id;
+}
+
+/** Who did it: the name of the person, from the account or the Discord id. */
+function actorLabel(log: AppLogRow, names: Record<string, string>): string {
+  return (
+    (log.userId && names[log.userId]) ||
+    (log.discordUserId && names[log.discordUserId]) ||
+    log.userId ||
+    log.discordUserId ||
+    '—'
+  );
+}
 
 type Filters = {
   period: LogPeriod;
@@ -103,12 +120,17 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
 function LogDetail({
   log,
   dispensaryName,
+  actorNames,
   onShowTargetHistory,
+  onShowActorHistory,
 }: {
   log: AppLogRow;
   dispensaryName: string | null;
+  actorNames: Record<string, string>;
   onShowTargetHistory: (targetId: string) => void;
+  onShowActorHistory: (actor: string) => void;
 }) {
+  const actorId = log.userId ?? log.discordUserId;
   const { targetId } = log;
   const facts: [string, string | null][] = [
     ['Date (heure réelle)', formatLogDate(log.createdAt)],
@@ -118,8 +140,8 @@ function LogDetail({
     ['Résultat', log.outcome ? LOG_OUTCOME_LABELS[log.outcome as LogOutcome] ?? log.outcome : null],
     ['Source', LOG_SOURCE_LABELS[log.source]],
     ['Dispensaire', dispensaryName ?? log.dispensaryId],
-    ['Utilisateur', log.userId],
-    ['Discord', log.discordUserId],
+    ['Utilisateur', withName(log.userId, actorNames)],
+    ['Discord', withName(log.discordUserId, actorNames)],
     ['Statut HTTP', log.httpStatus === null ? null : String(log.httpStatus)],
     ['Durée', log.durationMs === null ? null : `${log.durationMs} ms`],
     ['Chemin', log.path],
@@ -139,6 +161,17 @@ function LogDetail({
             </Text>
           ))}
       </SimpleGrid>
+      {actorId && (
+        <Text size="sm">
+          <Text span c="dimmed" size="sm">
+            Personne :{' '}
+          </Text>
+          {actorLabel(log, actorNames)}{' '}
+          <Anchor component="button" type="button" size="sm" onClick={() => onShowActorHistory(actorId)}>
+            Voir tous ses logs
+          </Anchor>
+        </Text>
+      )}
       {targetId && (
         <Text size="sm">
           <Text span c="dimmed" size="sm">
@@ -211,6 +244,7 @@ export function LogsPageClient({
   };
 
   const logs = logsQuery.data ?? { rows: [], total: 0 };
+  const actorNames = logs.actorNames ?? {};
 
   return (
     <Container size="xl" py="md">
@@ -293,8 +327,8 @@ export function LogsPageClient({
             clearable
           />
           <TextInput
-            label="Utilisateur ou Discord id"
-            placeholder="Identifiant exact"
+            label="Personne"
+            placeholder="Nom, user id ou Discord id"
             value={actor}
             onChange={(event) => {
               setActor(event.currentTarget.value);
@@ -360,6 +394,16 @@ export function LogsPageClient({
               render: (log) => LOG_SOURCE_LABELS[log.source],
             },
             {
+              accessor: 'userId',
+              title: 'Personne',
+              width: 160,
+              render: (log) => (
+                <Text size="sm" lineClamp={1}>
+                  {actorLabel(log, actorNames)}
+                </Text>
+              ),
+            },
+            {
               accessor: 'dispensaryId',
               title: 'Dispensaire',
               width: 150,
@@ -394,6 +438,16 @@ export function LogsPageClient({
           <LogDetail
             log={selected}
             dispensaryName={selected.dispensaryId ? dispensaryNames.get(selected.dispensaryId) ?? null : null}
+            actorNames={actorNames}
+            onShowActorHistory={(id) => {
+              // Everything this person did: account and Discord id, any period.
+              setFilters({ ...EMPTY_FILTERS, period: '90d' });
+              setSearch('');
+              setTargetId('');
+              setActor(id);
+              setPage(1);
+              setSelected(null);
+            }}
             onShowTargetHistory={(id) => {
               // Whole history of the object: any period, no other filter.
               setFilters({ ...EMPTY_FILTERS, period: '90d' });
