@@ -1,5 +1,6 @@
 'use server';
 
+import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod';
@@ -10,7 +11,6 @@ import {
   listStockMovements,
   updateStockMovement as updateStockMovementApi,
 } from '@lawless-intranet/inventory-client/server';
-import { fetchUserProfiles } from '@/lib/authUsers';
 import {
   inventoryCookie,
   inventoryScope,
@@ -104,7 +104,7 @@ export async function getStockMovementsPage(
           .filter((id): id is string => Boolean(id)),
       ),
     ];
-    const profiles = userIds.length > 0 ? await fetchUserProfiles(userIds) : new Map();
+    const profiles = userIds.length > 0 ? await fetchDispensaryUserProfiles(dispensaryId, userIds) : new Map();
 
     const items = page.items.map((row) => ({
       id: row.id,

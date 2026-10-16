@@ -200,3 +200,34 @@ describe('payrollNameKey', () => {
     expect(payrollNameKey(' Héloïse  ')).toBe('heloise');
   });
 });
+
+describe('mergeHtmlAndWeeklyActivity with a fixed name', () => {
+  it('matches the HTML row by the bot name and shows the fixed name', () => {
+    const schedule = Object.fromEntries(PAYROLL_DAYS.map((d) => [d, { ...emptyDay }])) as ParsedPayrollTable['employees'][0]['schedule'];
+    const parsed: ParsedPayrollTable = {
+      employees: [
+        {
+          name: 'jacky',
+          role: 'Médecin',
+          id: null,
+          schedule,
+          stats: {
+            sherifs: null,
+            palefreniers: null,
+            patients_soignes: 0,
+            nombre_caisses: 0,
+            nombre_presences: 0,
+          },
+        },
+      ],
+      global_stats: { total_employees: 1, total_caisses: 0, total_sherifs: 0, total_palefreniers: 0 },
+    };
+    const out = mergeHtmlAndWeeklyActivity(parsed, [
+      row({ displayName: 'jacky', resolvedDisplayName: 'Jack Reffle', patientsCount: 2, discordProfileAccountNumber: 42 }),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].name).toBe('Jack Reffle');
+    expect(out[0].id).toBe(42);
+    expect(out[0].stats.patients_soignes).toBe(2);
+  });
+});

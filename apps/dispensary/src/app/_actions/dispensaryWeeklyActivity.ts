@@ -39,7 +39,13 @@ import {
   WEEKLY_ACTIVITY_DUPLICATE_MESSAGE,
 } from '@/lib/dispensaryWeeklyActivity/service';
 import { loadSerializedWeeklyActivityByIdForDispensary } from '@/lib/dispensaryWeeklyActivity/loadSerializedRow';
-import { updateDiscordProfileFields } from '@/lib/dispensaryDiscordProfile/service';
+import {
+  DiscordProfileConflictError,
+  loadDiscordProfilesByIds,
+  updateDiscordProfileFields,
+} from '@/lib/dispensaryDiscordProfile/service';
+import { pickProfileDisplayName } from '@/lib/people/displayName';
+import { applyDispensaryNamesToUsers } from '@/lib/people/resolveNames';
 import {
   applyVisibilityToCreateInput,
   applyVisibilityToUpdateInput,
@@ -323,12 +329,13 @@ export async function getDispensaryWeeklyActivityHistory(
       ),
     ];
 
-    const [userIdToDiscordId, actorProfiles] = await Promise.all([
+    const [userIdToDiscordId, ssoActorProfiles] = await Promise.all([
       getDiscordAccountIdsForUsers(actorUserIdsWithoutDiscord),
       fetchUserProfiles([
         ...new Set(history.map((h) => h.actorUserId).filter(Boolean) as string[]),
       ]),
     ]);
+    const actorProfiles = await applyDispensaryNamesToUsers(prisma, dispensaryId, ssoActorProfiles);
 
     const actorDiscordIds = new Set<string>();
     for (const h of history) {
@@ -344,7 +351,10 @@ export async function getDispensaryWeeklyActivityHistory(
       }
     }
 
-    const discordIdToName = await getLatestDiscordDisplayNames(prisma, [...actorDiscordIds]);
+    const [discordIdToName, actorDiscordProfiles] = await Promise.all([
+      getLatestDiscordDisplayNames(prisma, [...actorDiscordIds]),
+      loadDiscordProfilesByIds(prisma, dispensaryId, [...actorDiscordIds]),
+    ]);
 
     return {
       status: 200 as const,
@@ -353,7 +363,11 @@ export async function getDispensaryWeeklyActivityHistory(
           h.actorDiscordUserId ??
           (h.actorUserId ? userIdToDiscordId.get(h.actorUserId) ?? null : null);
         const actorResolvedName = actorDiscordUserId
-          ? discordIdToName.get(actorDiscordUserId) ?? genericDoctorFallbackName(actorDiscordUserId)
+          ? pickProfileDisplayName(
+              actorDiscordProfiles.get(actorDiscordUserId),
+              discordIdToName.get(actorDiscordUserId) ??
+                genericDoctorFallbackName(actorDiscordUserId),
+            )
           : null;
 
         return {
@@ -869,6 +883,7 @@ async function incrementOwnWeeklyCounterUnlogged(
 
 const updateDiscordProfileSchema = z.object({
   discordUserId: z.string().min(1).max(128),
+  fixedDisplayName: z.string().max(200).nullable().optional(),
   role: z.string().max(100).nullable().optional(),
   accountNumber: z.number().int().min(1).max(999999).nullable().optional(),
 });
@@ -898,15 +913,24 @@ async function updateDispensaryDiscordProfileUnlogged(
       }
     }
 
+    // Without edit-all, a doctor can only change their own grade and account number.
+    const fixedDisplayName = canEditAllWeeklyDispensaryActivity(perms)
+      ? parsed.data.fixedDisplayName
+      : undefined;
+
     const profile = await updateDiscordProfileFields(prisma, {
       dispensaryId,
       discordUserId: parsed.data.discordUserId,
+      fixedDisplayName,
       role: parsed.data.role,
       accountNumber: parsed.data.accountNumber,
     });
 
     return { status: 200 as const, data: profile };
   } catch (error) {
+    if (error instanceof DiscordProfileConflictError) {
+      return { status: 409 as const, error: error.message };
+    }
     return actionErrorParser(error, 'Erreur lors de la mise à jour du profil Discord');
   }
 }

@@ -11,6 +11,7 @@ const SEGMENT_FEATURES: Record<string, LogFeature> = {
   mails: 'mails',
   payroll: 'payroll',
   'weekly-activity': 'weeklyDispensaryActivity',
+  people: 'weeklyDispensaryActivity',
   sales: 'sales',
   agenda: 'agenda',
   agendas: 'agenda',
