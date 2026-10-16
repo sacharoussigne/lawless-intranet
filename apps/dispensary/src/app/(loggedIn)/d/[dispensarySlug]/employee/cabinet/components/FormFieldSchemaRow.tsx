@@ -128,11 +128,14 @@ function FormFieldSchemaRowInner({
   const expanded = expandedProp ?? internalExpanded;
   const [draftField, setDraftField] = useState(field);
   const draftFieldRef = useRef(draftField);
-  draftFieldRef.current = draftField;
   const optionsText = (draftField.options ?? []).map((o) => o.label).join('\n');
   const prevExpandedRef = useRef(expanded);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  // Latest values for the handlers, synced after render (refs are not written during render).
+  useLayoutEffect(() => {
+    draftFieldRef.current = draftField;
+    onChangeRef.current = onChange;
+  });
 
   useLayoutEffect(() => {
     if (expanded && !prevExpandedRef.current) {

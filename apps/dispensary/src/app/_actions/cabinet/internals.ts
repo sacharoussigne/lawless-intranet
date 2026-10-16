@@ -1,4 +1,5 @@
 import { requireTenantServerActionContext, type AuthSession } from '@/lib/serverActionAuth';
+import { applyDispensaryNamesToUsers, findUserIdsByDispensaryName } from '@/lib/people/resolveNames';
 import {
   requireCabinetRead,
   requireCabinetWrite,
@@ -27,12 +28,13 @@ export async function searchEligibleDispensaryUsersForCabinet(
   }
 
   const cookieHeader = await getCookieHeader();
-  const [members, matchingUsers] = await Promise.all([
+  const [members, matchingUsers, matchingByDispensaryName] = await Promise.all([
     prisma.dispensaryMember.findMany({
       where: { dispensaryId },
       select: { userId: true },
     }),
     searchUsers(q, cookieHeader),
+    findUserIdsByDispensaryName(prisma, dispensaryId, q),
   ]);
 
   const memberIds = new Set(members.map((member) => member.userId));
@@ -45,10 +47,18 @@ export async function searchEligibleDispensaryUsersForCabinet(
       candidateIds.add(user.id);
     }
   }
+  // Members found by their name in the dispensary (fixed name), not only their account name.
+  for (const userId of matchingByDispensaryName) {
+    if (memberIds.has(userId)) candidateIds.add(userId);
+  }
 
-  const profiles = await batchGetUsers([...candidateIds], cookieHeader);
+  const profiles = await applyDispensaryNamesToUsers(
+    prisma,
+    dispensaryId,
+    new Map((await batchGetUsers([...candidateIds], cookieHeader)).map((user) => [user.id, user])),
+  );
 
-  return profiles
+  return [...profiles.values()]
     .map((user) => ({
       id: user.id,
       name: user.name,

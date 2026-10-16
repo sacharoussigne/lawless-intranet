@@ -149,16 +149,19 @@ export function WeeklyActivityTable({
           </Tooltip>
           {canEditRow(r) && (
             <>
-              <Tooltip label="Profil Discord">
-                <ActionIcon
-                  variant="subtle"
-                  color="slate"
-                  onClick={() => onEditProfile(r)}
-                  aria-label="Profil Discord"
-                >
-                  <IconId size={18} />
-                </ActionIcon>
-              </Tooltip>
+              {/* Name, grade and account number feed the payroll: edit-all only. */}
+              {canEditAll && (
+                <Tooltip label="Profil Discord">
+                  <ActionIcon
+                    variant="subtle"
+                    color="slate"
+                    onClick={() => onEditProfile(r)}
+                    aria-label="Profil Discord"
+                  >
+                    <IconId size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
               <Tooltip label="Modifier">
                 <ActionIcon variant="subtle" color="slate" onClick={() => onStartEdit(r)} aria-label="Modifier">
                   <IconPencil size={18} />
@@ -180,7 +183,7 @@ export function WeeklyActivityTable({
       ),
     });
     return cols;
-  }, [fieldVisibility, canEditRow, onOpenHistory, onStartEdit, onEditProfile, confirmDelete]);
+  }, [fieldVisibility, canEditRow, canEditAll, onOpenHistory, onStartEdit, onEditProfile, confirmDelete]);
 
   return (
     <DataTable

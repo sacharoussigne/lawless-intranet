@@ -34,10 +34,11 @@ export async function resolveActorIds(query: string): Promise<ActorIds> {
   const discordIds = new Set<string>([q]);
   if (!q) return { userIds: [], discordIds: [] };
 
-  const looksLikeId = !/\s/.test(q);
+  // A user id is a long token without spaces: skip the lookup for ordinary names.
+  const looksLikeUserId = !/\s/.test(q) && q.length >= 16 && !DISCORD_ID.test(q);
   const [accountsByDiscord, discordByUser, profiles, accounts] = await Promise.all([
     DISCORD_ID.test(q) ? bestEffort(() => resolveUsersByDiscordIds([q]), []) : Promise.resolve([]),
-    looksLikeId && !DISCORD_ID.test(q)
+    looksLikeUserId
       ? bestEffort(() => resolveDiscordIdsForUserIds([q]), new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
     q.length >= 2

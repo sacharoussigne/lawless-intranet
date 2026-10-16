@@ -14,7 +14,9 @@ Les **lectures** (`get…`, `list…`, `search…`), rappelées en permanence pa
 
 Chaque ligne (`AppLog`, table `app_logs`) porte : date, niveau, type, feature, événement (`weeklyActivity.chest.mark`, `bot.caisse`…), résultat (`success`, `noop`, `denied`, `invalid`, `failure`), message, source (intranet, bot, système), dispensaire, utilisateur, Discord id, statut HTTP, durée, chemin, **objet visé** (`targetId`), `context` (entrée nettoyée, résumé du résultat) et `error` (nom, message, code, stack, cause).
 
-Le Discord id est aussi renseigné pour les actions faites depuis l'intranet, quand le compte a un Discord (`lib/logs/actorDiscordId.ts`, mis en cache quelques minutes).
+Pendant une **imitation de compte** (un admin plateforme connecté en tant qu'un autre utilisateur), la ligne porte l'utilisateur imité **et** l'admin (`impersonatedById`) : la page affiche « (par <admin>) » et le détail « En tant que (admin) ». L'historique de l'activité hebdo garde aussi l'admin (`actorImpersonatedById`).
+
+Le Discord id est aussi renseigné pour les actions faites depuis l'intranet, quand le compte a un Discord (`lib/logs/actorDiscordId.ts`, via le cache des liens compte ↔ Discord de `lib/people/accountLinks.ts`).
 
 ## Retrouver une personne
 

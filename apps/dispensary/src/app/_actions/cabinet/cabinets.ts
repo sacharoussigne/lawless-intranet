@@ -23,7 +23,7 @@ import {
   guardCabinetRead,
   validateDispensaryUserIds,
 } from '@/app/_actions/cabinet/internals';
-import { enrichAgendaMembers } from '@/lib/enrichUsers';
+import { enrichAgendaMembers, enrichRowGroupsWithUsers } from '@/lib/enrichUsers';
 import { createDefaultFormSchemas } from '@/lib/cabinet/formSchema';
 
 const cabinetIncludeMembers = {
@@ -46,12 +46,14 @@ export async function listCabinetsForAdmin(dispensarySlug: string) {
       orderBy: { name: 'asc' },
     });
 
-    const enriched = await Promise.all(
-      cabinets.map(async (cabinet) => ({
-        ...cabinet,
-        members: await enrichAgendaMembers(cabinet.members),
-      })),
+    const membersByCabinet = await enrichRowGroupsWithUsers(
+      auth.ctx.dispensaryId,
+      cabinets.map((cabinet) => cabinet.members),
     );
+    const enriched = cabinets.map((cabinet, index) => ({
+      ...cabinet,
+      members: membersByCabinet[index] ?? [],
+    }));
 
     return { status: 200, data: enriched };
   } catch (error) {
@@ -263,7 +265,7 @@ export async function getCabinetWithMembers(dispensarySlug: string, cabinetId: s
       status: 200,
       data: {
         ...cabinet,
-        members: await enrichAgendaMembers(cabinet.members),
+        members: await enrichAgendaMembers(ctx.tenant.dispensaryId, cabinet.members),
       },
     };
   } catch (error) {

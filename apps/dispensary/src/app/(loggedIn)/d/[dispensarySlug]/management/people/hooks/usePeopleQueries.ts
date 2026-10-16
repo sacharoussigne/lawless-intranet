@@ -1,5 +1,6 @@
 'use client';
 
+import type { PayrollEmployeeRole } from '@/lib/dispensaryDiscordProfile/constants';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
@@ -49,7 +50,7 @@ export type PersonFormValues = {
   discordUserId: string;
   displayName: string;
   accountNumber: number | null;
-  role: string | null;
+  role?: PayrollEmployeeRole | null;
 };
 
 export function useCreatePersonMutation() {
@@ -82,7 +83,7 @@ export function useUpdatePersonMutation() {
       discordUserId: string;
       fixedDisplayName?: string | null;
       accountNumber: number | null;
-      role: string | null;
+      role?: PayrollEmployeeRole | null;
     }) => handleAction(await updateDispensaryPerson(dispensarySlug, vars)) as DispensaryPerson,
     onSuccess: () => {
       invalidate();

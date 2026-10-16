@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Anchor, Button, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
-import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/dispensaryDiscordProfile/constants';
+import { PAYROLL_EMPLOYEE_ROLES, toPayrollEmployeeRole } from '@/lib/dispensaryDiscordProfile/constants';
 import { tenantRoutes } from '@/types/routes';
 import {
   useUpdateDiscordProfileMutation,
@@ -59,7 +59,8 @@ function EditDiscordProfileForm({
       // A changed name becomes the fixed name; an unchanged one is left as is.
       fixedDisplayName:
         canEditAll && trimmedName && trimmedName !== row.resolvedDisplayName ? trimmedName : undefined,
-      role: role?.trim() ? role.trim() : null,
+      // Unchanged grade not sent: an old grade outside the payroll list is kept.
+      role: role === row.discordProfileRole ? undefined : toPayrollEmployeeRole(role),
       accountNumber: accountNumber === '' ? null : parseAccountNumber(accountNumber),
       weekBounds: {
         periodStart: new Date(row.periodStart),

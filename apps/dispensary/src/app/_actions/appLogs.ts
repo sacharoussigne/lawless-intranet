@@ -41,6 +41,7 @@ export type AppLogRow = {
   dispensaryId: string | null;
   userId: string | null;
   discordUserId: string | null;
+  impersonatedById: string | null;
   httpStatus: number | null;
   durationMs: number | null;
   path: string | null;
@@ -105,7 +106,12 @@ export async function listAppLogs(input: ListAppLogsInput) {
       prisma.appLog.count({ where }),
     ]);
 
-    const actorNames = await resolveActorNames(rows);
+    const actorNames = await resolveActorNames([
+      ...rows,
+      ...rows.flatMap((row) =>
+        row.impersonatedById ? [{ userId: row.impersonatedById, discordUserId: null }] : [],
+      ),
+    ]);
 
     return { status: 200, data: { rows: rows as AppLogRow[], total, actorNames } };
   } catch (error) {

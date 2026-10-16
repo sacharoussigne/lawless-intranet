@@ -141,6 +141,7 @@ function LogDetail({
     ['Source', LOG_SOURCE_LABELS[log.source]],
     ['Dispensaire', dispensaryName ?? log.dispensaryId],
     ['Utilisateur', withName(log.userId, actorNames)],
+    ['En tant que (admin)', withName(log.impersonatedById, actorNames)],
     ['Discord', withName(log.discordUserId, actorNames)],
     ['Statut HTTP', log.httpStatus === null ? null : String(log.httpStatus)],
     ['Durée', log.durationMs === null ? null : `${log.durationMs} ms`],
@@ -400,6 +401,12 @@ export function LogsPageClient({
               render: (log) => (
                 <Text size="sm" lineClamp={1}>
                   {actorLabel(log, actorNames)}
+                  {log.impersonatedById && (
+                    <Text span size="xs" c="dimmed">
+                      {' '}
+                      (par {actorNames[log.impersonatedById] ?? log.impersonatedById})
+                    </Text>
+                  )}
                 </Text>
               ),
             },

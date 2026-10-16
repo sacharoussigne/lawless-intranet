@@ -23,6 +23,7 @@ vi.mock('@/lib/prisma', () => ({
 const { resolveActorIds, resolveActorNames } = await import('@/lib/logs/actors');
 
 beforeEach(() => {
+  vi.clearAllMocks();
   mocks.resolveUsersByDiscordIds.mockResolvedValue([]);
   mocks.resolveDiscordIdsForUserIds.mockResolvedValue(new Map());
   mocks.searchAuthUsers.mockResolvedValue([]);
@@ -41,9 +42,9 @@ describe('resolveActorIds', () => {
   });
 
   it('finds the Discord id of a user id', async () => {
-    mocks.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['user_abc', '111111111111111111']]));
-    const ids = await resolveActorIds('user_abc');
-    expect(ids.userIds).toContain('user_abc');
+    mocks.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['Kq9xTzP3mWv7rL2a', '111111111111111111']]));
+    const ids = await resolveActorIds('Kq9xTzP3mWv7rL2a');
+    expect(ids.userIds).toContain('Kq9xTzP3mWv7rL2a');
     expect(ids.discordIds).toContain('111111111111111111');
   });
 
@@ -53,6 +54,11 @@ describe('resolveActorIds', () => {
     const ids = await resolveActorIds('Violet Clark');
     expect(ids.discordIds).toContain('222222222222222222');
     expect(ids.userIds).toContain('u-no-discord');
+  });
+
+  it('does not look up a user id for an ordinary name', async () => {
+    await resolveActorIds('Jean');
+    expect(mocks.resolveDiscordIdsForUserIds).not.toHaveBeenCalled();
   });
 
   it('still searches the raw text when the auth service fails', async () => {

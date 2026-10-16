@@ -27,6 +27,7 @@ export type AppLogEntry = {
   dispensaryId?: string | null;
   userId?: string | null;
   discordUserId?: string | null;
+  impersonatedById?: string | null;
   httpStatus?: number | null;
   durationMs?: number | null;
   path?: string | null;

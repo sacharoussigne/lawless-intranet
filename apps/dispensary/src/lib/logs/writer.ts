@@ -54,6 +54,7 @@ async function persist(entry: AppLogEntry): Promise<void> {
       dispensaryId: entry.dispensaryId ?? null,
       userId: entry.userId ?? null,
       discordUserId: entry.discordUserId ?? null,
+      impersonatedById: entry.impersonatedById ?? null,
       httpStatus: entry.httpStatus ?? null,
       durationMs: entry.durationMs ?? null,
       path: entry.path?.slice(0, 500) ?? null,
@@ -73,6 +74,8 @@ export type RequestLogContext = {
   feature: LogFeature;
   dispensaryId: string | null;
   userId: string | null;
+  /** Platform admin acting as `userId` (impersonation). */
+  impersonatedById: string | null;
 };
 
 /**
@@ -98,6 +101,7 @@ export async function resolveRequestLogContext(): Promise<RequestLogContext> {
     feature: featureFromPath(path),
     dispensaryId: dispensary?.id ?? null,
     userId: session?.user?.id ?? null,
+    impersonatedById: session?.session?.impersonatedBy ?? null,
   };
 }
 
@@ -143,6 +147,7 @@ export function logAction(input: ActionLogInput): void {
       dispensaryId: await resolveDispensaryId(input, request),
       userId: input.userId ?? request.userId,
       discordUserId: input.discordUserId ?? (await discordIdForLog(input.userId ?? request.userId)),
+      impersonatedById: request.impersonatedById,
       httpStatus: input.httpStatus ?? null,
       durationMs: input.durationMs ?? null,
       path: request.path,
@@ -176,6 +181,7 @@ export function logServerError(input: {
       dispensaryId: input.dispensaryId ?? request.dispensaryId,
       userId: request.userId,
       discordUserId: await discordIdForLog(request.userId),
+      impersonatedById: request.impersonatedById,
       httpStatus: input.status,
       path: request.path,
       targetId,

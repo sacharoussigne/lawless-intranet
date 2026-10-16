@@ -32,7 +32,7 @@ import {
   listAllAgendas,
   updateAgenda as updateAgendaApi,
 } from '@lawless-intranet/agenda-client/server';
-import { enrichAgendaMembers } from '@/lib/enrichUsers';
+import { enrichAgendaMembers, enrichRowGroupsWithUsers } from '@/lib/enrichUsers';
 
 export async function listAgendasForAdmin(dispensarySlug: string) {
   try {
@@ -46,13 +46,15 @@ export async function listAgendasForAdmin(dispensarySlug: string) {
       await agendaCookie(),
     );
 
-    const enriched = await Promise.all(
-      agendas.map(async (agenda) => ({
-        ...agenda,
-        members: await enrichAgendaMembers(agenda.members ?? []),
-        _count: agenda._count ?? { members: agenda.members?.length ?? 0 },
-      })),
+    const membersByAgenda = await enrichRowGroupsWithUsers(
+      auth.ctx.dispensaryId,
+      agendas.map((agenda) => agenda.members ?? []),
     );
+    const enriched = agendas.map((agenda, index) => ({
+      ...agenda,
+      members: membersByAgenda[index] ?? [],
+      _count: agenda._count ?? { members: agenda.members?.length ?? 0 },
+    }));
 
     return { status: 200, data: enriched };
   } catch (error) {
@@ -236,7 +238,7 @@ export async function getAgendaWithMembers(dispensarySlug: string, agendaId: str
       status: 200,
       data: {
         ...agenda,
-        members: await enrichAgendaMembers(agenda.members ?? []),
+        members: await enrichAgendaMembers(ctx.tenant.dispensaryId, agenda.members ?? []),
       },
     };
   } catch (error) {

@@ -8,36 +8,57 @@ const auth = vi.hoisted(() => ({
 vi.mock('@lawless-intranet/auth-client/internal', () => auth);
 
 const { applyDispensaryNamesToUsers, loadFixedNamesForUsers } = await import('@/lib/people/resolveNames');
+const { clearAccountLinkCache } = await import('@/lib/people/accountLinks');
 
 type Profile = {
   dispensaryId: string;
   discordUserId: string;
   userId: string | null;
   fixedDisplayName: string | null;
+  updatedAt: Date;
 };
+
+type Where = Record<string, unknown>;
+
+function matches(p: Profile, where: Where): boolean {
+  return Object.entries(where).every(([key, condition]) => {
+    if (key === 'OR') return (condition as Where[]).some((w) => matches(p, w));
+    const value = p[key as keyof Profile];
+    if (condition && typeof condition === 'object') {
+      if ('in' in condition) return (condition.in as unknown[]).includes(value);
+      if ('not' in condition) return value !== condition.not;
+    }
+    return value === condition;
+  });
+}
 
 /** In-memory `dispensaryDiscordProfile` delegate, enough for the queries of resolveNames. */
 function fakeClient(profiles: Profile[]) {
-  const matches = (p: Profile, where: Record<string, unknown>) =>
-    Object.entries(where).every(([key, condition]) => {
-      const value = p[key as keyof Profile];
-      if (condition && typeof condition === 'object' && 'in' in condition) {
-        return (condition.in as unknown[]).includes(value);
-      }
-      return value === condition;
-    });
   return {
     dispensaryDiscordProfile: {
-      findMany: async ({ where }: { where: Record<string, unknown> }) =>
-        profiles.filter((p) => matches(p, where)),
-      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Partial<Profile> }) => {
-        const hit = profiles.filter((p) => matches(p, where));
-        hit.forEach((p) => Object.assign(p, data));
-        return { count: hit.length };
-      },
+      findMany: async ({ where }: { where: Where }) =>
+        profiles
+          .filter((p) => matches(p, where))
+          .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
     },
   } as unknown as Parameters<typeof loadFixedNamesForUsers>[0];
 }
+
+function profile(overrides: Partial<Profile>): Profile {
+  return {
+    dispensaryId: 'd1',
+    discordUserId: '111111111111111111',
+    userId: null,
+    fixedDisplayName: null,
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  clearAccountLinkCache();
+  auth.resolveDiscordIdsForUserIds.mockReset();
+});
 
 describe('pickProfileDisplayName', () => {
   it('prefers the fixed name, then the bot name, then the fallback', () => {
@@ -62,28 +83,37 @@ describe('applyFixedNames', () => {
 });
 
 describe('loadFixedNamesForUsers', () => {
-  beforeEach(() => {
-    auth.resolveDiscordIdsForUserIds.mockReset();
-  });
-
-  it('uses the profile already linked to the account', async () => {
-    const client = fakeClient([
-      { dispensaryId: 'd1', discordUserId: '111', userId: 'u1', fixedDisplayName: 'Owen Clark' },
-    ]);
+  it('uses the profile of the account’s current Discord id', async () => {
+    auth.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['u1', '111111111111111111']]));
+    const client = fakeClient([profile({ userId: 'u1', fixedDisplayName: 'Owen Clark' })]);
     const names = await loadFixedNamesForUsers(client, 'd1', ['u1']);
     expect(names.get('u1')).toBe('Owen Clark');
-    expect(auth.resolveDiscordIdsForUserIds).not.toHaveBeenCalled();
   });
 
-  it('links a profile created before the account, without duplicate', async () => {
-    const profiles: Profile[] = [
-      { dispensaryId: 'd1', discordUserId: '222', userId: null, fixedDisplayName: 'Violet Clark' },
-    ];
-    auth.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['u2', '222']]));
-    const names = await loadFixedNamesForUsers(fakeClient(profiles), 'd1', ['u2']);
+  it('finds a profile created before the account (no userId yet)', async () => {
+    auth.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['u2', '222222222222222222']]));
+    const client = fakeClient([
+      profile({ discordUserId: '222222222222222222', fixedDisplayName: 'Violet Clark' }),
+    ]);
+    const names = await loadFixedNamesForUsers(client, 'd1', ['u2']);
     expect(names.get('u2')).toBe('Violet Clark');
-    expect(profiles).toHaveLength(1);
-    expect(profiles[0].userId).toBe('u2');
+  });
+
+  it('ignores a stale profile left by a Discord id the account no longer holds', async () => {
+    auth.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['u1', '333333333333333333']]));
+    const client = fakeClient([
+      profile({ discordUserId: '111111111111111111', userId: 'u1', fixedDisplayName: 'Ancien nom' }),
+      profile({ discordUserId: '333333333333333333', userId: 'u1', fixedDisplayName: 'Nom actuel' }),
+    ]);
+    const names = await loadFixedNamesForUsers(client, 'd1', ['u1']);
+    expect(names.get('u1')).toBe('Nom actuel');
+  });
+
+  it('falls back to the stored link when auth does not answer', async () => {
+    auth.resolveDiscordIdsForUserIds.mockRejectedValue(new Error('fetch failed'));
+    const client = fakeClient([profile({ userId: 'u1', fixedDisplayName: 'Owen Clark' })]);
+    const names = await loadFixedNamesForUsers(client, 'd1', ['u1']);
+    expect(names.get('u1')).toBe('Owen Clark');
   });
 
   it('leaves accounts without Discord (no profile) alone', async () => {
@@ -93,17 +123,15 @@ describe('loadFixedNamesForUsers', () => {
   });
 
   it('only reads the profiles of the dispensary', async () => {
-    const client = fakeClient([
-      { dispensaryId: 'other', discordUserId: '111', userId: 'u1', fixedDisplayName: 'Ailleurs' },
-    ]);
-    auth.resolveDiscordIdsForUserIds.mockResolvedValue(new Map());
+    auth.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['u1', '111111111111111111']]));
+    const client = fakeClient([profile({ dispensaryId: 'other', userId: 'u1', fixedDisplayName: 'Ailleurs' })]);
     const names = await loadFixedNamesForUsers(client, 'd1', ['u1']);
     expect(names.size).toBe(0);
   });
 });
 
 describe('applyDispensaryNamesToUsers', () => {
-  it('keeps the SSO names when the auth service fails', async () => {
+  it('keeps the SSO names when nothing can be read', async () => {
     auth.resolveDiscordIdsForUserIds.mockRejectedValue(new Error('fetch failed'));
     const users = new Map([['u9', { name: 'SSO' }]]);
     const named = await applyDispensaryNamesToUsers(fakeClient([]), 'd1', users);

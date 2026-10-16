@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { notifications } from '@mantine/notifications';
 import { saveFormSchemaEntity } from '@/app/_actions/cabinet/formSchema';
@@ -47,9 +47,12 @@ export function useCabinetSchemaEditing({
   const [schemaNestedFlushToken, setSchemaNestedFlushToken] = useState(0);
   const [schemaFlushToken, setSchemaFlushToken] = useState(0);
   const draftEntitySchemaRef = useRef(draftEntitySchema);
-  draftEntitySchemaRef.current = draftEntitySchema;
   const draftDisplaySettingsRef = useRef(draftDisplaySettings);
-  draftDisplaySettingsRef.current = draftDisplaySettings;
+  // Latest drafts for the handlers, synced after render (refs are not written during render).
+  useLayoutEffect(() => {
+    draftEntitySchemaRef.current = draftEntitySchema;
+    draftDisplaySettingsRef.current = draftDisplaySettings;
+  });
 
   const savedEntitySchema = useMemo(
     () => getEntitySchema(formSchemas, entityType),

@@ -253,7 +253,7 @@ async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formD
     });
     activitiesWithNames = (await attachDiscordProfilesToActivities(
       prisma,
-      (await mergeResolvedDisplayNames(prisma, rawActivities)) as WaRow[],
+      (await mergeResolvedDisplayNames(prisma, dispensaryId, rawActivities)) as WaRow[],
     )) as WaRow[];
   }
 

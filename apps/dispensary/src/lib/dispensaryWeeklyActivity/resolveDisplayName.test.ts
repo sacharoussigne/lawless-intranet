@@ -10,7 +10,8 @@ import {
 function mockPrisma(displayNamesByDiscordId: Record<string, string[]>) {
   const flatRows = Object.entries(displayNamesByDiscordId).flatMap(([discordUserId, names]) =>
     names.map((displayName, index) => ({
-      discordUserId,
+      dispensaryId: discordUserId.startsWith('other:') ? 'd2' : 'd1',
+      discordUserId: discordUserId.replace(/^other:/, ''),
       displayName,
       updatedAt: new Date(Date.now() - index * 1000),
     })),
@@ -27,11 +28,11 @@ function mockPrisma(displayNamesByDiscordId: Record<string, string[]>) {
         async ({
           where,
         }: {
-          where: { discordUserId: { in: string[] } };
+          where: { dispensaryId: string; discordUserId: { in: string[] } };
         }) => {
           const ids = new Set(where.discordUserId.in);
           return flatRows
-            .filter((r) => ids.has(r.discordUserId))
+            .filter((r) => r.dispensaryId === where.dispensaryId && ids.has(r.discordUserId))
             .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
         },
       ),
@@ -46,10 +47,18 @@ describe('getLatestDiscordDisplayNames', () => {
       [discordUserId]: ['LatestDiscordName', 'OlderName'],
     });
 
-    const map = await getLatestDiscordDisplayNames(prisma, [discordUserId, discordUserId]);
+    const map = await getLatestDiscordDisplayNames(prisma, 'd1', [discordUserId, discordUserId]);
 
     expect(map.get(discordUserId)).toBe('LatestDiscordName');
     expect(prisma.dispensaryWeeklyActivity.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('never reads the names of another dispensary', async () => {
+    const prisma = mockPrisma({ 'other:222': ['NameElsewhere'] });
+
+    const map = await getLatestDiscordDisplayNames(prisma, 'd1', ['222']);
+
+    expect(map.has('222')).toBe(false);
   });
 
   it('skips generic fallback display names', async () => {
@@ -58,7 +67,7 @@ describe('getLatestDiscordDisplayNames', () => {
       [discordUserId]: [genericDoctorFallbackName(discordUserId)],
     });
 
-    const map = await getLatestDiscordDisplayNames(prisma, [discordUserId]);
+    const map = await getLatestDiscordDisplayNames(prisma, 'd1', [discordUserId]);
 
     expect(map.has(discordUserId)).toBe(false);
   });
@@ -76,7 +85,7 @@ describe('mergeResolvedDisplayNames', () => {
       },
     ];
 
-    const out = await mergeResolvedDisplayNames(prisma, rows);
+    const out = await mergeResolvedDisplayNames(prisma, 'd1', rows);
 
     expect(out[0].resolvedDisplayName).toBe('DrDiscord');
   });
@@ -94,7 +103,7 @@ describe('mergeResolvedDisplayNames', () => {
       },
     ];
 
-    const out = await mergeResolvedDisplayNames(prisma, rows);
+    const out = await mergeResolvedDisplayNames(prisma, 'd1', rows);
 
     expect(out[0].resolvedDisplayName).toBe('LatestDiscordName');
   });
@@ -107,7 +116,7 @@ describe('resolveBotWeeklyActivityDisplayName', () => {
       [discordUserId]: ['BotPseudo'],
     });
 
-    await expect(resolveBotWeeklyActivityDisplayName(prisma, discordUserId)).resolves.toBe(
+    await expect(resolveBotWeeklyActivityDisplayName(prisma, 'd1', discordUserId)).resolves.toBe(
       'BotPseudo',
     );
   });
@@ -116,7 +125,7 @@ describe('resolveBotWeeklyActivityDisplayName', () => {
     const discordUserId = '999';
     const prisma = mockPrisma({});
 
-    await expect(resolveBotWeeklyActivityDisplayName(prisma, discordUserId)).resolves.toBe(
+    await expect(resolveBotWeeklyActivityDisplayName(prisma, 'd1', discordUserId)).resolves.toBe(
       genericDoctorFallbackName(discordUserId),
     );
   });

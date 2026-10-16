@@ -121,15 +121,18 @@ export function resolveMailDocumentAccess(
 }
 
 export async function attachOwnerNames<T extends { ownerId?: string | null }>(
+  dispensaryId: string,
   items: T[],
 ): Promise<Array<T & { ownerName: string | null }>> {
-  const { fetchUserProfiles } = await import('@/lib/authUsers');
+  const { fetchDispensaryUserProfiles } = await import('@/lib/people/userProfiles');
   const ownerIds = [
     ...new Set(items.map((item) => item.ownerId).filter((id): id is string => Boolean(id))),
   ];
 
   const profiles =
-    ownerIds.length > 0 ? await fetchUserProfiles(ownerIds) : new Map<string, { name: string }>();
+    ownerIds.length > 0
+      ? await fetchDispensaryUserProfiles(dispensaryId, ownerIds)
+      : new Map<string, { name: string }>();
 
   return items.map((item) => ({
     ...item,

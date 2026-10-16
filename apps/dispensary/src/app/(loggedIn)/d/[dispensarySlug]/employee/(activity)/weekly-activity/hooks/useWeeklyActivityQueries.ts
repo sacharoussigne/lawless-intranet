@@ -1,5 +1,6 @@
 'use client';
 
+import type { PayrollEmployeeRole } from '@/lib/dispensaryDiscordProfile/constants';
 import { peopleKeys } from '@/lib/people/queryKeys';
 import { useCallback } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -40,16 +41,19 @@ export type WeeklyActivityHistoryEntry = {
   source: string;
   actorUserName: string | null;
   actorResolvedName: string | null;
+  actorImpersonatedByName?: string | null;
   actorDiscordUserId: string | null;
   createdAt: string;
   previousValues: unknown;
   nextValues: unknown;
 };
 
+/** A person a row can be created for (`id` = Discord id), with or without an account. */
 export type WeeklyActivityTargetUser = {
   id: string;
-  name: string;
+  name: string | null;
   discordDisplayName: string;
+  hasAccount: boolean;
 };
 
 export type WeeklyHoursRecapDayDto = WeekHoursRecapDay;
@@ -316,7 +320,7 @@ export function useUpdateDiscordProfileMutation() {
     mutationFn: async (vars: {
       discordUserId: string;
       fixedDisplayName?: string;
-      role: string | null;
+      role?: PayrollEmployeeRole | null;
       accountNumber: number | null;
       weekBounds: WeeklyActivityWeekBounds;
     }) => {

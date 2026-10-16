@@ -1,5 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
-import { findLinkedUserIdByDiscordAccount } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
 
 type ProfileDb = Pick<PrismaClient, 'dispensaryDiscordProfile'>;
@@ -27,6 +26,22 @@ export const DISCORD_PROFILE_DUPLICATE_MESSAGE = 'Une personne avec ce Discord I
 /** Thrown when a business rule refuses the change; the action maps it to a 409. */
 export class DiscordProfileConflictError extends Error {}
 
+/** No profile for this Discord id in the dispensary; the action maps it to a 404. */
+export class DiscordProfileNotFoundError extends Error {}
+
+/** A concurrent save took the same Discord id or account number (unique constraints). */
+function toConflict(error: unknown): unknown {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    const target = JSON.stringify(error.meta?.target ?? '');
+    return new DiscordProfileConflictError(
+      target.includes('accountNumber')
+        ? 'Ce n° de compte est déjà attribué à une autre personne.'
+        : DISCORD_PROFILE_DUPLICATE_MESSAGE,
+    );
+  }
+  return error;
+}
+
 function trimDisplayName(name: string): string {
   const trimmed = name.trim();
   return trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
@@ -43,12 +58,28 @@ export async function upsertDiscordProfileFromActivity(
     dispensaryId: string;
     discordUserId: string;
     displayName: string;
-    userId?: string | null;
+    /**
+     * Current account of the Discord id, resolved before the transaction:
+     * `null` unlinks, `undefined` (auth did not answer) keeps the stored link.
+     */
+    userId: string | null | undefined;
   },
 ): Promise<void> {
   const lastDisplayName = trimDisplayName(input.displayName);
-  const linkedUserId =
-    input.userId ?? (await findLinkedUserIdByDiscordAccount(client, input.discordUserId));
+  const linkedUserId = input.userId;
+
+  // Intranet rows carry the fixed name: never copy it back into the bot's name
+  // (same rule as migration 20261016150000).
+  const existing = await client.dispensaryDiscordProfile.findUnique({
+    where: {
+      dispensaryId_discordUserId: {
+        dispensaryId: input.dispensaryId,
+        discordUserId: input.discordUserId,
+      },
+    },
+    select: { fixedDisplayName: true },
+  });
+  const keepLastName = existing?.fixedDisplayName === lastDisplayName;
 
   // `fixedDisplayName` is never touched here: a name set by hand wins over the bot.
   await client.dispensaryDiscordProfile.upsert({
@@ -62,11 +93,11 @@ export async function upsertDiscordProfileFromActivity(
       dispensaryId: input.dispensaryId,
       discordUserId: input.discordUserId,
       lastDisplayName,
-      userId: linkedUserId,
+      userId: linkedUserId ?? null,
     },
     update: {
-      lastDisplayName,
-      ...(linkedUserId ? { userId: linkedUserId } : {}),
+      ...(keepLastName ? {} : { lastDisplayName }),
+      ...(linkedUserId !== undefined ? { userId: linkedUserId } : {}),
     },
   });
 }
@@ -131,6 +162,8 @@ export async function createDiscordProfile(
     accountNumber?: number | null;
     userId: string | null;
     createdById: string;
+    /** Latest name sent by the bot for this Discord id, if any. */
+    lastKnownName?: string | null;
   },
 ): Promise<DiscordProfileSnapshot> {
   const existing = await client.dispensaryDiscordProfile.findUnique({
@@ -153,19 +186,24 @@ export async function createDiscordProfile(
   );
 
   const name = trimDisplayName(input.displayName);
-  return client.dispensaryDiscordProfile.create({
-    data: {
-      dispensaryId: input.dispensaryId,
-      discordUserId: input.discordUserId,
-      lastDisplayName: name,
-      fixedDisplayName: name,
-      role: normalizeOptionalText(input.role),
-      accountNumber: input.accountNumber ?? null,
-      userId: input.userId,
-      createdById: input.createdById,
-    },
-    select: snapshotSelect,
-  });
+  return client.dispensaryDiscordProfile
+    .create({
+      data: {
+        dispensaryId: input.dispensaryId,
+        discordUserId: input.discordUserId,
+        // The bot's name: unknown until it sends one (the fixed name is kept apart).
+        lastDisplayName: input.lastKnownName ?? '',
+        fixedDisplayName: name,
+        role: normalizeOptionalText(input.role),
+        accountNumber: input.accountNumber ?? null,
+        userId: input.userId,
+        createdById: input.createdById,
+      },
+      select: snapshotSelect,
+    })
+    .catch((error: unknown) => {
+      throw toConflict(error);
+    });
 }
 
 export async function updateDiscordProfileFields(
@@ -188,7 +226,7 @@ export async function updateDiscordProfileFields(
     },
   });
   if (!existing) {
-    throw new Error('Profil Discord introuvable pour ce médecin');
+    throw new DiscordProfileNotFoundError('Profil introuvable pour cette personne');
   }
 
   const data: {
@@ -212,9 +250,9 @@ export async function updateDiscordProfileFields(
     data.accountNumber = input.accountNumber;
   }
 
-  return client.dispensaryDiscordProfile.update({
-    where: { id: existing.id },
-    data,
-    select: snapshotSelect,
-  });
+  return client.dispensaryDiscordProfile
+    .update({ where: { id: existing.id }, data, select: snapshotSelect })
+    .catch((error: unknown) => {
+      throw toConflict(error);
+    });
 }

@@ -1,5 +1,6 @@
 'use server';
 
+import { applyDispensaryNamesToUsers } from '@/lib/people/resolveNames';
 import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
@@ -132,11 +133,15 @@ export async function searchUsersForDispensaryInvite(dispensarySlug: string, que
     return { status: 200, data: [] };
   }
 
-  const users = await searchAuthUsers(q);
+  const users = await applyDispensaryNamesToUsers(
+    prisma,
+    auth.ctx.dispensaryId,
+    new Map((await searchAuthUsers(q)).map((user) => [user.id, user])),
+  );
 
   return {
     status: 200,
-    data: users.map((user) => ({ id: user.id, name: user.name })),
+    data: [...users.values()].map((user) => ({ id: user.id, name: user.name })),
   };
 }
 
