@@ -320,7 +320,7 @@ export function useUpdateDiscordProfileMutation() {
     mutationFn: async (vars: {
       discordUserId: string;
       fixedDisplayName?: string;
-      role: PayrollEmployeeRole | null;
+      role?: PayrollEmployeeRole | null;
       accountNumber: number | null;
       weekBounds: WeeklyActivityWeekBounds;
     }) => {

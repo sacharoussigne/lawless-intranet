@@ -68,6 +68,19 @@ export async function upsertDiscordProfileFromActivity(
   const lastDisplayName = trimDisplayName(input.displayName);
   const linkedUserId = input.userId;
 
+  // Intranet rows carry the fixed name: never copy it back into the bot's name
+  // (same rule as migration 20261016150000).
+  const existing = await client.dispensaryDiscordProfile.findUnique({
+    where: {
+      dispensaryId_discordUserId: {
+        dispensaryId: input.dispensaryId,
+        discordUserId: input.discordUserId,
+      },
+    },
+    select: { fixedDisplayName: true },
+  });
+  const keepLastName = existing?.fixedDisplayName === lastDisplayName;
+
   // `fixedDisplayName` is never touched here: a name set by hand wins over the bot.
   await client.dispensaryDiscordProfile.upsert({
     where: {
@@ -83,7 +96,7 @@ export async function upsertDiscordProfileFromActivity(
       userId: linkedUserId ?? null,
     },
     update: {
-      lastDisplayName,
+      ...(keepLastName ? {} : { lastDisplayName }),
       ...(linkedUserId !== undefined ? { userId: linkedUserId } : {}),
     },
   });

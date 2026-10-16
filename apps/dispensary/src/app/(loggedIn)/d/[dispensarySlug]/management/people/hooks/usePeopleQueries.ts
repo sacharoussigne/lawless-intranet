@@ -50,7 +50,7 @@ export type PersonFormValues = {
   discordUserId: string;
   displayName: string;
   accountNumber: number | null;
-  role: PayrollEmployeeRole | null;
+  role?: PayrollEmployeeRole | null;
 };
 
 export function useCreatePersonMutation() {
@@ -83,7 +83,7 @@ export function useUpdatePersonMutation() {
       discordUserId: string;
       fixedDisplayName?: string | null;
       accountNumber: number | null;
-      role: PayrollEmployeeRole | null;
+      role?: PayrollEmployeeRole | null;
     }) => handleAction(await updateDispensaryPerson(dispensarySlug, vars)) as DispensaryPerson,
     onSuccess: () => {
       invalidate();

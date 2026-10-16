@@ -12,6 +12,7 @@ import {
   canEditWeeklyActivity,
   canViewWeeklyDispensaryActivity,
   isWeeklyActivityOwner,
+  weeklyActivityWhereForViewer,
 } from '@/lib/dispensaryWeeklyActivity/access';
 import {
   genericDoctorFallbackName,
@@ -112,22 +113,6 @@ async function requireWeeklyActivityEdit(dispensarySlug: string) {
   return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
 }
 
-/**
- * Rows the viewer may see: all of them with edit-all, otherwise the rows of
- * their current Discord id (a row belongs to a Discord id, not to `userId`).
- */
-function listWhereForSession(
-  dispensaryId: string,
-  viewerDiscordId: string | null,
-  effectivePermissions: Iterable<string> | null | undefined,
-): Prisma.DispensaryWeeklyActivityWhereInput {
-  const tenantFilter = tenantWhere(dispensaryId);
-  if (canEditAllWeeklyDispensaryActivity(effectivePermissions)) {
-    return tenantFilter;
-  }
-  return { ...tenantFilter, discordUserId: viewerDiscordId ?? { in: [] } };
-}
-
 export async function listDispensaryWeeklyActivities(
   dispensarySlug: string,
   options?: { periodStart: Date; periodEnd: Date },
@@ -140,15 +125,12 @@ export async function listDispensaryWeeklyActivities(
     const { session, tenant } = gate;
     const { dispensaryId } = tenant;
 
-    const viewerDiscordId = await getDiscordAccountIdForUser(prisma, session.user.id);
-    const where = listWhereForSession(dispensaryId, viewerDiscordId, tenant.effectivePermissions);
-
-    if (options) {
-      Object.assign(where, {
-        periodStart: { lte: options.periodEnd },
-        periodEnd: { gte: options.periodStart },
-      });
-    }
+    const where = await weeklyActivityWhereForViewer(
+      dispensaryId,
+      session.user.id,
+      tenant.effectivePermissions,
+      options ? { periodStart: { lte: options.periodEnd }, periodEnd: { gte: options.periodStart } } : {},
+    );
 
     const data = await listSerializedWeeklyActivities(where, dispensaryId);
 
@@ -187,16 +169,16 @@ export async function getDispensaryWeeklyHoursRecap(
     const { start: periodStart, end: periodEnd } = getBankWeekBounds(parsed.data.periodStart);
     const discordUserId = parsed.data.discordUserId ?? null;
 
-    const where = listWhereForSession(
+    const where = await weeklyActivityWhereForViewer(
       dispensaryId,
-      await getDiscordAccountIdForUser(prisma, gate.session.user.id),
+      gate.session.user.id,
       gate.tenant.effectivePermissions,
+      {
+        periodStart: { lte: periodEnd },
+        periodEnd: { gte: periodStart },
+        ...(discordUserId ? { discordUserId } : {}),
+      },
     );
-    Object.assign(where, {
-      periodStart: { lte: periodEnd },
-      periodEnd: { gte: periodStart },
-      ...(discordUserId ? { discordUserId } : {}),
-    });
 
     const activities = await prisma.dispensaryWeeklyActivity.findMany({ where });
 

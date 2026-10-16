@@ -59,7 +59,8 @@ function EditDiscordProfileForm({
       // A changed name becomes the fixed name; an unchanged one is left as is.
       fixedDisplayName:
         canEditAll && trimmedName && trimmedName !== row.resolvedDisplayName ? trimmedName : undefined,
-      role: toPayrollEmployeeRole(role),
+      // Unchanged grade not sent: an old grade outside the payroll list is kept.
+      role: role === row.discordProfileRole ? undefined : toPayrollEmployeeRole(role),
       accountNumber: accountNumber === '' ? null : parseAccountNumber(accountNumber),
       weekBounds: {
         periodStart: new Date(row.periodStart),

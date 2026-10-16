@@ -91,7 +91,8 @@ function PersonForm({
     run(() => {
       const shared = {
         accountNumber: values.accountNumber === '' ? null : toAccountNumber(values.accountNumber),
-        role: toPayrollEmployeeRole(values.role),
+        // Unchanged grade not sent: an old grade outside the payroll list is kept.
+        role: values.role === (person?.role ?? null) ? undefined : toPayrollEmployeeRole(values.role),
       };
       if (person) {
         const name = values.displayName.trim();
@@ -116,7 +117,6 @@ function PersonForm({
         discordUserId: person.discordUserId,
         fixedDisplayName: null,
         accountNumber: person.accountNumber,
-        role: toPayrollEmployeeRole(person.role),
       }),
     );
 

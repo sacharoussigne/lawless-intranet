@@ -120,8 +120,20 @@ export async function lookupDiscordIdsByUserIds(
 
 /** Current Discord id of an account; `null` when it has none or when auth did not answer. */
 export async function discordIdOfUser(userId: string | null | undefined): Promise<string | null> {
+  return (await lookupDiscordIdOfUser(userId)) ?? null;
+}
+
+/**
+ * Current Discord id of an account: `null` for no Discord, `undefined` when
+ * auth did not answer (callers may then fall back on the stored `userId`).
+ */
+export async function lookupDiscordIdOfUser(
+  userId: string | null | undefined,
+): Promise<string | null | undefined> {
   if (!userId) return null;
-  return (await lookupDiscordIdsByUserIds([userId]))?.get(userId) ?? null;
+  const found = await lookupDiscordIdsByUserIds([userId]);
+  if (!found) return undefined;
+  return found.get(userId) ?? null;
 }
 
 /**
