@@ -1,9 +1,21 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Container, Group, Paper, Text, TextInput } from '@mantine/core';
+import {
+  ActionIcon,
+  Badge,
+  Button,
+  Container,
+  CopyButton,
+  Group,
+  Paper,
+  Text,
+  TextInput,
+  Tooltip,
+  UnstyledButton,
+} from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
 import type { DispensaryPeopleList, DispensaryPerson } from '@/lib/people/types';
@@ -89,9 +101,27 @@ export default function PeoplePageClient({ initialData }: { initialData: Dispens
               accessor: 'discordUserId',
               title: 'Discord ID',
               render: (person) => (
-                <Text size="sm" ff="monospace">
-                  {person.discordUserId}
-                </Text>
+                <CopyButton value={person.discordUserId} timeout={1500}>
+                  {({ copied, copy }) => (
+                    <Tooltip label={copied ? 'Copié' : 'Copier'} withArrow openDelay={100}>
+                      <UnstyledButton
+                        onClick={copy}
+                        aria-label={`Copier le Discord ID de ${person.displayName}`}
+                      >
+                        <Group gap={6} wrap="nowrap">
+                          <Text size="sm" ff="monospace">
+                            {person.discordUserId}
+                          </Text>
+                          {copied ? (
+                            <IconCheck size={14} color="var(--disp-sage)" />
+                          ) : (
+                            <IconCopy size={14} color="var(--disp-ink-muted)" />
+                          )}
+                        </Group>
+                      </UnstyledButton>
+                    </Tooltip>
+                  )}
+                </CopyButton>
               ),
             },
             {
