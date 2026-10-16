@@ -11,6 +11,7 @@ const {
   clearAccountLinkCache,
   discordIdOfUser,
   reconcileAccountLinks,
+  syncRowAccountLinks,
 } = await import('@/lib/people/accountLinks');
 
 const DISCORD = '284726189304512512';
@@ -84,5 +85,51 @@ describe('reconcileAccountLinks', () => {
     const client = fakeClient();
     await expect(reconcileAccountLinks(client as never, 'd1', [DISCORD])).resolves.toBeUndefined();
     expect(client.dispensaryDiscordProfile.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('syncRowAccountLinks', () => {
+  const STALE = '391827364519283746';
+  const row = (discordUserId: string, userId: string | null) => ({ dispensaryId: 'd1', discordUserId, userId });
+  function fakeClient() {
+    return {
+      dispensaryDiscordProfile: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      dispensaryWeeklyActivity: { updateMany: vi.fn(async () => ({ count: 1 })) },
+    };
+  }
+
+  beforeEach(() => {
+    auth.resolveUsersByDiscordIds.mockResolvedValue([
+      { discordId: DISCORD, userId: 'u-ok', name: 'Owen' },
+      { discordId: STALE, userId: 'u-new', name: 'Jack' },
+    ]);
+  });
+
+  it('writes nothing when every row is linked to the current account', async () => {
+    const client = fakeClient();
+    const rows = [row(DISCORD, 'u-ok')];
+    await expect(syncRowAccountLinks(client as never, rows)).resolves.toEqual(rows);
+    expect(client.dispensaryWeeklyActivity.updateMany).not.toHaveBeenCalled();
+    expect(client.dispensaryDiscordProfile.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('relinks only the Discord ids whose rows are stale, with a single auth call', async () => {
+    const client = fakeClient();
+    const result = await syncRowAccountLinks(client as never, [row(DISCORD, 'u-ok'), row(STALE, 'u-old')]);
+
+    expect(result.map((r) => r.userId)).toEqual(['u-ok', 'u-new']);
+    expect(client.dispensaryWeeklyActivity.updateMany).toHaveBeenCalledTimes(1);
+    expect(client.dispensaryWeeklyActivity.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ discordUserId: STALE }) }),
+    );
+    expect(auth.resolveUsersByDiscordIds).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the rows as is and writes nothing when auth does not answer', async () => {
+    auth.resolveUsersByDiscordIds.mockRejectedValue(new Error('fetch failed'));
+    const client = fakeClient();
+    const rows = [row(STALE, 'u-old')];
+    await expect(syncRowAccountLinks(client as never, rows)).resolves.toEqual(rows);
+    expect(client.dispensaryWeeklyActivity.updateMany).not.toHaveBeenCalled();
   });
 });

@@ -418,6 +418,25 @@ async function loadWeeklyActivityTargets(dispensaryId: string): Promise<WeeklyAc
   );
 }
 
+/**
+ * Same rule as `loadWeeklyActivityTargets`, for one person: a profile of the
+ * dispensary, or a member whose account holds this Discord id.
+ */
+async function isWeeklyActivityTarget(dispensaryId: string, discordUserId: string): Promise<boolean> {
+  const profile = await prisma.dispensaryDiscordProfile.findUnique({
+    where: { dispensaryId_discordUserId: { dispensaryId, discordUserId } },
+    select: { discordUserId: true },
+  });
+  if (profile) return true;
+  const userId = await accountIdOfDiscord(discordUserId);
+  if (!userId) return false;
+  const member = await prisma.dispensaryMember.findFirst({
+    where: { dispensaryId, userId },
+    select: { userId: true },
+  });
+  return member !== null;
+}
+
 export async function listDispensaryWeeklyActivityTargets(dispensarySlug: string) {
   try {
     const gate = await requireWeeklyActivityEdit(dispensarySlug);
@@ -471,8 +490,7 @@ async function createDispensaryWeeklyActivityUnlogged(
       if (!parsed.data.targetDiscordUserId) {
         return { status: 400 as const, error: 'Sélectionnez une personne' };
       }
-      const targets = await loadWeeklyActivityTargets(dispensaryId);
-      if (!targets.some((t) => t.id === parsed.data.targetDiscordUserId)) {
+      if (!(await isWeeklyActivityTarget(dispensaryId, parsed.data.targetDiscordUserId))) {
         return {
           status: 400 as const,
           error: 'Cette personne n’est pas dans le dispensaire (ajoutez-la dans Gestion › Personnes).',
@@ -490,14 +508,12 @@ async function createDispensaryWeeklyActivityUnlogged(
         discordUserId,
         genericDoctorFallbackName(discordUserId),
       ));
-    const userIdForRow = (await accountIdOfDiscord(discordUserId)) ?? null;
 
     const validated = dispensaryWeeklyActivityCreateSchema.safeParse({
       periodStart: parsed.data.periodStart,
       periodEnd: parsed.data.periodEnd,
       displayName,
       discordUserId,
-      userId: userIdForRow,
       chestDays: parsed.data.chestDays,
       presenceDays: parsed.data.presenceDays,
       sherifCount: parsed.data.sherifCount,

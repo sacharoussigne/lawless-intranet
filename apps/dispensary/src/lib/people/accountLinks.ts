@@ -179,3 +179,40 @@ export async function reconcileAccountLinks(
   );
   return userIdByDiscord;
 }
+
+type LinkedRow = { dispensaryId: string; discordUserId: string; userId: string | null };
+
+/**
+ * Rows with `userId` set to the current account of their Discord id. Writes
+ * (reconcileAccountLinks) only for the Discord ids whose rows are stale, so a
+ * read usually writes nothing. Rows are returned as is when auth does not answer.
+ */
+export async function syncRowAccountLinks<T extends LinkedRow>(client: LinkDb, rows: T[]): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  const accounts = await lookupAccountsByDiscordIds(rows.map((row) => row.discordUserId));
+  if (!accounts) return rows;
+  const linkOf = (row: T) => {
+    const account = accounts.get(row.discordUserId);
+    return account === undefined ? undefined : (account?.userId ?? null);
+  };
+
+  const staleByDispensary = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const userId = linkOf(row);
+    if (userId === undefined || userId === row.userId) continue;
+    const ids = staleByDispensary.get(row.dispensaryId) ?? new Set<string>();
+    ids.add(row.discordUserId);
+    staleByDispensary.set(row.dispensaryId, ids);
+  }
+  // Cached lookups: no new auth call here.
+  await Promise.all(
+    [...staleByDispensary].map(([dispensaryId, discordIds]) =>
+      reconcileAccountLinks(client, dispensaryId, [...discordIds]),
+    ),
+  );
+
+  return rows.map((row) => {
+    const userId = linkOf(row);
+    return userId === undefined || userId === row.userId ? row : { ...row, userId };
+  });
+}

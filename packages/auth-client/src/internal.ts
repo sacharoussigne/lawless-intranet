@@ -55,13 +55,3 @@ export async function resolveDiscordIdsForUserIds(
   );
   return new Map(rows.map((row) => [row.userId, row.discordId]));
 }
-
-export async function findUserIdByDiscordId(discordUserId: string): Promise<string | null> {
-  const rows = await resolveUsersByDiscordIds([discordUserId]);
-  return rows[0]?.userId ?? null;
-}
-
-export async function findDiscordIdByUserId(userId: string): Promise<string | null> {
-  const map = await resolveDiscordIdsForUserIds([userId]);
-  return map.get(userId) ?? null;
-}

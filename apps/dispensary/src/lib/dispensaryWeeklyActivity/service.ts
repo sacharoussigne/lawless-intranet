@@ -7,7 +7,7 @@ import type {
 } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { upsertDiscordProfileFromActivity } from '@/lib/dispensaryDiscordProfile/service';
-import { accountIdOfDiscord, reconcileAccountLinks } from '@/lib/people/accountLinks';
+import { accountIdOfDiscord, syncRowAccountLinks } from '@/lib/people/accountLinks';
 import { resolveBotWeeklyActivityDisplayName } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import { activityToSnapshot } from '@/lib/dispensaryWeeklyActivity/snapshot';
 import { getBankWeekBounds } from '@/lib/bankWeek';
@@ -90,24 +90,7 @@ export async function applyActivityAccountLink(
 export async function reconcileActivityUserIds<T extends DispensaryWeeklyActivity>(
   rows: T[],
 ): Promise<T[]> {
-  if (rows.length === 0) return rows;
-  const byDispensary = new Map<string, string[]>();
-  for (const row of rows) {
-    const ids = byDispensary.get(row.dispensaryId) ?? [];
-    ids.push(row.discordUserId);
-    byDispensary.set(row.dispensaryId, ids);
-  }
-  const links = new Map<string, Map<string, string | null>>();
-  await Promise.all(
-    [...byDispensary].map(async ([dispensaryId, discordIds]) => {
-      const reconciled = await reconcileAccountLinks(prisma, dispensaryId, discordIds);
-      if (reconciled) links.set(dispensaryId, reconciled);
-    }),
-  );
-  return rows.map((row) => {
-    const userId = links.get(row.dispensaryId)?.get(row.discordUserId);
-    return userId === undefined || userId === row.userId ? row : { ...row, userId };
-  });
+  return syncRowAccountLinks(prisma, rows);
 }
 
 export async function findDispensaryActivityOverlappingParisDay(
@@ -456,16 +439,15 @@ export async function findOrCreateDispensaryActivityForParisDay(
   const { start, end } = getBankWeekBounds(dayAnchor);
   const displayName =
     preferred ?? (await resolveBotWeeklyActivityDisplayName(client, dispensaryId, discordUserId));
-  const linkedUserId = (await accountIdOfDiscord(discordUserId)) ?? null;
 
   try {
+    // The account of the Discord id is resolved by the create itself.
     return await createDispensaryWeeklyActivityWithHistory(
       {
         periodStart: start,
         periodEnd: end,
         displayName,
         discordUserId,
-        userId: linkedUserId,
         sherifCount: 0,
         patientsCount: 0,
         infusionsCount: 0,

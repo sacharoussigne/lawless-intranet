@@ -64,46 +64,33 @@ export default async function DispensaryLayout({
     listAccessibleDispensaries(authSession),
   ]);
 
-  const effectivePermissions = await resolveEffectivePermissionsForDispensary(
-    authSession,
-    dispensary.id,
-    effectiveRole,
-  );
+  const user = session?.user;
+  const userId = user?.id;
+  // Independent reads: run together instead of one after the other.
+  const [
+    effectivePermissions,
+    username,
+    [agendaModuleAccess, accessibleAgendaIds],
+    [cabinetModuleAccess, accessibleCabinetIds],
+    hasAccessibleChests,
+    memberDescription,
+  ] = await Promise.all([
+    resolveEffectivePermissionsForDispensary(authSession, dispensary.id, effectiveRole),
+    getDispensaryUserName(dispensary.id, userId, user?.name ?? 'Utilisateur'),
+    (async (): Promise<[boolean, string[]]> => {
+      if (!user) return [false, []];
+      const access = await userHasAnyAgendaAccess(dispensary.id, user.id, user.role, effectiveRole);
+      return [access, access ? await listAccessibleAgendaIds(dispensary.id, user.id, user.role, effectiveRole) : []];
+    })(),
+    (async (): Promise<[boolean, string[]]> => {
+      if (!user) return [false, []];
+      const access = await userHasAnyCabinetAccess(dispensary.id, user.id);
+      return [access, access ? await listAccessibleCabinetIds(dispensary.id, user.id) : []];
+    })(),
+    userHasAccessibleChests(dispensary.id, effectiveRole),
+    userId ? getMemberDescription(dispensary.id, userId) : null,
+  ]);
   const permissions = calculatePermissionsFromEffective(effectivePermissions);
-  const userId = session?.user?.id;
-  const username = await getDispensaryUserName(
-    dispensary.id,
-    userId,
-    session?.user.name ?? 'Utilisateur',
-  );
-  const agendaModuleAccess = userId
-    ? await userHasAnyAgendaAccess(
-        dispensary.id,
-        userId,
-        session.user.role,
-        effectiveRole,
-      )
-    : false;
-  const accessibleAgendaIds =
-    userId && agendaModuleAccess
-      ? await listAccessibleAgendaIds(
-          dispensary.id,
-          userId,
-          session.user.role,
-          effectiveRole,
-        )
-      : [];
-  const cabinetModuleAccess = userId
-    ? await userHasAnyCabinetAccess(dispensary.id, userId)
-    : false;
-  const accessibleCabinetIds =
-    userId && cabinetModuleAccess
-      ? await listAccessibleCabinetIds(dispensary.id, userId)
-      : [];
-  const hasAccessibleChests = await userHasAccessibleChests(dispensary.id, effectiveRole);
-  const memberDescription = userId
-    ? await getMemberDescription(dispensary.id, userId)
-    : null;
 
   return (
     <PermissionsProvider
