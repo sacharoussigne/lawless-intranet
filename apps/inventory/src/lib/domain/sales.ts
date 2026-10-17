@@ -10,6 +10,7 @@ import {
 import { getSaleEffectiveTotal } from '@/lib/pricing';
 import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 import { decimalToNumber } from '@/lib/serialize';
+import { stockTransaction } from '@/lib/stock/lock';
 import type { SaleItemSource, SaleStatus } from '@/generated/prisma/client';
 
 export type SaleListItem = {
@@ -204,7 +205,7 @@ export async function createSale(input: {
   const tomorrow = getTomorrowStart();
 
   try {
-    const sale = await prisma.$transaction(async (tx) => {
+    const sale = await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
       await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, {
         today,
         tomorrow,
@@ -238,7 +239,7 @@ export async function createSale(input: {
           }
           await tx.stockHistory.update({
             where: { id: stock.id },
-            data: { quantity: stock.quantity - line.quantity },
+            data: { quantity: { decrement: line.quantity } },
           });
           stock.quantity -= line.quantity;
         }
@@ -314,61 +315,68 @@ export async function cancelSale(input: {
   const today = getTodayStart();
   const tomorrow = getTomorrowStart();
 
-  await prisma.$transaction(async (tx) => {
-    await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, {
-      today,
-      tomorrow,
-    });
+  try {
+    await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
+      // Checked again under the lock: two cancellations at once must restore the stock once.
+      const { count } = await tx.sale.updateMany({
+        where: { id: sale.id, status: 'COMPLETED', depositedInCashRegister: false },
+        data: {
+          status: 'CANCELLED',
+          cancelledAt: new Date(),
+          cancelledByUserId: input.userId,
+        },
+      });
+      if (count === 0) throw new Error('Cette vente est déjà annulée ou déposée en caisse');
 
-    const chestLines = sale.items.filter((item) => item.source === 'CHEST' && item.chestId);
-    if (chestLines.length > 0) {
-      const ensured = await ensureTodayStockForPairs(
-        tx,
-        input.scopeType,
-        input.scopeId,
-        chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
-        { today, tomorrow },
-      );
+      await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, {
+        today,
+        tomorrow,
+      });
 
-      for (const line of chestLines) {
-        const key = `${line.itemId}:${line.chestId}`;
-        const stock = ensured.get(key);
-        if (stock) {
-          await tx.stockHistory.update({
-            where: { id: stock.id },
-            data: { quantity: stock.quantity + line.quantity },
-          });
-        } else {
-          await tx.stockHistory.create({
-            data: {
-              itemId: line.itemId,
-              chestId: line.chestId!,
-              quantity: line.quantity,
-            },
-          });
+      const chestLines = sale.items.filter((item) => item.source === 'CHEST' && item.chestId);
+      if (chestLines.length > 0) {
+        const ensured = await ensureTodayStockForPairs(
+          tx,
+          input.scopeType,
+          input.scopeId,
+          chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
+          { today, tomorrow },
+        );
+
+        for (const line of chestLines) {
+          const key = `${line.itemId}:${line.chestId}`;
+          const stock = ensured.get(key);
+          if (stock) {
+            await tx.stockHistory.update({
+              where: { id: stock.id },
+              data: { quantity: { increment: line.quantity } },
+            });
+          } else {
+            await tx.stockHistory.create({
+              data: {
+                itemId: line.itemId,
+                chestId: line.chestId!,
+                quantity: line.quantity,
+              },
+            });
+          }
         }
+
+        await tx.stockItemMovement.createMany({
+          data: chestLines.map((line) => ({
+            itemId: line.itemId,
+            quantity: line.quantity,
+            kind: 'SALE_CANCEL_RESTORE',
+            chestId: line.chestId,
+            userId: input.userId,
+          })),
+        });
       }
 
-      await tx.stockItemMovement.createMany({
-        data: chestLines.map((line) => ({
-          itemId: line.itemId,
-          quantity: line.quantity,
-          kind: 'SALE_CANCEL_RESTORE',
-          chestId: line.chestId,
-          userId: input.userId,
-        })),
-      });
-    }
-
-    await tx.sale.update({
-      where: { id: sale.id },
-      data: {
-        status: 'CANCELLED',
-        cancelledAt: new Date(),
-        cancelledByUserId: input.userId,
-      },
     });
-  });
+  } catch (error) {
+    return err(error instanceof Error ? error.message : 'Erreur lors de l’annulation de la vente', 400);
+  }
 
   return ok({ success: true });
 }
@@ -428,52 +436,59 @@ export async function deleteSale(input: {
   const today = getTodayStart();
   const tomorrow = getTomorrowStart();
 
-  await prisma.$transaction(async (tx) => {
-    if (sale.status === 'COMPLETED') {
-      await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, {
-        today,
-        tomorrow,
-      });
-      const chestLines = sale.items.filter((item) => item.source === 'CHEST' && item.chestId);
-      if (chestLines.length > 0) {
-        const ensured = await ensureTodayStockForPairs(
-          tx,
-          input.scopeType,
-          input.scopeId,
-          chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
-          { today, tomorrow },
-        );
-        for (const line of chestLines) {
-          const key = `${line.itemId}:${line.chestId}`;
-          const stock = ensured.get(key);
-          if (stock) {
-            await tx.stockHistory.update({
-              where: { id: stock.id },
-              data: { quantity: stock.quantity + line.quantity },
-            });
-          } else {
-            await tx.stockHistory.create({
-              data: {
-                itemId: line.itemId,
-                chestId: line.chestId!,
-                quantity: line.quantity,
-              },
-            });
-          }
-        }
-        await tx.stockItemMovement.createMany({
-          data: chestLines.map((line) => ({
-            itemId: line.itemId,
-            quantity: line.quantity,
-            kind: 'SALE_CANCEL_RESTORE',
-            chestId: line.chestId,
-            userId: input.userId,
-          })),
+  try {
+    await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
+      // Read again under the lock: a sale cancelled meanwhile already got its stock back.
+      const current = await tx.sale.findUnique({ where: { id: sale.id }, select: { status: true } });
+      if (!current) throw new Error('Vente introuvable');
+      if (current.status === 'COMPLETED') {
+        await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, {
+          today,
+          tomorrow,
         });
+        const chestLines = sale.items.filter((item) => item.source === 'CHEST' && item.chestId);
+        if (chestLines.length > 0) {
+          const ensured = await ensureTodayStockForPairs(
+            tx,
+            input.scopeType,
+            input.scopeId,
+            chestLines.map((item) => ({ itemId: item.itemId, chestId: item.chestId! })),
+            { today, tomorrow },
+          );
+          for (const line of chestLines) {
+            const key = `${line.itemId}:${line.chestId}`;
+            const stock = ensured.get(key);
+            if (stock) {
+              await tx.stockHistory.update({
+                where: { id: stock.id },
+                data: { quantity: { increment: line.quantity } },
+              });
+            } else {
+              await tx.stockHistory.create({
+                data: {
+                  itemId: line.itemId,
+                  chestId: line.chestId!,
+                  quantity: line.quantity,
+                },
+              });
+            }
+          }
+          await tx.stockItemMovement.createMany({
+            data: chestLines.map((line) => ({
+              itemId: line.itemId,
+              quantity: line.quantity,
+              kind: 'SALE_CANCEL_RESTORE',
+              chestId: line.chestId,
+              userId: input.userId,
+            })),
+          });
+        }
       }
-    }
-    await tx.sale.delete({ where: { id: sale.id } });
-  });
+      await tx.sale.delete({ where: { id: sale.id } });
+    });
+  } catch (error) {
+    return err(error instanceof Error ? error.message : 'Erreur lors de la suppression de la vente', 400);
+  }
 
   return ok({ success: true });
 }

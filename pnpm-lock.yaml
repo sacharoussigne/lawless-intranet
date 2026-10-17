@@ -590,6 +590,9 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
 
   apps/media:
     dependencies:
@@ -1142,6 +1145,15 @@ importers:
         specifier: ^1.11.19
         version: 1.11.21
     devDependencies:
+      '@dnd-kit/core':
+        specifier: ^6.3.1
+        version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@dnd-kit/sortable':
+        specifier: ^10.0.0
+        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+      '@dnd-kit/utilities':
+        specifier: ^3.2.2
+        version: 3.2.2(react@19.2.4)
       '@mantine/core':
         specifier: ^8.3.17
         version: 8.3.18(@mantine/hooks@8.3.18(react@19.2.4))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1184,6 +1196,9 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.15))
 
   packages/mail-template-engine:
     devDependencies:

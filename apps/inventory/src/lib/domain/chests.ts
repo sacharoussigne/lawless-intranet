@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { stockTransaction } from '@/lib/stock/lock';
 import { scopeWhere } from '@/lib/scope';
 import { ok, err, type DomainResult } from '@/lib/result';
 import {
@@ -128,7 +129,7 @@ export async function deleteChest(input: {
     return err("Le coffre à supprimer n'existe pas.", 404);
   }
 
-  await prisma.$transaction(async (tx) => {
+  await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
     await tx.stockHistory.updateMany({
       where: { chestId: input.id, chest: where },
       data: { chestId: input.targetChestId },

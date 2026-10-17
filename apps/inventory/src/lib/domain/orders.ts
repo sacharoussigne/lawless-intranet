@@ -9,6 +9,7 @@ import {
   ensureTodayStockForPairs,
 } from '@/lib/stock/ensureTodayStock';
 import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
+import { stockTransaction } from '@/lib/stock/lock';
 import type { OrderStatus, OrderType } from '@/generated/prisma/client';
 
 const ORDER_DETAIL_INCLUDE = {
@@ -416,7 +417,13 @@ export async function completeOrder(input: {
   const tomorrow = getTomorrowStart();
 
   try {
-    const order = await prisma.$transaction(async (tx) => {
+    const order = await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
+      // Checked again under the lock: two validations at once must not both move stock.
+      const current = await tx.order.findUnique({ where: { id: input.id }, select: { status: true } });
+      if (current?.status === 'COMPLETED') {
+        throw new Error('Cette commande est déjà terminée');
+      }
+
       if (input.items) {
         await tx.orderItem.deleteMany({ where: { orderId: input.id } });
         updateData.items = {
@@ -454,7 +461,7 @@ export async function completeOrder(input: {
             if (stock) {
               await tx.stockHistory.update({
                 where: { id: stock.id },
-                data: { quantity: stock.quantity + line.quantity },
+                data: { quantity: { increment: line.quantity } },
               });
               stock.quantity += line.quantity;
             } else {
@@ -483,7 +490,7 @@ export async function completeOrder(input: {
             }
             await tx.stockHistory.update({
               where: { id: stock.id },
-              data: { quantity: stock.quantity - line.quantity },
+              data: { quantity: { decrement: line.quantity } },
             });
             stock.quantity -= line.quantity;
           }
