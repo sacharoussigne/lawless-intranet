@@ -3,6 +3,7 @@ import { toUiResult } from '@lawless-intranet/host-kit/action';
 import {
   completeMediaLibraryUpload,
   createMediaLibraryFolder,
+  createMediaLibraryLink,
   deleteMediaLibraryFile,
   deleteMediaLibraryFolder,
   deleteMediaLibraryItems,
@@ -12,6 +13,7 @@ import {
   unshareMediaLibraryFile,
   updateMediaLibraryFile,
   updateMediaLibraryFolder,
+  updateMediaLibraryLink,
 } from '@/app/_actions/media';
 import { fetchRead } from '@/lib/read/fetchRead';
 
@@ -29,6 +31,8 @@ export function createDispensaryMediaActions(dispensarySlug: string): MediaUiAct
     updateFile: (input) => toUiResult(updateMediaLibraryFile(dispensarySlug, input)),
     deleteFile: (id) => toUiResult(deleteMediaLibraryFile(dispensarySlug, id)),
     getDownloadUrl: (id) => toUiResult(fetchRead(dispensarySlug, 'mediaDownloadUrl', { id })),
+    createLink: (input) => toUiResult(createMediaLibraryLink(dispensarySlug, input)),
+    updateLink: (input) => toUiResult(updateMediaLibraryLink(dispensarySlug, input)),
     moveItems: (input) => toUiResult(moveMediaLibraryItems(dispensarySlug, input)),
     deleteItems: (input) => toUiResult(deleteMediaLibraryItems(dispensarySlug, input)),
     shareFile: (id) => toUiResult(shareMediaLibraryFile(dispensarySlug, id)),

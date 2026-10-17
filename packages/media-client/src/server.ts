@@ -4,6 +4,7 @@ import type {
   MediaFolderContentsRecord,
   MediaFolderRecord,
   MediaLimitsRecord,
+  MediaLinkRecord,
   MediaScopeParams,
   MediaShareTargetRecord,
   MediaTreeFolderRecord,
@@ -145,10 +146,40 @@ export async function getMediaDownloadUrl(
   );
 }
 
-/** Moves several folders and files at once (all or nothing). */
+/** Saves an external http(s) link; an empty name takes the host of the URL. */
+export async function createMediaLink(
+  scope: MediaScopeParams,
+  input: { folderId: string | null; name?: string; url: string },
+  options: ClientOptions = {},
+): Promise<MediaLinkRecord> {
+  return parseJsonResponse(
+    await mediaFetch('/api/links', {
+      method: 'POST',
+      cookieHeader: options.cookieHeader,
+      body: JSON.stringify({ ...scope, ...input }),
+    }),
+  );
+}
+
+export async function updateMediaLink(
+  scope: MediaScopeParams,
+  linkId: string,
+  input: { name?: string; url?: string; folderId?: string | null },
+  options: ClientOptions = {},
+): Promise<MediaLinkRecord> {
+  return parseJsonResponse(
+    await mediaFetch(`/api/links/${encodeURIComponent(linkId)}`, {
+      method: 'PATCH',
+      cookieHeader: options.cookieHeader,
+      body: JSON.stringify({ ...scope, ...input }),
+    }),
+  );
+}
+
+/** Moves several folders, files and links at once (all or nothing). */
 export async function moveMediaItems(
   scope: MediaScopeParams,
-  input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[]; destinationId: string | null },
   options: ClientOptions = {},
 ): Promise<{ moved: number }> {
   return parseJsonResponse(
@@ -160,10 +191,10 @@ export async function moveMediaItems(
   );
 }
 
-/** Deletes several folders (with their content) and files at once. */
+/** Deletes several folders (with their content), files and links at once. */
 export async function deleteMediaItems(
   scope: MediaScopeParams,
-  input: { folderIds: string[]; fileIds: string[] },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[] },
   options: ClientOptions = {},
 ): Promise<{ deletedFiles: number }> {
   return parseJsonResponse(
@@ -209,10 +240,10 @@ export async function resolveMediaShare(token: string): Promise<MediaShareTarget
   return parseJsonResponse(await mediaFetch(`/api/shares/${encodeURIComponent(token)}`));
 }
 
-/** Host-only (no user): deletes every folder, file and S3 object of a tenant. */
+/** Host-only (no user): deletes every folder, file, link and S3 object of a tenant. */
 export async function purgeMediaScope(
   scope: MediaScopeParams,
-): Promise<{ files: number; folders: number }> {
+): Promise<{ files: number; folders: number; links: number }> {
   return parseJsonResponse(
     await mediaFetch('/api/purge-scope', { method: 'POST', body: JSON.stringify(scope) }),
   );

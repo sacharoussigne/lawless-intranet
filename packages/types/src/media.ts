@@ -32,6 +32,17 @@ export type MediaBreadcrumbItem = {
   name: string;
 };
 
+/** External http(s) link saved in a folder; opened in a new tab. */
+export type MediaLinkRecord = {
+  id: string;
+  folderId: string | null;
+  name: string;
+  url: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type MediaFolderContentsRecord = {
   /** Null for the library root. */
   folder: MediaFolderRecord | null;
@@ -39,6 +50,7 @@ export type MediaFolderContentsRecord = {
   breadcrumb: MediaBreadcrumbItem[];
   folders: MediaFolderRecord[];
   files: MediaFileRecord[];
+  links: MediaLinkRecord[];
 };
 
 export type MediaTreeFolderRecord = {

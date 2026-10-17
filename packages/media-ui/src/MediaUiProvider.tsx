@@ -7,6 +7,7 @@ import type {
   MediaFolderContentsRecord,
   MediaFolderRecord,
   MediaLimitsRecord,
+  MediaLinkRecord,
   MediaTreeFolderRecord,
   MediaUploadTicketRecord,
 } from '@lawless-intranet/types';
@@ -40,15 +41,29 @@ export type MediaUiActions = {
   }) => Promise<MediaActionResult<MediaFileRecord>>;
   deleteFile: (id: string) => Promise<MediaActionResult<{ success: true }>>;
   getDownloadUrl: (id: string) => Promise<MediaActionResult<MediaDownloadUrlRecord>>;
+  /** External link; an empty name takes the host of the URL. */
+  createLink: (input: {
+    folderId: string | null;
+    name: string;
+    url: string;
+  }) => Promise<MediaActionResult<MediaLinkRecord>>;
+  updateLink: (input: {
+    id: string;
+    name?: string;
+    url?: string;
+    folderId?: string | null;
+  }) => Promise<MediaActionResult<MediaLinkRecord>>;
   /** Batch operations of the multiple selection. */
   moveItems: (input: {
     folderIds: string[];
     fileIds: string[];
+    linkIds: string[];
     destinationId: string | null;
   }) => Promise<MediaActionResult<{ moved: number }>>;
   deleteItems: (input: {
     folderIds: string[];
     fileIds: string[];
+    linkIds: string[];
   }) => Promise<MediaActionResult<{ deletedFiles: number }>>;
   shareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;
   unshareFile: (id: string) => Promise<MediaActionResult<MediaFileRecord>>;

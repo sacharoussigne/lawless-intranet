@@ -5,6 +5,7 @@ import {
   IconArrowsMove,
   IconCopy,
   IconDownload,
+  IconExternalLink,
   IconEye,
   IconFolderOpen,
   IconFolderPlus,
@@ -14,21 +15,27 @@ import {
   IconPencil,
   IconTrash,
   IconUpload,
+  IconWorldPlus,
 } from '@tabler/icons-react';
 
 /** Menu entries shared by the right-click menu, the ⋮ buttons and the breadcrumb menu. */
 
 export type BackgroundMenuActions = {
   onCreateFolder: () => void;
+  onCreateLink: () => void;
   onUpload: () => void;
   uploadDisabled?: boolean;
 };
 
-export function BackgroundMenuItems({ onCreateFolder, onUpload, uploadDisabled }: BackgroundMenuActions) {
+export function BackgroundMenuItems({ onCreateFolder, onCreateLink, onUpload, uploadDisabled }: BackgroundMenuActions) {
   return (
     <>
       <Menu.Item leftSection={<IconFolderPlus size={16} />} onClick={onCreateFolder}>
         Nouveau dossier
+      </Menu.Item>
+      {/* No storage needed: available even when uploads are not. */}
+      <Menu.Item leftSection={<IconWorldPlus size={16} />} onClick={onCreateLink}>
+        Nouveau lien
       </Menu.Item>
       <Menu.Divider />
       <Menu.Item leftSection={<IconUpload size={16} />} onClick={onUpload} disabled={uploadDisabled}>
@@ -45,14 +52,20 @@ export type ItemMenuActions = {
   onDelete: () => void;
 };
 
-function CommonItems({ onInfo, onRename, onMove, onDelete }: ItemMenuActions) {
+function CommonItems({
+  onInfo,
+  onRename,
+  onMove,
+  onDelete,
+  renameLabel = 'Renommer',
+}: ItemMenuActions & { renameLabel?: string }) {
   return (
     <>
       <Menu.Item leftSection={<IconInfoCircle size={16} />} onClick={onInfo}>
         Informations
       </Menu.Item>
       <Menu.Item leftSection={<IconPencil size={16} />} onClick={onRename}>
-        Renommer
+        {renameLabel}
       </Menu.Item>
       <Menu.Item leftSection={<IconArrowsMove size={16} />} onClick={onMove}>
         Déplacer
@@ -73,6 +86,26 @@ export function FolderMenuItems({ onOpen, ...actions }: ItemMenuActions & { onOp
       </Menu.Item>
       <Menu.Divider />
       <CommonItems {...actions} />
+    </>
+  );
+}
+
+/** `onRename` edits the name and the address. */
+export function LinkMenuItems({
+  onOpen,
+  onCopyUrl,
+  ...actions
+}: ItemMenuActions & { onOpen: () => void; onCopyUrl: () => void }) {
+  return (
+    <>
+      <Menu.Item leftSection={<IconExternalLink size={16} />} onClick={onOpen}>
+        Ouvrir le lien
+      </Menu.Item>
+      <Menu.Item leftSection={<IconCopy size={16} />} onClick={onCopyUrl}>
+        Copier l’adresse
+      </Menu.Item>
+      <Menu.Divider />
+      <CommonItems {...actions} renameLabel="Modifier" />
     </>
   );
 }

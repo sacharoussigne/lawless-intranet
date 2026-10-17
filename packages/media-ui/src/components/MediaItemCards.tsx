@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useContext, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { Box, Card, Center, Checkbox, Group, Image, Text, Tooltip } from '@mantine/core';
-import { IconFiles, IconFolderFilled, IconPhoto } from '@tabler/icons-react';
-import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
+import { IconFiles, IconFolderFilled, IconPhoto, IconWorld } from '@tabler/icons-react';
+import type { MediaFileRecord, MediaFolderRecord, MediaLinkRecord } from '@lawless-intranet/types';
 import { type DragItem } from '../dnd';
-import { formatBytes } from '../format';
+import { formatBytes, linkHost } from '../format';
 import { useMediaUi } from '../MediaUiProvider';
 import { itemKey } from '../selection';
 import {
@@ -25,6 +25,8 @@ import {
 } from './itemInteractions';
 
 const THUMB_HEIGHT = 150;
+
+export const LINK_ICON_COLOR = 'var(--mantine-primary-color-filled)';
 
 /** Touch selection mode: check mark in the tile's corner. */
 function SelectionCheck({ checked }: { checked: boolean }) {
@@ -95,6 +97,53 @@ export function FolderCard({
           {folder.name}
         </Text>
         <KebabMenu label={folder.name}>{interactions.menu}</KebabMenu>
+      </Group>
+    </Card>
+  );
+}
+
+/** Saved link: compact tile like a folder, the site under the name. Opens in a new tab. */
+export function LinkCard({ link, ...interactions }: ItemInteractions & { link: MediaLinkRecord }) {
+  const drag = useItemDrag(interactions.dragItem);
+  const longPress = useLongPress();
+  const host = linkHost(link.url);
+
+  return (
+    <Card
+      ref={drag.setNodeRef}
+      {...drag.listeners}
+      {...longPress}
+      {...{ [SELECTION_KEY_ATTRIBUTE]: itemKey('link', link.id) }}
+      withBorder
+      radius="lg"
+      padding="xs"
+      pl="md"
+      tabIndex={0}
+      role="button"
+      aria-label={`${link.name} (${host})`}
+      aria-pressed={interactions.selected}
+      title={link.url}
+      style={tileStyle(interactions.selected, drag.isDragged)}
+      onClick={(event: MouseEvent) => {
+        event.stopPropagation();
+        handleItemClick(event, interactions);
+      }}
+      onDoubleClick={interactions.onOpen}
+      onKeyDown={(event: KeyboardEvent) => handleEnterKey(event, interactions)}
+      onContextMenu={interactions.onContextMenu}
+    >
+      <Group gap="sm" wrap="nowrap">
+        {interactions.toggleOnClick ? <SelectionCheck checked={interactions.selected} /> : null}
+        <IconWorld size={22} color={LINK_ICON_COLOR} style={{ flexShrink: 0 }} />
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Text size="sm" fw={500} truncate="end">
+            {link.name}
+          </Text>
+          <Text size="xs" c="dimmed" truncate="end">
+            {host}
+          </Text>
+        </Box>
+        <KebabMenu label={link.name}>{interactions.menu}</KebabMenu>
       </Group>
     </Card>
   );
@@ -188,6 +237,8 @@ export function DragChip({ items, name }: { items: readonly DragItem[]; name: st
           <IconFiles size={18} color="var(--mantine-primary-color-filled)" style={{ flexShrink: 0 }} />
         ) : kind === 'folder' ? (
           <IconFolderFilled size={18} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
+        ) : kind === 'link' ? (
+          <IconWorld size={18} color={LINK_ICON_COLOR} style={{ flexShrink: 0 }} />
         ) : (
           <IconPhoto size={18} color="var(--mantine-primary-color-filled)" style={{ flexShrink: 0 }} />
         )}

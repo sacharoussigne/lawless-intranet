@@ -1,6 +1,6 @@
-/** Drive-like multiple selection (pure logic, keyed by `folder:<id>` / `file:<id>`). */
+/** Drive-like multiple selection (pure logic, keyed by `folder:<id>` / `link:<id>` / `file:<id>`). */
 
-export type ItemKind = 'folder' | 'file';
+export type ItemKind = 'folder' | 'link' | 'file';
 
 export function itemKey(kind: ItemKind, id: string): string {
   return `${kind}:${id}`;
@@ -24,7 +24,7 @@ export function selectOnly(key: string): Selection {
 }
 
 /**
- * Click with modifiers, `order` being the display order (folders then files):
+ * Click with modifiers, `order` being the display order (folders, links, files):
  * plain click selects only the item, Ctrl/Cmd toggles it, Shift selects the
  * range from the anchor (added to the selection with Ctrl+Shift).
  */
@@ -61,15 +61,17 @@ export function pruneSelection(selection: Selection, order: readonly string[]): 
 }
 
 /** Selected ids grouped for the batch API, in display order. */
-export function splitSelection(keys: Iterable<string>): { folderIds: string[]; fileIds: string[] } {
-  const folderIds: string[] = [];
-  const fileIds: string[] = [];
+export function splitSelection(keys: Iterable<string>): {
+  folderIds: string[];
+  fileIds: string[];
+  linkIds: string[];
+} {
+  const ids: Record<ItemKind, string[]> = { folder: [], link: [], file: [] };
   for (const key of keys) {
     const { kind, id } = parseItemKey(key);
-    if (kind === 'folder') folderIds.push(id);
-    else fileIds.push(id);
+    ids[kind]?.push(id);
   }
-  return { folderIds, fileIds };
+  return { folderIds: ids.folder, fileIds: ids.file, linkIds: ids.link };
 }
 
 export type Rect = { left: number; top: number; right: number; bottom: number };

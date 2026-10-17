@@ -1,4 +1,5 @@
 import type { MediaTreeFolderRecord } from '@lawless-intranet/types';
+import type { ItemKind } from './selection';
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -69,28 +70,58 @@ export function stepIndex(index: number, delta: number, length: number): number 
   return next >= 0 && next < length ? next : null;
 }
 
-export type DeleteModalItem = { name: string; isFolder: boolean };
+export type DeleteModalItem = { name: string; kind: ItemKind };
 
 function plural(count: number, singular: string, pluralForm: string): string {
   return `${count} ${count > 1 ? pluralForm : singular}`;
 }
 
+/** « a », « a et b », « a, b et c ». */
+function joinFr(parts: readonly string[]): string {
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}` : (parts[0] ?? '');
+}
+
 export function describeDeletion(items: readonly DeleteModalItem[]): string {
   const [first] = items;
   if (items.length === 1 && first) {
-    return first.isFolder
-      ? `Supprimer le dossier « ${first.name} » et tout son contenu (sous-dossiers et fichiers) ?`
-      : `Supprimer le fichier « ${first.name} » ?`;
+    if (first.kind === 'folder') {
+      return `Supprimer le dossier « ${first.name} » et tout son contenu (sous-dossiers, fichiers et liens) ?`;
+    }
+    return `Supprimer le ${first.kind === 'link' ? 'lien' : 'fichier'} « ${first.name} » ?`;
   }
-  const folders = items.filter((item) => item.isFolder).length;
-  const files = items.length - folders;
+  const count = (kind: ItemKind) => items.filter((item) => item.kind === kind).length;
+  const folders = count('folder');
+  const links = count('link');
+  const files = count('file');
   const parts = [
     folders > 0
       ? `${plural(folders, 'dossier', 'dossiers')} (avec tout ${folders > 1 ? 'leur' : 'son'} contenu)`
       : null,
+    links > 0 ? plural(links, 'lien', 'liens') : null,
     files > 0 ? plural(files, 'fichier', 'fichiers') : null,
-  ].filter(Boolean);
-  return `Supprimer ${parts.join(' et ')} ?`;
+  ].filter((part): part is string => part !== null);
+  return `Supprimer ${joinFr(parts)} ?`;
+}
+
+/** Same rule as the service: an absolute http(s) URL (`javascript:` and others are refused). */
+export function normalizeLinkUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Host shown under a link (« docs.google.com »); the raw URL when it cannot be parsed. */
+export function linkHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
 }
 
 export type MediaSortKey = 'name' | 'date';

@@ -2,13 +2,14 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { Group, Modal, Stack, Text } from '@mantine/core';
-import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
+import type { MediaFileRecord, MediaFolderRecord, MediaLinkRecord } from '@lawless-intranet/types';
 import { describeFileType, formatBytes, getFileKind, wasModified } from '../format';
 import { useMediaUserName } from '../hooks/useMediaQueries';
 import { useMediaUi } from '../MediaUiProvider';
 
 export type InfoTarget =
   | { kind: 'folder'; item: MediaFolderRecord }
+  | { kind: 'link'; item: MediaLinkRecord }
   | { kind: 'file'; item: MediaFileRecord };
 
 type InfoModalProps = {
@@ -50,20 +51,26 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** « Informations » of a file or folder: only what the library already knows, missing rows are hidden. */
+const TYPE_BY_KIND = { folder: 'Dossier', link: 'Lien' } as const;
+
+/** « Informations » of an item: only what the library already knows, missing rows are hidden. */
 export function InfoModal({ target, location, onClose }: InfoModalProps) {
   const { formatDateTime } = useMediaUi();
   const file = target?.kind === 'file' ? target.item : null;
   const isImage = file !== null && getFileKind(file.mimeType) === 'image';
   const dimensions = useImageDimensions(isImage ? file.previewUrl : null);
-  const uploader = useMediaUserName(file?.uploadedById ?? null);
+  const link = target?.kind === 'link' ? target.item : null;
+  const uploader = useMediaUserName(file?.uploadedById ?? link?.createdById ?? null);
 
   return (
     <Modal opened={target !== null} onClose={onClose} title="Informations" centered>
       {target ? (
         <Stack gap="sm">
           <InfoRow label="Nom">{target.item.name}</InfoRow>
-          <InfoRow label="Type">{file ? describeFileType(file.mimeType) : 'Dossier'}</InfoRow>
+          <InfoRow label="Type">
+            {target.kind === 'file' ? describeFileType(target.item.mimeType) : TYPE_BY_KIND[target.kind]}
+          </InfoRow>
+          {link ? <InfoRow label="Adresse">{link.url}</InfoRow> : null}
           {file ? <InfoRow label="Taille">{formatBytes(file.size)}</InfoRow> : null}
           {dimensions ? (
             <InfoRow label="Dimensions">
@@ -71,7 +78,9 @@ export function InfoModal({ target, location, onClose }: InfoModalProps) {
             </InfoRow>
           ) : null}
           <InfoRow label="Emplacement">{location}</InfoRow>
-          <InfoRow label={file ? 'Ajouté le' : 'Créé le'}>{formatDateTime(target.item.createdAt)}</InfoRow>
+          <InfoRow label={target.kind === 'folder' ? 'Créé le' : 'Ajouté le'}>
+            {formatDateTime(target.item.createdAt)}
+          </InfoRow>
           {wasModified(target.item.createdAt, target.item.updatedAt) ? (
             <InfoRow label="Modifié le">{formatDateTime(target.item.updatedAt)}</InfoRow>
           ) : null}

@@ -4,15 +4,22 @@ import type {
   MediaFolderContentsRecord,
   MediaFolderRecord,
   MediaLimitsRecord,
+  MediaLinkRecord,
   MediaScopeParams,
   MediaShareTargetRecord,
   MediaTreeFolderRecord,
   MediaUploadTicketRecord,
 } from '@lawless-intranet/types';
-import type { MediaFile, MediaFolder } from '@/generated/prisma/client';
+import type { MediaFile, MediaFolder, MediaLink } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getMaxFileSizeBytes, MEDIA_ALLOWED_MIME_TYPES, validateUpload } from '@/lib/limits';
-import { buildScopePrefix, buildStorageKey, generateShareToken, isShareToken } from '@/lib/names';
+import {
+  buildScopePrefix,
+  buildStorageKey,
+  defaultLinkName,
+  generateShareToken,
+  isShareToken,
+} from '@/lib/names';
 import {
   createUploadTicket,
   deleteObjects,
@@ -68,6 +75,18 @@ async function serializeFile(file: MediaFile): Promise<MediaFileRecord> {
   };
 }
 
+function serializeLink(link: MediaLink): MediaLinkRecord {
+  return {
+    id: link.id,
+    folderId: link.folderId,
+    name: link.name,
+    url: link.url,
+    createdById: link.createdById,
+    createdAt: link.createdAt.toISOString(),
+    updatedAt: link.updatedAt.toISOString(),
+  };
+}
+
 async function listScopeFolderNodes(scope: MediaScopeParams): Promise<MediaTreeFolderRecord[]> {
   return prisma.mediaFolder.findMany({
     where: scopeWhere(scope),
@@ -115,13 +134,17 @@ export async function getFolderContents(
     }));
   }
 
-  const [folders, files] = await Promise.all([
+  const [folders, files, links] = await Promise.all([
     prisma.mediaFolder.findMany({
       where: { ...scopeWhere(scope), parentId: folderId },
       orderBy: { name: 'asc' },
     }),
     prisma.mediaFile.findMany({
       where: { ...scopeWhere(scope), folderId, status: 'READY' },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.mediaLink.findMany({
+      where: { ...scopeWhere(scope), folderId },
       orderBy: { name: 'asc' },
     }),
   ]);
@@ -133,6 +156,7 @@ export async function getFolderContents(
       breadcrumb,
       folders: folders.map(serializeFolder),
       files: await Promise.all(files.map(serializeFile)),
+      links: links.map(serializeLink),
     },
   };
 }
@@ -334,12 +358,69 @@ export async function deleteFile(
   return { ok: true, data: { success: true } };
 }
 
+// --- Links ---
+
+export async function createLink(
+  scope: MediaScopeParams,
+  input: { folderId?: string | null; name?: string; url: string; createdById: string },
+): Promise<LibraryResult<MediaLinkRecord>> {
+  const target = await assertTargetFolder(scope, input.folderId);
+  if (!target.ok) return target;
+
+  const link = await prisma.mediaLink.create({
+    data: {
+      ...scopeWhere(scope),
+      folderId: input.folderId ?? null,
+      name: input.name || defaultLinkName(input.url),
+      url: input.url,
+      createdById: input.createdById,
+    },
+  });
+  notifyMediaChange(scope);
+  return { ok: true, data: serializeLink(link) };
+}
+
+export async function updateLink(
+  scope: MediaScopeParams,
+  linkId: string,
+  input: { name?: string; url?: string; folderId?: string | null },
+): Promise<LibraryResult<MediaLinkRecord>> {
+  const link = await prisma.mediaLink.findFirst({ where: { id: linkId, ...scopeWhere(scope) } });
+  if (!link) return notFound('Lien introuvable');
+
+  if (input.folderId !== undefined) {
+    const target = await assertTargetFolder(scope, input.folderId);
+    if (!target.ok) return target;
+  }
+
+  const updated = await prisma.mediaLink.update({
+    where: { id: linkId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.url !== undefined ? { url: input.url } : {}),
+      ...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
+    },
+  });
+  notifyMediaChange(scope);
+  return { ok: true, data: serializeLink(updated) };
+}
+
+export async function deleteLink(
+  scope: MediaScopeParams,
+  linkId: string,
+): Promise<LibraryResult<{ success: true }>> {
+  const { count } = await prisma.mediaLink.deleteMany({ where: { id: linkId, ...scopeWhere(scope) } });
+  if (count === 0) return notFound('Lien introuvable');
+  notifyMediaChange(scope);
+  return { ok: true, data: { success: true } };
+}
+
 // --- Batch operations (multiple selection) ---
 
-/** Moves folders and files of the current view in one go (all or nothing). */
+/** Moves folders, files and links of the current view in one go (all or nothing). */
 export async function moveItems(
   scope: MediaScopeParams,
-  input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[]; destinationId: string | null },
 ): Promise<LibraryResult<{ moved: number }>> {
   const target = await assertTargetFolder(scope, input.destinationId);
   if (!target.ok) return target;
@@ -357,7 +438,11 @@ export async function moveItems(
   });
   if (fileCount !== fileIds.length) return notFound('Fichier introuvable');
 
-  const [folders, files] = await prisma.$transaction([
+  const linkIds = [...new Set(input.linkIds)];
+  const linkCount = await prisma.mediaLink.count({ where: { id: { in: linkIds }, ...scopeWhere(scope) } });
+  if (linkCount !== linkIds.length) return notFound('Lien introuvable');
+
+  const [folders, files, links] = await prisma.$transaction([
     prisma.mediaFolder.updateMany({
       where: { id: { in: input.folderIds }, ...scopeWhere(scope) },
       data: { parentId: input.destinationId },
@@ -366,18 +451,22 @@ export async function moveItems(
       where: { id: { in: fileIds }, ...scopeWhere(scope) },
       data: { folderId: input.destinationId },
     }),
+    prisma.mediaLink.updateMany({
+      where: { id: { in: linkIds }, ...scopeWhere(scope) },
+      data: { folderId: input.destinationId },
+    }),
   ]);
   notifyMediaChange(scope);
-  return { ok: true, data: { moved: folders.count + files.count } };
+  return { ok: true, data: { moved: folders.count + files.count + links.count } };
 }
 
 /**
- * Deletes folders (with their content) and files in one go. Already deleted
+ * Deletes folders (with their content), files and links in one go. Already deleted
  * items are ignored, so concurrent deletions do not fail the whole batch.
  */
 export async function deleteItems(
   scope: MediaScopeParams,
-  input: { folderIds: string[]; fileIds: string[] },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[] },
 ): Promise<LibraryResult<{ deletedFiles: number }>> {
   const nodes = await listScopeFolderNodes(scope);
   const known = new Set(nodes.map((node) => node.id));
@@ -394,7 +483,8 @@ export async function deleteItems(
 
   await prisma.$transaction([
     prisma.mediaFile.deleteMany({ where: { id: { in: input.fileIds }, ...scopeWhere(scope) } }),
-    // Cascade removes subfolders and their files.
+    prisma.mediaLink.deleteMany({ where: { id: { in: input.linkIds }, ...scopeWhere(scope) } }),
+    // Cascade removes subfolders and their files and links.
     prisma.mediaFolder.deleteMany({ where: { id: { in: folderIds }, ...scopeWhere(scope) } }),
   ]);
   notifyMediaChange(scope);
@@ -458,11 +548,14 @@ export async function resolveShare(token: string): Promise<LibraryResult<MediaSh
 }
 
 /** Removes everything of a tenant (host deleted), including orphan objects. */
-export async function purgeScope(scope: MediaScopeParams): Promise<{ files: number; folders: number }> {
-  const [files, folders] = await prisma.$transaction([
+export async function purgeScope(
+  scope: MediaScopeParams,
+): Promise<{ files: number; folders: number; links: number }> {
+  const [files, links, folders] = await prisma.$transaction([
     prisma.mediaFile.deleteMany({ where: scopeWhere(scope) }),
+    prisma.mediaLink.deleteMany({ where: scopeWhere(scope) }),
     prisma.mediaFolder.deleteMany({ where: scopeWhere(scope) }),
   ]);
   await deletePrefix(buildScopePrefix(scope.scopeType, scope.scopeId));
-  return { files: files.count, folders: folders.count };
+  return { files: files.count, folders: folders.count, links: links.count };
 }
