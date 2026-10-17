@@ -28,6 +28,20 @@ function kebab(name: string): string {
   return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
+/**
+ * Toggles of the `light-dark()` fallback that Lightning CSS (Turbopack, in dev)
+ * writes in CSS modules: `var(--lightningcss-light, <light>) var(--lightningcss-dark, <dark>)`.
+ * It only defines them next to a `color-scheme` it compiles, and ours comes from
+ * this runtime CSS: without them both colors stay and the declaration is invalid.
+ * `initial` keeps a branch, an empty value drops it. Harmless with native `light-dark()`.
+ */
+function lightDarkToggles(scheme: ThemeDefinition['scheme']): [string, string][] {
+  return [
+    ['--lightningcss-light', scheme === 'light' ? 'initial' : ' '],
+    ['--lightningcss-dark', scheme === 'dark' ? 'initial' : ' '],
+  ];
+}
+
 /** CSS variables of a theme, as `[name, value]` pairs. */
 export function themeVariables(theme: ThemeDefinition, prefix: string): [string, string][] {
   const tokens = Object.entries(theme.tokens).map(([name, value]): [string, string] => [`--${prefix}-${kebab(name)}`, value]);
@@ -37,7 +51,7 @@ export function themeVariables(theme: ThemeDefinition, prefix: string): [string,
     [`--${prefix}-${name}-soft-border`, colors.border],
     [`--${prefix}-${name}-soft-text`, colors.text],
   ]);
-  return [['color-scheme', theme.scheme], ...tokens, ...soft];
+  return [['color-scheme', theme.scheme], ...lightDarkToggles(theme.scheme), ...tokens, ...soft];
 }
 
 /**
