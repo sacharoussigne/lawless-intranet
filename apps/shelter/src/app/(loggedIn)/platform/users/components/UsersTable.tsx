@@ -120,7 +120,7 @@ export function UsersTable({
                 .sort((a, b) => a.localeCompare(b));
 
               if (rawRoles.length === 0) {
-                return <Badge color="gray">Aucun</Badge>;
+                return <Badge color="slate">Aucun</Badge>;
               }
 
               return (

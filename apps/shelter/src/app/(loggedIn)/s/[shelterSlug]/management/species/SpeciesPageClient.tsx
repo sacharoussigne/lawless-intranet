@@ -137,7 +137,7 @@ function SortableVariantRow({
           <ActionIcon size="sm" color="terracotta" variant="filled" onClick={onSave} loading={saving}>
             <IconCheck size={14} />
           </ActionIcon>
-          <ActionIcon size="sm" variant="subtle" color="gray" onClick={onCancelEdit}>
+          <ActionIcon size="sm" variant="subtle" color="slate" onClick={onCancelEdit}>
             <IconX size={14} />
           </ActionIcon>
         </Group>
@@ -608,7 +608,7 @@ export function SpeciesPageClient({
                     <ActionIcon color="terracotta" variant="filled" onClick={handleSaveSpeciesName} loading={busyKey === 'save-species-name'} aria-label="Enregistrer">
                       <IconCheck size={16} />
                     </ActionIcon>
-                    <ActionIcon variant="subtle" color="gray" onClick={() => setEditingName(false)} aria-label="Annuler">
+                    <ActionIcon variant="subtle" color="slate" onClick={() => setEditingName(false)} aria-label="Annuler">
                       <IconX size={16} />
                     </ActionIcon>
                   </Group>

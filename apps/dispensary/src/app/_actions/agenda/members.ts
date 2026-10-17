@@ -52,7 +52,7 @@ async function upsertAgendaMemberUnlogged(
       await agendaCookie(),
     );
 
-    const [enriched] = await enrichAgendaMembers([member]);
+    const [enriched] = await enrichAgendaMembers(ctx.tenant.dispensaryId, [member]);
 
     return { status: 200, data: enriched };
   } catch (error) {

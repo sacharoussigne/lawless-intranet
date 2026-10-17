@@ -1,5 +1,6 @@
 'use server';
 
+import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import type {
@@ -17,7 +18,6 @@ import {
 import { z } from 'zod';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { hasRole, can } from '@lawless-intranet/auth-permissions';
-import { fetchUserProfiles } from '@/lib/authUsers';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import {
   inventoryCookie,
@@ -229,7 +229,14 @@ async function createSaleUnlogged(
       status: 200,
       data: mapWeeklySaleRow(
         listItem,
-        new Map([[userId, ctx.session.user.name ?? 'Utilisateur']]),
+        new Map([
+          [
+            userId,
+            (await fetchDispensaryUserProfiles(dispensaryId, [userId])).get(userId)?.name ??
+              ctx.session.user.name ??
+              'Utilisateur',
+          ],
+        ]),
       ),
     };
   } catch (error) {
@@ -414,7 +421,7 @@ export async function listWeeklySales(
         ...weekly.byUser.map((row) => row.userId),
       ]),
     );
-    const profiles = await fetchUserProfiles(userIds);
+    const profiles = await fetchDispensaryUserProfiles(dispensaryId, userIds);
     const userNameById = new Map(
       Array.from(profiles.entries()).map(([id, profile]) => [id, profile.name]),
     );

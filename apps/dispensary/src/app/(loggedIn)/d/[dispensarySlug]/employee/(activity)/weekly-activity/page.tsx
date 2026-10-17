@@ -1,4 +1,5 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
+import { resolveDiscordPersonName } from '@/lib/people/resolveNames';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getAuthSession } from '@/lib/authSession';
 import { can } from '@lawless-intranet/auth-permissions';
@@ -6,7 +7,6 @@ import { getBankWeekBounds } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import {
   getDiscordAccountIdForUser,
-  resolveDiscordDisplayName,
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import { getEffectiveRoleForDispensary, requireDispensaryFromSlug } from '@/lib/dispensary/context';
 import { resolveEffectivePermissionsForDispensary } from '@/lib/dispensary/permissionsResolve';
@@ -44,7 +44,7 @@ async function WeeklyActivityContent({ dispensarySlug }: { dispensarySlug: strin
     can(effectivePermissions, 'weekly_dispensary_activity', 'edit_own');
 
   const defaultDisplayName = viewerDiscordId
-    ? await resolveDiscordDisplayName(prisma, viewerDiscordId)
+    ? await resolveDiscordPersonName(prisma, dispensary.id, viewerDiscordId, session.user.name)
     : session.user.name;
 
   return (

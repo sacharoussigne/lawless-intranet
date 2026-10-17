@@ -5,6 +5,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { actionErrorParser } from '@/lib/action';
 import { requirePlatformAdminContext } from '@/lib/dispensary/serverActionContext';
 import prisma from '@/lib/prisma';
+import { resolveActorIds, resolveActorNames } from '@/lib/logs/actors';
 
 const listAppLogsSchema = z.object({
   page: z.number().int().min(1).default(1),
@@ -17,7 +18,7 @@ const listAppLogsSchema = z.object({
   outcome: z.enum(['success', 'noop', 'denied', 'invalid', 'failure']).optional(),
   /** Message, event or path (contains, case-insensitive). */
   search: z.string().trim().max(200).optional(),
-  /** User id or Discord id (exact). */
+  /** Name, user id or Discord id: every log of that person (see `resolveActorIds`). */
   actor: z.string().trim().max(100).optional(),
   /** Id of the object an action touched (exact): its whole history. */
   targetId: z.string().trim().max(200).optional(),
@@ -40,6 +41,7 @@ export type AppLogRow = {
   dispensaryId: string | null;
   userId: string | null;
   discordUserId: string | null;
+  impersonatedById: string | null;
   httpStatus: number | null;
   durationMs: number | null;
   path: string | null;
@@ -56,6 +58,7 @@ export async function listAppLogs(input: ListAppLogsInput) {
       return { status: auth.status, error: auth.error };
     }
     const filters = listAppLogsSchema.parse(input ?? {});
+    const actor = filters.actor ? await resolveActorIds(filters.actor) : null;
 
     const where: Prisma.AppLogWhereInput = {
       ...(filters.dispensaryId ? { dispensaryId: filters.dispensaryId } : {}),
@@ -64,8 +67,10 @@ export async function listAppLogs(input: ListAppLogsInput) {
       ...(filters.kind ? { kind: filters.kind } : {}),
       ...(filters.source ? { source: filters.source } : {}),
       ...(filters.outcome ? { outcome: filters.outcome } : {}),
-      ...(filters.actor
-        ? { OR: [{ userId: filters.actor }, { discordUserId: filters.actor }] }
+      ...(actor
+        ? {
+            OR: [{ userId: { in: actor.userIds } }, { discordUserId: { in: actor.discordIds } }],
+          }
         : {}),
       ...(filters.targetId ? { targetId: filters.targetId } : {}),
       ...(filters.from || filters.to
@@ -101,7 +106,14 @@ export async function listAppLogs(input: ListAppLogsInput) {
       prisma.appLog.count({ where }),
     ]);
 
-    return { status: 200, data: { rows: rows as AppLogRow[], total } };
+    const actorNames = await resolveActorNames([
+      ...rows,
+      ...rows.flatMap((row) =>
+        row.impersonatedById ? [{ userId: row.impersonatedById, discordUserId: null }] : [],
+      ),
+    ]);
+
+    return { status: 200, data: { rows: rows as AppLogRow[], total, actorNames } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement des logs');
   }

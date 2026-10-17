@@ -88,7 +88,7 @@ function waNameKeys(a: WaRow): string[] {
 }
 
 /**
- * One activity per name key; first row wins for each key (later keys skip if taken).
+ * One activity per name key; first row wins for each key (later rows skip the keys already taken).
  * Returns duplicate activity ids that could not get a key (for diagnostics).
  */
 export function buildWeeklyActivityByNameKey(activities: WaRow[]): { map: Map<string, WaRow>; duplicateSkips: string[] } {
@@ -100,13 +100,14 @@ export function buildWeeklyActivityByNameKey(activities: WaRow[]): { map: Map<st
       duplicateSkips.push(a.id);
       continue;
     }
+    // Every free key (fixed name and name sent by the bot) points to the row,
+    // so the payroll HTML matches whichever name it uses.
     let anyNew = false;
     for (const k of keys) {
       if (!k) continue;
       if (!map.has(k)) {
         map.set(k, a);
         anyNew = true;
-        break;
       }
     }
     if (!anyNew) {
@@ -146,7 +147,8 @@ export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activitie
     }
 
     out.push({
-      name: cleanText(row.name ?? ''),
+      // The dispensary name of the person (fixed name first) when the row is matched.
+      name: (wa && cleanText(wa.resolvedDisplayName)) || cleanText(row.name ?? ''),
       role: roleFromSources(wa, row.role ?? ''),
       id: idFromSources(wa, row.id),
       salary_supplement_usd: 0,

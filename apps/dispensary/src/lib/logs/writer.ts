@@ -4,6 +4,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import { getAuthSession } from '@/lib/authSession';
 import { resolveDispensaryFromSlug } from '@/lib/dispensary/context';
 import prisma from '@/lib/prisma';
+import { discordIdForLog } from './actorDiscordId';
 import { LOG_FEATURE_LABELS } from './labels';
 import { dispensarySlugFromPath, featureFromPath } from './paths';
 import { sanitizeLogContext, serializeError } from './sanitize';
@@ -53,6 +54,7 @@ async function persist(entry: AppLogEntry): Promise<void> {
       dispensaryId: entry.dispensaryId ?? null,
       userId: entry.userId ?? null,
       discordUserId: entry.discordUserId ?? null,
+      impersonatedById: entry.impersonatedById ?? null,
       httpStatus: entry.httpStatus ?? null,
       durationMs: entry.durationMs ?? null,
       path: entry.path?.slice(0, 500) ?? null,
@@ -72,6 +74,8 @@ export type RequestLogContext = {
   feature: LogFeature;
   dispensaryId: string | null;
   userId: string | null;
+  /** Platform admin acting as `userId` (impersonation). */
+  impersonatedById: string | null;
 };
 
 /**
@@ -97,6 +101,7 @@ export async function resolveRequestLogContext(): Promise<RequestLogContext> {
     feature: featureFromPath(path),
     dispensaryId: dispensary?.id ?? null,
     userId: session?.user?.id ?? null,
+    impersonatedById: session?.session?.impersonatedBy ?? null,
   };
 }
 
@@ -141,7 +146,8 @@ export function logAction(input: ActionLogInput): void {
       source: input.source ?? 'INTRANET',
       dispensaryId: await resolveDispensaryId(input, request),
       userId: input.userId ?? request.userId,
-      discordUserId: input.discordUserId ?? null,
+      discordUserId: input.discordUserId ?? (await discordIdForLog(input.userId ?? request.userId)),
+      impersonatedById: request.impersonatedById,
       httpStatus: input.httpStatus ?? null,
       durationMs: input.durationMs ?? null,
       path: request.path,
@@ -164,7 +170,7 @@ export function logServerError(input: {
   // Read now, inside the action: same object id as its `ACTION` line.
   const targetId = currentActionTargetId();
   writeAppLog(
-    resolveRequestLogContext().then((request) => ({
+    resolveRequestLogContext().then(async (request) => ({
       level: 'ERROR' as const,
       kind: 'ERROR' as const,
       feature: (input.feature as LogFeature | undefined) ?? request.feature,
@@ -174,6 +180,8 @@ export function logServerError(input: {
       source: 'INTRANET' as const,
       dispensaryId: input.dispensaryId ?? request.dispensaryId,
       userId: request.userId,
+      discordUserId: await discordIdForLog(request.userId),
+      impersonatedById: request.impersonatedById,
       httpStatus: input.status,
       path: request.path,
       targetId,

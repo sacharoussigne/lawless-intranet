@@ -9,8 +9,12 @@ import {
   slatePalette,
   terracottaPalette,
 } from '@/lib/design-tokens';
+import { SHELTER_SOFT_PALETTES } from '@/lib/themes/palettes';
 
 const { colors: c, radius: r, shadows: s } = shelterTokens;
+
+/** Surface of cards and papers; nested ones get `--shelter-paper-bg` (see `mantine-overrides.scss`). */
+const paperBackground = `var(--shelter-paper-bg, ${c.surface})`;
 
 const selectLikeInput = {
   backgroundColor: c.surface,
@@ -73,14 +77,14 @@ const theme = createTheme({
     dark: [
       '#EDE3D4',
       '#D5C9B7',
-      '#B3A795',
-      '#8C8172',
+      '#C0B4A2',
+      '#9C9080',
       '#4B4239',
-      '#3E362F',
-      '#302823',
-      '#28221E',
-      '#1E1A17',
-      '#161310',
+      '#3F372F',
+      '#362E27',
+      '#28221D',
+      '#16130F',
+      '#100E0B',
     ],
   },
 
@@ -119,11 +123,11 @@ const theme = createTheme({
   },
 
   shadows: {
-    xs: '0 1px 2px rgba(62, 59, 57, 0.04)',
+    xs: s.xs,
     sm: s.card,
     md: s.elevated,
-    lg: '0 8px 24px rgba(62, 59, 57, 0.1)',
-    xl: '0 12px 32px rgba(62, 59, 57, 0.12)',
+    lg: s.lg,
+    xl: s.xl,
   },
 
   fontSizes: {
@@ -244,7 +248,7 @@ const theme = createTheme({
       },
       styles: {
         root: {
-          backgroundColor: c.surface,
+          backgroundColor: paperBackground,
           borderColor: c.surfaceBorder,
           borderRadius: r.lg,
           boxShadow: s.card,
@@ -255,7 +259,7 @@ const theme = createTheme({
     Paper: {
       styles: {
         root: {
-          backgroundColor: c.surface,
+          backgroundColor: paperBackground,
           borderColor: c.surfaceBorder,
           borderRadius: r.lg,
         },
@@ -504,13 +508,36 @@ const themeMantineVariables = {
   '--mantine-color-disabled-border': c.surfaceBorder,
 };
 
+/**
+ * Dark scheme: Mantine's defaults (text = shade 4, filled = shade 5) are too
+ * dim on charcoal surfaces. Colored text uses shade 3 (2 for danger) and filled backgrounds
+ * use shade 6 (7 for the pale sage), so that cream labels stay readable.
+ */
+const darkTextShade: Record<string, number> = { danger: 2 };
+const darkFilledShade: Record<string, number> = { sageDust: 7 };
+
+const darkPaletteVariables = Object.fromEntries(
+  Object.keys(SHELTER_SOFT_PALETTES).flatMap((name) => {
+    const filled = darkFilledShade[name] ?? 6;
+    return [
+      [`--mantine-color-${name}-text`, `var(--mantine-color-${name}-${darkTextShade[name] ?? 3})`],
+      [`--mantine-color-${name}-filled`, `var(--mantine-color-${name}-${filled})`],
+      [`--mantine-color-${name}-filled-hover`, `var(--mantine-color-${name}-${filled + 1})`],
+    ];
+  }),
+);
+
 export const shelterCssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
     '--mantine-font-family': shelterTokens.fonts.ui,
     '--mantine-font-family-monospace': shelterTokens.fonts.mono,
   },
   light: themeMantineVariables,
-  dark: themeMantineVariables,
+  dark: {
+    ...themeMantineVariables,
+    ...darkPaletteVariables,
+    '--mantine-color-anchor': 'var(--mantine-color-terracotta-3)',
+  },
 });
 
 export default theme;

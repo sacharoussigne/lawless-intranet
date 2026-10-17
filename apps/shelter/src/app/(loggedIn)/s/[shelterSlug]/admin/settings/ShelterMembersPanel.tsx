@@ -256,7 +256,7 @@ export function ShelterMembersPanel({
           <IconUsers size={20} />
           <Title order={3}>Membres</Title>
         </Group>
-        {error ? <Text c="red">{error}</Text> : null}
+        {error ? <Text c="danger">{error}</Text> : null}
       </div>
 
       <Card withBorder padding="md" radius="md">

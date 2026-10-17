@@ -97,7 +97,7 @@ export function SheltersPlatformClient({
   return (
     <Container size="xl">
       <PageHeader title="Refuges" description="Gestion plateforme des refuges." />
-      {error ? <Text c="red" mb="md">{error}</Text> : null}
+      {error ? <Text c="danger" mb="md">{error}</Text> : null}
 
       <Card withBorder padding="lg" radius="md" mb="xl">
         <Stack gap="sm">

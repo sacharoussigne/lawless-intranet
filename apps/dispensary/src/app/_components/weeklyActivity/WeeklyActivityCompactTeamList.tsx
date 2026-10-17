@@ -32,7 +32,6 @@ export function WeeklyActivityCompactTeamList({
       shadow="sm"
       radius="md"
       p={{ base: 'md', sm: 'lg' }}
-      bg="sage.9"
       className={classes.panel}
     >
       <Text size="sm" fw={500} mb="md" className={classes.panelTitle}>

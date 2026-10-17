@@ -8,6 +8,8 @@ export const shelterTokens = {
   colors: {
     background: 'var(--shelter-ui-bg)',
     surface: 'var(--shelter-ui-surface)',
+    /** Cards nested in a card or a modal (same as `surface` in the light theme). */
+    surfaceRaised: 'var(--shelter-ui-surface-raised)',
     surfaceBorder: 'var(--shelter-ui-border)',
     ink: 'var(--shelter-ui-ink)',
     inkMuted: 'var(--shelter-ui-muted)',
@@ -25,9 +27,12 @@ export const shelterTokens = {
     modal: '8px',
   },
   shadows: {
+    xs: 'var(--shelter-ui-shadow-xs)',
     card: 'var(--shelter-ui-shadow-card)',
     header: 'var(--shelter-ui-shadow-header)',
     elevated: 'var(--shelter-ui-shadow-elevated)',
+    lg: 'var(--shelter-ui-shadow-lg)',
+    xl: 'var(--shelter-ui-shadow-xl)',
   },
   fonts: {
     display: 'var(--font-display), var(--font-ui), "Courier New", Courier, monospace',

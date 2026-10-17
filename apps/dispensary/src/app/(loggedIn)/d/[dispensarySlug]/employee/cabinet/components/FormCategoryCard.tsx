@@ -156,7 +156,7 @@ export const FormCategoryCard = memo(function FormCategoryCard({
         withBorder
         radius="sm"
         padding="md"
-        style={{ borderColor: 'var(--mantine-color-leather-3)' }}
+        style={{ borderColor: 'var(--disp-leather-soft-border)' }}
       >
         <Group justify="space-between" mb="md" align="center">
           <Group gap="sm" align="center">
@@ -231,7 +231,7 @@ export const FormCategoryCard = memo(function FormCategoryCard({
         </Stack>
 
         {onAddField && (
-          <Stack gap="sm" mt="md" pt="md" style={{ borderTop: '1px solid var(--mantine-color-slate-2)' }}>
+          <Stack gap="sm" mt="md" pt="md" style={{ borderTop: '1px solid light-dark(var(--mantine-color-slate-2), var(--disp-surface-border))' }}>
             <Text size="sm" fw={500}>
               Nouveau champ
             </Text>

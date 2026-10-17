@@ -1,5 +1,7 @@
 'use server';
 
+import { applyDispensaryNamesToUsers } from '@/lib/people/resolveNames';
+import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
@@ -10,7 +12,6 @@ import { DISPENSARY_MEMBER_ROLES, serializeRoleList } from '@/types/enum/roles';
 import {
   attachUserProfiles,
   fetchUserProfile,
-  fetchUserProfiles,
   searchAuthUsers,
 } from '@/lib/authUsers';
 
@@ -42,7 +43,10 @@ export async function listDispensaryMembers(dispensarySlug: string) {
     orderBy: { createdAt: 'asc' },
   });
 
-  const usersById = await fetchUserProfiles(members.map((member) => member.userId));
+  const usersById = await fetchDispensaryUserProfiles(
+    auth.ctx.dispensaryId,
+    members.map((member) => member.userId),
+  );
   const enriched = attachUserProfiles(members, usersById).sort((a, b) =>
     (a.user?.name ?? a.userId).localeCompare(b.user?.name ?? b.userId, 'fr'),
   );
@@ -129,11 +133,15 @@ export async function searchUsersForDispensaryInvite(dispensarySlug: string, que
     return { status: 200, data: [] };
   }
 
-  const users = await searchAuthUsers(q);
+  const users = await applyDispensaryNamesToUsers(
+    prisma,
+    auth.ctx.dispensaryId,
+    new Map((await searchAuthUsers(q)).map((user) => [user.id, user])),
+  );
 
   return {
     status: 200,
-    data: users.map((user) => ({ id: user.id, name: user.name })),
+    data: [...users.values()].map((user) => ({ id: user.id, name: user.name })),
   };
 }
 

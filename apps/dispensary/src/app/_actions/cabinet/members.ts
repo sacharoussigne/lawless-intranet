@@ -69,7 +69,7 @@ async function upsertCabinetMemberUnlogged(
       update: { accessLevel: validated.accessLevel },
     });
 
-    const [enriched] = await enrichAgendaMembers([member]);
+    const [enriched] = await enrichAgendaMembers(ctx.tenant.dispensaryId, [member]);
 
     return { status: 200, data: enriched };
   } catch (error) {

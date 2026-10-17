@@ -93,7 +93,7 @@ export function CreateWeeklyActivityModal({
       return;
     }
     if (canEditAll && !cTargetUserId) {
-      notifications.show({ title: 'Médecin', message: 'Sélectionnez un utilisateur', color: 'amber' });
+      notifications.show({ title: 'Médecin', message: 'Sélectionnez une personne', color: 'amber' });
       return;
     }
     const { start, end } = getBankWeekBounds(cWeekDateValue);
@@ -108,7 +108,7 @@ export function CreateWeeklyActivityModal({
       poppyMilkCount: fieldVisibility.poppyMilkCount ? cPoppy : 0,
       ...(canEditAll && cTargetUserId
         ? {
-            targetUserId: cTargetUserId,
+            targetDiscordUserId: cTargetUserId,
             ...(cDisplayName.trim() ? { displayName: cDisplayName.trim() } : {}),
           }
         : {}),
@@ -145,10 +145,13 @@ export function CreateWeeklyActivityModal({
                 Médecin
               </Text>
               <Select
-                label="Utilisateur intranet"
-                description="Comptes avec Discord lié uniquement."
-                placeholder="Choisir un utilisateur"
-                data={targetUsers.map((u) => ({ value: u.id, label: u.discordDisplayName }))}
+                label="Personne"
+                description="Personnes du dispensaire, avec ou sans compte intranet (Gestion › Personnes)."
+                placeholder="Choisir une personne"
+                data={targetUsers.map((u) => ({
+                  value: u.id,
+                  label: u.hasAccount ? u.discordDisplayName : `${u.discordDisplayName} · sans compte`,
+                }))}
                 value={cTargetUserId}
                 onChange={(id) => handleTargetChange(id, targetUsers)}
                 searchable
@@ -156,8 +159,8 @@ export function CreateWeeklyActivityModal({
                 required
               />
               <TextInput
-                label="Pseudo Discord"
-                description="Par défaut le dernier pseudo Discord connu ; vous pouvez le personnaliser (RP, etc.)."
+                label="Nom"
+                description="Par défaut le nom de la personne dans le dispensaire ; un nom fixé dans Gestion › Personnes reste prioritaire à l'affichage."
                 value={cDisplayName}
                 onChange={(e) => setCDisplayName(e.currentTarget.value)}
                 mt="sm"

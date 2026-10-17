@@ -13,7 +13,7 @@ import {
   type WeeklyActivityFieldVisibility,
 } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
 import { mergeResolvedDisplayNames } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
-import { batchSyncActivityUserIds } from '@/lib/dispensaryWeeklyActivity/service';
+import { reconcileActivityUserIds } from '@/lib/dispensaryWeeklyActivity/service';
 
 type ActivityRowWithResolvedName = DispensaryWeeklyActivity & {
   resolvedDisplayName: string;
@@ -59,8 +59,8 @@ export async function listSerializedWeeklyActivities(
   },
 ): Promise<SerializedDispensaryWeeklyActivityRow[]> {
   const rows = await prisma.dispensaryWeeklyActivity.findMany({ where, orderBy });
-  const synced = await batchSyncActivityUserIds(prisma, rows);
-  const withNames = await mergeResolvedDisplayNames(prisma, synced);
+  const synced = await reconcileActivityUserIds(rows);
+  const withNames = await mergeResolvedDisplayNames(prisma, dispensaryId, synced);
   const withProfiles = await attachDiscordProfilesToActivities(prisma, withNames);
   const settings = await getAppSettings(dispensaryId);
   const visibility = weeklyActivityFieldVisibilityFromSettings(settings);

@@ -1,4 +1,5 @@
 import { listDispensaryWeeklyActivities } from '@/app/_actions/dispensaryWeeklyActivity';
+import { resolveDiscordPersonName } from '@/lib/people/resolveNames';
 import { listWeeklySales } from '@/app/_actions/sales';
 import { getChestsList } from '@/app/_actions/chests';
 import { getOrdersPage } from '@/app/_actions/orders';
@@ -17,7 +18,6 @@ import { getBankWeekBounds } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
 import {
   getDiscordAccountIdForUser,
-  resolveDiscordDisplayName,
 } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import prisma from '@/lib/prisma';
 import { getDataOrThrow } from '@/lib/response';
@@ -86,7 +86,7 @@ export default async function EmployeePage({
     initialRows = getDataOrThrow(result, 'Erreur lors du chargement de l’activité hebdomadaire');
     viewerDiscordId = discordId;
     defaultDisplayName = discordId
-      ? await resolveDiscordDisplayName(prisma, discordId)
+      ? await resolveDiscordPersonName(prisma, dispensary.id, discordId, session.user.name)
       : session.user.name;
   }
 

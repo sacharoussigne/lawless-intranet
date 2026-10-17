@@ -4,9 +4,13 @@
   letter-spacing: 0.02em;
 }
 
+/* Dark sage island; in the dark theme, a quieter sage tint over the surface. */
 .panel {
-  background-color: var(--mantine-color-sage-9);
-  border-color: var(--mantine-color-sage-8);
+  --disp-paper-bg: light-dark(
+    var(--mantine-color-sage-9),
+    color-mix(in srgb, var(--mantine-color-sage-8) 60%, var(--disp-surface))
+  );
+  border-color: light-dark(var(--mantine-color-sage-8), var(--mantine-color-sage-7));
   color: var(--mantine-color-sage-0);
 }
 

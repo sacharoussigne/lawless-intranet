@@ -97,7 +97,7 @@ export function HeaderNavLinks({
   const isMobile = useMediaQuery('(max-width: 62em)');
 
   if (isManagementSpace && canManage) {
-    const { primary, more } = getManagementNavItems(t, appSettings);
+    const { primary, more } = getManagementNavItems(t, appSettings, permissions);
 
     const renderManagementItem = (item: ManagementNavItem) => (
       <NavLinkItem

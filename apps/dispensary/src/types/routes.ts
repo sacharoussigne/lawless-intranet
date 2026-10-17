@@ -81,6 +81,7 @@ export function tenantRoutes(slug: string) {
       },
       mails: `${base}/management/mails`,
       chests: `${base}/management/chests`,
+      people: `${base}/management/people`,
     },
     admin: {
       index: `${base}/admin`,

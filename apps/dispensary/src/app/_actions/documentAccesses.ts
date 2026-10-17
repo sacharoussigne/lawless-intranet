@@ -1,5 +1,7 @@
 'use server';
 
+import { applyDispensaryNamesToUsers } from '@/lib/people/resolveNames';
+import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -13,11 +15,8 @@ import {
 } from '@lawless-intranet/documents-client/server';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getServerCookieHeader } from '@/lib/documents/mailDocuments';
-import {
-  attachUserProfiles,
-  fetchUserProfiles,
-  searchAuthUsers,
-} from '@/lib/authUsers';
+import { attachUserProfiles, searchAuthUsers } from '@/lib/authUsers';
+import prisma from '@/lib/prisma';
 
 const grantAccessSchema = z.object({
   resourceId: z.string().uuid('ID invalide'),
@@ -31,8 +30,14 @@ const revokeAccessSchema = z.object({
 });
 
 
-async function enrichAccessesWithUsers<T extends { userId: string }>(accesses: T[]) {
-  const usersById = await fetchUserProfiles(accesses.map((access) => access.userId));
+async function enrichAccessesWithUsers<T extends { userId: string }>(
+  dispensaryId: string,
+  accesses: T[],
+) {
+  const usersById = await fetchDispensaryUserProfiles(
+    dispensaryId,
+    accesses.map((access) => access.userId),
+  );
   return attachUserProfiles(accesses, usersById);
 }
 
@@ -51,7 +56,7 @@ export async function listTemplateAccessesAction(
 
     return {
       status: 200,
-      data: await enrichAccessesWithUsers(accesses),
+      data: await enrichAccessesWithUsers(ctx.tenant.dispensaryId, accesses),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération des accès');
@@ -139,7 +144,7 @@ export async function listDocumentAccessesAction(
 
     return {
       status: 200,
-      data: await enrichAccessesWithUsers(accesses),
+      data: await enrichAccessesWithUsers(ctx.tenant.dispensaryId, accesses),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération des accès');
@@ -224,11 +229,15 @@ export async function searchUsersForDocumentAccess(dispensarySlug: string, query
       return { status: 200, data: [] };
     }
 
-    const users = await searchAuthUsers(q);
+    const users = await applyDispensaryNamesToUsers(
+      prisma,
+      ctx.tenant.dispensaryId,
+      new Map((await searchAuthUsers(q)).map((user) => [user.id, user])),
+    );
 
     return {
       status: 200,
-      data: users.map((user) => ({ id: user.id, name: user.name })),
+      data: [...users.values()].map((user) => ({ id: user.id, name: user.name })),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la recherche des utilisateurs');

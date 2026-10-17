@@ -46,10 +46,11 @@ function mapListEvent(event: AgendaEventRecord): AgendaEventDTO {
 }
 
 async function mapDetailEvent(
+  dispensaryId: string,
   event: AgendaEventRecord,
   currentUserId: string,
 ): Promise<AgendaEventDTO> {
-  const participants = await enrichEventParticipants(event.participants);
+  const participants = await enrichEventParticipants(dispensaryId, event.participants);
   return {
     id: event.id,
     agendaId: event.agendaId,
@@ -120,7 +121,7 @@ export async function getAgendaEvent(dispensarySlug: string, eventId: string) {
 
     return {
       status: 200,
-      data: await mapDetailEvent(event, ctx.session.user.id),
+      data: await mapDetailEvent(ctx.tenant.dispensaryId, event, ctx.session.user.id),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du chargement de l\'événement');
@@ -173,7 +174,7 @@ async function createAgendaEventUnlogged(
 
     return {
       status: 201,
-      data: await mapDetailEvent(event, ctx.session.user.id),
+      data: await mapDetailEvent(ctx.tenant.dispensaryId, event, ctx.session.user.id),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la création de l\'événement');
@@ -228,7 +229,7 @@ async function updateAgendaEventUnlogged(
 
     return {
       status: 200,
-      data: await mapDetailEvent(event, ctx.session.user.id),
+      data: await mapDetailEvent(ctx.tenant.dispensaryId, event, ctx.session.user.id),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la mise à jour de l\'événement');

@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { loadDiscordProfilesByIds } from '@/lib/dispensaryDiscordProfile/service';
+import { pickProfileDisplayName } from '@/lib/people/displayName';
 
 type ProfileDb = Pick<PrismaClient, 'dispensaryDiscordProfile'>;
 
@@ -34,10 +35,9 @@ export async function attachDiscordProfilesToActivities<T extends ActivityWithRe
 
   return rows.map((row) => {
     const profile = profiles.get(row.discordUserId);
-    const profileName = profile?.lastDisplayName.trim();
     return {
       ...row,
-      resolvedDisplayName: profileName || row.resolvedDisplayName,
+      resolvedDisplayName: pickProfileDisplayName(profile, row.resolvedDisplayName),
       discordProfileRole: profile?.role ?? null,
       discordProfileAccountNumber: profile?.accountNumber ?? null,
     };

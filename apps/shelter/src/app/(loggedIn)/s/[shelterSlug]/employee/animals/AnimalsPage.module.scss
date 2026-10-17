@@ -97,7 +97,7 @@
 
 .historyEntry {
   padding: 0.75rem 0;
-  border-bottom: 1px solid var(--mantine-color-gray-3);
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-3), var(--shelter-border));
 
   &:last-child {
     border-bottom: none;

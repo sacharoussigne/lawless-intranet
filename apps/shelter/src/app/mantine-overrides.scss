@@ -81,3 +81,13 @@
   border: 1px solid var(--mantine-color-dark-4);
   box-shadow: var(--shelter-shadow-card);
 }
+
+/*
+ * Cards and papers nested in a card, a paper or a modal (all Paper roots):
+ * one step lighter so they stand out in the dark theme (same color as the
+ * surface in the light theme). The theme's Paper / Card styles read this
+ * variable, so an explicit `bg` still wins.
+ */
+.mantine-Paper-root .mantine-Paper-root {
+  --shelter-paper-bg: var(--shelter-ui-surface-raised);
+}

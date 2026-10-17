@@ -1,4 +1,4 @@
-import { fetchUserProfiles } from '@/lib/authUsers';
+import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import type { AuthUserPublic } from '@lawless-intranet/types';
 
 export type UserProfile = {
@@ -29,22 +29,42 @@ export function toUserProfile(
   };
 }
 
+/** Rows with their user, named as in the dispensary (fixed name first). */
 export async function enrichRowsWithUsers<T extends { userId: string }>(
+  dispensaryId: string,
   rows: T[],
 ): Promise<Array<T & { user: UserProfile }>> {
-  const usersById = await fetchUserProfiles(rows.map((row) => row.userId));
-  return rows.map((row) => ({
-    ...row,
-    user: toUserProfile(usersById.get(row.userId), row.userId),
-  }));
+  const [enriched] = await enrichRowGroupsWithUsers(dispensaryId, [rows]);
+  return enriched ?? [];
 }
 
-export async function enrichAgendaMembers<T extends { userId: string }>(members: T[]) {
-  return enrichRowsWithUsers(members);
+/** Several lists (members of every agenda…) in one user lookup instead of one per list. */
+export async function enrichRowGroupsWithUsers<T extends { userId: string }>(
+  dispensaryId: string,
+  groups: T[][],
+): Promise<Array<Array<T & { user: UserProfile }>>> {
+  const usersById = await fetchDispensaryUserProfiles(
+    dispensaryId,
+    groups.flatMap((rows) => rows.map((row) => row.userId)),
+  );
+  return groups.map((rows) =>
+    rows.map((row) => ({
+      ...row,
+      user: toUserProfile(usersById.get(row.userId), row.userId),
+    })),
+  );
 }
 
-export async function enrichEventParticipants<
-  T extends { id: string; userId: string },
->(participants: T[]) {
-  return enrichRowsWithUsers(participants);
+export async function enrichAgendaMembers<T extends { userId: string }>(
+  dispensaryId: string,
+  members: T[],
+) {
+  return enrichRowsWithUsers(dispensaryId, members);
+}
+
+export async function enrichEventParticipants<T extends { id: string; userId: string }>(
+  dispensaryId: string,
+  participants: T[],
+) {
+  return enrichRowsWithUsers(dispensaryId, participants);
 }

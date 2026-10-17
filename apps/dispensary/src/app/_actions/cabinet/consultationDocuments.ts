@@ -1,5 +1,6 @@
 'use server';
 
+import { getDispensaryUserName } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -521,7 +522,11 @@ export async function generateConsultationDocumentPreview(
       template.content,
       buildUserTemplateRenderContext({
         inputs: {},
-        username: ctx.session.user.name || 'Utilisateur',
+        username: await getDispensaryUserName(
+          ctx.tenant.dispensaryId,
+          ctx.session.user.id,
+          ctx.session.user.name || 'Utilisateur',
+        ),
         userDescription: memberDescription,
         userGender: ctx.session.user.gender ?? 'male',
         variables,

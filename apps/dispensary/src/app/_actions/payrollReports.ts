@@ -1,5 +1,6 @@
 'use server';
 
+import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -24,7 +25,6 @@ import type {
   SerializedPayrollReportListItem,
 } from '@/lib/payroll/apiRow';
 import { extractPayrollListSummary } from '@/lib/payroll/listSummary';
-import { fetchUserProfiles } from '@/lib/authUsers';
 import { actionErrorParser } from '@/lib/action';
 import { reportServerError } from '@/lib/logs/errorReporter';
 import { withLoggedAction } from '@/lib/logs/writer';
@@ -83,7 +83,10 @@ export async function listPayrollReports(dispensarySlug: string) {
     },
   });
 
-  const creatorsById = await fetchUserProfiles(rows.map((row) => row.createdById));
+  const creatorsById = await fetchDispensaryUserProfiles(
+    dispensaryId,
+    rows.map((row) => row.createdById),
+  );
 
   const reports: SerializedPayrollReportListItem[] = rows.map((r) => ({
     id: r.id,
@@ -114,7 +117,9 @@ export async function getPayrollReportById(dispensarySlug: string, id: string) {
     return { status: 404, error: 'Not found' };
   }
 
-  const creator = (await fetchUserProfiles([report.createdById])).get(report.createdById);
+  const creator = (
+    await fetchDispensaryUserProfiles(dispensaryId, [report.createdById])
+  ).get(report.createdById);
 
   const serialized: SerializedPayrollReportDetail = {
     id: report.id,
@@ -248,7 +253,7 @@ async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formD
     });
     activitiesWithNames = (await attachDiscordProfilesToActivities(
       prisma,
-      (await mergeResolvedDisplayNames(prisma, rawActivities)) as WaRow[],
+      (await mergeResolvedDisplayNames(prisma, dispensaryId, rawActivities)) as WaRow[],
     )) as WaRow[];
   }
 

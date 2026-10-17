@@ -313,7 +313,7 @@ export function AnimalDocumentModal({
           </div>
 
           <Group justify="flex-end" style={{ flexShrink: 0, marginTop: 'auto' }}>
-            <Button variant="subtle" color="gray" onClick={handleClose}>
+            <Button variant="subtle" color="slate" onClick={handleClose}>
               Annuler
             </Button>
             <Button color="terracotta" loading={submitting} onClick={() => void handleSubmit()}>

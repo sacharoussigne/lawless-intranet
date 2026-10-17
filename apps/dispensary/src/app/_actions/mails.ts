@@ -132,7 +132,7 @@ export async function getMailsPage(
     return {
       status: 200,
       data: {
-        items: await attachOwnerNames(mappedItems),
+        items: await attachOwnerNames(ctx.tenant.dispensaryId, mappedItems),
         totalCount: result.totalCount,
         page: result.page,
         pageSize: result.pageSize,

@@ -4,15 +4,18 @@ import {
   IconClipboardText,
   IconInbox,
   IconLayoutGrid,
+  IconUsers,
 } from '@tabler/icons-react';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
+import type { Permissions } from '@/types/permissions';
 import type { tenantRoutes } from '@/types/routes';
 
 export type ManagementNavId =
   | 'items'
   | 'companies'
   | 'chests'
-  | 'mails';
+  | 'mails'
+  | 'people';
 
 export type ManagementNavItem = {
   id: ManagementNavId;
@@ -27,9 +30,19 @@ export type ManagementNavItem = {
 
 const PRIMARY_SLOT_COUNT = 4;
 
-function isItemVisible(id: ManagementNavId, appSettings: AppSettingsDTO): boolean {
+function isItemVisible(
+  id: ManagementNavId,
+  appSettings: AppSettingsDTO,
+  permissions: Permissions | null,
+): boolean {
   if (id === 'mails') {
     return appSettings.featureMailsEnabled;
+  }
+  if (id === 'people') {
+    return (
+      appSettings.featureWeeklyDispensaryActivityEnabled &&
+      (permissions?.weeklyDispensaryActivity.editAll ?? false)
+    );
   }
   return true;
 }
@@ -61,6 +74,14 @@ function buildAllItems(t: ReturnType<typeof tenantRoutes>): ManagementNavItem[] 
       navOrder: 10,
     },
     {
+      id: 'people',
+      label: 'Personnes',
+      shortLabel: 'Personnes',
+      href: t.management.people,
+      icon: IconUsers,
+      navOrder: 3,
+    },
+    {
       id: 'mails',
       label: 'Courriers',
       shortLabel: 'Courriers',
@@ -74,9 +95,10 @@ function buildAllItems(t: ReturnType<typeof tenantRoutes>): ManagementNavItem[] 
 export function getManagementNavItems(
   t: ReturnType<typeof tenantRoutes>,
   appSettings: AppSettingsDTO,
+  permissions: Permissions | null,
 ): { primary: ManagementNavItem[]; more: ManagementNavItem[] } {
   const visible = buildAllItems(t)
-    .filter((item) => isItemVisible(item.id, appSettings))
+    .filter((item) => isItemVisible(item.id, appSettings, permissions))
     .sort((a, b) => a.navOrder - b.navOrder);
 
   const primary = visible.slice(0, PRIMARY_SLOT_COUNT);

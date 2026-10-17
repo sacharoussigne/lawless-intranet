@@ -100,7 +100,7 @@ export function CraftIngredientsTable(props: {
                         {row.stockInfo.stock} {row.stockInfo.isToday ? '' : '(hier)'}
                       </Badge>
                     ) : (
-                      <Text size="xs" c="red">
+                      <Text size="xs" c="danger">
                         Aucun stock
                       </Text>
                     )}

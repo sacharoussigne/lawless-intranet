@@ -88,7 +88,7 @@ export function WeeklyActivityCompactRow({
             {onHistory ? (
               <ActionIcon
                 variant="subtle"
-                color="gray.0"
+                color="sage"
                 onClick={onHistory}
                 aria-label={`Historique de ${displayName}`}
                 style={{ color: 'var(--mantine-color-sage-1)' }}
@@ -99,7 +99,7 @@ export function WeeklyActivityCompactRow({
             {canEdit && onEdit ? (
               <ActionIcon
                 variant="subtle"
-                color="gray.0"
+                color="sage"
                 onClick={onEdit}
                 aria-label={`Modifier l'activité de ${displayName}`}
                 style={{ color: 'var(--mantine-color-sage-1)' }}

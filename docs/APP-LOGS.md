@@ -14,6 +14,20 @@ Les **lectures** (`get…`, `list…`, `search…`), rappelées en permanence pa
 
 Chaque ligne (`AppLog`, table `app_logs`) porte : date, niveau, type, feature, événement (`weeklyActivity.chest.mark`, `bot.caisse`…), résultat (`success`, `noop`, `denied`, `invalid`, `failure`), message, source (intranet, bot, système), dispensaire, utilisateur, Discord id, statut HTTP, durée, chemin, **objet visé** (`targetId`), `context` (entrée nettoyée, résumé du résultat) et `error` (nom, message, code, stack, cause).
 
+Pendant une **imitation de compte** (un admin plateforme connecté en tant qu'un autre utilisateur), la ligne porte l'utilisateur imité **et** l'admin (`impersonatedById`) : la page affiche « (par <admin>) » et le détail « En tant que (admin) ». L'historique de l'activité hebdo garde aussi l'admin (`actorImpersonatedById`).
+
+Le Discord id est aussi renseigné pour les actions faites depuis l'intranet, quand le compte a un Discord (`lib/logs/actorDiscordId.ts`, via le cache des liens compte ↔ Discord de `lib/people/accountLinks.ts`).
+
+## Retrouver une personne
+
+Le champ « Personne » accepte un **nom**, un **user id** ou un **Discord id** (`resolveActorIds`, `src/lib/logs/actors.ts`). Il trouve toutes les lignes de la personne, qu'elles viennent de l'intranet ou du bot :
+- un Discord id trouve aussi le compte intranet qui le porte, et inversement ;
+- un nom cherche dans les noms des personnes des dispensaires (nom fixé ou envoyé par le bot, Gestion › Personnes) et dans les noms des comptes intranet ;
+- un compte sans Discord se retrouve par son user id ou le nom de son compte ;
+- une personne sans compte se retrouve par son Discord id ou son nom.
+
+La colonne « Personne » et le détail affichent le nom (nom fixé d'abord, puis nom du compte, puis nom envoyé par le bot). « Voir tous ses logs », dans le détail d'une ligne, filtre sur cette personne.
+
 Une modification en échec donne **deux lignes** : l'action (`ACTION`, `failure`) et l'erreur serveur (`ERROR`, avec la stack). Les deux portent le même objet visé quand il est connu.
 
 ## Objet visé (`targetId`)
@@ -40,7 +54,7 @@ loggedAction(
 
 ## Lire un cas « le bot n'a rien fait »
 
-Filtrer par Discord id (champ « Utilisateur ou Discord id ») et par période, type « Requête bot » :
+Filtrer par Discord id ou par nom (champ « Personne ») et par période, type « Requête bot » :
 - **une ligne `success`** : l'action a été faite ; le problème est l'affichage côté bot ;
 - **`noop`** (« rien à faire ») : c'était déjà fait (ex. caisse déjà cochée), le message renvoyé au bot est dans la ligne ;
 - **`denied` / `invalid`** : refus (secret, feature désactivée, champ masqué) ou demande invalide (jour futur, hors de la semaine…), la raison est dans le message ;

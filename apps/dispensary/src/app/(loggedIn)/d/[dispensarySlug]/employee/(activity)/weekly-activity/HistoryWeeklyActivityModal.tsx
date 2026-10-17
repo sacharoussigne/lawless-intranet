@@ -55,6 +55,12 @@ export function HistoryWeeklyActivityModal({
                   {h.actorResolvedName
                     ? `${h.actorResolvedName}${h.actorDiscordUserId ? ` (${h.actorDiscordUserId})` : ''}`
                     : (h.actorDiscordUserId ?? '—')}
+                  {h.actorImpersonatedByName && (
+                    <Text span size="xs" c="dimmed">
+                      {' '}
+                      (fait par {h.actorImpersonatedByName} en tant que cette personne)
+                    </Text>
+                  )}
                 </Text>
                 {valueChanges.length > 0 && (
                   <Stack gap={2} mt="xs">

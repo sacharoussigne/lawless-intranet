@@ -7,10 +7,8 @@ import type {
 } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { upsertDiscordProfileFromActivity } from '@/lib/dispensaryDiscordProfile/service';
-import {
-  findLinkedUserIdByDiscordAccount,
-  resolveBotWeeklyActivityDisplayName,
-} from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import { accountIdOfDiscord, syncRowAccountLinks } from '@/lib/people/accountLinks';
+import { resolveBotWeeklyActivityDisplayName } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
 import { activityToSnapshot } from '@/lib/dispensaryWeeklyActivity/snapshot';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import { tenantWhere } from '@/lib/dispensary/tenantWhere';
@@ -28,7 +26,6 @@ import {
   parisYesterdayStartUtc,
   parseWeekdayFlagsJson,
 } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import { resolveUsersByDiscordIds } from '@lawless-intranet/auth-client/internal';
 import {
   activityToWeeklyActivityRealtimePayload,
   emitWeeklyActivityChange,
@@ -72,50 +69,28 @@ export const WEEKLY_ACTIVITY_DUPLICATE_MESSAGE =
 
 type WeeklyActivityDb = Pick<PrismaClient, 'dispensaryWeeklyActivity'>;
 
-export async function syncActivityUserIdFromDiscordIfMissing(
+/**
+ * Applies the current account of the row's Discord id, resolved by the caller
+ * before any transaction (`accountIdOfDiscord`): `undefined` (auth did not
+ * answer) keeps the stored link, `null` unlinks.
+ */
+export async function applyActivityAccountLink(
   client: WeeklyActivityDb,
   activity: DispensaryWeeklyActivity,
+  linkedUserId: string | null | undefined,
 ): Promise<DispensaryWeeklyActivity> {
-  if (activity.userId) return activity;
-  const uid = await findLinkedUserIdByDiscordAccount(client, activity.discordUserId);
-  if (!uid) return activity;
+  if (linkedUserId === undefined || linkedUserId === activity.userId) return activity;
   return client.dispensaryWeeklyActivity.update({
     where: { id: activity.id },
-    data: { userId: uid },
+    data: { userId: linkedUserId },
   });
 }
 
-export async function batchSyncActivityUserIds<T extends DispensaryWeeklyActivity>(
-  client: WeeklyActivityDb,
+/** Brings `userId` up to date on these rows (and their profiles), best effort. */
+export async function reconcileActivityUserIds<T extends DispensaryWeeklyActivity>(
   rows: T[],
 ): Promise<T[]> {
-  const missing = rows.filter((r) => !r.userId);
-  if (missing.length === 0) return rows;
-
-  const discordUserIds = [...new Set(missing.map((r) => r.discordUserId))];
-  const linkedUsers = await resolveUsersByDiscordIds(discordUserIds);
-  const discordToUserId = new Map(linkedUsers.map((row) => [row.discordId, row.userId]));
-  const updates: { id: string; userId: string }[] = [];
-  for (const row of missing) {
-    const userId = discordToUserId.get(row.discordUserId);
-    if (userId) {
-      updates.push({ id: row.id, userId });
-    }
-  }
-
-  if (updates.length > 0) {
-    await Promise.all(
-      updates.map(({ id, userId }) =>
-        client.dispensaryWeeklyActivity.update({ where: { id }, data: { userId } }),
-      ),
-    );
-  }
-
-  const userIdByRowId = new Map(updates.map((u) => [u.id, u.userId]));
-  return rows.map((row) => {
-    const userId = userIdByRowId.get(row.id);
-    return userId ? { ...row, userId } : row;
-  });
+  return syncRowAccountLinks(prisma, rows);
 }
 
 export async function findDispensaryActivityOverlappingParisDay(
@@ -139,6 +114,8 @@ type ActorContext = {
   source: DispensaryWeeklyActivityHistorySource;
   actorUserId: string | null;
   actorDiscordUserId: string | null;
+  /** Platform admin acting as `actorUserId` (impersonation). */
+  actorImpersonatedById?: string | null;
   dispensaryId?: string;
   meta?: WeeklyActivityMutationMeta;
 };
@@ -199,8 +176,9 @@ export async function createDispensaryWeeklyActivityWithHistory(
     throw new Error('Dispensaire requis');
   }
 
-  const linkedUserId =
-    input.userId ?? (await findLinkedUserIdByDiscordAccount(prisma, input.discordUserId));
+  // Resolved before the transaction: no HTTP call while it holds a connection.
+  const currentLink = await accountIdOfDiscord(input.discordUserId);
+  const linkedUserId = currentLink !== undefined ? currentLink : (input.userId ?? null);
 
   const { periodStart, periodEnd } = normalizeParisWeekBounds(input.periodStart);
 
@@ -235,13 +213,13 @@ export async function createDispensaryWeeklyActivityWithHistory(
       },
     });
 
-    const row = await syncActivityUserIdFromDiscordIfMissing(tx, created);
+    const row = created;
 
     await upsertDiscordProfileFromActivity(tx, {
       dispensaryId,
       discordUserId: row.discordUserId,
       displayName: row.displayName,
-      userId: row.userId,
+      userId: currentLink,
     });
 
     await tx.dispensaryWeeklyActivityHistory.create({
@@ -251,6 +229,7 @@ export async function createDispensaryWeeklyActivityWithHistory(
         source: actor.source,
         actorUserId: actor.actorUserId,
         actorDiscordUserId: actor.actorDiscordUserId,
+        actorImpersonatedById: actor.actorImpersonatedById ?? null,
         previousValues: Prisma.JsonNull,
         nextValues: activityToSnapshot(row) as Prisma.InputJsonValue,
       },
@@ -273,6 +252,13 @@ export async function updateDispensaryWeeklyActivityWithHistory(
   input: DispensaryWeeklyActivityUpdateInput,
   actor: ActorContext,
 ): Promise<DispensaryWeeklyActivity> {
+  const target = await prisma.dispensaryWeeklyActivity.findUnique({
+    where: { id },
+    select: { discordUserId: true },
+  });
+  // Resolved before the transaction: no HTTP call while it holds a connection.
+  const currentLink = target ? await accountIdOfDiscord(target.discordUserId) : undefined;
+
   const finalRow = await prisma.$transaction(async (tx) => {
     const existing = await tx.dispensaryWeeklyActivity.findUnique({ where: { id } });
     if (!existing) {
@@ -302,17 +288,13 @@ export async function updateDispensaryWeeklyActivityWithHistory(
       data,
     });
 
-    let row = updated;
-    const relinked = await syncActivityUserIdFromDiscordIfMissing(tx, updated);
-    if (relinked.userId !== updated.userId) {
-      row = relinked;
-    }
+    const row = await applyActivityAccountLink(tx, updated, currentLink);
 
     await upsertDiscordProfileFromActivity(tx, {
       dispensaryId: row.dispensaryId,
       discordUserId: row.discordUserId,
       displayName: row.displayName,
-      userId: row.userId,
+      userId: currentLink,
     });
 
     const prevSnap = activityToSnapshot(existing);
@@ -328,6 +310,7 @@ export async function updateDispensaryWeeklyActivityWithHistory(
             source: actor.source,
             actorUserId: actor.actorUserId,
             actorDiscordUserId: actor.actorDiscordUserId,
+            actorImpersonatedById: actor.actorImpersonatedById ?? null,
             previousValues: prevSnap as Prisma.InputJsonValue,
             nextValues: nextSnap as Prisma.InputJsonValue,
           },
@@ -348,6 +331,7 @@ export async function updateDispensaryWeeklyActivityWithHistory(
             source: actor.source,
             actorUserId: actor.actorUserId,
             actorDiscordUserId: actor.actorDiscordUserId,
+            actorImpersonatedById: actor.actorImpersonatedById ?? null,
             previousValues: prevSnap as Prisma.InputJsonValue,
             nextValues: nextSnap as Prisma.InputJsonValue,
           },
@@ -361,6 +345,7 @@ export async function updateDispensaryWeeklyActivityWithHistory(
             source: actor.source,
             actorUserId: actor.actorUserId,
             actorDiscordUserId: actor.actorDiscordUserId,
+            actorImpersonatedById: actor.actorImpersonatedById ?? null,
             previousValues: prevSnap as Prisma.InputJsonValue,
             nextValues: nextSnap as Prisma.InputJsonValue,
           },
@@ -399,6 +384,7 @@ export async function deleteDispensaryWeeklyActivityWithHistory(
         source: actor.source,
         actorUserId: actor.actorUserId,
         actorDiscordUserId: actor.actorDiscordUserId,
+        actorImpersonatedById: actor.actorImpersonatedById ?? null,
         previousValues: activityToSnapshot(row) as Prisma.InputJsonValue,
         nextValues: Prisma.JsonNull,
       },
@@ -423,6 +409,7 @@ export async function findOrCreateDispensaryActivityForParisDay(
   preferredDisplayName?: string,
   initiator: WeeklyActivityInitiator = DISCORD_BOT_INITIATOR,
 ): Promise<DispensaryWeeklyActivity> {
+  // The row keeps the bot's nickname; a fixed name (Gestion › Personnes) wins at display time.
   const preferred =
     preferredDisplayName !== undefined && preferredDisplayName.trim().length > 0
       ? preferredDisplayName.trim().slice(0, 200)
@@ -432,6 +419,7 @@ export async function findOrCreateDispensaryActivityForParisDay(
     source: initiator.source,
     actorUserId: initiator.actorUserId,
     actorDiscordUserId: discordUserId,
+    actorImpersonatedById: initiator.actorImpersonatedById ?? null,
     dispensaryId,
   };
 
@@ -449,17 +437,17 @@ export async function findOrCreateDispensaryActivityForParisDay(
   }
 
   const { start, end } = getBankWeekBounds(dayAnchor);
-  const displayName = preferred ?? (await resolveBotWeeklyActivityDisplayName(client, discordUserId));
-  const linkedUserId = await findLinkedUserIdByDiscordAccount(client, discordUserId);
+  const displayName =
+    preferred ?? (await resolveBotWeeklyActivityDisplayName(client, dispensaryId, discordUserId));
 
   try {
+    // The account of the Discord id is resolved by the create itself.
     return await createDispensaryWeeklyActivityWithHistory(
       {
         periodStart: start,
         periodEnd: end,
         displayName,
         discordUserId,
-        userId: linkedUserId,
         sherifCount: 0,
         patientsCount: 0,
         infusionsCount: 0,
@@ -498,6 +486,8 @@ export type BotWeekdayFlagMarkResult =
 export type WeeklyActivityInitiator = {
   source: DispensaryWeeklyActivityHistorySource;
   actorUserId: string | null;
+  /** Platform admin acting as `actorUserId` (impersonation). */
+  actorImpersonatedById?: string | null;
 };
 
 const DISCORD_BOT_INITIATOR: WeeklyActivityInitiator = { source: 'DISCORD_BOT', actorUserId: null };
@@ -566,6 +556,8 @@ export async function botSetWeekdayFlag(
   const historyAction =
     field === 'chest' ? ('UPDATE_CHEST_DAYS' as const) : ('UPDATE_PRESENCE_DAYS' as const);
 
+  const currentLink = await accountIdOfDiscord(existing.discordUserId);
+
   const result = await prisma.$transaction(async (tx) => {
     const row = await tx.dispensaryWeeklyActivity.findUnique({ where: { id: existing.id } });
     if (!row) {
@@ -590,7 +582,7 @@ export async function botSetWeekdayFlag(
       where: { id: row.id },
       data: { [flagsField]: nextFlags as Prisma.InputJsonValue },
     });
-    const synced = await syncActivityUserIdFromDiscordIfMissing(tx, updated);
+    const synced = await applyActivityAccountLink(tx, updated, currentLink);
 
     const previousValues = buildBotDayFieldHistoryPayload(dayAnchor, field, current[key]);
     const nextValues = buildBotDayFieldHistoryPayload(dayAnchor, field, value);
@@ -602,6 +594,7 @@ export async function botSetWeekdayFlag(
         source: options?.initiator?.source ?? DISCORD_BOT_INITIATOR.source,
         actorUserId: options?.initiator?.actorUserId ?? null,
         actorDiscordUserId: discordUserId,
+        actorImpersonatedById: options?.initiator?.actorImpersonatedById ?? null,
         previousValues: previousValues as Prisma.InputJsonValue,
         nextValues: nextValues as Prisma.InputJsonValue,
       },
