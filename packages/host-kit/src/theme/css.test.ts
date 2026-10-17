@@ -34,6 +34,15 @@ describe('themeToCss', () => {
     expect(css).toContain('color-scheme: dark;');
     expect(css).toContain('--disp-sage-soft: color-mix(in srgb, #555 14%, transparent);');
   });
+
+  it('sets the light-dark() fallback toggles of Lightning CSS from the scheme', () => {
+    const lightCss = themeToCss(light, { prefix: 'disp' });
+    expect(lightCss).toContain('--lightningcss-light: initial;');
+    expect(lightCss).toContain('--lightningcss-dark:  ;');
+    const darkCss = themeToCss(dark, { prefix: 'disp' });
+    expect(darkCss).toContain('--lightningcss-light:  ;');
+    expect(darkCss).toContain('--lightningcss-dark: initial;');
+  });
 });
 
 describe('themeInitScript', () => {
