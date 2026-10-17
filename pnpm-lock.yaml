@@ -1138,9 +1138,6 @@ importers:
 
   packages/inventory-ui:
     dependencies:
-      '@lawless-intranet/realtime':
-        specifier: workspace:*
-        version: link:../realtime
       '@lawless-intranet/types':
         specifier: workspace:*
         version: link:../types

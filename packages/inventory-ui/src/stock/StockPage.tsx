@@ -2,10 +2,8 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert, Container, Text, Stack, Center, Loader } from '@mantine/core';
+import { Alert, Button, Container, Group, Text, Stack, Center, Loader } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
-import { REALTIME_DOMAIN } from '@lawless-intranet/realtime';
-import { useRealtimeSocketEvents } from '@lawless-intranet/realtime/socket';
 import { notifications } from '@mantine/notifications';
 import CraftModal from './modals/CraftModal';
 import TransferModal from './modals/TransferModal';
@@ -47,7 +45,8 @@ import {
   getChangedStockEntries,
 } from './hooks/useStockQueries';
 
-const STOCK_REALTIME_DOMAINS = [REALTIME_DOMAIN.stock] as const;
+/** Changed items named in the warning; the rest is counted. */
+const CHANGES_SHOWN = 5;
 
 export type StockPageProps = {
   initialItems: ItemWithRelations[];
@@ -73,13 +72,11 @@ export default function StockPage({
     initialChests.length === 1 ? initialChests[0].id : null,
   );
   const [isEditing, setIsEditing] = useState(false);
-  /** Someone else changed stock while this count was being typed (saving overwrites quantities). */
-  const [changedWhileEditing, setChangedWhileEditing] = useState(false);
-  useRealtimeSocketEvents({
-    enabled: isEditing,
-    domains: STOCK_REALTIME_DOMAINS,
-    onEvent: () => setChangedWhileEditing(true),
-  });
+  /**
+   * Stock of the chest when the count started. The list is refetched live
+   * (stock realtime): what changed since is shown, as saving overwrites quantities.
+   */
+  const [editBaseline, setEditBaseline] = useState<Record<string, number | null>>({});
   const [craftModalOpened, setCraftModalOpened] = useState(false);
   const [transferModalOpened, setTransferModalOpened] = useState(false);
   const [takeModalOpened, setTakeModalOpened] = useState(false);
@@ -107,7 +104,7 @@ export default function StockPage({
     }
   }
 
-  const { data: items = initialItems, isFetching, isPending } = useStockItems(
+  const { data: items = initialItems, isFetching, isPending, isPlaceholderData } = useStockItems(
     selectedChestId,
     stockItemsInitialData,
   );
@@ -122,7 +119,8 @@ export default function StockPage({
   const setCategoryHiddenMutation = useSetChestCategoryHiddenMutation();
   const setItemHiddenMutation = useSetChestItemHiddenMutation();
 
-  const loading = isPending || isFetching;
+  // A background refetch (realtime) keeps the table on screen, even during a count.
+  const loading = isPending || (isFetching && isPlaceholderData);
 
   const activeVisibility = selectedChestId ? visibility : EMPTY_CHEST_STOCK_VISIBILITY;
 
@@ -146,6 +144,20 @@ export default function StockPage({
     return groupItemsByCategory(visibleItems);
   }, [selectedChestId, showHiddenInPlace, items, visibleItems]);
 
+  /** Items of the chest whose stock changed since the count started (crafted, sold, taken… meanwhile). */
+  const changedSinceStart = useMemo(
+    () =>
+      isEditing
+        ? items.flatMap((item) => {
+            if (!(item.id in editBaseline)) return [];
+            const before = editBaseline[item.id] ?? null;
+            const after = getEffectiveStockQuantity(item.stockToday, item.stockYesterday);
+            return before === after ? [] : [{ id: item.id, name: item.name, before, after }];
+          })
+        : [],
+    [isEditing, items, editBaseline],
+  );
+
   const handleStartEdit = () => {
     setIsManagingVisibility(false);
     const initialValues: Record<string, number | null> = {};
@@ -153,8 +165,26 @@ export default function StockPage({
       initialValues[item.id] = item.stockToday !== null ? item.stockToday : null;
     });
     setEditedQuantitiesByItemId(initialValues);
-    setChangedWhileEditing(false);
+    setEditBaseline(
+      Object.fromEntries(
+        items.map((item) => [item.id, getEffectiveStockQuantity(item.stockToday, item.stockYesterday)]),
+      ),
+    );
     setIsEditing(true);
+  };
+
+  /** The changes seen since the count started are acknowledged (and optionally copied into it). */
+  const acknowledgeChanges = (applyToCount: boolean) => {
+    if (applyToCount) {
+      setEditedQuantitiesByItemId((prev) => ({
+        ...prev,
+        ...Object.fromEntries(changedSinceStart.map((change) => [change.id, change.after])),
+      }));
+    }
+    setEditBaseline((prev) => ({
+      ...prev,
+      ...Object.fromEntries(changedSinceStart.map((change) => [change.id, change.after])),
+    }));
   };
 
   const handleChangeChestId = useCallback((chestId: string | null) => {
@@ -372,11 +402,34 @@ export default function StockPage({
         onSkipHistoryChange={setSkipHistory}
       />
 
-      {isEditing && changedWhileEditing ? (
-        <Alert color="amber" icon={<IconAlertTriangle size={16} />} mb="md">
-          Le stock a été modifié par quelqu&apos;un d&apos;autre pendant votre saisie (craft, vente,
-          transfert…). Vos valeurs sont conservées : vérifiez-les, car l&apos;enregistrement remplace les
-          quantités du coffre.
+      {changedSinceStart.length > 0 ? (
+        <Alert
+          color="amber"
+          icon={<IconAlertTriangle size={16} />}
+          mb="md"
+          title="Le stock de ce coffre a changé pendant votre saisie"
+        >
+          <Stack gap="xs">
+            <Text size="sm">
+              Quelqu&apos;un a modifié ce coffre entre-temps (craft, vente, transfert…) :{' '}
+              {changedSinceStart
+                .slice(0, CHANGES_SHOWN)
+                .map((change) => `${change.name} ${change.before ?? '—'} → ${change.after ?? '—'}`)
+                .join(', ')}
+              {changedSinceStart.length > CHANGES_SHOWN
+                ? ` et ${changedSinceStart.length - CHANGES_SHOWN} autre${changedSinceStart.length - CHANGES_SHOWN > 1 ? 's' : ''}`
+                : ''}
+              . Vos valeurs sont conservées : vérifiez-les, car l&apos;enregistrement remplace les quantités du coffre.
+            </Text>
+            <Group gap="xs">
+              <Button size="xs" color="amber" variant="light" onClick={() => acknowledgeChanges(true)}>
+                Reprendre ces nouvelles quantités
+              </Button>
+              <Button size="xs" color="slate" variant="subtle" onClick={() => acknowledgeChanges(false)}>
+                Garder ma saisie
+              </Button>
+            </Group>
+          </Stack>
         </Alert>
       ) : null}
 
