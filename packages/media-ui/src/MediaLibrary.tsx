@@ -36,6 +36,7 @@ import type {
   MediaFileRecord,
   MediaFolderContentsRecord,
   MediaFolderRecord,
+  MediaLinkRecord,
 } from '@lawless-intranet/types';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { DeleteModal } from './components/DeleteModal';
@@ -50,12 +51,14 @@ import {
   type ItemInteractions,
   type SelectModifiers,
 } from './components/itemInteractions';
-import { DragChip, FileCard, FolderCard } from './components/MediaItemCards';
+import { LinkModal } from './components/LinkModal';
+import { DragChip, FileCard, FolderCard, LinkCard } from './components/MediaItemCards';
 import { MediaList, type MediaListRow } from './components/MediaList';
 import {
   BackgroundMenuItems,
   FileMenuItems,
   FolderMenuItems,
+  LinkMenuItems,
   SelectionMenuItems,
 } from './components/MediaMenus';
 import { MoveModal } from './components/MoveModal';
@@ -65,6 +68,7 @@ import { SelectionBar } from './components/SelectionBar';
 import { SortControl, ViewToggle, type MediaView } from './components/ViewControls';
 import { UploadQueue } from './components/UploadQueue';
 import {
+  useCopyLinkUrl,
   useInvalidateMedia,
   useMediaCopyImage,
   useMediaDownload,
@@ -127,10 +131,13 @@ const LASSO_THRESHOLD_PX = 4;
 
 type Target =
   | { kind: 'folder'; item: MediaFolderRecord }
+  | { kind: 'link'; item: MediaLinkRecord }
   | { kind: 'file'; item: MediaFileRecord };
 
 type Dialog =
   | { type: 'create' }
+  | { type: 'createLink' }
+  | { type: 'editLink'; link: MediaLinkRecord }
   | { type: 'rename'; target: Target }
   | { type: 'info'; target: Target }
   | { type: 'move'; keys: string[] }
@@ -190,7 +197,7 @@ export type MediaLibraryProps = {
  * Drive-like library: right-click menus, multiple selection (click, Ctrl, Shift,
  * Ctrl+A, rectangle), double-click to open, drag & drop (move, and upload of
  * files dropped anywhere on the page or onto a folder),
- * rename, move, delete, preview.
+ * rename, move, delete, preview, and saved external links (opened in a new tab).
  */
 export function MediaLibrary({ initialContents, initialFolderId = null }: MediaLibraryProps) {
   const { limits } = useMediaUi();
@@ -206,6 +213,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const mutations = useMediaMutations();
   const download = useMediaDownload();
   const copyImage = useMediaCopyImage();
+  const copyLinkUrl = useCopyLinkUrl();
   const share = useMediaShare();
   const uploads = useMediaUploads();
   useMediaRealtime();
@@ -259,16 +267,19 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const breadcrumb = contents?.breadcrumb ?? [];
   const currentFolderName = breadcrumb.at(-1)?.name ?? 'Médiathèque';
 
-  /** Sorted folders then files (display, Shift ranges and viewer order) and lookup by selection key. */
-  const { folders, files, order, targets } = useMemo(() => {
+  /** Sorted folders, links then files (display, Shift ranges and viewer order) and lookup by selection key. */
+  const { folders, links, files, order, targets } = useMemo(() => {
     const sortedFolders = sortItems(contents?.folders ?? [], sort);
+    const sortedLinks = sortItems(contents?.links ?? [], sort);
     const sortedFiles = sortItems(contents?.files ?? [], sort);
     const entries: [string, Target][] = [
       ...sortedFolders.map((item): [string, Target] => [itemKey('folder', item.id), { kind: 'folder', item }]),
+      ...sortedLinks.map((item): [string, Target] => [itemKey('link', item.id), { kind: 'link', item }]),
       ...sortedFiles.map((item): [string, Target] => [itemKey('file', item.id), { kind: 'file', item }]),
     ];
     return {
       folders: sortedFolders,
+      links: sortedLinks,
       files: sortedFiles,
       order: entries.map(([key]) => key),
       targets: new Map(entries),
@@ -290,10 +301,13 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const nameOf = (keys: readonly string[]) => (keys[0] ? (targets.get(keys[0])?.item.name ?? '') : '');
 
   const handleRename = (target: Target, name: string) => {
+    const { id } = target.item;
     const mutation =
       target.kind === 'folder'
-        ? mutations.updateFolder.mutateAsync({ id: target.item.id, name })
-        : mutations.updateFile.mutateAsync({ id: target.item.id, name });
+        ? mutations.updateFolder.mutateAsync({ id, name })
+        : target.kind === 'link'
+          ? mutations.updateLink.mutateAsync({ id, name })
+          : mutations.updateFile.mutateAsync({ id, name });
     void mutation.then(closeDialog, () => undefined);
   };
 
@@ -416,6 +430,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const backgroundMenu = (
     <BackgroundMenuItems
       onCreateFolder={() => setDialog({ type: 'create' })}
+      onCreateLink={() => setDialog({ type: 'createLink' })}
       onUpload={() => fileInputRef.current?.click()}
       uploadDisabled={!limits.storageConfigured}
     />
@@ -467,6 +482,22 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     return { kind: 'folder', item: folder, href, interactions: tileInteractions(key, target, open, menu) };
   };
 
+  const linkRow = (link: MediaLinkRecord): Extract<MediaListRow, { kind: 'link' }> => {
+    const key = itemKey('link', link.id);
+    const target: Target = { kind: 'link', item: link };
+    // Called from the click / key handler itself, so popup blockers let the new tab through.
+    const open = () => window.open(link.url, '_blank', 'noopener,noreferrer');
+    const menu = (
+      <LinkMenuItems
+        onOpen={open}
+        onCopyUrl={() => void copyLinkUrl(link)}
+        {...itemActions(key, target)}
+        onRename={() => setDialog({ type: 'editLink', link })}
+      />
+    );
+    return { kind: 'link', item: link, interactions: tileInteractions(key, target, open, menu) };
+  };
+
   const fileRow = (file: MediaFileRecord): Extract<MediaListRow, { kind: 'file' }> => {
     const key = itemKey('file', file.id);
     const target: Target = { kind: 'file', item: file };
@@ -492,6 +523,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   };
 
   const folderRows = folders.map(folderRow);
+  const linkRows = links.map(linkRow);
   const fileRows = files.map(fileRow);
 
   const dialogKeys = dialog?.type === 'move' || dialog?.type === 'delete' ? dialog.keys : [];
@@ -499,7 +531,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     const target = targets.get(key);
     return target ? [target] : [];
   });
-  const isEmpty = contents && folders.length === 0 && files.length === 0;
+  const isEmpty = contents && folders.length === 0 && links.length === 0 && files.length === 0;
 
   return (
     <DndContext
@@ -610,7 +642,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
 
                 {view === 'list' && !isEmpty && contents ? (
                   <MediaList
-                    rows={[...folderRows, ...fileRows]}
+                    rows={[...folderRows, ...linkRows, ...fileRows]}
                     sort={sort}
                     onSortChange={(key) => setSort(nextSort(sort, key))}
                   />
@@ -624,6 +656,19 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                     <SimpleGrid cols={GRID_COLS} spacing="sm">
                       {folderRows.map((row) => (
                         <FolderCard key={itemKey('folder', row.item.id)} folder={row.item} href={row.href} {...row.interactions} />
+                      ))}
+                    </SimpleGrid>
+                  </Stack>
+                ) : null}
+
+                {view === 'grid' && linkRows.length > 0 ? (
+                  <Stack gap="xs">
+                    <Text size="sm" fw={500}>
+                      Liens
+                    </Text>
+                    <SimpleGrid cols={GRID_COLS} spacing="sm">
+                      {linkRows.map((row) => (
+                        <LinkCard key={itemKey('link', row.item.id)} link={row.item} {...row.interactions} />
                       ))}
                     </SimpleGrid>
                   </Stack>
@@ -649,8 +694,8 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                       <Text fw={500}>Ce dossier est vide</Text>
                       <Text c="dimmed" size="sm" ta="center">
                         {isTouch
-                          ? 'Touchez + pour créer un dossier ou importer des fichiers.'
-                          : 'Faites un clic droit pour créer un dossier ou importer, ou glissez des fichiers ici.'}
+                          ? 'Touchez + pour créer un dossier, ajouter un lien ou importer des fichiers.'
+                          : 'Faites un clic droit pour créer un dossier, ajouter un lien ou importer, ou glissez des fichiers ici.'}
                       </Text>
                     </Stack>
                   </Center>
@@ -713,6 +758,30 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
               onSubmit={(name) => dialog?.type === 'rename' && handleRename(dialog.target, name)}
             />
 
+            <LinkModal
+              opened={dialog?.type === 'createLink'}
+              title="Nouveau lien"
+              submitLabel="Ajouter"
+              loading={mutations.createLink.isPending}
+              onClose={closeDialog}
+              onSubmit={(values) =>
+                void mutations.createLink.mutateAsync({ folderId, ...values }).then(closeDialog, () => undefined)
+              }
+            />
+
+            <LinkModal
+              opened={dialog?.type === 'editLink'}
+              title="Modifier le lien"
+              submitLabel="Enregistrer"
+              initialValues={dialog?.type === 'editLink' ? { name: dialog.link.name, url: dialog.link.url } : undefined}
+              loading={mutations.updateLink.isPending}
+              onClose={closeDialog}
+              onSubmit={(values) =>
+                dialog?.type === 'editLink' &&
+                void mutations.updateLink.mutateAsync({ id: dialog.link.id, ...values }).then(closeDialog, () => undefined)
+              }
+            />
+
             <MoveModal
               opened={dialog?.type === 'move' && dialogTargets.length > 0}
               title={
@@ -730,7 +799,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
 
             <DeleteModal
               opened={dialog?.type === 'delete' && dialogTargets.length > 0}
-              items={dialogTargets.map((target) => ({ name: target.item.name, isFolder: target.kind === 'folder' }))}
+              items={dialogTargets.map((target) => ({ name: target.item.name, kind: target.kind }))}
               loading={mutations.deleteItems.isPending}
               onClose={closeDialog}
               onConfirm={() => void deleteKeys(dialogKeys).then(closeDialog, () => undefined)}
@@ -779,7 +848,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                     size={56}
                     radius="xl"
                     variant="filled"
-                    aria-label="Nouveau dossier ou import"
+                    aria-label="Nouveau dossier, lien ou import"
                     pos="fixed"
                     right={16}
                     bottom={FLOATING_BOTTOM}

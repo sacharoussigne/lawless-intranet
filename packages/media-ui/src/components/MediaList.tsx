@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { Group, Table, Text, UnstyledButton } from '@mantine/core';
-import { IconArrowDown, IconArrowUp, IconFolderFilled } from '@tabler/icons-react';
-import type { MediaFileRecord, MediaFolderRecord } from '@lawless-intranet/types';
-import { formatBytes, type MediaSort, type MediaSortKey } from '../format';
+import { IconArrowDown, IconArrowUp, IconFolderFilled, IconWorld } from '@tabler/icons-react';
+import type { MediaFileRecord, MediaFolderRecord, MediaLinkRecord } from '@lawless-intranet/types';
+import { formatBytes, linkHost, type MediaSort, type MediaSortKey } from '../format';
+import { LINK_ICON_COLOR } from './MediaItemCards';
 import { useMediaUi } from '../MediaUiProvider';
 import { itemKey } from '../selection';
 import {
@@ -24,6 +25,7 @@ import {
 
 export type MediaListRow =
   | { kind: 'folder'; item: MediaFolderRecord; href: string; interactions: ItemInteractions }
+  | { kind: 'link'; item: MediaLinkRecord; interactions: ItemInteractions }
   | { kind: 'file'; item: MediaFileRecord; interactions: ItemInteractions };
 
 function rowStyle(highlighted: boolean, dragging: boolean): CSSProperties {
@@ -142,6 +144,38 @@ function FolderRow({ row }: { row: Extract<MediaListRow, { kind: 'folder' }> }) 
   );
 }
 
+function LinkRow({ row }: { row: Extract<MediaListRow, { kind: 'link' }> }) {
+  const { formatDate } = useMediaUi();
+  return (
+    <ItemRow rowKey={itemKey('link', row.item.id)} interactions={row.interactions} focusable>
+      <Table.Td>
+        <Group gap="sm" wrap="nowrap" title={row.item.url}>
+          <IconWorld size={20} color={LINK_ICON_COLOR} style={{ flexShrink: 0 }} />
+          <Text size="sm" fw={500} truncate="end" style={{ minWidth: 0 }}>
+            {row.item.name}
+          </Text>
+          <Text size="xs" c="dimmed" truncate="end" style={{ flexShrink: 1, minWidth: 0 }}>
+            {linkHost(row.item.url)}
+          </Text>
+        </Group>
+      </Table.Td>
+      <Table.Td visibleFrom="sm">
+        <Text size="sm" c="dimmed">
+          {formatDate(row.item.createdAt)}
+        </Text>
+      </Table.Td>
+      <Table.Td visibleFrom="sm">
+        <Text size="sm" c="dimmed">
+          —
+        </Text>
+      </Table.Td>
+      <Table.Td w={48}>
+        <KebabMenu label={row.item.name}>{row.interactions.menu}</KebabMenu>
+      </Table.Td>
+    </ItemRow>
+  );
+}
+
 function FileRow({ row }: { row: Extract<MediaListRow, { kind: 'file' }> }) {
   const { formatDate } = useMediaUi();
   const { Icon, color } = fileTypeIcon(row.item.mimeType);
@@ -173,7 +207,7 @@ function FileRow({ row }: { row: Extract<MediaListRow, { kind: 'file' }> }) {
   );
 }
 
-/** Drive-like list view: folders then files, sortable by clicking the headers. */
+/** Drive-like list view: folders, links then files, sortable by clicking the headers. */
 export function MediaList({
   rows,
   sort,
@@ -203,13 +237,11 @@ export function MediaList({
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {rows.map((row) =>
-          row.kind === 'folder' ? (
-            <FolderRow key={itemKey('folder', row.item.id)} row={row} />
-          ) : (
-            <FileRow key={itemKey('file', row.item.id)} row={row} />
-          ),
-        )}
+        {rows.map((row) => {
+          if (row.kind === 'folder') return <FolderRow key={itemKey('folder', row.item.id)} row={row} />;
+          if (row.kind === 'link') return <LinkRow key={itemKey('link', row.item.id)} row={row} />;
+          return <FileRow key={itemKey('file', row.item.id)} row={row} />;
+        })}
       </Table.Tbody>
     </Table>
   );

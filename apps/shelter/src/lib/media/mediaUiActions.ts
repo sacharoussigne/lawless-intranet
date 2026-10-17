@@ -3,6 +3,7 @@ import { toUiResult } from '@lawless-intranet/host-kit/action';
 import {
   completeMediaLibraryUpload,
   createMediaLibraryFolder,
+  createMediaLibraryLink,
   deleteMediaLibraryFile,
   deleteMediaLibraryFolder,
   deleteMediaLibraryItems,
@@ -12,6 +13,7 @@ import {
   unshareMediaLibraryFile,
   updateMediaLibraryFile,
   updateMediaLibraryFolder,
+  updateMediaLibraryLink,
 } from '@/app/_actions/media';
 import { fetchRead } from '@/lib/read/fetchRead';
 
@@ -29,6 +31,8 @@ export function createShelterMediaActions(shelterSlug: string): MediaUiActions {
     updateFile: (input) => toUiResult(updateMediaLibraryFile(shelterSlug, input)),
     deleteFile: (id) => toUiResult(deleteMediaLibraryFile(shelterSlug, id)),
     getDownloadUrl: (id) => toUiResult(fetchRead(shelterSlug, 'mediaDownloadUrl', { id })),
+    createLink: (input) => toUiResult(createMediaLibraryLink(shelterSlug, input)),
+    updateLink: (input) => toUiResult(updateMediaLibraryLink(shelterSlug, input)),
     moveItems: (input) => toUiResult(moveMediaLibraryItems(shelterSlug, input)),
     deleteItems: (input) => toUiResult(deleteMediaLibraryItems(shelterSlug, input)),
     shareFile: (id) => toUiResult(shareMediaLibraryFile(shelterSlug, id)),

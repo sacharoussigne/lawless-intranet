@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_MEDIA_SORT,
   describeDeletion,
+  linkHost,
+  normalizeLinkUrl,
   flattenFolderTree,
   nextSort,
   parseMediaSort,
@@ -68,17 +70,39 @@ describe('stepIndex', () => {
 
 describe('describeDeletion', () => {
   it('names a single item', () => {
-    expect(describeDeletion([{ name: 'a.png', isFolder: false }])).toBe('Supprimer le fichier « a.png » ?');
+    expect(describeDeletion([{ name: 'a.png', kind: 'file' }])).toBe('Supprimer le fichier « a.png » ?');
+    expect(describeDeletion([{ name: 'Tableau', kind: 'link' }])).toBe('Supprimer le lien « Tableau » ?');
   });
 
-  it('counts folders and files', () => {
+  it('counts folders, links and files', () => {
     expect(
       describeDeletion([
-        { name: 'A', isFolder: true },
-        { name: 'b.png', isFolder: false },
-        { name: 'c.png', isFolder: false },
+        { name: 'A', kind: 'folder' },
+        { name: 'b.png', kind: 'file' },
+        { name: 'c.png', kind: 'file' },
       ]),
     ).toBe('Supprimer 1 dossier (avec tout son contenu) et 2 fichiers ?');
+    expect(
+      describeDeletion([
+        { name: 'A', kind: 'folder' },
+        { name: 'L1', kind: 'link' },
+        { name: 'L2', kind: 'link' },
+        { name: 'b.png', kind: 'file' },
+      ]),
+    ).toBe('Supprimer 1 dossier (avec tout son contenu), 2 liens et 1 fichier ?');
+  });
+});
+
+describe('links', () => {
+  it('accepts http(s) URLs only', () => {
+    expect(normalizeLinkUrl(' https://docs.google.com/d/1 ')).toBe('https://docs.google.com/d/1');
+    expect(normalizeLinkUrl('javascript:alert(1)')).toBeNull();
+    expect(normalizeLinkUrl('docs.google.com')).toBeNull();
+  });
+
+  it('shows the host without www', () => {
+    expect(linkHost('https://www.exemple.fr/a?b=1')).toBe('exemple.fr');
+    expect(linkHost('pas une adresse')).toBe('pas une adresse');
   });
 });
 

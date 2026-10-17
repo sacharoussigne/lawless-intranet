@@ -27,6 +27,7 @@ model MediaFolder {
   parent      MediaFolder?  @relation("MediaFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
   children    MediaFolder[] @relation("MediaFolderTree")
   files       MediaFile[]
+  links       MediaLink[]
 
   @@index([scopeType, scopeId, parentId])
   @@map("media_folder")
@@ -52,4 +53,21 @@ model MediaFile {
 
   @@index([scopeType, scopeId, folderId, status])
   @@map("media_file")
+}
+
+/// External link (http/https) saved in the library; opened in a new tab, nothing stored in S3.
+model MediaLink {
+  id          String       @id @default(uuid())
+  scopeType   String
+  scopeId     String
+  folderId    String?
+  name        String
+  url         String
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  folder      MediaFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@index([scopeType, scopeId, folderId])
+  @@map("media_link")
 }

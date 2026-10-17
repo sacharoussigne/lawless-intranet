@@ -4,10 +4,14 @@ import { UPLOAD_TICKET_TTL_SECONDS } from './s3';
 import {
   buildContentDisposition,
   buildStorageKey,
+  defaultLinkName,
   generateShareToken,
   isShareToken,
+  MEDIA_LINK_URL_MAX_LENGTH,
+  normalizeLinkUrl,
   normalizeMediaName,
 } from './names';
+import { createLinkSchema, deleteItemsSchema } from './validation';
 import {
   buildBreadcrumb,
   collectSubtreeIds,
@@ -133,5 +137,48 @@ describe('abandoned uploads', () => {
     const now = new Date();
     const ticketStart = now.getTime() - UPLOAD_TICKET_TTL_SECONDS * 1000;
     expect(abandonedUploadsCutoff(now).getTime()).toBeLessThan(ticketStart);
+  });
+});
+
+describe('links', () => {
+  const scope = { scopeType: 'dispensary', scopeId: 'd1' };
+
+  it('keeps http(s) URLs only', () => {
+    expect(normalizeLinkUrl('  https://docs.google.com/spreadsheets/d/abc  ')).toBe(
+      'https://docs.google.com/spreadsheets/d/abc',
+    );
+    expect(normalizeLinkUrl('http://exemple.fr')).toBe('http://exemple.fr/');
+    for (const refused of [
+      'javascript:alert(1)',
+      'JAVASCRIPT:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'ftp://exemple.fr',
+      'mailto:a@b.fr',
+      'docs.google.com',
+      '',
+      `https://exemple.fr/${'a'.repeat(MEDIA_LINK_URL_MAX_LENGTH)}`,
+    ]) {
+      expect(normalizeLinkUrl(refused)).toBeNull();
+    }
+  });
+
+  it('names a link after its host when no name is given', () => {
+    expect(defaultLinkName('https://www.docs.google.com/x')).toBe('docs.google.com');
+    expect(defaultLinkName('http://exemple.fr:8080/a')).toBe('exemple.fr');
+  });
+
+  it('validates a new link and explains a refused URL', () => {
+    const parsed = createLinkSchema.safeParse({ ...scope, url: 'https://exemple.fr', name: '  Tableau  ' });
+    expect(parsed.success && parsed.data).toMatchObject({ url: 'https://exemple.fr/', name: 'Tableau' });
+
+    const refused = createLinkSchema.safeParse({ ...scope, url: 'javascript:alert(1)' });
+    expect(refused.success).toBe(false);
+    expect(refused.error?.issues[0]?.message).toBe('Adresse invalide (http:// ou https:// uniquement)');
+  });
+
+  it('counts links as selected items', () => {
+    const id = '0b9d6f6e-3f0b-4c1a-9f6f-3c2f4d1e2a10';
+    expect(deleteItemsSchema.safeParse({ ...scope, linkIds: [id] }).success).toBe(true);
+    expect(deleteItemsSchema.safeParse({ ...scope }).success).toBe(false);
   });
 });
