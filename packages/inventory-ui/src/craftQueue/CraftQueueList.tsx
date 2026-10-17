@@ -18,35 +18,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  ActionIcon,
-  Badge,
-  Button,
-  Group,
-  Loader,
-  NumberInput,
-  Paper,
-  Stack,
-  Text,
-  Tooltip,
-} from '@mantine/core';
-import { IconGripVertical, IconPlus, IconTools, IconTrash } from '@tabler/icons-react';
+import { ActionIcon, Badge, Button, Group, Loader, NumberInput, Paper, Stack, Text, Tooltip } from '@mantine/core';
+import { IconGripVertical, IconPlus, IconTools, IconX } from '@tabler/icons-react';
 import { apothecaryBooleanPills, apothecaryPillStyle, denimPalette } from '../lib/apothecaryPill';
-import type { CraftQueueEntry, LinePlan, MissingIngredient, RecipeLookup } from './plan';
-
-export type CraftQueueLineActions = {
-  /** Item names of the source chest (recipe ingredients carry their own). */
-  itemName: (itemId: string) => string;
-  /** Ingredients that have a recipe: a missing one can be added as a sub-craft. */
-  isCraftable: (itemId: string) => boolean;
-  canCraft: boolean;
-  busy: boolean;
-  runningId: string | null;
-  onTimesChange: (entry: CraftQueueEntry, times: number) => void;
-  onRemove: (entry: CraftQueueEntry) => void;
-  onCraft: (entry: CraftQueueEntry) => void;
-  onAddSubCraft: (entry: CraftQueueEntry, missing: MissingIngredient) => void;
-};
+import type { CraftQueueEntry, LinePlan } from './plan';
+import type { CraftQueue } from './useCraftQueue';
 
 /** Craft count of a line: a cleared or invalid field is only kept while typing. */
 function TimesInput({ value, disabled, onChange }: { value: number; disabled: boolean; onChange: (times: number) => void }) {
@@ -54,7 +30,7 @@ function TimesInput({ value, disabled, onChange }: { value: number; disabled: bo
   return (
     <NumberInput
       size="xs"
-      w={88}
+      w={72}
       prefix="×"
       aria-label="Nombre de fois"
       min={1}
@@ -75,17 +51,17 @@ function StatusBadge({ plan }: { plan: LinePlan | undefined }) {
   if (!plan || plan.status === 'loading') return <Loader size="xs" color="sage" type="dots" />;
   if (plan.status === 'unavailable') {
     return (
-      <Badge variant="outline" style={apothecaryBooleanPills.noAlert}>
-        Recette indisponible
+      <Badge size="sm" variant="outline" style={apothecaryBooleanPills.noAlert}>
+        Indisponible
       </Badge>
     );
   }
   return plan.status === 'ready' ? (
-    <Badge variant="outline" style={apothecaryBooleanPills.yes}>
+    <Badge size="sm" variant="outline" style={apothecaryBooleanPills.yes}>
       Prêt
     </Badge>
   ) : (
-    <Badge variant="outline" style={apothecaryBooleanPills.noAlert}>
+    <Badge size="sm" variant="outline" style={apothecaryBooleanPills.noAlert}>
       Manque
     </Badge>
   );
@@ -101,33 +77,36 @@ function craftBlockedReason(plan: LinePlan | undefined, canCraft: boolean): stri
     : 'Il manque des ingrédients dans le coffre source';
 }
 
-function QueueLine({
-  entry,
-  plan,
-  getRecipe,
-  actions,
-}: {
+type LineProps = {
   entry: CraftQueueEntry;
-  plan: LinePlan | undefined;
-  getRecipe: RecipeLookup;
-  actions: CraftQueueLineActions;
-}) {
+  queue: CraftQueue;
+  chestName: (chestId: string) => string;
+  canCraft: boolean;
+};
+
+function QueueLine({ entry, queue, chestName, canCraft }: LineProps) {
+  const { runner } = queue;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.id,
-    disabled: actions.busy,
+    disabled: runner.busy,
   });
-  const recipe = getRecipe(entry.recipeId);
-  const name = actions.itemName(entry.craftedItemId);
-  const blocked = craftBlockedReason(plan, actions.canCraft);
-  const running = actions.runningId === entry.id;
+  const plan = queue.plan.lines[entry.id];
+  const recipe = queue.getRecipe(entry.recipeId);
+  const name = queue.itemName(entry.craftedItemId);
+  const blocked = craftBlockedReason(plan, canCraft);
+  const running = runner.runningId === entry.id;
   const missing = plan && 'missing' in plan ? plan.missing : [];
+  const chests =
+    entry.sourceChestId === entry.destinationChestId
+      ? chestName(entry.sourceChestId)
+      : `${chestName(entry.sourceChestId)} → ${chestName(entry.destinationChestId)}`;
 
   return (
     <Paper
       ref={setNodeRef}
       withBorder
       radius="md"
-      p="sm"
+      p={8}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -137,91 +116,92 @@ function QueueLine({
         borderColor: missing.length > 0 ? 'var(--disp-danger-soft-border)' : undefined,
       }}
     >
-      <Group wrap="nowrap" align="flex-start" gap="xs">
+      <Group wrap="nowrap" align="flex-start" gap={4}>
         <ActionIcon
           variant="subtle"
           color="slate"
+          size="sm"
           aria-label={`Déplacer ${name}`}
-          style={{ cursor: actions.busy ? 'default' : 'grab', touchAction: 'none', flexShrink: 0 }}
+          style={{ cursor: runner.busy ? 'default' : 'grab', touchAction: 'none', flexShrink: 0, marginTop: 2 }}
           {...attributes}
           {...listeners}
         >
-          <IconGripVertical size={18} stroke={1.5} />
+          <IconGripVertical size={16} stroke={1.5} />
         </ActionIcon>
 
         <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
-          <Group justify="space-between" align="center" gap="xs" wrap="wrap">
-            <div style={{ minWidth: 0, flex: '1 1 160px' }}>
-              <Group gap="xs" wrap="nowrap">
-                <Text fw={600} truncate="end" c="var(--disp-ink)">
-                  {name}
-                </Text>
-                {plan && 'produced' in plan ? (
-                  <Badge variant="outline" style={{ ...apothecaryPillStyle(denimPalette), flexShrink: 0 }}>
-                    → {plan.produced}
-                  </Badge>
-                ) : null}
-              </Group>
-              {recipe && recipe.name !== name ? (
-                <Text size="xs" c="dimmed" truncate="end">
-                  Recette : {recipe.name}
-                </Text>
+          <Group gap={6} wrap="nowrap" justify="space-between">
+            <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+              <Text size="sm" fw={600} truncate="end" c="var(--disp-ink)" title={recipe ? `Recette : ${recipe.name}` : undefined}>
+                {name}
+              </Text>
+              {plan && 'produced' in plan ? (
+                <Badge size="sm" variant="outline" style={{ ...apothecaryPillStyle(denimPalette), flexShrink: 0 }}>
+                  → {plan.produced}
+                </Badge>
               ) : null}
-            </div>
+            </Group>
+            <ActionIcon
+              variant="subtle"
+              color="slate"
+              size="sm"
+              aria-label={`Retirer ${name} de la file`}
+              disabled={runner.busy}
+              onClick={() => queue.remove(entry.id)}
+            >
+              <IconX size={14} />
+            </ActionIcon>
+          </Group>
 
-            <Group gap="xs" wrap="nowrap">
+          <Group gap={6} wrap="nowrap" justify="space-between">
+            <Group gap={6} wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
               <TimesInput
                 value={entry.times}
-                disabled={actions.busy}
-                onChange={(times) => actions.onTimesChange(entry, times)}
+                disabled={runner.busy}
+                onChange={(times) => queue.setTimes(entry.id, times)}
               />
+              <Text size="xs" c="dimmed" truncate="end" title={chests} style={{ minWidth: 0, flex: 1 }}>
+                {chests}
+              </Text>
+            </Group>
+            <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }}>
               <StatusBadge plan={plan} />
               <Tooltip label={blocked} disabled={!blocked || running} withArrow>
                 {/* A disabled button gets no hover: the wrapper shows the reason. */}
                 <span style={{ display: 'inline-block' }}>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="sage"
-                  leftSection={<IconTools size={14} />}
-                  disabled={Boolean(blocked) || (actions.busy && !running)}
-                  loading={running}
-                  onClick={() => actions.onCraft(entry)}
-                >
-                  Crafter
-                </Button>
+                  <Button
+                    size="compact-sm"
+                    variant="light"
+                    color="sage"
+                    leftSection={<IconTools size={14} />}
+                    disabled={Boolean(blocked) || (runner.busy && !running)}
+                    loading={running}
+                    onClick={() => void runner.craftLine(entry, name)}
+                  >
+                    Crafter
+                  </Button>
                 </span>
               </Tooltip>
-              <ActionIcon
-                variant="subtle"
-                color="danger"
-                aria-label={`Retirer ${name} de la file`}
-                disabled={actions.busy}
-                onClick={() => actions.onRemove(entry)}
-              >
-                <IconTrash size={16} />
-              </ActionIcon>
             </Group>
           </Group>
 
           {missing.length > 0 ? (
             <Stack gap={2}>
               {missing.map((item) => (
-                <Group key={item.itemId} gap="xs" wrap="wrap">
+                <Group key={item.itemId} gap={4} wrap="wrap">
                   <Text size="xs" style={{ color: 'var(--disp-danger-soft-text)' }}>
-                    Il manque {item.needed - item.available} {item.name} ({item.available} sur{' '}
-                    {item.needed})
+                    Il manque {item.needed - item.available} {item.name} ({item.available} sur {item.needed})
                   </Text>
-                  {actions.isCraftable(item.itemId) ? (
+                  {queue.isCraftable(item.itemId) ? (
                     <Button
                       size="compact-xs"
                       variant="subtle"
                       color="sage"
                       leftSection={<IconPlus size={12} />}
-                      disabled={actions.busy}
-                      onClick={() => actions.onAddSubCraft(entry, item)}
+                      disabled={runner.busy}
+                      onClick={() => void queue.addSubCraft(entry, item.itemId, item.needed - item.available)}
                     >
-                      Ajouter le sous-craft
+                      Sous-craft
                     </Button>
                   ) : null}
                 </Group>
@@ -236,36 +216,33 @@ function QueueLine({
 
 /** Queue lines in craft order; dragging the handle reorders them. */
 export function CraftQueueList({
-  entries,
-  lines,
-  getRecipe,
-  actions,
-  onReorder,
+  queue,
+  chestName,
+  canCraft,
 }: {
-  entries: readonly CraftQueueEntry[];
-  lines: Record<string, LinePlan>;
-  getRecipe: RecipeLookup;
-  actions: CraftQueueLineActions;
-  onReorder: (entries: CraftQueueEntry[]) => void;
+  queue: CraftQueue;
+  chestName: (chestId: string) => string;
+  canCraft: boolean;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const { entries } = queue;
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const from = entries.findIndex((entry) => entry.id === active.id);
     const to = entries.findIndex((entry) => entry.id === over.id);
-    if (from >= 0 && to >= 0) onReorder(arrayMove([...entries], from, to));
+    if (from >= 0 && to >= 0) queue.reorder(arrayMove([...entries], from, to));
   };
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={entries.map((entry) => entry.id)} strategy={verticalListSortingStrategy}>
-        <Stack gap="xs">
+        <Stack gap={6}>
           {entries.map((entry) => (
-            <QueueLine key={entry.id} entry={entry} plan={lines[entry.id]} getRecipe={getRecipe} actions={actions} />
+            <QueueLine key={entry.id} entry={entry} queue={queue} chestName={chestName} canCraft={canCraft} />
           ))}
         </Stack>
       </SortableContext>

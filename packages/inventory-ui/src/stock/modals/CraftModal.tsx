@@ -1,10 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useQueries } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Anchor,
   Modal,
   Stack,
   Select,
@@ -17,7 +15,7 @@ import {
   Divider,
   SimpleGrid,
 } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconPlaylistAdd } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useInventoryUi } from '../../InventoryUiProvider';
 import { unwrapActionResult } from '../../lib/actionResult';
@@ -50,8 +48,14 @@ interface CraftModalProps {
   ) => Promise<{ ok: true; quantityProduced?: number } | { ok: false }>;
   initialChestId?: string | null;
   chests?: ChestListItem[];
-  /** Craft queue page: several crafts at once, with the ingredient totals. */
-  craftQueueHref?: string;
+  /** Adds the craft to the floating craft queue instead of crafting it now. */
+  onAddToQueue?: (addition: {
+    craftedItemId: string;
+    recipeId: string;
+    times: number;
+    sourceChestId: string;
+    destinationChestId: string;
+  }) => Promise<void>;
 }
 
 export default function CraftModal({
@@ -61,7 +65,7 @@ export default function CraftModal({
   onCraft,
   initialChestId = null,
   chests = [],
-  craftQueueHref,
+  onAddToQueue,
 }: CraftModalProps) {
   const { scopeKey, actions } = useInventoryUi();
   const [selectedCraftItem, setSelectedCraftItem] = useState<string | null>(null);
@@ -73,6 +77,7 @@ export default function CraftModal({
   const [destinationChestId, setDestinationChestId] = useState<string | null>(initialChestId);
   const [ingredientChests, setIngredientChests] = useState<Record<string, string>>({});
   const [navStack, setNavStack] = useState<CraftContextV1[]>([]);
+  const [addingToQueue, setAddingToQueue] = useState(false);
 
   const { data: sourceChestItems = [], isFetching: loadingSourceItems } = useStockItems(
     sourceChestId,
@@ -266,6 +271,31 @@ export default function CraftModal({
     [],
   );
 
+  const canAddToQueue =
+    Boolean(selectedCraftItem && selectedRecipe && sourceChestId && destinationChestId) && craftQuantity >= 1;
+
+  /** Queues the craft, then clears the item to queue another one (the chests stay). */
+  const handleAddToQueue = async () => {
+    if (!onAddToQueue || !selectedCraftItem || !selectedRecipe || !sourceChestId || !destinationChestId) return;
+    setAddingToQueue(true);
+    try {
+      await onAddToQueue({
+        craftedItemId: selectedCraftItem,
+        recipeId: selectedRecipe,
+        times: craftQuantity,
+        sourceChestId,
+        destinationChestId,
+      });
+      setSelectedCraftItem(null);
+      setSelectedRecipe(null);
+      setCraftRecipes([]);
+      setCraftQuantity(1);
+      setIngredientChests({});
+    } finally {
+      setAddingToQueue(false);
+    }
+  };
+
   const handleCraft = async () => {
     if (!selectedCraftItem || !selectedRecipe || !sourceChestId || !destinationChestId) return;
 
@@ -456,7 +486,7 @@ export default function CraftModal({
       opened={opened}
       onClose={handleClose}
       title="Craft d'objet"
-      size="lg"
+      size="xl"
       yOffset={60}
       scrollAreaComponent={ScrollArea.Autosize}
     >
@@ -663,14 +693,21 @@ export default function CraftModal({
         )}
 
         <Group justify="flex-end" mt="md">
-          {craftQueueHref ? (
-            <Anchor component={Link} href={craftQueueHref} size="sm" mr="auto" c="dimmed">
-              Plusieurs crafts ? Ouvrir la file de craft
-            </Anchor>
-          ) : null}
           <Button variant="subtle" onClick={handleClose}>
             Annuler
           </Button>
+          {onAddToQueue ? (
+            <Button
+              variant="light"
+              color="sage"
+              leftSection={<IconPlaylistAdd size={16} />}
+              onClick={() => void handleAddToQueue()}
+              disabled={!canAddToQueue}
+              loading={addingToQueue}
+            >
+              Ajouter à la file
+            </Button>
+          ) : null}
           <Button onClick={handleCraft} disabled={isCraftButtonDisabled} color="sage">
             Craft
           </Button>

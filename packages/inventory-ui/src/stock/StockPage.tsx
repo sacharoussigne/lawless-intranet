@@ -15,6 +15,8 @@ import type {
 } from '../types';
 import { useInventoryUi } from '../InventoryUiProvider';
 import { StockHeader } from './components/StockHeader';
+import { CraftQueueWidget } from '../craftQueue/CraftQueueWidget';
+import { useCraftQueue } from '../craftQueue/useCraftQueue';
 import { ChestSelectorBar } from './components/ChestSelectorBar';
 import { CategorySection } from './components/CategorySection';
 import { groupItemsByCategory } from '../lib/sortItemsByCategory';
@@ -48,8 +50,6 @@ export type StockPageProps = {
   initialStockChecksSummary: StockChecksSummary;
   stockUiPreferences: StockUiPreferences;
   initialLastStockDaysByChest: Record<string, Date | null>;
-  /** Craft queue page, linked from the craft modal. */
-  craftQueueHref?: string;
 };
 
 export default function StockPage({
@@ -58,11 +58,12 @@ export default function StockPage({
   initialStockChecksSummary,
   stockUiPreferences,
   initialLastStockDaysByChest,
-  craftQueueHref,
 }: StockPageProps) {
   const { permissions, scopeKey } = useInventoryUi();
   const queryClient = useQueryClient();
   const chests = initialChests;
+  const canUseCraftQueue = Boolean(permissions?.stock.craftRead || permissions?.stock.craftWrite);
+  const craftQueue = useCraftQueue();
   const [selectedChestId, setSelectedChestId] = useState<string | null>(() =>
     initialChests.length === 1 ? initialChests[0].id : null,
   );
@@ -406,7 +407,7 @@ export default function StockPage({
         canCraft={permissions?.stock.craftWrite ?? false}
         initialChestId={selectedChestId}
         chests={chests}
-        craftQueueHref={craftQueueHref}
+        onAddToQueue={canUseCraftQueue ? craftQueue.addCraft : undefined}
         onCraft={async (
           itemId,
           recipeId,
@@ -468,6 +469,14 @@ export default function StockPage({
         chests={chests}
         initialChestId={selectedChestId}
       />
+
+      {canUseCraftQueue ? (
+        <CraftQueueWidget
+          queue={craftQueue}
+          chests={chests}
+          canCraft={Boolean(permissions?.stock.craftWrite)}
+        />
+      ) : null}
     </Container>
   );
 }

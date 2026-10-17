@@ -46,7 +46,7 @@ export function tenantRoutes(slug: string) {
       editTemplate: (id: string) => `${employeeBase}/mails/templates/${id}/edit`,
       testTemplate: (id: string) => `${employeeBase}/mails/templates/${id}/test`,
     },
-    stock: { index: `${employeeBase}/stock`, craft: `${employeeBase}/stock-craft` },
+    stock: { index: `${employeeBase}/stock` },
     orders: { index: `${employeeBase}/orders` },
     searchItems: { index: `${employeeBase}/search-items` },
     bank: { index: `${employeeBase}/bank` },

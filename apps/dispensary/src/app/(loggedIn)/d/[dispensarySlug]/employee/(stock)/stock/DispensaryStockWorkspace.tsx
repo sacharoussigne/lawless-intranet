@@ -12,7 +12,6 @@ import {
 } from '@lawless-intranet/inventory-ui';
 import { createDispensaryInventoryActions } from '@/lib/inventory/inventoryUiActions';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { tenantRoutes } from '@/types/routes';
 
 type DispensaryStockWorkspaceProps = {
   dispensarySlug: string;
@@ -61,7 +60,6 @@ export function DispensaryStockWorkspace({
         initialStockChecksSummary={initialStockChecksSummary}
         stockUiPreferences={stockUiPreferences}
         initialLastStockDaysByChest={initialLastStockDaysByChest}
-        craftQueueHref={tenantRoutes(dispensarySlug).stock.craft}
       />
     </InventoryUiProvider>
   );
