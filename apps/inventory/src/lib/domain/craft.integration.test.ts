@@ -1,5 +1,5 @@
 /**
- * Craft integration tests, against the LOCAL inventory database (DATABASE_URL
+ * Craft and stock concurrency integration tests, against the LOCAL inventory database (DATABASE_URL
  * of apps/inventory/.env). Each run works in its own throwaway scope and
  * deletes it afterwards. Skipped when the database is not on localhost.
  */
@@ -8,8 +8,10 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import prisma from '@/lib/prisma';
 import { getTodayStart } from '@/lib/date';
-import { craftItem } from '@/lib/domain/stock';
 import { listStockMovements } from '@/lib/domain/movements';
+import { cancelSale, createSale } from '@/lib/domain/sales';
+import { craftItem, moveItemsWithChests, transferStock } from '@/lib/domain/stock';
+import { completeOrder, createOrder } from '@/lib/domain/orders';
 // The craft queue logic of the UI (pure): its plan must match what the service really does.
 import {
   planCraftQueue,
@@ -100,6 +102,7 @@ describe.skipIf(!isLocalDatabase(process.env.DATABASE_URL))('craftItem (local da
       tincture: await createItem('Teinture', category.id, true),
       remedy: await createItem('Remède', category.id, true),
     };
+    await prisma.item.update({ where: { id: items.herb }, data: { canBeSold: true } });
     chestA = (await prisma.chest.create({ data: { ...scope, name: 'Coffre A' } })).id;
     chestB = (await prisma.chest.create({ data: { ...scope, name: 'Coffre B' } })).id;
     recipes = {
@@ -127,6 +130,8 @@ describe.skipIf(!isLocalDatabase(process.env.DATABASE_URL))('craftItem (local da
   afterAll(async () => {
     if (!items) return;
     await prisma.stockItemMovement.deleteMany({ where: { itemId: { in: Object.values(items) } } });
+    await prisma.sale.deleteMany({ where: scope });
+    await prisma.order.deleteMany({ where: scope });
     // Items cascade to their stock rows and recipes; chests and category go with the scope.
     await prisma.craftRecipe.deleteMany({ where: scope });
     await prisma.item.deleteMany({ where: scope });
@@ -337,6 +342,76 @@ describe.skipIf(!isLocalDatabase(process.env.DATABASE_URL))('craftItem (local da
     expect(await stock(items.herb, chestA)).toBe(0);
     expect(await stock(items.alcohol, chestA)).toBe(0);
     expect(await stock(items.tincture, chestA)).toBe(2);
+  });
+
+  describe('other stock writes, at the same time', () => {
+    const sellHerbs = (quantity: number) =>
+      createSale({
+        ...scope,
+        userId: USER,
+        items: [{ itemId: items.herb, quantity, source: 'CHEST', chestId: chestA }],
+      });
+
+    it('a craft and a sale never spend the same herbs twice', async () => {
+      await setStock(items.herb, chestA, 4);
+      await setStock(items.alcohol, chestA, 2);
+
+      const [crafted, sold] = await Promise.all([craft(recipes.tincture, items.tincture, 2), sellHerbs(4)]);
+
+      expect([crafted.ok, sold.ok].filter(Boolean)).toHaveLength(1);
+      expect(await stock(items.herb, chestA)).toBe(0);
+    });
+
+    it('two transfers never move more than the stock', async () => {
+      await setStock(items.herb, chestA, 4);
+      const transfer = () =>
+        transferStock({ ...scope, sourceChestId: chestA, destinationChestId: chestB, items: [{ itemId: items.herb, quantity: 3 }] });
+
+      const results = await Promise.all([transfer(), transfer()]);
+
+      expect(results.filter((result) => result.ok)).toHaveLength(1);
+      expect(await stock(items.herb, chestA)).toBe(1);
+      expect(await stock(items.herb, chestB)).toBe(3);
+    });
+
+    it('two takes never take more than the stock', async () => {
+      await setStock(items.herb, chestA, 4);
+      const take = () =>
+        moveItemsWithChests({ ...scope, mode: 'take', items: [{ itemId: items.herb, quantity: 3, chestId: chestA }] });
+
+      const results = await Promise.all([take(), take()]);
+
+      expect(results.filter((result) => result.ok)).toHaveLength(1);
+      expect(await stock(items.herb, chestA)).toBe(1);
+    });
+
+    it('cancelling a sale twice at once gives the stock back once', async () => {
+      await setStock(items.herb, chestA, 5);
+      const sale = await sellHerbs(3);
+      expect(sale.ok).toBe(true);
+      if (!sale.ok) return;
+      expect(await stock(items.herb, chestA)).toBe(2);
+
+      const cancel = () => cancelSale({ ...scope, id: sale.data.id, userId: USER, canViewAll: true });
+      const results = await Promise.all([cancel(), cancel()]);
+
+      expect(results.filter((result) => result.ok)).toHaveLength(1);
+      expect(await stock(items.herb, chestA)).toBe(5);
+    });
+
+    it('completing an order twice at once adds the stock once', async () => {
+      const order = await createOrder({ ...scope, name: 'Test', type: 'INCOMING', items: [{ itemId: items.herb, quantity: 5 }] });
+      expect(order.ok).toBe(true);
+      if (!order.ok) return;
+      const id = (order.data as { id: string }).id;
+      const complete = () =>
+        completeOrder({ ...scope, id, skipStock: false, stockLines: [{ itemId: items.herb, quantity: 5, chestId: chestA }] });
+
+      const results = await Promise.all([complete(), complete()]);
+
+      expect(results.filter((result) => result.ok)).toHaveLength(1);
+      expect(await stock(items.herb, chestA)).toBe(5);
+    });
   });
 
   it('serves a burst of crafts one after the other, within the stock', async () => {

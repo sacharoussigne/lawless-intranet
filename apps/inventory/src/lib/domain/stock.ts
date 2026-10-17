@@ -10,6 +10,7 @@ import { buildManualMovements, totalsFromItems, type StockStatsItemRow } from '@
 import { aggregateTodayAndPrevious, type StockHistoryRow } from '@/lib/stock/aggregateStock';
 import { resolveChestAccess, hasChestAccess, chestAccessWhereFilter, getDefaultChestId } from '@/lib/chests/access';
 import { Prisma } from '@/generated/prisma/client';
+import { stockTransaction } from '@/lib/stock/lock';
 import { serializeItem } from '@/lib/serialize';
 
 const ITEM_STOCK_SELECT = {
@@ -375,7 +376,7 @@ export async function updateStock(input: {
   const itemIds = input.stocks.map((d) => d.itemId);
   const resolvedChestId = targetChestId;
 
-  const results = await prisma.$transaction(async (tx) => {
+  const results = await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
     const [todayRows, previousRows] = await Promise.all([
       tx.stockHistory.findMany({
         where: {
@@ -524,12 +525,7 @@ export async function craftItem(input: {
   changeOf(input.craftedItemId, destinationChestId).produced += totalQuantityProduced;
   const stockLookups = [...changes.values()].map(({ itemId, chestId }) => ({ itemId, chestId }));
 
-  const craftResult = await prisma.$transaction(
-    async (tx) => {
-      // Crafts of a tenant run one at a time: two crafts cannot both spend the same stock.
-      const lockKey = `craft:${input.scopeType}:${input.scopeId}`;
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))::text AS locked`;
-
+  const craftResult = await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
       await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, { today, tomorrow });
       const ensured = await ensureTodayStockForPairs(tx, input.scopeType, input.scopeId, stockLookups, {
         today,
@@ -587,10 +583,7 @@ export async function craftItem(input: {
       });
 
       return { ok: true as const };
-    },
-    // Waiting for another craft of the tenant counts in the transaction time.
-    { maxWait: 10_000, timeout: 20_000 },
-  );
+  });
 
   if (!craftResult.ok) {
     return err('Stock insuffisant pour certains ingrédients', 400, craftResult.ingredientChecks);
@@ -627,7 +620,7 @@ export async function transferStock(input: {
   const tomorrow = getTomorrowStart();
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
       const pairs = validItems.flatMap(({ itemId }) => [
         { itemId, chestId: input.sourceChestId },
         { itemId, chestId: input.destinationChestId },
@@ -656,7 +649,7 @@ export async function transferStock(input: {
 
         await tx.stockHistory.update({
           where: { id: sourceStock.id },
-          data: { quantity: sourceStock.quantity - quantity },
+          data: { quantity: { decrement: quantity } },
         });
         sourceStock.quantity -= quantity;
 
@@ -664,7 +657,7 @@ export async function transferStock(input: {
         if (destinationStock) {
           await tx.stockHistory.update({
             where: { id: destinationStock.id },
-            data: { quantity: destinationStock.quantity + quantity },
+            data: { quantity: { increment: quantity } },
           });
           destinationStock.quantity += quantity;
         } else {
@@ -755,7 +748,7 @@ export async function moveItemsWithChests(input: {
   const tomorrow = getTomorrowStart();
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
       await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, {
         today,
         tomorrow,
@@ -781,13 +774,13 @@ export async function moveItemsWithChests(input: {
           }
           await tx.stockHistory.update({
             where: { id: stock.id },
-            data: { quantity: stock.quantity - item.quantity },
+            data: { quantity: { decrement: item.quantity } },
           });
           stock.quantity -= item.quantity;
         } else if (stock) {
           await tx.stockHistory.update({
             where: { id: stock.id },
-            data: { quantity: stock.quantity + item.quantity },
+            data: { quantity: { increment: item.quantity } },
           });
           stock.quantity += item.quantity;
         } else {
@@ -855,7 +848,7 @@ export async function overwriteStockForDate(input: {
     (stock) => stock.quantity !== null && stock.quantity !== undefined,
   );
 
-  await prisma.$transaction(async (tx) => {
+  await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
     await tx.stockHistory.deleteMany({
       where: {
         timestamp: { gte: dayStart, lt: dayEnd },
