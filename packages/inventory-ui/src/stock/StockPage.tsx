@@ -48,6 +48,8 @@ export type StockPageProps = {
   initialStockChecksSummary: StockChecksSummary;
   stockUiPreferences: StockUiPreferences;
   initialLastStockDaysByChest: Record<string, Date | null>;
+  /** Craft queue page, linked from the craft modal. */
+  craftQueueHref?: string;
 };
 
 export default function StockPage({
@@ -56,6 +58,7 @@ export default function StockPage({
   initialStockChecksSummary,
   stockUiPreferences,
   initialLastStockDaysByChest,
+  craftQueueHref,
 }: StockPageProps) {
   const { permissions, scopeKey } = useInventoryUi();
   const queryClient = useQueryClient();
@@ -403,6 +406,7 @@ export default function StockPage({
         canCraft={permissions?.stock.craftWrite ?? false}
         initialChestId={selectedChestId}
         chests={chests}
+        craftQueueHref={craftQueueHref}
         onCraft={async (
           itemId,
           recipeId,

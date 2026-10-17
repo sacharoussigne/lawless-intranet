@@ -7,6 +7,7 @@ export {
 
 export { default as StockPage, type StockPageProps } from './stock/StockPage';
 export { default as TakeDepositModal } from './stock/modals/TakeModal';
+export { default as CraftQueuePage, type CraftQueuePageProps } from './craftQueue/CraftQueuePage';
 
 export type {
   InventoryActionResult,

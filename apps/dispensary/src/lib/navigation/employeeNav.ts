@@ -15,6 +15,7 @@ import {
   IconReportMoney,
   IconSearch,
   IconStethoscope,
+  IconTools,
 } from '@tabler/icons-react';
 
 export type EmployeeNavId =
@@ -30,7 +31,7 @@ export type EmployeeNavId =
 export type EmployeeSectionId = 'stock' | 'activity';
 
 export type EmployeeSectionTab = {
-  id: 'inventory' | 'movements' | 'statistics' | 'weeklyActivity' | 'sales' | 'payroll';
+  id: 'inventory' | 'craft' | 'movements' | 'statistics' | 'weeklyActivity' | 'sales' | 'payroll';
   label: string;
   href: string;
   icon: Icon;
@@ -83,6 +84,13 @@ export function getEmployeeSectionTabs(
     section === 'stock'
       ? [
           { id: 'inventory', label: 'Inventaire', href: t.stock.index, icon: IconArchive, visible: canViewStock(ctx) },
+          {
+            id: 'craft',
+            label: 'Craft',
+            href: t.stock.craft,
+            icon: IconTools,
+            visible: canViewStock(ctx) && Boolean(permissions?.stock.craftRead || permissions?.stock.craftWrite),
+          },
           {
             id: 'movements',
             label: 'Mouvements',

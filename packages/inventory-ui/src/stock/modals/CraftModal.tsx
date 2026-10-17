@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useQueries } from '@tanstack/react-query';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
+  Anchor,
   Modal,
   Stack,
   Select,
@@ -48,6 +50,8 @@ interface CraftModalProps {
   ) => Promise<{ ok: true; quantityProduced?: number } | { ok: false }>;
   initialChestId?: string | null;
   chests?: ChestListItem[];
+  /** Craft queue page: several crafts at once, with the ingredient totals. */
+  craftQueueHref?: string;
 }
 
 export default function CraftModal({
@@ -57,6 +61,7 @@ export default function CraftModal({
   onCraft,
   initialChestId = null,
   chests = [],
+  craftQueueHref,
 }: CraftModalProps) {
   const { scopeKey, actions } = useInventoryUi();
   const [selectedCraftItem, setSelectedCraftItem] = useState<string | null>(null);
@@ -658,6 +663,11 @@ export default function CraftModal({
         )}
 
         <Group justify="flex-end" mt="md">
+          {craftQueueHref ? (
+            <Anchor component={Link} href={craftQueueHref} size="sm" mr="auto" c="dimmed">
+              Plusieurs crafts ? Ouvrir la file de craft
+            </Anchor>
+          ) : null}
           <Button variant="subtle" onClick={handleClose}>
             Annuler
           </Button>

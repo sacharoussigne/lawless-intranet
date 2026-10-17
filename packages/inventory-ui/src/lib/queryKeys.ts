@@ -10,6 +10,11 @@ export const stockKeys = {
     [...stockKeys.all(scopeKey), 'visibility', chestId] as const,
 };
 
+export const craftKeys = {
+  /** Enabled recipes producing an item. */
+  recipes: (scopeKey: string, itemId: string) => ['craft', scopeKey, 'recipes', itemId] as const,
+};
+
 /**
  * Short on purpose: the browser QueryClient outlives client navigations and
  * `initialData` from SSR is ignored once a key is cached, so returning to a

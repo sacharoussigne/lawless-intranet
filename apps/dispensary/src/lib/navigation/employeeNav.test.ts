@@ -64,6 +64,17 @@ describe('employee nav', () => {
     );
   });
 
+  it('shows the craft queue tab to people who can see or run crafts', () => {
+    const withCraft = { ...everything, stock: { view: true, craftRead: true } } as unknown as Permissions;
+    expect(getEmployeeSectionTabs(ctx(withCraft), 'stock').map((tab) => tab.id)).toEqual([
+      'inventory',
+      'craft',
+      'movements',
+      'statistics',
+    ]);
+    expect(getEmployeeSectionTabs(ctx(everything), 'stock').map((tab) => tab.id)).not.toContain('craft');
+  });
+
   it('hides tabs and sections without permission', () => {
     const noPayroll = ctx(permissions({ weekly: true, sales: true }));
     expect(getEmployeeSectionTabs(noPayroll, 'activity').map((tab) => tab.id)).toEqual(['weeklyActivity', 'sales']);

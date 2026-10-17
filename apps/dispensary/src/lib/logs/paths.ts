@@ -4,6 +4,7 @@ import type { LogFeature } from './types';
 const SEGMENT_FEATURES: Record<string, LogFeature> = {
   stock: 'stock',
   'stock-movements': 'stock',
+  'stock-craft': 'stock',
   'stock-statistics': 'stock',
   'overwrite-stock': 'stock',
   'search-items': 'search',
