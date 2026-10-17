@@ -75,10 +75,15 @@ describe('pruneSelection', () => {
 
 describe('splitSelection', () => {
   it('groups ids by kind', () => {
-    expect(splitSelection(['folder:a', 'file:c', 'folder:b'])).toEqual({
+    expect(splitSelection(['folder:a', 'link:l', 'file:c', 'folder:b'])).toEqual({
       folderIds: ['a', 'b'],
       fileIds: ['c'],
+      linkIds: ['l'],
     });
+  });
+
+  it('never sends a link to the file ids', () => {
+    expect(splitSelection(['link:l']).fileIds).toEqual([]);
   });
 });
 

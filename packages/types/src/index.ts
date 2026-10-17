@@ -158,6 +158,7 @@ export type {
   MediaFolderContentsRecord,
   MediaFolderRecord,
   MediaLimitsRecord,
+  MediaLinkRecord,
   MediaScopeParams,
   MediaShareTargetRecord,
   MediaTreeFolderRecord,

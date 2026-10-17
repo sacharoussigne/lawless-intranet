@@ -4,6 +4,7 @@ import { z } from 'zod/v3';
 import {
   completeMediaUpload,
   createMediaFolder,
+  createMediaLink,
   createMediaUpload,
   deleteMediaFile,
   deleteMediaFolder,
@@ -17,6 +18,7 @@ import {
   unshareMediaFile,
   updateMediaFile,
   updateMediaFolder,
+  updateMediaLink,
 } from '@lawless-intranet/media-client/server';
 import { actionErrorParser } from '@/lib/action';
 import { fetchUserProfile } from '@/lib/authUsers';
@@ -32,7 +34,11 @@ const nameSchema = z.string().trim().min(1, 'Le nom est requis').max(255, 'Le no
 const itemsSchema = z.object({
   folderIds: z.array(idSchema).max(1000),
   fileIds: z.array(idSchema).max(1000),
+  linkIds: z.array(idSchema).max(1000).default([]),
 });
+// The service only keeps http(s) URLs; an empty name takes the host.
+const linkUrlSchema = z.string().trim().min(1, 'L’adresse est requise').max(2048, 'L’adresse est trop longue');
+const linkNameSchema = z.string().trim().max(255, 'Le nom est trop long');
 
 /** Runs a media operation for the current shelter, with the shared guard and error mapping. */
 function withMedia<T>(
@@ -150,9 +156,36 @@ export async function unshareMediaLibraryFile(shelterSlug: string, id: string) {
   );
 }
 
+export async function createMediaLibraryLink(
+  shelterSlug: string,
+  input: { folderId: string | null; name: string; url: string },
+) {
+  return withMedia(shelterSlug, 'Erreur lors de l’ajout du lien', (scope, options) => {
+    const data = z.object({ folderId: nullableIdSchema, name: linkNameSchema, url: linkUrlSchema }).parse(input);
+    return createMediaLink(scope, data, options);
+  });
+}
+
+export async function updateMediaLibraryLink(
+  shelterSlug: string,
+  input: { id: string; name?: string; url?: string; folderId?: string | null },
+) {
+  return withMedia(shelterSlug, 'Erreur lors de la modification du lien', (scope, options) => {
+    const { id, ...data } = z
+      .object({
+        id: idSchema,
+        name: nameSchema.optional(),
+        url: linkUrlSchema.optional(),
+        folderId: nullableIdSchema.optional(),
+      })
+      .parse(input);
+    return updateMediaLink(scope, id, data, options);
+  });
+}
+
 export async function moveMediaLibraryItems(
   shelterSlug: string,
-  input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[]; destinationId: string | null },
 ) {
   return withMedia(shelterSlug, 'Erreur lors du déplacement', (scope, options) => {
     const data = itemsSchema.extend({ destinationId: nullableIdSchema }).parse(input);
@@ -162,7 +195,7 @@ export async function moveMediaLibraryItems(
 
 export async function deleteMediaLibraryItems(
   shelterSlug: string,
-  input: { folderIds: string[]; fileIds: string[] },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[] },
 ) {
   return withMedia(shelterSlug, 'Erreur lors de la suppression', (scope, options) =>
     deleteMediaItems(scope, itemsSchema.parse(input), options),

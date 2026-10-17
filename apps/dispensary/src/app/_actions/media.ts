@@ -6,6 +6,7 @@ import { z } from 'zod/v3';
 import {
   completeMediaUpload,
   createMediaFolder,
+  createMediaLink,
   createMediaUpload,
   deleteMediaFile,
   deleteMediaFolder,
@@ -19,6 +20,7 @@ import {
   unshareMediaFile,
   updateMediaFile,
   updateMediaFolder,
+  updateMediaLink,
 } from '@lawless-intranet/media-client/server';
 import { actionErrorParser } from '@/lib/action';
 import { mediaActionAuth } from '@/lib/media/auth';
@@ -33,7 +35,22 @@ const nameSchema = z.string().trim().min(1, 'Le nom est requis').max(255, 'Le no
 const itemsSchema = z.object({
   folderIds: z.array(idSchema).max(1000),
   fileIds: z.array(idSchema).max(1000),
+  linkIds: z.array(idSchema).max(1000).default([]),
 });
+// The service only keeps http(s) URLs; an empty name takes the host.
+const linkUrlSchema = z.string().trim().min(1, 'L’adresse est requise').max(2048, 'L’adresse est trop longue');
+const linkNameSchema = z.string().trim().max(255, 'Le nom est trop long');
+
+/** Log context of a link: its site, never the full address (it may hold an access token). */
+function linkLogContext(input: { url?: string; name?: string; id?: string; folderId?: string | null }) {
+  let host: string | undefined;
+  try {
+    host = input.url ? new URL(input.url).hostname : undefined;
+  } catch {
+    host = undefined;
+  }
+  return { id: input.id, folderId: input.folderId, name: input.name, host, urlChanged: input.url !== undefined };
+}
 
 /** Runs a media operation for the current dispensary, with the shared guard and error mapping. */
 function withMedia<T>(
@@ -151,9 +168,36 @@ async function unshareMediaLibraryFileUnlogged(dispensarySlug: string, id: strin
   );
 }
 
+async function createMediaLibraryLinkUnlogged(
+  dispensarySlug: string,
+  input: { folderId: string | null; name: string; url: string },
+) {
+  return withMedia(dispensarySlug, 'Erreur lors de l’ajout du lien', (scope, options) => {
+    const data = z.object({ folderId: nullableIdSchema, name: linkNameSchema, url: linkUrlSchema }).parse(input);
+    return createMediaLink(scope, data, options);
+  });
+}
+
+async function updateMediaLibraryLinkUnlogged(
+  dispensarySlug: string,
+  input: { id: string; name?: string; url?: string; folderId?: string | null },
+) {
+  return withMedia(dispensarySlug, 'Erreur lors de la modification du lien', (scope, options) => {
+    const { id, ...data } = z
+      .object({
+        id: idSchema,
+        name: nameSchema.optional(),
+        url: linkUrlSchema.optional(),
+        folderId: nullableIdSchema.optional(),
+      })
+      .parse(input);
+    return updateMediaLink(scope, id, data, options);
+  });
+}
+
 async function moveMediaLibraryItemsUnlogged(
   dispensarySlug: string,
-  input: { folderIds: string[]; fileIds: string[]; destinationId: string | null },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[]; destinationId: string | null },
 ) {
   return withMedia(dispensarySlug, 'Erreur lors du déplacement', (scope, options) => {
     const data = itemsSchema.extend({ destinationId: nullableIdSchema }).parse(input);
@@ -163,7 +207,7 @@ async function moveMediaLibraryItemsUnlogged(
 
 async function deleteMediaLibraryItemsUnlogged(
   dispensarySlug: string,
-  input: { folderIds: string[]; fileIds: string[] },
+  input: { folderIds: string[]; fileIds: string[]; linkIds: string[] },
 ) {
   return withMedia(dispensarySlug, 'Erreur lors de la suppression', (scope, options) =>
     deleteMediaItems(scope, itemsSchema.parse(input), options),
@@ -258,6 +302,28 @@ export async function unshareMediaLibraryFile(
 ) {
   return loggedAction({ feature: 'media', event: 'media.unshareMediaLibraryFile' }, args, () =>
     unshareMediaLibraryFileUnlogged(...args),
+  );
+}
+
+export async function createMediaLibraryLink(
+  ...args: Parameters<typeof createMediaLibraryLinkUnlogged>
+) {
+  const [, input] = args;
+  return loggedAction(
+    { feature: 'media', event: 'media.createMediaLibraryLink', context: linkLogContext(input) },
+    args,
+    () => createMediaLibraryLinkUnlogged(...args),
+  );
+}
+
+export async function updateMediaLibraryLink(
+  ...args: Parameters<typeof updateMediaLibraryLinkUnlogged>
+) {
+  const [, input] = args;
+  return loggedAction(
+    { feature: 'media', event: 'media.updateMediaLibraryLink', context: linkLogContext(input) },
+    args,
+    () => updateMediaLibraryLinkUnlogged(...args),
   );
 }
 

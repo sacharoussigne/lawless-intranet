@@ -1,7 +1,7 @@
 /** Drag & drop ids and rules for moving items between folders. */
 
 export type DragItem = {
-  kind: 'folder' | 'file';
+  kind: 'folder' | 'link' | 'file';
   id: string;
   /** Current folder of the item (null = root). */
   parentId: string | null;

@@ -45,3 +45,26 @@ const SHARE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32}$/;
 export function isShareToken(value: string): boolean {
   return SHARE_TOKEN_PATTERN.test(value);
 }
+
+export const MEDIA_LINK_URL_MAX_LENGTH = 2048;
+
+/** Normalized http(s) URL of a saved link, or null (other protocols, such as `javascript:`, are refused). */
+export function normalizeLinkUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length > MEDIA_LINK_URL_MAX_LENGTH) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+  if (!url.hostname) return null;
+  const normalized = url.toString();
+  return normalized.length > MEDIA_LINK_URL_MAX_LENGTH ? null : normalized;
+}
+
+/** Display name of a link saved without one: its host, without `www.`. */
+export function defaultLinkName(url: string): string {
+  return normalizeMediaName(new URL(url).hostname.replace(/^www\./, '')).slice(0, MEDIA_NAME_MAX_LENGTH);
+}

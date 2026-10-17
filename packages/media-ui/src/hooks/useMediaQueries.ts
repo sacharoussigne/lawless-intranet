@@ -2,7 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import type { MediaFileRecord, MediaFolderContentsRecord } from '@lawless-intranet/types';
+import type { MediaFileRecord, MediaFolderContentsRecord, MediaLinkRecord } from '@lawless-intranet/types';
 import { copyImageToClipboard } from '../clipboard';
 import { useMediaUi } from '../MediaUiProvider';
 import { mediaKeys } from '../queryKeys';
@@ -67,10 +67,10 @@ function notifySuccess(message: string) {
 }
 
 /** `name` (single item) only feeds the notification. */
-type BatchInput = { folderIds: string[]; fileIds: string[]; name: string };
+type BatchInput = { folderIds: string[]; fileIds: string[]; linkIds: string[]; name: string };
 
-function batchMessage({ folderIds, fileIds, name }: BatchInput, verb: string): string {
-  const count = folderIds.length + fileIds.length;
+function batchMessage({ folderIds, fileIds, linkIds, name }: BatchInput, verb: string): string {
+  const count = folderIds.length + fileIds.length + linkIds.length;
   return count > 1 ? `${count} éléments ${verb}s` : `« ${name} » ${verb}`;
 }
 
@@ -101,6 +101,21 @@ export function useMediaMutations() {
     onSettled: invalidate,
   });
 
+  const createLink = useMutation({
+    mutationFn: async (input: { folderId: string | null; name: string; url: string }) =>
+      runMediaAction(await actions.createLink(input)),
+    onSuccess: (link) => notifySuccess(`Lien « ${link.name} » ajouté`),
+    onError: (error) => notifyError(error, 'Ajout impossible'),
+    onSettled: invalidate,
+  });
+
+  const updateLink = useMutation({
+    mutationFn: async (input: { id: string; name?: string; url?: string; folderId?: string | null }) =>
+      runMediaAction(await actions.updateLink(input)),
+    onError: (error) => notifyError(error, 'Modification impossible'),
+    onSettled: invalidate,
+  });
+
   const moveItems = useMutation({
     mutationFn: async ({ name: _name, ...input }: BatchInput & { destinationId: string | null }) =>
       runMediaAction(await actions.moveItems(input)),
@@ -116,7 +131,19 @@ export function useMediaMutations() {
     onSettled: invalidate,
   });
 
-  return { createFolder, updateFolder, updateFile, moveItems, deleteItems };
+  return { createFolder, updateFolder, updateFile, createLink, updateLink, moveItems, deleteItems };
+}
+
+/** Copies the address of a saved link (shown in a notification when the clipboard is refused). */
+export function useCopyLinkUrl() {
+  return async (link: MediaLinkRecord) => {
+    try {
+      await navigator.clipboard.writeText(link.url);
+      notifySuccess('Adresse copiée');
+    } catch {
+      notifications.show({ title: link.name, message: link.url, color: 'moss', autoClose: false });
+    }
+  };
 }
 
 export function useMediaDownload() {

@@ -1,6 +1,6 @@
 # Médiathèque (`apps/media`)
 
-Stockage de fichiers façon drive : images et PDF rangés en dossiers, avec renommage, déplacement, suppression, aperçu et téléchargement. La médiathèque est branchée sur le **refuge** et le **dispensaire** : une médiathèque par refuge et une par dispensaire, cloisonnées par `scopeType` / `scopeId` (`shelter:<id>`, `dispensary:<id>`). Le service ne connaît pas les hôtes : chaque hôte vérifie le tenant, la feature et la permission avant de l'appeler.
+Stockage de fichiers façon drive : images, PDF et **liens externes** rangés en dossiers, avec renommage, déplacement, suppression, aperçu et téléchargement. La médiathèque est branchée sur le **refuge** et le **dispensaire** : une médiathèque par refuge et une par dispensaire, cloisonnées par `scopeType` / `scopeId` (`shelter:<id>`, `dispensary:<id>`). Le service ne connaît pas les hôtes : chaque hôte vérifie le tenant, la feature et la permission avant de l'appeler.
 
 ## Fonctionnement
 
@@ -30,6 +30,16 @@ Chaque modification publie `media:<scopeType>:<scopeId>` sur le serveur WebSocke
 Quand l'onglet est fermé ou que le réseau coupe avant la finalisation, un import abandonné laisse une ligne `UPLOADING` en base, et parfois un objet orphelin dans S3.
 - **Nettoyage automatique** : le service lance le nettoyage au démarrage, puis **toutes les heures** (`src/instrumentation.ts`, sans cron externe). Il supprime les fichiers `UPLOADING` de plus de 24 h, en base puis dans S3. Comme le ticket d'import ne vit que 15 min, aucun import en cours n'est touché.
 - **Déclenchement manuel** : `POST /api/maintenance/cleanup-uploads`, avec le header `x-media-internal-secret`. Le service écrit `[media] cleaned N abandoned upload(s)` dans les logs.
+
+## Liens externes
+
+Pour noter les ressources hors de l'intranet (tableurs, documents partagés, sites…) : clic droit, « Dossier ▾ » ou bouton « + » sur mobile, puis « **Nouveau lien** ». Un lien a un nom et une adresse, et se range, se renomme, se déplace et se supprime comme un fichier.
+- **Ouverture** : double-clic ou Entrée sur ordinateur (un clic sélectionne, comme pour les fichiers), simple appui sur mobile, ou « Ouvrir le lien » dans le menu. L'adresse s'ouvre dans un nouvel onglet, avec `noopener,noreferrer`.
+- **Stockage** : table `media_link` (`MediaLink`), rien dans S3. Les liens ne dépendent donc pas de la configuration du stockage. Supprimer un dossier supprime ses liens (cascade).
+- **Adresses acceptées** : `http://` et `https://` uniquement, 2048 caractères maximum (`normalizeLinkUrl` dans `src/lib/names.ts`). Les autres protocoles (`javascript:`, `data:`…) sont refusés par le service, qui fait foi ; l'interface fait la même vérification pour afficher l'erreur tout de suite.
+- **Nom** : facultatif à la création. Sans nom, le lien prend le domaine de l'adresse (`docs.google.com`).
+- **Routes** : `POST /api/links`, `PATCH` et `DELETE /api/links/:id`. Le déplacement et la suppression groupés passent par `items/move` et `items/delete` (`linkIds`).
+- **Logs (dispensaire)** : la création et la modification sont journalisées avec le domaine seulement, jamais l'adresse complète, qui peut contenir un jeton d'accès.
 
 ## Liens de partage
 
