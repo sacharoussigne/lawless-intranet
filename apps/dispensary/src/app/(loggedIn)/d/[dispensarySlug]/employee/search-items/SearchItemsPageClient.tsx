@@ -1,7 +1,8 @@
 'use client';
 
 import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   Container,
   Title,
@@ -13,12 +14,13 @@ import {
   Table,
   Badge,
   LoadingOverlay,
+  Alert,
 } from '@mantine/core';
 import { handleAction } from '@/lib/action';
 import { fetchRead } from '@/lib/read/fetchRead';
 import { getStockPreviousColumnLabel, getStockTotalPreviousLabel } from '@/lib/stock/stockPreviousLabel';
-import { notifications } from '@mantine/notifications';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
+import { stockKeys } from '@/lib/stock/queryKeys';
 import type { ItemWithRelations } from '@/types/items';
 import type { StockItemWithStockRecord } from '@lawless-intranet/types';
 
@@ -33,45 +35,23 @@ export default function SearchItemsPageClient({
 }: SearchItemsPageClientProps) {
   const dispensarySlug = useRequiredDispensarySlug();
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
-  const [itemsWithStock, setItemsWithStock] = useState<ItemWithDetailedStock[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  // Kept fresh by the stock realtime (`['stock', slug]`).
+  const detailsQuery = useQuery({
+    queryKey: stockKeys.detailed(dispensarySlug, selectedItemIds),
+    queryFn: async (): Promise<ItemWithDetailedStock[]> =>
+      handleAction(await fetchRead(dispensarySlug, 'itemsWithDetailedStock', { itemIds: selectedItemIds })) ?? [],
+    enabled: selectedItemIds.length > 0,
+    placeholderData: keepPreviousData,
+  });
+  const itemsWithStock = selectedItemIds.length > 0 ? (detailsQuery.data ?? []) : [];
+  const loading = detailsQuery.isFetching && detailsQuery.isPlaceholderData;
 
   const itemOptions = initialItems.map((item) => ({
     value: item.id,
     label: item.name,
   }));
 
-  const loadItemsDetails = async () => {
-    if (selectedItemIds.length === 0) {
-      setItemsWithStock([]);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const result = await fetchRead(dispensarySlug, 'itemsWithDetailedStock', {
-        itemIds: selectedItemIds,
-      });
-      const data = handleAction(result);
-      if (data) {
-        setItemsWithStock(data);
-      }
-    } catch (error: any) {
-      notifications.show({
-        title: 'Erreur',
-        message: error.message || 'Erreur lors du chargement des détails des items',
-        color: 'red',
-      });
-      setItemsWithStock([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadItemsDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedItemIds]);
 
   return (
     <Container size="xl" py="xl">
@@ -90,6 +70,14 @@ export default function SearchItemsPageClient({
               clearable
               maxDropdownHeight={300}
             />
+
+            {detailsQuery.isError ? (
+              <Alert color="danger">
+                {detailsQuery.error instanceof Error
+                  ? detailsQuery.error.message
+                  : 'Erreur lors du chargement des détails des items'}
+              </Alert>
+            ) : null}
 
             {itemsWithStock.length > 0 && (
               <Stack gap="lg" mt="md">

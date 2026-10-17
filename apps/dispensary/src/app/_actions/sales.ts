@@ -1,5 +1,6 @@
 'use server';
 
+import { emitStockChange } from '@/lib/stock/realtime/broadcast';
 import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
@@ -224,6 +225,7 @@ async function createSaleUnlogged(
       { id: listItem.id, userId: listItem.userId, createdAt: listItem.createdAt },
       mutationMeta,
     );
+    emitStockChange(dispensaryId, mutationMeta);
 
     return {
       status: 200,
@@ -285,6 +287,7 @@ async function cancelSaleUnlogged(
       },
       mutationMeta,
     );
+    emitStockChange(dispensaryId, mutationMeta);
 
     return { status: 200, data: { success: true } };
   } catch (error) {
@@ -381,6 +384,7 @@ async function deleteSaleUnlogged(
       { id: saleId, userId, createdAt: new Date() },
       mutationMeta,
     );
+    emitStockChange(dispensaryId, mutationMeta);
 
     return { status: 200, data: { success: true } };
   } catch (error) {

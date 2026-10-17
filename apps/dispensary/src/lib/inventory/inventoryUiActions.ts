@@ -7,21 +7,34 @@ import {
   setChestCategoryHidden,
   setChestItemHidden,
 } from '@/app/_actions/stockVisibility';
+import { realtimeMutationMeta } from '@lawless-intranet/realtime';
 import { fetchRead } from '@/lib/read/fetchRead';
 
-export function createDispensaryInventoryActions(dispensarySlug: string): InventoryUiActions {
+/**
+ * Binds the dispensary server actions to the inventory-ui action contract.
+ * `clientId`: this tab's realtime socket, so stock changes are not echoed back to it.
+ */
+export function createDispensaryInventoryActions(
+  dispensarySlug: string,
+  clientId?: string | null,
+): InventoryUiActions {
+  const meta = realtimeMutationMeta(clientId);
   return {
     // Reads go over GET (lib/read): they do not queue behind server actions.
     getItemsWithStock: (chestId) =>
       toUiResult(fetchRead(dispensarySlug, 'itemsWithStock', { chestId })),
     updateStock: (input) =>
       toUiResult(
-        updateStock(dispensarySlug, input.stockData, input.targetChestId, {
-          skipHistory: input.skipHistory,
-        }),
+        updateStock(
+          dispensarySlug,
+          input.stockData,
+          input.targetChestId,
+          { skipHistory: input.skipHistory },
+          meta,
+        ),
       ),
     craftItem: async (input) => {
-      const result = await toUiResult(craftItem(dispensarySlug, input));
+      const result = await toUiResult(craftItem(dispensarySlug, input, meta));
       if (result.data === undefined) {
         return { status: result.status, error: result.error ?? 'Erreur' };
       }
@@ -34,11 +47,11 @@ export function createDispensaryInventoryActions(dispensarySlug: string): Invent
       return { status: result.status, data: { quantityProduced } };
     },
     transferMultipleStock: (input) =>
-      toUiResult(transferMultipleStock(dispensarySlug, input)) as Promise<
+      toUiResult(transferMultipleStock(dispensarySlug, input, meta)) as Promise<
         InventoryActionResult<{ success: true }>
       >,
     moveItemsWithChests: (input) =>
-      toUiResult(moveItemsWithChests(dispensarySlug, input)) as Promise<
+      toUiResult(moveItemsWithChests(dispensarySlug, input, meta)) as Promise<
         InventoryActionResult<{ success: true; count: number; mode: 'take' | 'deposit' }>
       >,
     getStockChecksSummary: () => toUiResult(fetchRead(dispensarySlug, 'stockChecksSummary')),

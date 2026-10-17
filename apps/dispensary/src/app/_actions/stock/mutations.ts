@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import {
@@ -18,6 +19,8 @@ async function updateStockUnlogged(
   data: { itemId: string; quantity: number }[],
   chestId?: string | null,
   options?: { skipHistory?: boolean },
+  /** Realtime meta of the client: no echo of the change to its author. */
+  _meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -65,6 +68,8 @@ async function craftItemUnlogged(
     ingredientChests: { ingredientId: string; chestId: string }[];
     destinationChestId: string | null;
   },
+  /** Realtime meta of the client: no echo of the change to its author. */
+  _meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -135,39 +140,53 @@ async function overwriteStockForDateUnlogged(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function updateStock(...args: Parameters<typeof updateStockUnlogged>) {
-  return loggedAction(
-    {
-      feature: 'stock',
-      event: 'mutations.updateStock',
-      target: ([, , chestId]) => chestId,
-    },
-    args,
-    () => updateStockUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        {
+          feature: 'stock',
+          event: 'mutations.updateStock',
+          target: ([, , chestId]) => chestId,
+        },
+        args,
+        () => updateStockUnlogged(...args),
+      ),
+    args[4],
   );
 }
 
 export async function craftItem(...args: Parameters<typeof craftItemUnlogged>) {
-  return loggedAction(
-    {
-      feature: 'stock',
-      event: 'mutations.craftItem',
-      target: ([, data]) => data.recipeId,
-    },
-    args,
-    () => craftItemUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        {
+          feature: 'stock',
+          event: 'mutations.craftItem',
+          target: ([, data]) => data.recipeId,
+        },
+        args,
+        () => craftItemUnlogged(...args),
+      ),
+    args[2],
   );
 }
 
 export async function overwriteStockForDate(
   ...args: Parameters<typeof overwriteStockForDateUnlogged>
 ) {
-  return loggedAction(
-    {
-      feature: 'stock',
-      event: 'mutations.overwriteStockForDate',
-      target: ([, data]) => data.chestId,
-    },
-    args,
-    () => overwriteStockForDateUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        {
+          feature: 'stock',
+          event: 'mutations.overwriteStockForDate',
+          target: ([, data]) => data.chestId,
+        },
+        args,
+        () => overwriteStockForDateUnlogged(...args),
+      ),
   );
 }

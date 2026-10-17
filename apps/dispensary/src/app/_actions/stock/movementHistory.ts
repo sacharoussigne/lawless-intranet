@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
@@ -272,27 +273,39 @@ export async function getStockMovementReconciliation(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function updateStockMovement(...args: Parameters<typeof updateStockMovementUnlogged>) {
-  return loggedAction(
-    { feature: 'stock', event: 'movementHistory.updateStockMovement' },
-    args,
-    () => updateStockMovementUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'stock', event: 'movementHistory.updateStockMovement' },
+        args,
+        () => updateStockMovementUnlogged(...args),
+      ),
   );
 }
 
 export async function deleteStockMovement(...args: Parameters<typeof deleteStockMovementUnlogged>) {
-  return loggedAction(
-    { feature: 'stock', event: 'movementHistory.deleteStockMovement' },
-    args,
-    () => deleteStockMovementUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'stock', event: 'movementHistory.deleteStockMovement' },
+        args,
+        () => deleteStockMovementUnlogged(...args),
+      ),
   );
 }
 
 export async function deleteStockMovements(
   ...args: Parameters<typeof deleteStockMovementsUnlogged>
 ) {
-  return loggedAction(
-    { feature: 'stock', event: 'movementHistory.deleteStockMovements' },
-    args,
-    () => deleteStockMovementsUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'stock', event: 'movementHistory.deleteStockMovements' },
+        args,
+        () => deleteStockMovementsUnlogged(...args),
+      ),
   );
 }

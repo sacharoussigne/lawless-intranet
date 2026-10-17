@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -186,25 +187,41 @@ async function reorderChestsUnlogged(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function createChest(...args: Parameters<typeof createChestUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'chests.createChest' }, args, () =>
-    createChestUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'chests.createChest' }, args, () =>
+        createChestUnlogged(...args),
+      ),
   );
 }
 
 export async function updateChest(...args: Parameters<typeof updateChestUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'chests.updateChest' }, args, () =>
-    updateChestUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'chests.updateChest' }, args, () =>
+        updateChestUnlogged(...args),
+      ),
   );
 }
 
 export async function deleteChest(...args: Parameters<typeof deleteChestUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'chests.deleteChest' }, args, () =>
-    deleteChestUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'chests.deleteChest' }, args, () =>
+        deleteChestUnlogged(...args),
+      ),
   );
 }
 
 export async function reorderChests(...args: Parameters<typeof reorderChestsUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'chests.reorderChests' }, args, () =>
-    reorderChestsUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'chests.reorderChests' }, args, () =>
+        reorderChestsUnlogged(...args),
+      ),
   );
 }

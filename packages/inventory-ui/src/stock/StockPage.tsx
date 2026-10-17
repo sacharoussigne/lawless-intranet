@@ -2,7 +2,10 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Container, Text, Stack, Center, Loader } from '@mantine/core';
+import { Alert, Container, Text, Stack, Center, Loader } from '@mantine/core';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { REALTIME_DOMAIN } from '@lawless-intranet/realtime';
+import { useRealtimeSocketEvents } from '@lawless-intranet/realtime/socket';
 import { notifications } from '@mantine/notifications';
 import CraftModal from './modals/CraftModal';
 import TransferModal from './modals/TransferModal';
@@ -44,6 +47,8 @@ import {
   getChangedStockEntries,
 } from './hooks/useStockQueries';
 
+const STOCK_REALTIME_DOMAINS = [REALTIME_DOMAIN.stock] as const;
+
 export type StockPageProps = {
   initialItems: ItemWithRelations[];
   initialChests: ChestListItem[];
@@ -68,6 +73,13 @@ export default function StockPage({
     initialChests.length === 1 ? initialChests[0].id : null,
   );
   const [isEditing, setIsEditing] = useState(false);
+  /** Someone else changed stock while this count was being typed (saving overwrites quantities). */
+  const [changedWhileEditing, setChangedWhileEditing] = useState(false);
+  useRealtimeSocketEvents({
+    enabled: isEditing,
+    domains: STOCK_REALTIME_DOMAINS,
+    onEvent: () => setChangedWhileEditing(true),
+  });
   const [craftModalOpened, setCraftModalOpened] = useState(false);
   const [transferModalOpened, setTransferModalOpened] = useState(false);
   const [takeModalOpened, setTakeModalOpened] = useState(false);
@@ -141,6 +153,7 @@ export default function StockPage({
       initialValues[item.id] = item.stockToday !== null ? item.stockToday : null;
     });
     setEditedQuantitiesByItemId(initialValues);
+    setChangedWhileEditing(false);
     setIsEditing(true);
   };
 
@@ -358,6 +371,14 @@ export default function StockPage({
         onSave={handleSaveStock}
         onSkipHistoryChange={setSkipHistory}
       />
+
+      {isEditing && changedWhileEditing ? (
+        <Alert color="amber" icon={<IconAlertTriangle size={16} />} mb="md">
+          Le stock a été modifié par quelqu&apos;un d&apos;autre pendant votre saisie (craft, vente,
+          transfert…). Vos valeurs sont conservées : vérifiez-les, car l&apos;enregistrement remplace les
+          quantités du coffre.
+        </Alert>
+      ) : null}
 
       {loading ? (
         <Center py="xl" mih={240}>

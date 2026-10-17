@@ -23,6 +23,7 @@ import { userHasAccessibleChests } from '@/lib/chests/access';
 import { DispensaryRealtimeSocketShell } from './DispensaryRealtimeSocketShell';
 import { getRealtimePublicUrl } from '@/lib/realtime/socketConfig';
 import { OrdersRealtimeBridge } from './OrdersRealtimeBridge';
+import { StockRealtimeBridge } from './StockRealtimeBridge';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import { getMemberDescription } from '@/lib/dispensary/memberDescription';
 import { MailTemplateProvider } from '@lawless-intranet/mail-template-ui';
@@ -112,6 +113,7 @@ export default async function DispensaryLayout({
         >
         <QueryProvider>
           <OrdersRealtimeBridge />
+          <StockRealtimeBridge />
           <MailTemplateProvider
             username={username}
             userDescription={memberDescription}
