@@ -76,7 +76,10 @@ export async function listStockMovements(input: {
         chest: { select: { name: true } },
         destinationChest: { select: { name: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      // Movements of one operation share their timestamp: within it, the enum
+      // order puts what leaves before what arrives (consumed before produced,
+      // out before in); the id keeps pages stable.
+      orderBy: [{ createdAt: 'desc' }, { kind: 'asc' }, { id: 'asc' }],
       skip,
       take: pageSize,
     }),
