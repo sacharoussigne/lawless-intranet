@@ -565,8 +565,8 @@ export async function craftItem(input: {
         }
       }
 
-      // Same timestamp for the whole craft: the movements list shows the consumed
-      // ingredients above the product (CRAFT_CONSUME sorts before CRAFT_PRODUCE).
+      // Same timestamp for the whole craft: the newest-first movements list shows
+      // the product, then the ingredients it consumed just below.
       await tx.stockItemMovement.createMany({
         data: [
           ...ingredientRequirements.map(({ ingredient, requiredQuantity, sourceChestId }) => ({

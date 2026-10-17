@@ -310,16 +310,16 @@ describe.skipIf(!isLocalDatabase(process.env.DATABASE_URL))('craftItem (local da
     expect(await stock(items.grain, chestA)).toBe(0);
   });
 
-  it('lists the consumed ingredients above the product in the movements', async () => {
+  it('lists a craft newest first: the product, then the ingredients it consumed', async () => {
     await setStock(items.herb, chestA, 2);
     await setStock(items.alcohol, chestA, 1);
     expect((await craft(recipes.tincture, items.tincture, 1)).ok).toBe(true);
 
     const listed = await listStockMovements({ ...scope, pageSize: 10 });
     expect(listed.ok && listed.data.items.map((movement) => movement.kind)).toEqual([
-      'CRAFT_CONSUME',
-      'CRAFT_CONSUME',
       'CRAFT_PRODUCE',
+      'CRAFT_CONSUME',
+      'CRAFT_CONSUME',
     ]);
   });
 
