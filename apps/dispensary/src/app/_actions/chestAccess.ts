@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -128,13 +129,17 @@ async function upsertRoleChestAccessUnlogged(
 export async function upsertRoleChestAccess(
   ...args: Parameters<typeof upsertRoleChestAccessUnlogged>
 ) {
-  return loggedAction(
-    {
-      feature: 'management',
-      event: 'chestAccess.upsertRoleChestAccess',
-      target: ([, data]) => data.role,
-    },
-    args,
-    () => upsertRoleChestAccessUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        {
+          feature: 'management',
+          event: 'chestAccess.upsertRoleChestAccess',
+          target: ([, data]) => data.role,
+        },
+        args,
+        () => upsertRoleChestAccessUnlogged(...args),
+      ),
   );
 }

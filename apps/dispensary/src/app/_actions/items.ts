@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -181,25 +182,41 @@ async function reorderItemsUnlogged(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function createItem(...args: Parameters<typeof createItemUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'items.createItem' }, args, () =>
-    createItemUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'items.createItem' }, args, () =>
+        createItemUnlogged(...args),
+      ),
   );
 }
 
 export async function updateItem(...args: Parameters<typeof updateItemUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'items.updateItem' }, args, () =>
-    updateItemUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'items.updateItem' }, args, () =>
+        updateItemUnlogged(...args),
+      ),
   );
 }
 
 export async function deleteItem(...args: Parameters<typeof deleteItemUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'items.deleteItem' }, args, () =>
-    deleteItemUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'items.deleteItem' }, args, () =>
+        deleteItemUnlogged(...args),
+      ),
   );
 }
 
 export async function reorderItems(...args: Parameters<typeof reorderItemsUnlogged>) {
-  return loggedAction({ feature: 'management', event: 'items.reorderItems' }, args, () =>
-    reorderItemsUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'management', event: 'items.reorderItems' }, args, () =>
+        reorderItemsUnlogged(...args),
+      ),
   );
 }

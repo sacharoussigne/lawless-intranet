@@ -11,6 +11,7 @@ import {
 } from '@lawless-intranet/inventory-ui';
 import { SaleModal } from '@/app/_components/sales/SaleModal';
 import { usePermissions, useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
+import { useOptionalRealtimeSocket } from '@lawless-intranet/realtime/socket';
 import { createDispensaryInventoryActions } from '@/lib/inventory/inventoryUiActions';
 import type { ChestListItem } from '@/types/chests';
 import type { OrdersPageResult } from '@/types/orders';
@@ -156,9 +157,10 @@ export function EmployeeQuickActions({
   const { permissions } = usePermissions();
   const requiredSlug = useRequiredDispensarySlug();
   const scopeSlug = dispensarySlug ?? requiredSlug;
+  const clientId = useOptionalRealtimeSocket()?.clientId ?? null;
   const inventoryActions = useMemo(
-    () => createDispensaryInventoryActions(scopeSlug),
-    [scopeSlug],
+    () => createDispensaryInventoryActions(scopeSlug, clientId),
+    [scopeSlug, clientId],
   );
   const inventoryPermissions: InventoryUiPermissions = useMemo(
     () => ({

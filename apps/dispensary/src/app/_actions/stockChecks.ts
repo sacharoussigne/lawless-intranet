@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -140,13 +141,17 @@ export async function getStockChecksSummary(dispensarySlug: string) {
 export async function upsertChestStockCheckConfig(
   ...args: Parameters<typeof upsertChestStockCheckConfigUnlogged>
 ) {
-  return loggedAction(
-    {
-      feature: 'stock',
-      event: 'stockChecks.upsertChestStockCheckConfig',
-      target: ([, input]) => input.chestId,
-    },
-    args,
-    () => upsertChestStockCheckConfigUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        {
+          feature: 'stock',
+          event: 'stockChecks.upsertChestStockCheckConfig',
+          target: ([, input]) => input.chestId,
+        },
+        args,
+        () => upsertChestStockCheckConfigUnlogged(...args),
+      ),
   );
 }

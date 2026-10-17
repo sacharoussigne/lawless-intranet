@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -142,25 +143,37 @@ async function deleteCraftRecipeUnlogged(dispensarySlug: string, data: { id: str
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function createCraftRecipe(...args: Parameters<typeof createCraftRecipeUnlogged>) {
-  return loggedAction(
-    { feature: 'management', event: 'craftRecipes.createCraftRecipe' },
-    args,
-    () => createCraftRecipeUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'management', event: 'craftRecipes.createCraftRecipe' },
+        args,
+        () => createCraftRecipeUnlogged(...args),
+      ),
   );
 }
 
 export async function updateCraftRecipe(...args: Parameters<typeof updateCraftRecipeUnlogged>) {
-  return loggedAction(
-    { feature: 'management', event: 'craftRecipes.updateCraftRecipe' },
-    args,
-    () => updateCraftRecipeUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'management', event: 'craftRecipes.updateCraftRecipe' },
+        args,
+        () => updateCraftRecipeUnlogged(...args),
+      ),
   );
 }
 
 export async function deleteCraftRecipe(...args: Parameters<typeof deleteCraftRecipeUnlogged>) {
-  return loggedAction(
-    { feature: 'management', event: 'craftRecipes.deleteCraftRecipe' },
-    args,
-    () => deleteCraftRecipeUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'management', event: 'craftRecipes.deleteCraftRecipe' },
+        args,
+        () => deleteCraftRecipeUnlogged(...args),
+      ),
   );
 }

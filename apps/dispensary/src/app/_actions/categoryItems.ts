@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -143,35 +144,51 @@ async function reorderCategoryItemsUnlogged(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function createCategoryItem(...args: Parameters<typeof createCategoryItemUnlogged>) {
-  return loggedAction(
-    { feature: 'management', event: 'categoryItems.createCategoryItem' },
-    args,
-    () => createCategoryItemUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'management', event: 'categoryItems.createCategoryItem' },
+        args,
+        () => createCategoryItemUnlogged(...args),
+      ),
   );
 }
 
 export async function updateCategoryItem(...args: Parameters<typeof updateCategoryItemUnlogged>) {
-  return loggedAction(
-    { feature: 'management', event: 'categoryItems.updateCategoryItem' },
-    args,
-    () => updateCategoryItemUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'management', event: 'categoryItems.updateCategoryItem' },
+        args,
+        () => updateCategoryItemUnlogged(...args),
+      ),
   );
 }
 
 export async function deleteCategoryItem(...args: Parameters<typeof deleteCategoryItemUnlogged>) {
-  return loggedAction(
-    { feature: 'management', event: 'categoryItems.deleteCategoryItem' },
-    args,
-    () => deleteCategoryItemUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'management', event: 'categoryItems.deleteCategoryItem' },
+        args,
+        () => deleteCategoryItemUnlogged(...args),
+      ),
   );
 }
 
 export async function reorderCategoryItems(
   ...args: Parameters<typeof reorderCategoryItemsUnlogged>
 ) {
-  return loggedAction(
-    { feature: 'management', event: 'categoryItems.reorderCategoryItems' },
-    args,
-    () => reorderCategoryItemsUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        { feature: 'management', event: 'categoryItems.reorderCategoryItems' },
+        args,
+        () => reorderCategoryItemsUnlogged(...args),
+      ),
   );
 }

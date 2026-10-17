@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { moveItemsWithChests as moveItemsWithChestsApi } from '@lawless-intranet/inventory-client/server';
@@ -23,6 +24,8 @@ async function moveItemsWithChestsUnlogged(
     mode: ChestStockMoveMode;
     items: ChestStockMoveItemInput[];
   },
+  /** Realtime meta of the client: no echo of the change to its author. */
+  _meta?: unknown,
 ) {
   const isTake = data.mode === 'take';
   const actionLabel = isTake ? 'prendre' : 'déposer';
@@ -65,7 +68,12 @@ async function moveItemsWithChestsUnlogged(
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function moveItemsWithChests(...args: Parameters<typeof moveItemsWithChestsUnlogged>) {
-  return loggedAction({ feature: 'stock', event: 'take.moveItemsWithChests' }, args, () =>
-    moveItemsWithChestsUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'stock', event: 'take.moveItemsWithChests' }, args, () =>
+        moveItemsWithChestsUnlogged(...args),
+      ),
+    args[2],
   );
 }

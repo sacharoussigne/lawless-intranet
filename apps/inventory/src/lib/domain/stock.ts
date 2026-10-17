@@ -10,6 +10,7 @@ import { buildManualMovements, totalsFromItems, type StockStatsItemRow } from '@
 import { aggregateTodayAndPrevious, type StockHistoryRow } from '@/lib/stock/aggregateStock';
 import { resolveChestAccess, hasChestAccess, chestAccessWhereFilter, getDefaultChestId } from '@/lib/chests/access';
 import { Prisma } from '@/generated/prisma/client';
+import { stockTransaction } from '@/lib/stock/lock';
 import { serializeItem } from '@/lib/serialize';
 
 const ITEM_STOCK_SELECT = {
@@ -375,7 +376,7 @@ export async function updateStock(input: {
   const itemIds = input.stocks.map((d) => d.itemId);
   const resolvedChestId = targetChestId;
 
-  const results = await prisma.$transaction(async (tx) => {
+  const results = await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
     const [todayRows, previousRows] = await Promise.all([
       tx.stockHistory.findMany({
         where: {
@@ -502,94 +503,86 @@ export async function craftItem(input: {
     return err('Accès refusé à un ou plusieurs coffres', 403);
   }
 
-  const stockLookups = [
-    ...ingredientRequirements.map((r) => ({
-      itemId: r.ingredient.usedItemId,
-      chestId: r.sourceChestId!,
-    })),
-    { itemId: input.craftedItemId, chestId: destinationChestId },
-  ];
   const stockKey = (itemId: string, chestId: string) => `${itemId}:${chestId}`;
 
-  const craftResult = await prisma.$transaction(async (tx) => {
-    await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, { today, tomorrow });
-    const ensured = await ensureTodayStockForPairs(tx, input.scopeType, input.scopeId, stockLookups, {
-      today,
-      tomorrow,
-    });
+  /**
+   * Net change per (item, chest): an item listed on several lines is needed
+   * once with the sum, and a product that is also an ingredient in the same
+   * chest gets a single update (separate updates would overwrite each other).
+   */
+  const changes = new Map<string, { itemId: string; chestId: string; required: number; produced: number }>();
+  const changeOf = (itemId: string, chestId: string) => {
+    const key = stockKey(itemId, chestId);
+    const existing = changes.get(key);
+    if (existing) return existing;
+    const created = { itemId, chestId, required: 0, produced: 0 };
+    changes.set(key, created);
+    return created;
+  };
+  for (const { ingredient, requiredQuantity, sourceChestId } of ingredientRequirements) {
+    changeOf(ingredient.usedItemId, sourceChestId!).required += requiredQuantity;
+  }
+  changeOf(input.craftedItemId, destinationChestId).produced += totalQuantityProduced;
+  const stockLookups = [...changes.values()].map(({ itemId, chestId }) => ({ itemId, chestId }));
 
-    const ingredientChecks = ingredientRequirements.map(
-      ({ ingredient, requiredQuantity, sourceChestId }) => {
-        const availableStock =
-          ensured.get(stockKey(ingredient.usedItemId, sourceChestId!))?.quantity ?? 0;
+  const craftResult = await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
+      await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, { today, tomorrow });
+      const ensured = await ensureTodayStockForPairs(tx, input.scopeType, input.scopeId, stockLookups, {
+        today,
+        tomorrow,
+      });
+      const available = (itemId: string, chestId: string) => ensured.get(stockKey(itemId, chestId))?.quantity ?? 0;
+
+      const ingredientChecks = ingredientRequirements.map(({ ingredient, sourceChestId }) => {
+        const required = changes.get(stockKey(ingredient.usedItemId, sourceChestId!))?.required ?? 0;
+        const availableStock = available(ingredient.usedItemId, sourceChestId!);
         return {
           itemId: ingredient.usedItemId,
           ingredientId: ingredient.id,
           available: availableStock,
-          required: requiredQuantity,
-          hasEnough: availableStock >= requiredQuantity,
+          required,
+          hasEnough: availableStock >= required,
         };
-      },
-    );
-
-    if (!ingredientChecks.every((check) => check.hasEnough)) {
-      return { ok: false as const, ingredientChecks };
-    }
-
-    const craftedStock = ensured.get(stockKey(input.craftedItemId, destinationChestId!));
-    if (craftedStock) {
-      await tx.stockHistory.update({
-        where: { id: craftedStock.id },
-        data: { quantity: craftedStock.quantity + totalQuantityProduced },
       });
-    } else {
-      await tx.stockHistory.create({
-        data: {
-          itemId: input.craftedItemId,
-          chestId: destinationChestId!,
-          quantity: totalQuantityProduced,
-        },
-      });
-    }
 
-    for (const { ingredient, requiredQuantity, sourceChestId } of ingredientRequirements) {
-      const existing = ensured.get(stockKey(ingredient.usedItemId, sourceChestId!));
-      if (existing) {
-        await tx.stockHistory.update({
-          where: { id: existing.id },
-          data: { quantity: existing.quantity - requiredQuantity },
-        });
-      } else {
-        await tx.stockHistory.create({
-          data: {
-            itemId: ingredient.usedItemId,
-            chestId: sourceChestId!,
-            quantity: -requiredQuantity,
-          },
-        });
+      if (!ingredientChecks.every((check) => check.hasEnough)) {
+        return { ok: false as const, ingredientChecks };
       }
-    }
 
-    await tx.stockItemMovement.createMany({
-      data: [
-        {
-          itemId: input.craftedItemId,
-          quantity: totalQuantityProduced,
-          kind: 'CRAFT_PRODUCE',
-          chestId: destinationChestId,
-          userId: input.userId ?? null,
-        },
-        ...ingredientRequirements.map(({ ingredient, requiredQuantity, sourceChestId }) => ({
-          itemId: ingredient.usedItemId,
-          quantity: -requiredQuantity,
-          kind: 'CRAFT_CONSUME' as const,
-          chestId: sourceChestId,
-          userId: input.userId ?? null,
-        })),
-      ],
-    });
+      for (const { itemId, chestId, required, produced } of changes.values()) {
+        const delta = produced - required;
+        const existing = ensured.get(stockKey(itemId, chestId));
+        if (existing) {
+          if (delta !== 0) {
+            await tx.stockHistory.update({ where: { id: existing.id }, data: { quantity: { increment: delta } } });
+          }
+        } else {
+          await tx.stockHistory.create({ data: { itemId, chestId, quantity: delta } });
+        }
+      }
 
-    return { ok: true as const };
+      // Same timestamp for the whole craft: the newest-first movements list shows
+      // the product, then the ingredients it consumed just below.
+      await tx.stockItemMovement.createMany({
+        data: [
+          ...ingredientRequirements.map(({ ingredient, requiredQuantity, sourceChestId }) => ({
+            itemId: ingredient.usedItemId,
+            quantity: -requiredQuantity,
+            kind: 'CRAFT_CONSUME' as const,
+            chestId: sourceChestId,
+            userId: input.userId ?? null,
+          })),
+          {
+            itemId: input.craftedItemId,
+            quantity: totalQuantityProduced,
+            kind: 'CRAFT_PRODUCE',
+            chestId: destinationChestId,
+            userId: input.userId ?? null,
+          },
+        ],
+      });
+
+      return { ok: true as const };
   });
 
   if (!craftResult.ok) {
@@ -627,7 +620,7 @@ export async function transferStock(input: {
   const tomorrow = getTomorrowStart();
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
       const pairs = validItems.flatMap(({ itemId }) => [
         { itemId, chestId: input.sourceChestId },
         { itemId, chestId: input.destinationChestId },
@@ -656,7 +649,7 @@ export async function transferStock(input: {
 
         await tx.stockHistory.update({
           where: { id: sourceStock.id },
-          data: { quantity: sourceStock.quantity - quantity },
+          data: { quantity: { decrement: quantity } },
         });
         sourceStock.quantity -= quantity;
 
@@ -664,7 +657,7 @@ export async function transferStock(input: {
         if (destinationStock) {
           await tx.stockHistory.update({
             where: { id: destinationStock.id },
-            data: { quantity: destinationStock.quantity + quantity },
+            data: { quantity: { increment: quantity } },
           });
           destinationStock.quantity += quantity;
         } else {
@@ -755,7 +748,7 @@ export async function moveItemsWithChests(input: {
   const tomorrow = getTomorrowStart();
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
       await ensureTodayStockForAllActiveChests(tx, input.scopeType, input.scopeId, {
         today,
         tomorrow,
@@ -781,13 +774,13 @@ export async function moveItemsWithChests(input: {
           }
           await tx.stockHistory.update({
             where: { id: stock.id },
-            data: { quantity: stock.quantity - item.quantity },
+            data: { quantity: { decrement: item.quantity } },
           });
           stock.quantity -= item.quantity;
         } else if (stock) {
           await tx.stockHistory.update({
             where: { id: stock.id },
-            data: { quantity: stock.quantity + item.quantity },
+            data: { quantity: { increment: item.quantity } },
           });
           stock.quantity += item.quantity;
         } else {
@@ -855,7 +848,7 @@ export async function overwriteStockForDate(input: {
     (stock) => stock.quantity !== null && stock.quantity !== undefined,
   );
 
-  await prisma.$transaction(async (tx) => {
+  await stockTransaction(input.scopeType, input.scopeId, async (tx) => {
     await tx.stockHistory.deleteMany({
       where: {
         timestamp: { gte: dayStart, lt: dayEnd },

@@ -76,7 +76,11 @@ export async function listStockMovements(input: {
         chest: { select: { name: true } },
         destinationChest: { select: { name: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      // Newest first. Movements of one operation share their timestamp: within
+      // it, the reverse enum order keeps the story readable from the bottom up
+      // (ingredients consumed then product, transfer out then in); the id keeps
+      // pages stable.
+      orderBy: [{ createdAt: 'desc' }, { kind: 'desc' }, { id: 'asc' }],
       skip,
       take: pageSize,
     }),

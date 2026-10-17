@@ -47,6 +47,12 @@ export async function createRealtimeToken(dispensarySlug: string) {
       topics.push(realtimeTopics.orders(dispensaryId));
     }
 
+    // No chest id is ever sent on this topic: roles limited to some chests learn nothing.
+    const stockBlocked = await getAppFeatureActionBlock(dispensaryId, 'stock');
+    if (!stockBlocked && can(effectivePermissions, 'stock', 'view')) {
+      topics.push(realtimeTopics.stock(dispensaryId));
+    }
+
     const salesBlocked = await getAppFeatureActionBlock(dispensaryId, 'sales');
     if (!salesBlocked && can(effectivePermissions, 'sales', 'view')) {
       topics.push(

@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -106,25 +107,33 @@ async function setChestItemHiddenUnlogged(
 export async function setChestCategoryHidden(
   ...args: Parameters<typeof setChestCategoryHiddenUnlogged>
 ) {
-  return loggedAction(
-    {
-      feature: 'stock',
-      event: 'stockVisibility.setChestCategoryHidden',
-      target: ([, input]) => input.chestId,
-    },
-    args,
-    () => setChestCategoryHiddenUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        {
+          feature: 'stock',
+          event: 'stockVisibility.setChestCategoryHidden',
+          target: ([, input]) => input.chestId,
+        },
+        args,
+        () => setChestCategoryHiddenUnlogged(...args),
+      ),
   );
 }
 
 export async function setChestItemHidden(...args: Parameters<typeof setChestItemHiddenUnlogged>) {
-  return loggedAction(
-    {
-      feature: 'stock',
-      event: 'stockVisibility.setChestItemHidden',
-      target: ([, input]) => input.chestId,
-    },
-    args,
-    () => setChestItemHiddenUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction(
+        {
+          feature: 'stock',
+          event: 'stockVisibility.setChestItemHidden',
+          target: ([, input]) => input.chestId,
+        },
+        args,
+        () => setChestItemHiddenUnlogged(...args),
+      ),
   );
 }

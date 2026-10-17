@@ -138,6 +138,7 @@ Règles :
 - Le code qui écrit (action d'une app hôte ou route d'un service) appelle une fonction `emit*` / `notify*` **après** l'écriture.
 - Ces fonctions publient dans `after()` (`next/server`) : la réponse part sans attendre le serveur temps réel. On ne les `await` pas. `publishRealtime` ne lève jamais d'exception (timeout de 2 s, erreur loguée).
 - Exemples : `apps/dispensary/src/lib/orders/realtime/broadcast.ts`, `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/media/src/lib/realtime.ts`.
+- **Stock** (`apps/dispensary/src/lib/stock/realtime/`) : un topic `stock:<dispensaryId>` (feature `stock` + `stock:view`) et un seul type de message, sans aucun identifiant de coffre ni d'objet, pour qu'un rôle limité à certains coffres n'apprenne rien sur les autres. Les actions de stock et de catalogue (objets, recettes, coffres, catégories, visibilité, contrôles) sont enveloppées par `withStockChange` ; ventes et commandes appellent `emitStockChange`. Côté client, `StockRealtimeBridge` (layout) invalide toutes les données de stock affichées. Pendant une saisie d'inventaire, la page Stock compare le stock du coffre (relu en direct) à celui du début de la saisie, et liste les objets modifiés entre-temps, avec le choix de reprendre les nouvelles quantités ou de garder sa saisie. Aucun verrou : rien n'est bloqué.
 
 ### Ajouter un domaine temps réel
 
@@ -156,4 +157,5 @@ DevTools, onglet **Network** (Vivaldi, Chrome) :
 ## Limites connues
 
 - **Médiathèque** : l'auteur d'un changement reçoit encore son propre écho (une relecture de trop par rafale, regroupée par `coalesceMs`). Il faudrait transmettre le `clientId` de `media-ui` jusqu'au service `media`.
+- **Stock, pages de gestion** : seules les actions de l'écran Stock (craft, prise/dépôt, transfert, saisie) transmettent le `clientId` ; les pages de gestion (objets, recettes, coffres, catégories) et l'écrasement de stock ne le font pas, et leur auteur reçoit donc une relecture de trop.
 - Le serveur temps réel est une instance unique, en mémoire.

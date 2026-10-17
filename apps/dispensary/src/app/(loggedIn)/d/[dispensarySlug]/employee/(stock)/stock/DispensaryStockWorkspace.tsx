@@ -11,6 +11,7 @@ import {
   type StockUiPreferences,
 } from '@lawless-intranet/inventory-ui';
 import { createDispensaryInventoryActions } from '@/lib/inventory/inventoryUiActions';
+import { useOptionalRealtimeSocket } from '@lawless-intranet/realtime/socket';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 
 type DispensaryStockWorkspaceProps = {
@@ -31,9 +32,10 @@ export function DispensaryStockWorkspace({
   initialLastStockDaysByChest,
 }: DispensaryStockWorkspaceProps) {
   const { permissions } = usePermissions();
+  const clientId = useOptionalRealtimeSocket()?.clientId ?? null;
   const actions = useMemo(
-    () => createDispensaryInventoryActions(dispensarySlug),
-    [dispensarySlug],
+    () => createDispensaryInventoryActions(dispensarySlug, clientId),
+    [dispensarySlug, clientId],
   );
 
   const inventoryPermissions: InventoryUiPermissions = useMemo(

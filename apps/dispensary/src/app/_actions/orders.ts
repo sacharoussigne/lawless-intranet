@@ -18,6 +18,7 @@ import {
   inventoryScope,
 } from '@/lib/inventory/client';
 import { emitOrdersChange } from '@/lib/orders/realtime/broadcast';
+import { emitStockChange } from '@/lib/stock/realtime/broadcast';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import type {
   ActiveOrderSummary,
@@ -420,6 +421,9 @@ async function completeOrderUnlogged(
     );
 
     emitOrdersChange(dispensaryId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
+    if (!validatedData.skipStock && (validatedData.stockLines?.length ?? 0) > 0) {
+      emitStockChange(dispensaryId, parseRealtimeMutationMeta(meta));
+    }
 
     return {
       status: 200,

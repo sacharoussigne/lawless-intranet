@@ -1,5 +1,6 @@
 'use server';
 
+import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { transferStock } from '@lawless-intranet/inventory-client/server';
@@ -18,6 +19,8 @@ async function transferMultipleStockUnlogged(
     destinationChestId: string;
     items: TransferItem[];
   },
+  /** Realtime meta of the client: no echo of the change to its author. */
+  _meta?: unknown,
 ) {
   try {
     const ctx = await requireTenantServerActionContext(dispensarySlug, {
@@ -75,7 +78,12 @@ async function transferMultipleStockUnlogged(
 export async function transferMultipleStock(
   ...args: Parameters<typeof transferMultipleStockUnlogged>
 ) {
-  return loggedAction({ feature: 'stock', event: 'transfer.transferMultipleStock' }, args, () =>
-    transferMultipleStockUnlogged(...args),
+  return withStockChange(
+    args[0],
+    () =>
+      loggedAction({ feature: 'stock', event: 'transfer.transferMultipleStock' }, args, () =>
+        transferMultipleStockUnlogged(...args),
+      ),
+    args[2],
   );
 }
