@@ -9,6 +9,7 @@ import { actionErrorParser } from '@/lib/action';
 import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
 import { tenantWhere } from '@/lib/business/tenantWhere';
 import { BUSINESS_MEMBER_ROLES, serializeRoleList } from '@/types/enum/roles';
+import { isMemberRoleAllowedForType } from '@/lib/businessTypes';
 import {
   attachUserProfiles,
   fetchUserProfile,
@@ -69,6 +70,10 @@ async function upsertBusinessMemberUnlogged(
     }
 
     const validated = upsertMemberSchema.parse(data);
+    const { type } = auth.ctx.business;
+    if (validated.roles.some((r) => !isMemberRoleAllowedForType(type, r))) {
+      return { status: 400, error: 'Rôle invalide pour ce type d’entreprise' };
+    }
     const user = await fetchUserProfile(validated.userId);
     if (!user) {
       return { status: 404, error: 'Utilisateur introuvable' };

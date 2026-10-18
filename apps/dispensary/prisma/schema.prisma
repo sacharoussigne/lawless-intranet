@@ -8,12 +8,18 @@ datasource db {
   //   url      = env("DATABASE_URL")
 }
 
+/// Kind of business: decides its modules, default roles and branding (lib/businessTypes).
+enum BusinessType {
+  DISPENSARY
+}
+
 model Business {
-  id          String   @id @default(uuid())
-  slug        String   @unique
+  id          String       @id @default(uuid())
+  slug        String       @unique
   name        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  type        BusinessType @default(DISPENSARY)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   createdById String?
 
   members                  BusinessMember[]

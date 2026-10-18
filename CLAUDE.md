@@ -121,6 +121,7 @@ export async function doThing(slug: string, input: unknown) {
 
 - Il y a deux niveaux. Les **rôles globaux** Better Auth sont dans `packages/auth-permissions`. Les **permissions par tenant** (rôles et membres) sont dans `lib/business/permissions*` et `lib/shelter/permissionsCatalog`, et se vérifient avec `can(perms, resource, action)`.
 - **Feature toggles** par tenant (`AppSettings`, `AppFeatureKey` dans `lib/appSettingsShared.ts`). Une nouvelle feature doit être ajoutée au toggle, au middleware et au garde des actions.
+- **Types d'entreprise** (dispensary, `docs/MULTI-BUSINESS.md`) : `Business.type` (`BusinessType`) et le registre `lib/businessTypes` (modules proposés, rôles des membres, matrice de rôles par défaut). Un module n'est actif que s'il est **proposé par le type** et activé dans les réglages : `normalizeAppSettings` coupe les autres, donc les lectures `feature*Enabled` et `isAppFeatureEnabled` en tiennent compte. Une nouvelle feature s'ajoute à `lib/appFeatures.ts`, puis aux `modules` des types concernés.
 - Côté client, `PermissionsContext` / `usePermissions()` sert à masquer ou afficher l'UI.
 
 ### Data fetching client

@@ -69,6 +69,8 @@ async function createBusinessUnlogged(data: { name: string; slug?: string }) {
       return { status: 409, error: 'Ce slug est déjà utilisé' };
     }
 
+    // The type lives on the business, not in its settings row.
+    const { businessType: _type, ...settingsDefaults } = APP_SETTINGS_DEFAULTS;
     const business = await prisma.business.create({
       data: {
         name: validated.name.trim(),
@@ -76,7 +78,7 @@ async function createBusinessUnlogged(data: { name: string; slug?: string }) {
         createdById: auth.userId,
         settings: {
           create: {
-            ...APP_SETTINGS_DEFAULTS,
+            ...settingsDefaults,
             businessName: validated.name.trim(),
           },
         },
@@ -89,7 +91,7 @@ async function createBusinessUnlogged(data: { name: string; slug?: string }) {
       },
     });
 
-    await ensureBusinessRolePermissions(business.id);
+    await ensureBusinessRolePermissions(business.id, prisma, business.type);
 
     revalidatePath('/platform/dispensaries');
     return { status: 201, data: business };

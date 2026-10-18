@@ -22,7 +22,6 @@ import {
   upsertBusinessMember,
 } from '@/app/_actions/businessMembers';
 import {
-  BUSINESS_MEMBER_ROLES,
   type BusinessMemberRole,
   Role,
   parseRoleList,
@@ -30,11 +29,11 @@ import {
 } from '@/types/enum/roles';
 import { MemberPermissionOverridesEditor } from './MemberPermissionOverridesEditor';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
+import { useBusinessTypeDefinition } from '@/app/_contexts/PermissionsContext';
 import { fetchRead } from '@/lib/read/fetchRead';
-const ROLE_OPTIONS = BUSINESS_MEMBER_ROLES.map((role) => ({
-  value: role,
-  label: rolesAsString(role),
-}));
+function roleOptions(roles: readonly BusinessMemberRole[]) {
+  return roles.map((role) => ({ value: role, label: rolesAsString(role) }));
+}
 
 export type BusinessMemberRow = {
   id: string;
@@ -52,6 +51,8 @@ export function BusinessMembersPanel({
   initialMembers: BusinessMemberRow[];
   error?: string;
 }) {
+  const { memberRoles } = useBusinessTypeDefinition();
+  const roleSelectData = useMemo(() => roleOptions(memberRoles), [memberRoles]);
   const [members, setMembers] = useState(initialMembers);
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([Role.EMPLOYEE]);
@@ -231,7 +232,7 @@ export function BusinessMembersPanel({
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <MultiSelect
               label="Rôles"
-              data={ROLE_OPTIONS}
+              data={roleSelectData}
               value={selectedRoles}
               onChange={setSelectedRoles}
               searchable
@@ -320,7 +321,7 @@ export function BusinessMembersPanel({
 
                   <MultiSelect
                     label="Rôles"
-                    data={ROLE_OPTIONS}
+                    data={roleSelectData}
                     value={memberRoles}
                     onChange={(roles) =>
                       setRoleEdits((prev) => ({ ...prev, [m.user.id]: roles }))

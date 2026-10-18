@@ -22,11 +22,9 @@ import {
   resetBusinessRolePermissions,
   setBusinessRolePermissions,
 } from '@/app/_actions/businessPermissions';
-import {
-  BUSINESS_MEMBER_ROLES,
-  type BusinessMemberRole,
-  rolesAsString,
-} from '@/types/enum/roles';
+import { type BusinessMemberRole, rolesAsString } from '@/types/enum/roles';
+import { usePermissions, useBusinessTypeDefinition } from '@/app/_contexts/PermissionsContext';
+import { isResourceAllowedForType } from '@/lib/businessTypes';
 
 export type RolePermissionsMatrixData = {
   catalog: Record<string, readonly string[]>;
@@ -40,16 +38,24 @@ export function BusinessPermissionsPanel({
   businessSlug: string;
   initial: RolePermissionsMatrixData;
 }) {
-  const catalogEntries = useMemo(() => listCatalogPermissionEntries(), []);
+  const { appSettings } = usePermissions();
+  const catalogEntries = useMemo(
+    () =>
+      listCatalogPermissionEntries().filter((entry) =>
+        isResourceAllowedForType(appSettings.businessType, entry.resource),
+      ),
+    [appSettings.businessType],
+  );
+  const { memberRoles } = useBusinessTypeDefinition();
   const [byRole, setByRole] = useState<Record<string, Set<string>>>(() => {
     const next: Record<string, Set<string>> = {};
-    for (const role of BUSINESS_MEMBER_ROLES) {
+    for (const role of memberRoles) {
       next[role] = new Set(initial.byRole[role] ?? []);
     }
     return next;
   });
   const [selectedRole, setSelectedRole] = useState<BusinessMemberRole>(
-    BUSINESS_MEMBER_ROLES[1] ?? BUSINESS_MEMBER_ROLES[0],
+    memberRoles[1] ?? memberRoles[0],
   );
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
@@ -157,7 +163,7 @@ export function BusinessPermissionsPanel({
 
       <Group justify="space-between" align="flex-end">
         <Group>
-          {BUSINESS_MEMBER_ROLES.map((role) => (
+          {memberRoles.map((role) => (
             <Button
               key={role}
               size="xs"

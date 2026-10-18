@@ -16,6 +16,12 @@ import {
   resetBusinessRolePermissionsToDefaults,
 } from '@/lib/business/permissionsSeed';
 import { BUSINESS_MEMBER_ROLES } from '@/types/enum/roles';
+import {
+  getBusinessTypeDefinition,
+  isMemberRoleAllowedForType,
+  isResourceAllowedForType,
+  type BusinessType,
+} from '@/lib/businessTypes';
 
 const roleEnum = z.enum(BUSINESS_MEMBER_ROLES);
 
@@ -38,9 +44,15 @@ const setMemberOverridesSchema = z.object({
   ),
 });
 
-function assertCatalogPairs(pairs: Array<{ resource: string; action: string }>) {
+function assertCatalogPairs(
+  pairs: Array<{ resource: string; action: string }>,
+  type: BusinessType,
+) {
   for (const pair of pairs) {
-    if (!isCatalogPermission(pair.resource, pair.action)) {
+    if (
+      !isCatalogPermission(pair.resource, pair.action) ||
+      !isResourceAllowedForType(type, pair.resource)
+    ) {
       throw new Error(`Permission invalide: ${pair.resource}:${pair.action}`);
     }
   }
@@ -52,14 +64,15 @@ export async function getBusinessRolePermissionsMatrix(businessSlug: string) {
     return { status: auth.status, error: auth.error };
   }
 
-  await ensureBusinessRolePermissions(auth.ctx.businessId);
+  const { type } = auth.ctx.business;
+  await ensureBusinessRolePermissions(auth.ctx.businessId, undefined, type);
   const rows = await prisma.businessRolePermission.findMany({
     where: { businessId: auth.ctx.businessId },
     select: { role: true, resource: true, action: true },
   });
 
   const byRole: Record<string, string[]> = {};
-  for (const role of BUSINESS_MEMBER_ROLES) {
+  for (const role of getBusinessTypeDefinition(type).memberRoles) {
     byRole[role] = [];
   }
   for (const row of rows) {
@@ -69,10 +82,17 @@ export async function getBusinessRolePermissionsMatrix(businessSlug: string) {
     byRole[row.role].push(permissionKey(row.resource, row.action));
   }
 
+  // Only the resources of the modules this kind of business offers.
+  const catalog = Object.fromEntries(
+    Object.entries(applicationPermissionCatalog).filter(([resource]) =>
+      isResourceAllowedForType(type, resource),
+    ),
+  ) as Partial<typeof applicationPermissionCatalog>;
+
   return {
     status: 200 as const,
     data: {
-      catalog: applicationPermissionCatalog,
+      catalog,
       byRole,
     },
   };
@@ -89,7 +109,11 @@ async function setBusinessRolePermissionsUnlogged(
     }
 
     const validated = setRolePermissionsSchema.parse(data);
-    assertCatalogPairs(validated.permissions);
+    const { type } = auth.ctx.business;
+    if (!isMemberRoleAllowedForType(type, validated.role)) {
+      return { status: 400, error: 'Rôle invalide pour ce type d’entreprise' };
+    }
+    assertCatalogPairs(validated.permissions, type);
 
     await prisma.$transaction(async (tx) => {
       await tx.businessRolePermission.deleteMany({
@@ -122,7 +146,7 @@ async function resetBusinessRolePermissionsUnlogged(businessSlug: string) {
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
-    await resetBusinessRolePermissionsToDefaults(auth.ctx.businessId);
+    await resetBusinessRolePermissionsToDefaults(auth.ctx.businessId, auth.ctx.business.type);
     return { status: 200 as const };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la réinitialisation des permissions');
@@ -179,7 +203,7 @@ async function setBusinessMemberPermissionOverridesUnlogged(
     }
 
     const validated = setMemberOverridesSchema.parse(data);
-    assertCatalogPairs(validated.overrides);
+    assertCatalogPairs(validated.overrides, auth.ctx.business.type);
 
     const member = await prisma.businessMember.findUnique({
       where: {

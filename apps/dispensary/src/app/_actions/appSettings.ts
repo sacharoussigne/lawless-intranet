@@ -180,6 +180,7 @@ async function updateAppSettingsUnlogged(
     revalidatePath('/platform/dispensaries');
 
     const data: BusinessSettingsAdminDTO = {
+      businessType: business.type,
       businessName: row.businessName,
       slug: newSlug,
       featureStockEnabled: row.featureStockEnabled,

@@ -11,6 +11,7 @@ import {
   upsertRoleChestAccess as upsertRoleChestAccessClient,
 } from '@lawless-intranet/inventory-client/server';
 import { BUSINESS_MEMBER_ROLES, Role, type BusinessMemberRole } from '@/types/enum/roles';
+import { getBusinessTypeDefinition, isMemberRoleAllowedForType } from '@/lib/businessTypes';
 
 const businessMemberRoleSchema = z
   .string()
@@ -42,7 +43,7 @@ export async function getRoleChestAccesses(businessSlug: string) {
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { businessId } = ctx.tenant;
+    const { businessId, business } = ctx.tenant;
 
     const accesses = await listRoleChestAccesses(
       inventoryScope(businessId),
@@ -60,7 +61,8 @@ export async function getRoleChestAccesses(businessSlug: string) {
       ]),
     );
 
-    const data: RoleChestAccessRow[] = BUSINESS_MEMBER_ROLES.map((role) => {
+    const roles = getBusinessTypeDefinition(business.type).memberRoles;
+    const data: RoleChestAccessRow[] = roles.map((role) => {
       if (role === Role.ADMIN) {
         return { role, allChests: true, chestIds: [] };
       }
@@ -90,9 +92,12 @@ async function upsertRoleChestAccessUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { businessId } = ctx.tenant;
+    const { businessId, business } = ctx.tenant;
 
     const validated = upsertRoleChestAccessSchema.parse(data);
+    if (!isMemberRoleAllowedForType(business.type, validated.role)) {
+      return { status: 400, error: 'Rôle invalide pour ce type d’entreprise' };
+    }
 
     if (validated.role === Role.ADMIN) {
       return {

@@ -356,6 +356,17 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
   - le nom de l'app.
 - Le nom `BusinessWeeklyActivity` est provisoire : la phase 3 refond l'activité hebdo (`weeklyActivity` est déjà pris par d'autres identifiants).
 
+### Phase 2 : ce qui a été fait
+
+- **Base de données :** `enum BusinessType { DISPENSARY }` et une colonne `type` sur `Business` (migration `add_business_type`). Le dispensaire existant prend `DISPENSARY`. `GENERAL_STORE` sera ajouté en phase 7.
+- **Registre :** `lib/businessTypes` décrit chaque type (libellés, `modules`, `memberRoles`, `defaultRoleMatrix`) et fournit `isModuleAllowedForType`, `isMemberRoleAllowedForType` et `isResourceAllowedForType`.
+- **Modules :** `AppSettingsDTO.businessType` est lu sur l'entreprise. `normalizeAppSettings` coupe les modules que le type ne propose pas, donc les gardes, la navigation, le jeton realtime et les bots en tiennent compte. Les réglages n'affichent que les modules proposés.
+- **Rôles et permissions :**
+  - le seed et la réinitialisation utilisent la matrice du type ;
+  - les membres, les permissions et les accès aux coffres se limitent aux rôles du type, avec une vérification côté serveur ;
+  - les écrans de permissions ne montrent que les ressources des modules proposés.
+- Le dispensaire garde tous ses modules et tous ses rôles : rien ne change pour lui.
+
 ## 11. Questions encore ouvertes
 
 - D'éventuels **autres modules propres** au general store.

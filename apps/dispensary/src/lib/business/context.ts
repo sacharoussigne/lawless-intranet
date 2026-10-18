@@ -1,3 +1,4 @@
+import type { BusinessType } from '@prisma/client';
 import { cache } from 'react';
 import prisma from '@/lib/prisma';
 type SessionLike = {
@@ -14,12 +15,13 @@ export type BusinessContext = {
   id: string;
   slug: string;
   name: string;
+  type: BusinessType;
 };
 
 export const resolveBusinessFromSlug = cache(async (slug: string): Promise<BusinessContext | null> => {
   const row = await prisma.business.findUnique({
     where: { slug },
-    select: { id: true, slug: true, name: true },
+    select: { id: true, slug: true, name: true, type: true },
   });
   return row;
 });

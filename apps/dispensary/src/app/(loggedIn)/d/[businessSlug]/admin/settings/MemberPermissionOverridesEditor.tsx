@@ -22,6 +22,8 @@ import {
   setBusinessMemberPermissionOverrides,
 } from '@/app/_actions/businessPermissions';
 import { fetchRead } from '@/lib/read/fetchRead';
+import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { isResourceAllowedForType } from '@/lib/businessTypes';
 
 type OverrideEffect = 'inherit' | 'grant' | 'deny';
 
@@ -36,7 +38,14 @@ export function MemberPermissionOverridesEditor({
   userName: string;
   onClose: () => void;
 }) {
-  const catalogEntries = useMemo(() => listCatalogPermissionEntries(), []);
+  const { appSettings } = usePermissions();
+  const catalogEntries = useMemo(
+    () =>
+      listCatalogPermissionEntries().filter((entry) =>
+        isResourceAllowedForType(appSettings.businessType, entry.resource),
+      ),
+    [appSettings.businessType],
+  );
   const [effects, setEffects] = useState<Record<string, OverrideEffect>>({});
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);

@@ -14,7 +14,8 @@ import {
 import { notifications } from '@mantine/notifications';
 import type { RoleChestAccessRow } from '@/app/_actions/chestAccess';
 import type { ChestWithStockHistory } from '@/types/chests';
-import { BUSINESS_MEMBER_ROLES, Role, rolesAsString } from '@/types/enum/roles';
+import { Role, rolesAsString } from '@/types/enum/roles';
+import { useBusinessTypeDefinition } from '@/app/_contexts/PermissionsContext';
 import { sortChests } from '@/lib/chests/sortChests';
 import {
   useRoleChestAccesses,
@@ -46,6 +47,7 @@ export function ChestAccessTabPanel({
   initialChests,
   initialAccesses,
 }: ChestAccessTabPanelProps) {
+  const { memberRoles } = useBusinessTypeDefinition();
   const { data: accesses = initialAccesses } = useRoleChestAccesses(initialAccesses);
   const upsertMutation = useUpsertRoleChestAccessMutation();
 
@@ -100,7 +102,7 @@ export function ChestAccessTabPanel({
   };
 
   const handleSaveAll = async () => {
-    const dirtyRoles = BUSINESS_MEMBER_ROLES.filter(
+    const dirtyRoles = memberRoles.filter(
       (role) => role !== Role.ADMIN && isDirty(role),
     );
     if (dirtyRoles.length === 0) {
@@ -132,7 +134,7 @@ export function ChestAccessTabPanel({
         </Button>
       </Group>
 
-      {BUSINESS_MEMBER_ROLES.map((role) => {
+      {memberRoles.map((role) => {
         const draft = drafts[role] ?? { allChests: false, chestIds: [] };
         const isAdmin = role === Role.ADMIN;
         const dirty = isDirty(role);

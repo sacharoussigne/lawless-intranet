@@ -17,6 +17,8 @@ import { notifications } from '@mantine/notifications';
 import { updateAppSettings, type BusinessSettingsAdminDTO } from '@/app/_actions/appSettings';
 import { slugifyBusinessName } from '@/lib/business/slug';
 import { tenantRoutes } from '@/types/routes';
+import { isModuleAllowedForType } from '@/lib/businessTypes';
+import type { AppFeatureKey } from '@/lib/appFeatures';
 
 type FeatureToggle = {
   label: string;
@@ -86,30 +88,33 @@ export function AppSettingsGeneralPanel({
   );
   const [submitting, setSubmitting] = useState(false);
 
-  const featureToggles: FeatureToggle[] = [
-    { label: 'Stock', checked: featureStockEnabled, onChange: setFeatureStockEnabled },
-    { label: 'Banque', checked: featureBankEnabled, onChange: setFeatureBankEnabled },
-    { label: 'Commandes', checked: featureOrdersEnabled, onChange: setFeatureOrdersEnabled },
-    { label: 'Recherche', checked: featureSearchEnabled, onChange: setFeatureSearchEnabled },
-    { label: 'Courriers', checked: featureMailsEnabled, onChange: setFeatureMailsEnabled },
+  const featureToggles: (FeatureToggle & { feature: AppFeatureKey })[] = [
+    { feature: 'stock', label: 'Stock', checked: featureStockEnabled, onChange: setFeatureStockEnabled },
+    { feature: 'bank', label: 'Banque', checked: featureBankEnabled, onChange: setFeatureBankEnabled },
+    { feature: 'orders', label: 'Commandes', checked: featureOrdersEnabled, onChange: setFeatureOrdersEnabled },
+    { feature: 'search', label: 'Recherche', checked: featureSearchEnabled, onChange: setFeatureSearchEnabled },
+    { feature: 'mails', label: 'Courriers', checked: featureMailsEnabled, onChange: setFeatureMailsEnabled },
     {
+      feature: 'payroll',
       label: 'Rapports salaires',
       checked: featurePayrollEnabled,
       onChange: setFeaturePayrollEnabled,
     },
     {
+      feature: 'weeklyDispensaryActivity',
       label: 'Activité hebdomadaire (dispensaire)',
       checked: featureWeeklyDispensaryActivityEnabled,
       onChange: setFeatureWeeklyDispensaryActivityEnabled,
     },
-    { label: 'Agenda & to-do', checked: featureAgendaEnabled, onChange: setFeatureAgendaEnabled },
+    { feature: 'agenda', label: 'Agenda & to-do', checked: featureAgendaEnabled, onChange: setFeatureAgendaEnabled },
     {
+      feature: 'cabinet',
       label: 'Cabinet médical',
       checked: featureCabinetEnabled,
       onChange: setFeatureCabinetEnabled,
     },
-    { label: 'Ventes', checked: featureSalesEnabled, onChange: setFeatureSalesEnabled },
-    { label: 'Médiathèque', checked: featureMediaEnabled, onChange: setFeatureMediaEnabled },
+    { feature: 'sales', label: 'Ventes', checked: featureSalesEnabled, onChange: setFeatureSalesEnabled },
+    { feature: 'media', label: 'Médiathèque', checked: featureMediaEnabled, onChange: setFeatureMediaEnabled },
   ];
 
   const weeklyColumnToggles: FeatureToggle[] = [
@@ -238,15 +243,17 @@ export function AppSettingsGeneralPanel({
             </Text>
           </div>
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-            {featureToggles.map((toggle) => (
-              <Switch
-                key={toggle.label}
-                color="sage"
-                label={toggle.label}
-                checked={toggle.checked}
-                onChange={(e) => toggle.onChange(e.currentTarget.checked)}
-              />
-            ))}
+            {featureToggles
+              .filter((toggle) => isModuleAllowedForType(initial.businessType, toggle.feature))
+              .map((toggle) => (
+                <Switch
+                  key={toggle.label}
+                  color="sage"
+                  label={toggle.label}
+                  checked={toggle.checked}
+                  onChange={(e) => toggle.onChange(e.currentTarget.checked)}
+                />
+              ))}
           </SimpleGrid>
 
           {featureWeeklyDispensaryActivityEnabled && (

@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache';
+import type { BusinessType } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import {
   APP_SETTINGS_DEFAULTS,
@@ -20,7 +21,7 @@ export {
   businessSiteTitle,
 } from '@/lib/appSettingsShared';
 
-function mapFromDb(row: {
+function mapFromDb(businessType: BusinessType, row: {
   businessName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
@@ -41,6 +42,7 @@ function mapFromDb(row: {
   weeklyActivityPoppyMilkVisible: boolean;
 }): AppSettingsDTO {
   return {
+    businessType,
     businessName: row.businessName?.trim() || APP_SETTINGS_DEFAULTS.businessName,
     featureStockEnabled: row.featureStockEnabled,
     featureBankEnabled: row.featureBankEnabled,
@@ -75,13 +77,17 @@ function mapFromDb(row: {
 
 export async function loadAppSettingsFromDb(businessId: string): Promise<AppSettingsDTO> {
   try {
-    const row = await prisma.appSettings.findUnique({
-      where: { businessId },
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { type: true, settings: true },
     });
-    if (!row) {
-      return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
+    if (!business?.settings) {
+      return normalizeAppSettings({
+        ...APP_SETTINGS_DEFAULTS,
+        businessType: business?.type ?? APP_SETTINGS_DEFAULTS.businessType,
+      });
     }
-    return normalizeAppSettings(mapFromDb(row));
+    return normalizeAppSettings(mapFromDb(business.type, business.settings));
   } catch {
     return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
   }
@@ -90,7 +96,7 @@ export async function loadAppSettingsFromDb(businessId: string): Promise<AppSett
 export function getAppSettings(businessId: string) {
   return unstable_cache(
     () => loadAppSettingsFromDb(businessId),
-    ['app-settings', businessId, 'v2'],
+    ['app-settings', businessId, 'v3'],
     {
       tags: [appSettingsCacheTag(businessId)],
       revalidate: 86400,

@@ -5,6 +5,7 @@ import type { Permissions, PermissionsContextType, AccessibleBusiness } from '@/
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
 import { APP_SETTINGS_DEFAULTS, normalizeAppSettings } from '@/lib/appSettingsShared';
 import { tenantRoutes } from '@/types/routes';
+import { getBusinessTypeDefinition, type BusinessTypeDefinition } from '@/lib/businessTypes';
 
 const PermissionsContext = createContext<PermissionsContextType>({
   permissions: null,
@@ -94,4 +95,10 @@ export function useRequiredBusinessSlug(): string {
     throw new Error('useRequiredBusinessSlug requires an active dispensary context');
   }
   return businessSlug;
+}
+
+/** What the kind of the current business offers (modules, roles…): see lib/businessTypes. */
+export function useBusinessTypeDefinition(): BusinessTypeDefinition {
+  const { appSettings } = usePermissions();
+  return getBusinessTypeDefinition(appSettings.businessType);
 }
