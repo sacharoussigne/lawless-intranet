@@ -367,6 +367,16 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
   - les écrans de permissions ne montrent que les ressources des modules proposés.
 - Le dispensaire garde tous ses modules et tous ses rôles : rien ne change pour lui.
 
+### Phase 3 : ce qui a été fait
+
+- **Permission et feature renommées :** `weekly_dispensary_activity` devient `weekly_activity`, et la feature `weeklyDispensaryActivity` devient `weeklyActivity`. La colonne `featureWeeklyDispensaryActivityEnabled` reste, avec un `@map`. Les permissions et les logs déjà enregistrés ont été migrés.
+- **Compteurs :** une colonne `counters` en JSON (clé → valeur, une clé absente vaut 0) remplace `patientsCount`, `sherifCount`, `infusionsCount` et `poppyMilkCount`. Le registre déclare les compteurs de chaque type (`weeklyCounters` : libellé, icône, ancien champ des bots, statistique de paie, signal d'horaires).
+- **Réglages :** `AppSettings.weeklyActivityCounters` (clé → activé, une clé absente est activée) remplace les quatre drapeaux `weeklyActivity*Visible`. La caisse et la présence gardent leurs drapeaux.
+- **Historique :** les actions `INCREMENT_/DECREMENT_COUNTER` ont une colonne `counterKey`. Les anciennes lignes ont été converties, et les instantanés stockent un objet `counters`. Les anciennes valeurs d'enum restent présentes, mais ne servent plus.
+- **API des bots :** rien ne change pour les bots existants. Les lignes gardent `patientsCount` et les autres champs, en plus de `counters`. Le POST et le PATCH acceptent les anciens champs ou `counters`.
+- **Paie et récap des horaires :** ils lisent les compteurs à travers le registre (`payrollStat`, `hoursSignal`).
+- **Interface :** les boutons rapides, le tableau, les formulaires, la vue compacte, l'historique et les réglages sont générés depuis les compteurs du type.
+
 ## 11. Questions encore ouvertes
 
 - D'éventuels **autres modules propres** au general store.

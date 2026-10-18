@@ -28,8 +28,8 @@ import {
   hasPayrollReportsAccessMiddleware,
   hasSearchAccessMiddleware,
   hasStockStatisticsAccessMiddleware,
-  hasWeeklyDispensaryActivityEditAllMiddleware,
-  hasWeeklyDispensaryActivityMiddleware,
+  hasWeeklyActivityEditAllMiddleware,
+  hasWeeklyActivityMiddleware,
 } from './middlewares/permissionMiddlewares';
 
 export async function middleware(req: NextRequest) {
@@ -91,9 +91,9 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith(`${t.management.index}`)) {
       middlewares.push(hasManagementAccessMiddleware);
       if (pathname === t.management.people || pathname.startsWith(`${t.management.people}/`)) {
-        middlewares.push(hasWeeklyDispensaryActivityEditAllMiddleware);
+        middlewares.push(hasWeeklyActivityEditAllMiddleware);
         middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
-          assertAppFeatureEnabledMiddleware(request, s, 'weeklyDispensaryActivity'),
+          assertAppFeatureEnabledMiddleware(request, s, 'weeklyActivity'),
         );
       }
     } else if (
@@ -143,9 +143,9 @@ export async function middleware(req: NextRequest) {
         assertAppFeatureEnabledMiddleware(request, s, 'bank'),
       );
     } else if (pathname.startsWith(t.weeklyActivity.index)) {
-      middlewares.push(hasWeeklyDispensaryActivityMiddleware);
+      middlewares.push(hasWeeklyActivityMiddleware);
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
-        assertAppFeatureEnabledMiddleware(request, s, 'weeklyDispensaryActivity'),
+        assertAppFeatureEnabledMiddleware(request, s, 'weeklyActivity'),
       );
     } else if (pathname.startsWith(t.media.index)) {
       middlewares.push(hasMediaAccessMiddleware);

@@ -3,22 +3,22 @@ import { can } from '@lawless-intranet/auth-permissions';
 import { tenantWhere } from '@/lib/business/tenantWhere';
 import { lookupDiscordIdOfUser } from '@/lib/people/accountLinks';
 
-export function canViewWeeklyDispensaryActivity(
+export function canViewWeeklyActivity(
   effectivePermissions: Iterable<string> | null | undefined,
 ): boolean {
-  return can(effectivePermissions, 'weekly_dispensary_activity', 'view');
+  return can(effectivePermissions, 'weekly_activity', 'view');
 }
 
-export function canEditAllWeeklyDispensaryActivity(
+export function canEditAllWeeklyActivity(
   effectivePermissions: Iterable<string> | null | undefined,
 ): boolean {
-  return can(effectivePermissions, 'weekly_dispensary_activity', 'edit_all');
+  return can(effectivePermissions, 'weekly_activity', 'edit_all');
 }
 
-export function canEditOwnWeeklyDispensaryActivity(
+export function canEditOwnWeeklyActivity(
   effectivePermissions: Iterable<string> | null | undefined,
 ): boolean {
-  return can(effectivePermissions, 'weekly_dispensary_activity', 'edit_own');
+  return can(effectivePermissions, 'weekly_activity', 'edit_own');
 }
 
 /**
@@ -43,10 +43,10 @@ export async function canEditWeeklyActivity(
   effectivePermissions: Iterable<string> | null | undefined,
   activity: Pick<BusinessWeeklyActivity, 'userId' | 'discordUserId'>,
 ): Promise<boolean> {
-  if (canEditAllWeeklyDispensaryActivity(effectivePermissions)) {
+  if (canEditAllWeeklyActivity(effectivePermissions)) {
     return true;
   }
-  if (!canEditOwnWeeklyDispensaryActivity(effectivePermissions)) {
+  if (!canEditOwnWeeklyActivity(effectivePermissions)) {
     return false;
   }
   return isWeeklyActivityOwner(prisma, sessionUserId, activity);
@@ -65,7 +65,7 @@ export async function weeklyActivityWhereForViewer(
   filter: Prisma.BusinessWeeklyActivityWhereInput = {},
 ): Promise<Prisma.BusinessWeeklyActivityWhereInput> {
   const tenantFilter = tenantWhere(businessId);
-  if (canEditAllWeeklyDispensaryActivity(effectivePermissions)) {
+  if (canEditAllWeeklyActivity(effectivePermissions)) {
     return { AND: [tenantFilter, filter] };
   }
   const viewerDiscordId = await lookupDiscordIdOfUser(sessionUserId);

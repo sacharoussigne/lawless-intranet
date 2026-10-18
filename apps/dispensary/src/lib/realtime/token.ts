@@ -7,8 +7,8 @@ import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { agendaCookie, agendaScope, AGENDA_SCOPE_TYPE } from '@/lib/agenda/client';
 import { MEDIA_SCOPE_TYPE } from '@/lib/media/client';
 import {
-  canEditAllWeeklyDispensaryActivity,
-  canViewWeeklyDispensaryActivity,
+  canEditAllWeeklyActivity,
+  canViewWeeklyActivity,
 } from '@/lib/businessWeeklyActivity/access';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getRealtimeTokenSecret } from '@/lib/realtime/socketConfig';
@@ -64,11 +64,11 @@ export async function createRealtimeToken(businessSlug: string) {
 
     const weeklyActivityBlocked = await getAppFeatureActionBlock(
       businessId,
-      'weeklyDispensaryActivity',
+      'weeklyActivity',
     );
-    if (!weeklyActivityBlocked && canViewWeeklyDispensaryActivity(effectivePermissions)) {
+    if (!weeklyActivityBlocked && canViewWeeklyActivity(effectivePermissions)) {
       topics.push(
-        canEditAllWeeklyDispensaryActivity(effectivePermissions)
+        canEditAllWeeklyActivity(effectivePermissions)
           ? realtimeTopics.weeklyActivity(businessId)
           : realtimeTopics.weeklyActivityOfUser(businessId, userId),
       );

@@ -6,16 +6,26 @@ import {
   type WeekdayKey,
 } from '@/lib/businessWeeklyActivity/weekdayFlags';
 import type { ActivitySnapshotJson } from '@/lib/businessWeeklyActivity/snapshot';
+import type { WeeklyCounterDefinition } from '@/lib/businessTypes';
+import { parseWeeklyCounters, weeklyCounterValue } from '@/lib/businessWeeklyActivity/counters';
 
 const FIELD_LABELS = {
   displayName: 'Nom affiché',
   chestDays: 'Caisses',
   presenceDays: 'Présences',
-  sherifCount: 'Shérifs',
-  patientsCount: 'Patients',
-  infusionsCount: 'Infusions',
-  poppyMilkCount: 'Lait de pavot',
 } as const;
+
+/** Counters of the business type first (their order), then any other stored key. */
+function counterLines(
+  definitions: readonly WeeklyCounterDefinition[],
+  ...snapshots: ActivitySnapshotJson[]
+): { key: string; label: string }[] {
+  const known = definitions.map((c) => ({ key: c.key, label: c.label }));
+  const others = [...new Set(snapshots.flatMap((snap) => Object.keys(snap.counters)))]
+    .filter((key) => !definitions.some((c) => c.key === key))
+    .map((key) => ({ key, label: key }));
+  return [...known, ...others];
+}
 
 type BotDayFieldPayload = {
   day: WeekdayKey;
@@ -52,10 +62,7 @@ function parseActivitySnapshot(raw: unknown): ActivitySnapshotJson | null {
     userId: typeof data.userId === 'string' ? data.userId : null,
     chestDays: parseWeekdayFlagsJson(data.chestDays),
     presenceDays: parseWeekdayFlagsJson(data.presenceDays),
-    sherifCount: typeof data.sherifCount === 'number' ? data.sherifCount : 0,
-    patientsCount: typeof data.patientsCount === 'number' ? data.patientsCount : 0,
-    infusionsCount: typeof data.infusionsCount === 'number' ? data.infusionsCount : 0,
-    poppyMilkCount: typeof data.poppyMilkCount === 'number' ? data.poppyMilkCount : 0,
+    counters: parseWeeklyCounters(data.counters),
   };
 }
 
@@ -87,20 +94,24 @@ function formatWeekdayFlagsDiff(before: WeekdayFlags, after: WeekdayFlags): stri
 
 function formatSnapshotFieldLines(
   snapshot: ActivitySnapshotJson,
+  definitions: readonly WeeklyCounterDefinition[],
   formatValue: (label: string, value: string) => string,
 ): string[] {
   return [
     formatValue(FIELD_LABELS.displayName, snapshot.displayName),
     formatValue(FIELD_LABELS.chestDays, formatWeekdayFlagsSummary(snapshot.chestDays)),
     formatValue(FIELD_LABELS.presenceDays, formatWeekdayFlagsSummary(snapshot.presenceDays)),
-    formatValue(FIELD_LABELS.sherifCount, String(snapshot.sherifCount)),
-    formatValue(FIELD_LABELS.patientsCount, String(snapshot.patientsCount)),
-    formatValue(FIELD_LABELS.infusionsCount, String(snapshot.infusionsCount)),
-    formatValue(FIELD_LABELS.poppyMilkCount, String(snapshot.poppyMilkCount)),
+    ...counterLines(definitions, snapshot).map(({ key, label }) =>
+      formatValue(label, String(weeklyCounterValue(snapshot.counters, key))),
+    ),
   ];
 }
 
-function formatSnapshotDiff(prev: ActivitySnapshotJson, next: ActivitySnapshotJson): string[] {
+function formatSnapshotDiff(
+  prev: ActivitySnapshotJson,
+  next: ActivitySnapshotJson,
+  definitions: readonly WeeklyCounterDefinition[],
+): string[] {
   const lines: string[] = [];
 
   if (prev.displayName !== next.displayName) {
@@ -117,17 +128,10 @@ function formatSnapshotDiff(prev: ActivitySnapshotJson, next: ActivitySnapshotJs
     lines.push(`${FIELD_LABELS.presenceDays} : ${presenceDiff}`);
   }
 
-  if (prev.sherifCount !== next.sherifCount) {
-    lines.push(`${FIELD_LABELS.sherifCount} : ${prev.sherifCount} → ${next.sherifCount}`);
-  }
-  if (prev.patientsCount !== next.patientsCount) {
-    lines.push(`${FIELD_LABELS.patientsCount} : ${prev.patientsCount} → ${next.patientsCount}`);
-  }
-  if (prev.infusionsCount !== next.infusionsCount) {
-    lines.push(`${FIELD_LABELS.infusionsCount} : ${prev.infusionsCount} → ${next.infusionsCount}`);
-  }
-  if (prev.poppyMilkCount !== next.poppyMilkCount) {
-    lines.push(`${FIELD_LABELS.poppyMilkCount} : ${prev.poppyMilkCount} → ${next.poppyMilkCount}`);
+  for (const { key, label } of counterLines(definitions, prev, next)) {
+    const before = weeklyCounterValue(prev.counters, key);
+    const after = weeklyCounterValue(next.counters, key);
+    if (before !== after) lines.push(`${label} : ${before} → ${after}`);
   }
 
   return lines;
@@ -156,6 +160,8 @@ export function formatHistoryValueChanges(
   action: string,
   previous: unknown,
   next: unknown,
+  /** Counters of the business type, for their labels. */
+  counterDefinitions: readonly WeeklyCounterDefinition[],
 ): string[] {
   const botLines = formatBotDayFieldChanges(previous, next);
   if (botLines.length > 0) {
@@ -166,15 +172,15 @@ export function formatHistoryValueChanges(
   const nextSnap = parseActivitySnapshot(next);
 
   if (prev && nextSnap) {
-    return formatSnapshotDiff(prev, nextSnap);
+    return formatSnapshotDiff(prev, nextSnap, counterDefinitions);
   }
 
   if (action === 'CREATE' && nextSnap) {
-    return formatSnapshotFieldLines(nextSnap, (label, value) => `${label} : ${EMPTY} → ${value}`);
+    return formatSnapshotFieldLines(nextSnap, counterDefinitions, (label, value) => `${label} : ${EMPTY} → ${value}`);
   }
 
   if (action === 'DELETE' && prev) {
-    return formatSnapshotFieldLines(prev, (label, value) => `${label} : ${value} → ${EMPTY}`);
+    return formatSnapshotFieldLines(prev, counterDefinitions, (label, value) => `${label} : ${value} → ${EMPTY}`);
   }
 
   return [];

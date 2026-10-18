@@ -68,11 +68,19 @@ export const businessWeeklyActivityBotPresenceBodySchema = z
     },
   );
 
+/** Counter values by key (lib/businessTypes `weeklyCounters`); the keys are checked against the business type. */
+export const weeklyCountersSchema = z.record(z.string().min(1).max(40), z.number().int().min(0));
+
+/** One field per counter, as the existing Discord bots send them (mapped to `counters` by the routes). */
+const legacyCounterFieldsSchema = z.object({
+  sherifCount: z.number().int().min(0).optional(),
+  patientsCount: z.number().int().min(0).optional(),
+  infusionsCount: z.number().int().min(0).optional(),
+  poppyMilkCount: z.number().int().min(0).optional(),
+});
+
 export const businessWeeklyActivityMetricsSchema = z.object({
-  sherifCount: z.number().int().min(0),
-  patientsCount: z.number().int().min(0),
-  infusionsCount: z.number().int().min(0),
-  poppyMilkCount: z.number().int().min(0),
+  counters: weeklyCountersSchema.optional(),
   chestDays: weekdayFlagsSchema.optional(),
   presenceDays: weekdayFlagsSchema.optional(),
 });
@@ -108,13 +116,15 @@ export const businessWeeklyActivityUpdateSchema = businessWeeklyActivityMetricsS
     { message: 'La fin de période doit être après le début', path: ['periodEnd'] },
   );
 
-/** Bot `PATCH …/[id]` : counters and meta only (caisse / présence via routes dédiées). */
-export const businessWeeklyActivityBotPatchSchema = z
-  .object({
-    sherifCount: z.number().int().min(0).optional(),
-    patientsCount: z.number().int().min(0).optional(),
-    infusionsCount: z.number().int().min(0).optional(),
-    poppyMilkCount: z.number().int().min(0).optional(),
+/** Bot `POST …/weekly-activity`: the create body, counters also accepted through their legacy fields. */
+export const businessWeeklyActivityBotCreateSchema = businessWeeklyActivityCreateSchema.and(
+  legacyCounterFieldsSchema,
+);
+
+/** Bot `PATCH …/[id]` : counters (absolute values) and meta only (caisse / présence via routes dédiées). */
+export const businessWeeklyActivityBotPatchSchema = legacyCounterFieldsSchema
+  .extend({
+    counters: weeklyCountersSchema.optional(),
     periodStart: z.coerce.date().optional(),
     periodEnd: z.coerce.date().optional(),
     displayName: z.string().trim().min(1).max(200).optional(),

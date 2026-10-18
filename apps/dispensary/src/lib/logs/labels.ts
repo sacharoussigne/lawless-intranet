@@ -2,7 +2,7 @@ import type { LogFeature, LogKind, LogLevel, LogOutcome, LogSource } from './typ
 
 /** French labels of the log page filters and badges. */
 export const LOG_FEATURE_LABELS: Record<LogFeature, string> = {
-  weeklyDispensaryActivity: 'Activité hebdo',
+  weeklyActivity: 'Activité hebdo',
   payroll: 'Paie',
   stock: 'Stock',
   bank: 'Banque',

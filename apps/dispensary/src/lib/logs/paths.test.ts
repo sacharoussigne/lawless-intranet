@@ -13,7 +13,7 @@ describe('businessSlugFromPath', () => {
 describe('featureFromPath', () => {
   it('maps pages to features', () => {
     expect(featureFromPath('/d/x/employee/stock-movements')).toBe('stock');
-    expect(featureFromPath('/d/x/employee/weekly-activity')).toBe('weeklyDispensaryActivity');
+    expect(featureFromPath('/d/x/employee/weekly-activity')).toBe('weeklyActivity');
     expect(featureFromPath('/d/x/employee/payroll/abc')).toBe('payroll');
     expect(featureFromPath('/d/x/admin/overwrite-stock')).toBe('stock');
     expect(featureFromPath('/d/x/management/items')).toBe('management');

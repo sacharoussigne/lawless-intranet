@@ -12,6 +12,10 @@ import {
   type AppSettingsDTO,
 } from '@/lib/appSettings';
 import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
+import {
+  parseWeeklyCounterSettings,
+  weeklyCounterDefinitions,
+} from '@/lib/businessWeeklyActivity/counters';
 
 export type BusinessSettingsAdminDTO = AppSettingsDTO & {
   slug: string;
@@ -37,17 +41,14 @@ const updateSchema = z.object({
   featureSearchEnabled: z.boolean(),
   featureMailsEnabled: z.boolean(),
   featurePayrollEnabled: z.boolean(),
-  featureWeeklyDispensaryActivityEnabled: z.boolean(),
+  featureWeeklyActivityEnabled: z.boolean(),
   featureAgendaEnabled: z.boolean(),
   featureCabinetEnabled: z.boolean(),
   featureSalesEnabled: z.boolean(),
   featureMediaEnabled: z.boolean(),
   weeklyActivityChestDaysVisible: z.boolean(),
   weeklyActivityPresenceDaysVisible: z.boolean(),
-  weeklyActivityPatientsVisible: z.boolean(),
-  weeklyActivitySherifsVisible: z.boolean(),
-  weeklyActivityInfusionsVisible: z.boolean(),
-  weeklyActivityPoppyMilkVisible: z.boolean(),
+  weeklyActivityCounters: z.record(z.string(), z.boolean()),
 });
 
 export async function getAppSettingsForAdmin(
@@ -105,6 +106,13 @@ async function updateAppSettingsUnlogged(
       };
     }
 
+    // Only the counters of the business type, and only the turned-off ones (a missing key is enabled).
+    const counterSettings = Object.fromEntries(
+      weeklyCounterDefinitions(business.type)
+        .filter((c) => parsed.data.weeklyActivityCounters[c.key] === false)
+        .map((c) => [c.key, false]),
+    );
+
     const newSlug = parsed.data.slug;
     if (newSlug !== business.slug) {
       const taken = await prisma.business.findFirst({
@@ -135,18 +143,15 @@ async function updateAppSettingsUnlogged(
           featureSearchEnabled: parsed.data.featureSearchEnabled,
           featureMailsEnabled: parsed.data.featureMailsEnabled,
           featurePayrollEnabled: parsed.data.featurePayrollEnabled,
-          featureWeeklyDispensaryActivityEnabled:
-            parsed.data.featureWeeklyDispensaryActivityEnabled,
+          featureWeeklyActivityEnabled:
+            parsed.data.featureWeeklyActivityEnabled,
           featureAgendaEnabled: parsed.data.featureAgendaEnabled,
           featureCabinetEnabled: parsed.data.featureCabinetEnabled,
           featureSalesEnabled: parsed.data.featureSalesEnabled,
           featureMediaEnabled: parsed.data.featureMediaEnabled,
           weeklyActivityChestDaysVisible: parsed.data.weeklyActivityChestDaysVisible,
           weeklyActivityPresenceDaysVisible: parsed.data.weeklyActivityPresenceDaysVisible,
-          weeklyActivityPatientsVisible: parsed.data.weeklyActivityPatientsVisible,
-          weeklyActivitySherifsVisible: parsed.data.weeklyActivitySherifsVisible,
-          weeklyActivityInfusionsVisible: parsed.data.weeklyActivityInfusionsVisible,
-          weeklyActivityPoppyMilkVisible: parsed.data.weeklyActivityPoppyMilkVisible,
+          weeklyActivityCounters: counterSettings,
         },
         update: {
           businessName: parsed.data.businessName,
@@ -156,18 +161,15 @@ async function updateAppSettingsUnlogged(
           featureSearchEnabled: parsed.data.featureSearchEnabled,
           featureMailsEnabled: parsed.data.featureMailsEnabled,
           featurePayrollEnabled: parsed.data.featurePayrollEnabled,
-          featureWeeklyDispensaryActivityEnabled:
-            parsed.data.featureWeeklyDispensaryActivityEnabled,
+          featureWeeklyActivityEnabled:
+            parsed.data.featureWeeklyActivityEnabled,
           featureAgendaEnabled: parsed.data.featureAgendaEnabled,
           featureCabinetEnabled: parsed.data.featureCabinetEnabled,
           featureSalesEnabled: parsed.data.featureSalesEnabled,
           featureMediaEnabled: parsed.data.featureMediaEnabled,
           weeklyActivityChestDaysVisible: parsed.data.weeklyActivityChestDaysVisible,
           weeklyActivityPresenceDaysVisible: parsed.data.weeklyActivityPresenceDaysVisible,
-          weeklyActivityPatientsVisible: parsed.data.weeklyActivityPatientsVisible,
-          weeklyActivitySherifsVisible: parsed.data.weeklyActivitySherifsVisible,
-          weeklyActivityInfusionsVisible: parsed.data.weeklyActivityInfusionsVisible,
-          weeklyActivityPoppyMilkVisible: parsed.data.weeklyActivityPoppyMilkVisible,
+          weeklyActivityCounters: counterSettings,
         },
       }),
     ]);
@@ -189,17 +191,14 @@ async function updateAppSettingsUnlogged(
       featureSearchEnabled: row.featureSearchEnabled,
       featureMailsEnabled: row.featureMailsEnabled,
       featurePayrollEnabled: row.featurePayrollEnabled,
-      featureWeeklyDispensaryActivityEnabled: row.featureWeeklyDispensaryActivityEnabled,
+      featureWeeklyActivityEnabled: row.featureWeeklyActivityEnabled,
       featureAgendaEnabled: row.featureAgendaEnabled ?? true,
       featureCabinetEnabled: row.featureCabinetEnabled ?? true,
       featureSalesEnabled: row.featureSalesEnabled ?? true,
       featureMediaEnabled: row.featureMediaEnabled ?? true,
       weeklyActivityChestDaysVisible: row.weeklyActivityChestDaysVisible ?? true,
       weeklyActivityPresenceDaysVisible: row.weeklyActivityPresenceDaysVisible ?? true,
-      weeklyActivityPatientsVisible: row.weeklyActivityPatientsVisible ?? true,
-      weeklyActivitySherifsVisible: row.weeklyActivitySherifsVisible ?? true,
-      weeklyActivityInfusionsVisible: row.weeklyActivityInfusionsVisible ?? true,
-      weeklyActivityPoppyMilkVisible: row.weeklyActivityPoppyMilkVisible ?? true,
+      weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
     };
 
     return { status: 200, data };

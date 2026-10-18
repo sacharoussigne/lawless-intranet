@@ -17,6 +17,8 @@ export type WeekHoursRecapHistoryInput = {
   id: string;
   activityId: string;
   action: string;
+  /** Counter of INCREMENT_/DECREMENT_COUNTER. */
+  counterKey?: string | null;
   createdAt: Date;
   previousValues: unknown;
   nextValues: unknown;
@@ -90,9 +92,12 @@ export function eventCalendarDate(at: Date): string {
   return dayjs(at).tz(TZ).format('YYYY-MM-DD');
 }
 
-function parseSnapshotPatientsCount(raw: unknown): number | null {
+/** Value of a counter in a history snapshot (`counters` object), null when absent. */
+function parseSnapshotCounter(raw: unknown, key: string): number | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const count = (raw as { patientsCount?: unknown }).patientsCount;
+  const counters = (raw as { counters?: unknown }).counters;
+  if (!counters || typeof counters !== 'object' || Array.isArray(counters)) return null;
+  const count = (counters as Record<string, unknown>)[key];
   return typeof count === 'number' && Number.isFinite(count) ? count : null;
 }
 
@@ -115,18 +120,27 @@ function weekdayDateForActivity(periodStart: Date, key: WeekdayKey): string {
   return dayjs(periodStart).tz(TZ).startOf('day').add(index, 'day').format('YYYY-MM-DD');
 }
 
-function patientDelta(entry: WeekHoursRecapHistoryInput): number {
-  if (entry.action === 'INCREMENT_PATIENTS') {
-    const before = parseSnapshotPatientsCount(entry.previousValues);
-    const after = parseSnapshotPatientsCount(entry.nextValues);
+/**
+ * Rise of the signal counters (lib/businessTypes `hoursSignal`, e.g. patients)
+ * in this history entry: their increments mark the open hours.
+ */
+function patientDelta(entry: WeekHoursRecapHistoryInput, signalCounterKeys: readonly string[]): number {
+  if (entry.action === 'INCREMENT_COUNTER') {
+    const key = entry.counterKey;
+    if (!key || !signalCounterKeys.includes(key)) return 0;
+    const before = parseSnapshotCounter(entry.previousValues, key);
+    const after = parseSnapshotCounter(entry.nextValues, key);
     if (before != null && after != null && after > before) return after - before;
     return 1;
   }
   if (entry.action === 'UPDATE') {
-    const before = parseSnapshotPatientsCount(entry.previousValues);
-    const after = parseSnapshotPatientsCount(entry.nextValues);
-    if (before == null || after == null || after <= before) return 0;
-    return after - before;
+    let delta = 0;
+    for (const key of signalCounterKeys) {
+      const before = parseSnapshotCounter(entry.previousValues, key) ?? 0;
+      const after = parseSnapshotCounter(entry.nextValues, key) ?? 0;
+      if (after > before) delta += after - before;
+    }
+    return delta;
   }
   return 0;
 }
@@ -186,6 +200,8 @@ export function buildWeekHoursRecap(options: {
   periodStart: Date;
   activities: WeekHoursRecapActivityInput[];
   history: WeekHoursRecapHistoryInput[];
+  /** Counters whose increments mark the open hours (lib/businessTypes `hoursSignal`). */
+  signalCounterKeys: readonly string[];
 }): WeekHoursRecapDay[] {
   return buildWeekHoursRecapBundle(options).days;
 }
@@ -197,6 +213,8 @@ export function buildWeekHoursRecapBundle(options: {
   periodStart: Date;
   activities: WeekHoursRecapActivityInput[];
   history: WeekHoursRecapHistoryInput[];
+  /** Counters whose increments mark the open hours (lib/businessTypes `hoursSignal`). */
+  signalCounterKeys: readonly string[];
 }): WeekHoursRecapBundle {
   const days = buildWeekHoursRecapForScope(options);
   const doctors = [...options.activities]
@@ -209,6 +227,7 @@ export function buildWeekHoursRecapBundle(options: {
         periodStart: options.periodStart,
         activities: [activity],
         history: options.history.filter((h) => h.activityId === activity.id),
+        signalCounterKeys: options.signalCounterKeys,
       }),
     }));
   return { days, doctors };
@@ -218,6 +237,8 @@ function buildWeekHoursRecapForScope(options: {
   periodStart: Date;
   activities: WeekHoursRecapActivityInput[];
   history: WeekHoursRecapHistoryInput[];
+  /** Counters whose increments mark the open hours (lib/businessTypes `hoursSignal`). */
+  signalCounterKeys: readonly string[];
 }): WeekHoursRecapDay[] {
   const activityById = new Map(options.activities.map((a) => [a.id, a]));
   const weekDates = listWeekDates(options.periodStart);
@@ -253,7 +274,7 @@ function buildWeekHoursRecapForScope(options: {
       continue;
     }
 
-    const delta = patientDelta(entry);
+    const delta = patientDelta(entry, options.signalCounterKeys);
     if (delta > 0) {
       const calendarDate = eventCalendarDate(entry.createdAt);
       if (weekDateSet.has(calendarDate)) {

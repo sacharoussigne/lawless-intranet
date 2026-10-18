@@ -17,8 +17,8 @@ const ME = 'user-me';
 const MY_DISCORD = '284726189304512512';
 const COLLEAGUE_DISCORD = '391827364519283746';
 
-const VIEW = [permissionKey('weekly_dispensary_activity', 'view')];
-const EDIT_ALL = [...VIEW, permissionKey('weekly_dispensary_activity', 'edit_all')];
+const VIEW = [permissionKey('weekly_activity', 'view')];
+const EDIT_ALL = [...VIEW, permissionKey('weekly_activity', 'edit_all')];
 
 type Row = { businessId: string; discordUserId: string; userId: string | null };
 

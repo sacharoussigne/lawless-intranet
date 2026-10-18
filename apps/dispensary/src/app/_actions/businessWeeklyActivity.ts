@@ -8,9 +8,9 @@ import { actionErrorParser } from '@/lib/action';
 import { withLoggedAction } from '@/lib/logs/writer';
 import { can } from '@lawless-intranet/auth-permissions';
 import {
-  canEditAllWeeklyDispensaryActivity,
+  canEditAllWeeklyActivity,
   canEditWeeklyActivity,
-  canViewWeeklyDispensaryActivity,
+  canViewWeeklyActivity,
   isWeeklyActivityOwner,
   weeklyActivityWhereForViewer,
 } from '@/lib/businessWeeklyActivity/access';
@@ -53,11 +53,16 @@ import { discordUserIdSchema } from '@/lib/people/discordId';
 import {
   applyVisibilityToCreateInput,
   applyVisibilityToUpdateInput,
-  botPatchFieldVisibilityError,
+  isWeeklyCounterVisible,
   botWeekdayFieldVisibilityError,
   weeklyActivityFieldVisibilityFromSettings,
 } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import { getAppSettings } from '@/lib/appSettings';
+import {
+  parseWeeklyCounters,
+  weeklyCounterDefinitions,
+  weeklyCounterValue,
+} from '@/lib/businessWeeklyActivity/counters';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/business/tenantWhere';
 import {
@@ -85,12 +90,12 @@ function parseMutationMeta(meta: unknown): WeeklyActivityMutationMeta | undefine
 
 async function requireWeeklyActivityView(businessSlug: string) {
   const ctx = await requireTenantServerActionContext(businessSlug, {
-    feature: 'weeklyDispensaryActivity',
+    feature: 'weeklyActivity',
   });
   if (!ctx.ok) {
     return { ok: false as const, response: ctx.response };
   }
-  if (!canViewWeeklyDispensaryActivity(ctx.tenant.effectivePermissions)) {
+  if (!canViewWeeklyActivity(ctx.tenant.effectivePermissions)) {
     return { ok: false as const, response: { status: 403 as const, error: 'Permission refusée' } };
   }
   return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
@@ -98,15 +103,15 @@ async function requireWeeklyActivityView(businessSlug: string) {
 
 async function requireWeeklyActivityEdit(businessSlug: string) {
   const ctx = await requireTenantServerActionContext(businessSlug, {
-    feature: 'weeklyDispensaryActivity',
+    feature: 'weeklyActivity',
   });
   if (!ctx.ok) {
     return { ok: false as const, response: ctx.response };
   }
   const perms = ctx.tenant.effectivePermissions;
   const allowed =
-    can(perms, 'weekly_dispensary_activity', 'edit_all') ||
-    can(perms, 'weekly_dispensary_activity', 'edit_own');
+    can(perms, 'weekly_activity', 'edit_all') ||
+    can(perms, 'weekly_activity', 'edit_own');
   if (!allowed) {
     return { ok: false as const, response: { status: 403 as const, error: 'Permission refusée' } };
   }
@@ -185,7 +190,12 @@ export async function getBusinessWeeklyHoursRecap(
     if (activities.length === 0) {
       return {
         status: 200 as const,
-        data: buildWeekHoursRecapBundle({ periodStart, activities: [], history: [] }),
+        data: buildWeekHoursRecapBundle({
+          periodStart,
+          activities: [],
+          history: [],
+          signalCounterKeys: [],
+        }),
       };
     }
 
@@ -201,13 +211,16 @@ export async function getBusinessWeeklyHoursRecap(
     const history = await prisma.businessWeeklyActivityHistory.findMany({
       where: {
         activityId: { in: activityIds },
-        action: { in: ['INCREMENT_PATIENTS', 'UPDATE_PRESENCE_DAYS', 'UPDATE'] },
+        action: { in: ['INCREMENT_COUNTER', 'UPDATE_PRESENCE_DAYS', 'UPDATE'] },
       },
       orderBy: { createdAt: 'asc' },
     });
 
     const data = buildWeekHoursRecapBundle({
       periodStart,
+      signalCounterKeys: weeklyCounterDefinitions(gate.tenant.business.type)
+        .filter((c) => c.hoursSignal)
+        .map((c) => c.key),
       activities: withNames.map((a) => ({
         id: a.id,
         displayName: a.resolvedDisplayName,
@@ -220,6 +233,7 @@ export async function getBusinessWeeklyHoursRecap(
           id: h.id,
           activityId: h.activityId,
           action: h.action,
+          counterKey: h.counterKey,
           createdAt: h.createdAt,
           previousValues: h.previousValues,
           nextValues: h.nextValues,
@@ -256,7 +270,7 @@ export async function getBusinessWeeklyActivityHistory(
     }
 
     const perms = gate.tenant.effectivePermissions;
-    const isAll = canEditAllWeeklyDispensaryActivity(perms);
+    const isAll = canEditAllWeeklyActivity(perms);
     const own = await isWeeklyActivityOwner(prisma, gate.session.user.id, activity);
     if (!isAll && !own) {
       return { status: 403 as const, error: 'Permission refusée' };
@@ -334,6 +348,7 @@ export async function getBusinessWeeklyActivityHistory(
             ? ssoActorProfiles.get(h.actorImpersonatedById)?.name ?? h.actorImpersonatedById
             : null,
           createdAt: h.createdAt.toISOString(),
+          counterKey: h.counterKey,
           previousValues: h.previousValues,
           nextValues: h.nextValues,
         };
@@ -443,7 +458,7 @@ export async function listBusinessWeeklyActivityTargets(businessSlug: string) {
     if (!gate.ok) {
       return gate.response;
     }
-    if (!canEditAllWeeklyDispensaryActivity(gate.tenant.effectivePermissions)) {
+    if (!canEditAllWeeklyActivity(gate.tenant.effectivePermissions)) {
       return { status: 403 as const, error: 'Permission refusée' };
     }
 
@@ -473,7 +488,7 @@ async function createBusinessWeeklyActivityUnlogged(
     const { session, tenant } = gate;
     const { businessId } = tenant;
     const perms = tenant.effectivePermissions;
-    const editAll = canEditAllWeeklyDispensaryActivity(perms);
+    const editAll = canEditAllWeeklyActivity(perms);
 
     let discordUserId: string;
     const actorDiscordUserId = await getDiscordAccountIdForUser(prisma, session.user.id);
@@ -516,10 +531,7 @@ async function createBusinessWeeklyActivityUnlogged(
       discordUserId,
       chestDays: parsed.data.chestDays,
       presenceDays: parsed.data.presenceDays,
-      sherifCount: parsed.data.sherifCount,
-      patientsCount: parsed.data.patientsCount,
-      infusionsCount: parsed.data.infusionsCount,
-      poppyMilkCount: parsed.data.poppyMilkCount,
+      counters: parsed.data.counters,
     });
     if (!validated.success) {
       return { status: 400 as const, error: validated.error.issues[0]?.message ?? 'Données invalides' };
@@ -606,7 +618,7 @@ async function updateBusinessWeeklyActivityUnlogged(
     const settings = await getAppSettings(businessId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
     const updateInput = applyVisibilityToUpdateInput(parsedBody.data, visibility);
-    const canEditAll = canEditAllWeeklyDispensaryActivity(gate.tenant.effectivePermissions);
+    const canEditAll = canEditAllWeeklyActivity(gate.tenant.effectivePermissions);
     const existingChest = parseWeekdayFlagsJson(existing.chestDays);
     const existingPresence = parseWeekdayFlagsJson(existing.presenceDays);
 
@@ -698,12 +710,8 @@ async function deleteBusinessWeeklyActivityUnlogged(
   }
 }
 
-const weeklyCounterFieldSchema = z.enum([
-  'sherifCount',
-  'patientsCount',
-  'infusionsCount',
-  'poppyMilkCount',
-]);
+/** Key of a counter of the business type (checked against its visible counters). */
+const weeklyCounterKeySchema = z.string().trim().min(1).max(40);
 
 async function requireOwnDiscordUserId(
   sessionUserId: string,
@@ -828,7 +836,7 @@ async function markOwnWeeklyPresenceTodayUnlogged(
 
 async function incrementOwnWeeklyCounterUnlogged(
   businessSlug: string,
-  input: { field: z.infer<typeof weeklyCounterFieldSchema> },
+  input: { counterKey: string },
   meta?: WeeklyActivityMutationMeta,
 ) {
   try {
@@ -837,7 +845,7 @@ async function incrementOwnWeeklyCounterUnlogged(
       return gate.response;
     }
 
-    const parsed = weeklyCounterFieldSchema.safeParse(input.field);
+    const parsed = weeklyCounterKeySchema.safeParse(input.counterKey);
     if (!parsed.success) {
       return { status: 400 as const, error: 'Compteur invalide' };
     }
@@ -850,12 +858,8 @@ async function incrementOwnWeeklyCounterUnlogged(
     const { businessId } = gate.tenant;
     const settings = await getAppSettings(businessId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
-    const visibilityError = botPatchFieldVisibilityError(
-      { [parsed.data]: 0 },
-      visibility,
-    );
-    if (visibilityError) {
-      return { status: 403 as const, error: visibilityError };
+    if (!isWeeklyCounterVisible(visibility, parsed.data)) {
+      return { status: 403 as const, error: 'Ce compteur est masqué pour ce dispensaire.' };
     }
 
     const mutationMeta = parseMutationMeta(meta);
@@ -873,12 +877,12 @@ async function incrementOwnWeeklyCounterUnlogged(
       },
     );
 
-    const currentValue = existing[parsed.data];
+    const currentValue = weeklyCounterValue(parseWeeklyCounters(existing.counters), parsed.data);
     const actorDiscordUserId = discordGate.discordUserId;
 
     await updateBusinessWeeklyActivityWithHistory(
       existing.id,
-      { [parsed.data]: currentValue + 1 },
+      { counters: { [parsed.data]: currentValue + 1 } },
       {
         source: 'INTRANET',
         actorUserId: gate.session.user.id,
@@ -912,7 +916,7 @@ async function updateBusinessDiscordProfileUnlogged(
     if (!gate.ok) {
       return gate.response;
     }
-    if (!canEditAllWeeklyDispensaryActivity(gate.tenant.effectivePermissions)) {
+    if (!canEditAllWeeklyActivity(gate.tenant.effectivePermissions)) {
       return {
         status: 403 as const,
         error: 'Permission refusée : le grade et le n° de compte sont modifiés par la direction',
@@ -947,7 +951,7 @@ async function updateBusinessDiscordProfileUnlogged(
 /*
  * Sensitive feature: every mutation is logged (success, refusal, failure), see docs/APP-LOGS.md.
  */
-const WEEKLY_ACTIVITY_LOG = 'weeklyDispensaryActivity' as const;
+const WEEKLY_ACTIVITY_LOG = 'weeklyActivity' as const;
 
 type QuickActionResult = Awaited<ReturnType<typeof markOwnWeeklyChestTodayUnlogged>>;
 
@@ -1042,7 +1046,7 @@ export async function markOwnWeeklyPresenceToday(
 
 export async function incrementOwnWeeklyCounter(
   businessSlug: string,
-  input: { field: z.infer<typeof weeklyCounterFieldSchema> },
+  input: { counterKey: string },
   meta?: WeeklyActivityMutationMeta,
 ) {
   return withLoggedAction(

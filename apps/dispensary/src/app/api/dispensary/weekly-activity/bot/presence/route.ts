@@ -77,6 +77,6 @@ async function handlePost(request: Request) {
 }
 
 export const POST = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.presence' },
+  { feature: 'weeklyActivity', event: 'bot.presence' },
   handlePost,
 );

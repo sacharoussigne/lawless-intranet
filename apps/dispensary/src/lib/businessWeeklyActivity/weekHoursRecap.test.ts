@@ -52,6 +52,7 @@ describe('buildWeekHoursRecap', () => {
 
   it('ignores morning presence and patients entirely', () => {
     const days = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA],
       history: [
@@ -66,10 +67,11 @@ describe('buildWeekHoursRecap', () => {
         {
           id: 'h2',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 09:00:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
       ],
     });
@@ -81,6 +83,7 @@ describe('buildWeekHoursRecap', () => {
 
   it('uses evening presence before evening patient for opening', () => {
     const days = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA],
       history: [
@@ -95,10 +98,11 @@ describe('buildWeekHoursRecap', () => {
         {
           id: 'h2',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 21:00:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
       ],
     });
@@ -111,24 +115,27 @@ describe('buildWeekHoursRecap', () => {
 
   it('excludes afternoon patients from opening but counts them', () => {
     const days = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA],
       history: [
         {
           id: 'h1',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 14:00:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
         {
           id: 'h2',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 15:30:00'),
-          previousValues: { patientsCount: 1 },
-          nextValues: { patientsCount: 2 },
+          previousValues: { counters: { patients: 1 } },
+          nextValues: { counters: { patients: 2 } },
         },
       ],
     });
@@ -140,6 +147,7 @@ describe('buildWeekHoursRecap', () => {
 
   it('ignores afternoon presence for opening', () => {
     const days = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA],
       history: [
@@ -160,32 +168,36 @@ describe('buildWeekHoursRecap', () => {
 
   it('ignores overnight morning patient and uses 20:01 for open/close after aprem', () => {
     const days = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA],
       history: [
         {
           id: 'h1',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-13 02:00:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
         {
           id: 'h2',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 20:00:00'),
-          previousValues: { patientsCount: 1 },
-          nextValues: { patientsCount: 2 },
+          previousValues: { counters: { patients: 1 } },
+          nextValues: { counters: { patients: 2 } },
         },
         {
           id: 'h3',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 20:01:00'),
-          previousValues: { patientsCount: 2 },
-          nextValues: { patientsCount: 3 },
+          previousValues: { counters: { patients: 2 } },
+          nextValues: { counters: { patients: 3 } },
         },
       ],
     });
@@ -200,48 +212,54 @@ describe('buildWeekHoursRecap', () => {
 
   it('aggregates across doctors and filters by activity set', () => {
     const all = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA, activityB],
       history: [
         {
           id: 'h1',
           activityId: 'act-b',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 20:01:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
         {
           id: 'h2',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 21:00:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
       ],
     });
     expect(all.find((d) => d.date === '2026-05-12')?.openByName).toBe('Bob');
 
     const onlyAlice = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA],
       history: [
         {
           id: 'h1',
           activityId: 'act-b',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 20:01:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
         {
           id: 'h2',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 21:00:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
       ],
     });
@@ -250,24 +268,27 @@ describe('buildWeekHoursRecap', () => {
 
   it('exposes per-doctor day breakdown in the bundle', () => {
     const bundle = buildWeekHoursRecapBundle({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA, activityB],
       history: [
         {
           id: 'h1',
           activityId: 'act-b',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 20:01:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
         {
           id: 'h2',
           activityId: 'act-a',
-          action: 'INCREMENT_PATIENTS',
+          action: 'INCREMENT_COUNTER',
+          counterKey: 'patients',
           createdAt: parisDate('2026-05-12 14:00:00'),
-          previousValues: { patientsCount: 0 },
-          nextValues: { patientsCount: 1 },
+          previousValues: { counters: { patients: 0 } },
+          nextValues: { counters: { patients: 1 } },
         },
       ],
     });
@@ -281,6 +302,7 @@ describe('buildWeekHoursRecap', () => {
 
   it('ignores intranet UPDATE patient deltas in the morning', () => {
     const days = buildWeekHoursRecap({
+      signalCounterKeys: ['patients'],
       periodStart,
       activities: [activityA],
       history: [
@@ -292,13 +314,13 @@ describe('buildWeekHoursRecap', () => {
           previousValues: {
             displayName: 'Alice',
             discordUserId: 'd-a',
-            patientsCount: 2,
+            counters: { patients: 2 },
             presenceDays: {},
           },
           nextValues: {
             displayName: 'Alice',
             discordUserId: 'd-a',
-            patientsCount: 4,
+            counters: { patients: 4 },
             presenceDays: {},
           },
         },

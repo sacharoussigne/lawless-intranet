@@ -24,9 +24,9 @@ import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
 import type { BusinessPerson, BusinessPeopleList } from '@/lib/people/types';
 
 const peopleGuard = {
-  feature: 'weeklyDispensaryActivity' as const,
+  feature: 'weeklyActivity' as const,
   permission: {
-    resource: 'weekly_dispensary_activity' as const,
+    resource: 'weekly_activity' as const,
     action: 'edit_all',
     message: 'Permission refusée : la gestion des personnes demande de pouvoir modifier toute l’activité',
   },
@@ -206,7 +206,7 @@ async function updateBusinessPersonUnlogged(businessSlug: string, input: unknown
 export async function createBusinessPerson(...args: Parameters<typeof createBusinessPersonUnlogged>) {
   return loggedAction(
     {
-      feature: 'weeklyDispensaryActivity',
+      feature: 'weeklyActivity',
       event: 'people.createPerson',
       target: ([, input]) => (input as { discordUserId?: string } | undefined)?.discordUserId,
     },
@@ -218,7 +218,7 @@ export async function createBusinessPerson(...args: Parameters<typeof createBusi
 export async function updateBusinessPerson(...args: Parameters<typeof updateBusinessPersonUnlogged>) {
   return loggedAction(
     {
-      feature: 'weeklyDispensaryActivity',
+      feature: 'weeklyActivity',
       event: 'people.updatePerson',
       target: ([, input]) => (input as { discordUserId?: string } | undefined)?.discordUserId,
     },

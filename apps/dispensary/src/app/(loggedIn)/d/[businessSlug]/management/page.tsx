@@ -61,8 +61,8 @@ export default async function ManagementPage({
       icon: IconUsers,
       href: t.management.people,
       visible:
-        settings.featureWeeklyDispensaryActivityEnabled &&
-        can(effectivePermissions, 'weekly_dispensary_activity', 'edit_all'),
+        settings.featureWeeklyActivityEnabled &&
+        can(effectivePermissions, 'weekly_activity', 'edit_all'),
     },
     {
       title: 'Courriers',

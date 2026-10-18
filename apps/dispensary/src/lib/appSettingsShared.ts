@@ -14,17 +14,15 @@ export type AppSettingsDTO = {
   featureSearchEnabled: boolean;
   featureMailsEnabled: boolean;
   featurePayrollEnabled: boolean;
-  featureWeeklyDispensaryActivityEnabled: boolean;
+  featureWeeklyActivityEnabled: boolean;
   featureAgendaEnabled: boolean;
   featureCabinetEnabled: boolean;
   featureSalesEnabled: boolean;
   featureMediaEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
-  weeklyActivityPatientsVisible: boolean;
-  weeklyActivitySherifsVisible: boolean;
-  weeklyActivityInfusionsVisible: boolean;
-  weeklyActivityPoppyMilkVisible: boolean;
+  /** Weekly activity counters of the business type: key → enabled (a missing key is enabled). */
+  weeklyActivityCounters: Record<string, boolean>;
 };
 
 export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
@@ -36,17 +34,14 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   featureSearchEnabled: true,
   featureMailsEnabled: true,
   featurePayrollEnabled: true,
-  featureWeeklyDispensaryActivityEnabled: true,
+  featureWeeklyActivityEnabled: true,
   featureAgendaEnabled: true,
   featureCabinetEnabled: true,
   featureSalesEnabled: true,
   featureMediaEnabled: true,
   weeklyActivityChestDaysVisible: true,
   weeklyActivityPresenceDaysVisible: true,
-  weeklyActivityPatientsVisible: true,
-  weeklyActivitySherifsVisible: true,
-  weeklyActivityInfusionsVisible: true,
-  weeklyActivityPoppyMilkVisible: true,
+  weeklyActivityCounters: {},
 };
 
 /** Settings flag behind each module. */
@@ -57,7 +52,7 @@ const FEATURE_SETTING: Record<AppFeatureKey, keyof AppSettingsDTO & `feature${st
   search: 'featureSearchEnabled',
   mails: 'featureMailsEnabled',
   payroll: 'featurePayrollEnabled',
-  weeklyDispensaryActivity: 'featureWeeklyDispensaryActivityEnabled',
+  weeklyActivity: 'featureWeeklyActivityEnabled',
   agenda: 'featureAgendaEnabled',
   cabinet: 'featureCabinetEnabled',
   sales: 'featureSalesEnabled',
@@ -105,8 +100,8 @@ export function isAppFeatureEnabled(
       return settings.featureMailsEnabled;
     case 'payroll':
       return settings.featurePayrollEnabled;
-    case 'weeklyDispensaryActivity':
-      return settings.featureWeeklyDispensaryActivityEnabled;
+    case 'weeklyActivity':
+      return settings.featureWeeklyActivityEnabled;
     case 'agenda':
       return settings.featureAgendaEnabled;
     case 'cabinet':

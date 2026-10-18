@@ -24,29 +24,15 @@ export type CompactCounterStat = {
   value: number;
 };
 
+/** The visible counters of the business type, with their value (0 when missing). */
 export function buildCompactCounterStats(
-  row: {
-    patientsCount: number;
-    sherifCount: number;
-    infusionsCount: number;
-    poppyMilkCount: number;
-  },
+  counters: Record<string, number>,
   visibility: WeeklyActivityFieldVisibility,
 ): CompactCounterStat[] {
-  const stats: CompactCounterStat[] = [];
-  if (visibility.patientsCount) {
-    stats.push({ label: 'Patients', value: row.patientsCount });
-  }
-  if (visibility.sherifCount) {
-    stats.push({ label: 'Shérifs', value: row.sherifCount });
-  }
-  if (visibility.infusionsCount) {
-    stats.push({ label: 'Infusion', value: row.infusionsCount });
-  }
-  if (visibility.poppyMilkCount) {
-    stats.push({ label: 'Lait pavot', value: row.poppyMilkCount });
-  }
-  return stats;
+  return visibility.counters.map((c) => ({
+    label: c.shortLabel ?? c.label,
+    value: counters[c.key] ?? 0,
+  }));
 }
 
 export function formatCompactCounterLine(stats: CompactCounterStat[]): string {

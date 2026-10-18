@@ -40,7 +40,7 @@ export function getBusinessIdFromBotRequest(request: NextRequest): string | null
 export async function assertBotBusinessWeeklyActivityEnabled(
   businessId: string,
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const block = await getAppFeatureActionBlock(businessId, 'weeklyDispensaryActivity');
+  const block = await getAppFeatureActionBlock(businessId, 'weeklyActivity');
   if (block) {
     return { ok: false, status: block.status, error: block.error };
   }

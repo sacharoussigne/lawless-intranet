@@ -44,6 +44,8 @@ export type WeeklyActivityHistoryEntry = {
   actorImpersonatedByName?: string | null;
   actorDiscordUserId: string | null;
   createdAt: string;
+  /** Counter of INCREMENT_/DECREMENT_COUNTER. */
+  counterKey?: string | null;
   previousValues: unknown;
   nextValues: unknown;
 };
@@ -453,12 +455,6 @@ export function useMarkOwnWeeklyPresenceTodayMutation() {
   });
 }
 
-type WeeklyCounterField =
-  | 'sherifCount'
-  | 'patientsCount'
-  | 'infusionsCount'
-  | 'poppyMilkCount';
-
 export function useIncrementOwnWeeklyCounterMutation() {
   const businessSlug = useRequiredBusinessSlug();
   const invalidate = useInvalidateWeeklyActivities();
@@ -466,12 +462,13 @@ export function useIncrementOwnWeeklyCounterMutation() {
 
   return useMutation({
     mutationFn: async (vars: {
-      field: WeeklyCounterField;
+      /** Counter of the business type (lib/businessTypes). */
+      counterKey: string;
       weekBounds: WeeklyActivityWeekBounds;
     }) => {
       const result = await incrementOwnWeeklyCounter(
         businessSlug,
-        { field: vars.field },
+        { counterKey: vars.counterKey },
         meta,
       );
       handleAction(result);

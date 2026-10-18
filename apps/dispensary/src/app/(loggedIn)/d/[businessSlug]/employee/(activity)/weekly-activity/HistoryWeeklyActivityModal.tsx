@@ -7,6 +7,7 @@ import { AppModal } from '@/app/_components/AppModal/AppModal';
 import { formatBusinessHistoryAction } from '@/lib/businessWeeklyActivity/historyActionLabel';
 import { formatHistoryValueChanges } from '@/lib/businessWeeklyActivity/historyValueDiff';
 import { useWeeklyActivityHistory } from './hooks/useWeeklyActivityQueries';
+import { useBusinessTypeDefinition } from '@/app/_contexts/PermissionsContext';
 
 type HistoryWeeklyActivityModalProps = {
   activityId: string | null;
@@ -19,6 +20,7 @@ export function HistoryWeeklyActivityModal({
   title,
   onClose,
 }: HistoryWeeklyActivityModalProps) {
+  const { weeklyCounters } = useBusinessTypeDefinition();
   const { data: historyEntries = [], isFetching } = useWeeklyActivityHistory(
     activityId,
     activityId !== null,
@@ -42,13 +44,19 @@ export function HistoryWeeklyActivityModal({
           </Text>
         ) : (
           historyEntries.map((h) => {
-            const valueChanges = formatHistoryValueChanges(h.action, h.previousValues, h.nextValues);
+            const valueChanges = formatHistoryValueChanges(
+              h.action,
+              h.previousValues,
+              h.nextValues,
+              weeklyCounters,
+            );
+            const counterLabel = weeklyCounters.find((c) => c.key === h.counterKey)?.label ?? h.counterKey;
 
             return (
               <Paper key={h.id} withBorder p="sm" radius="md">
                 <Text size="xs" c="dimmed">
                   {format(new Date(h.createdAt), 'Pp', { locale: fr })} —{' '}
-                  {formatBusinessHistoryAction(h.action)} —{' '}
+                  {formatBusinessHistoryAction(h.action, counterLabel)} —{' '}
                   {h.source === 'INTRANET' ? 'Intranet' : 'Bot Discord'}
                 </Text>
                 <Text size="sm">

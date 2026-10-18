@@ -32,10 +32,7 @@ export async function loadSerializedWeeklyActivityById(
     userId: withProfile.userId,
     chestDays: withProfile.chestDays,
     presenceDays: withProfile.presenceDays,
-    sherifCount: withProfile.sherifCount,
-    patientsCount: withProfile.patientsCount,
-    infusionsCount: withProfile.infusionsCount,
-    poppyMilkCount: withProfile.poppyMilkCount,
+    counters: withProfile.counters,
     createdAt: withProfile.createdAt,
     updatedAt: withProfile.updatedAt,
   });

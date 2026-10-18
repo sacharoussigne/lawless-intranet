@@ -1,5 +1,6 @@
 import type { BusinessWeeklyActivity } from '@prisma/client';
 import { parseWeekdayFlagsJson, type WeekdayFlags } from '@/lib/businessWeeklyActivity/weekdayFlags';
+import { parseWeeklyCounters, type WeeklyCounters } from '@/lib/businessWeeklyActivity/counters';
 
 export type ActivitySnapshotJson = {
   periodStart: string;
@@ -9,10 +10,7 @@ export type ActivitySnapshotJson = {
   userId: string | null;
   chestDays: WeekdayFlags;
   presenceDays: WeekdayFlags;
-  sherifCount: number;
-  patientsCount: number;
-  infusionsCount: number;
-  poppyMilkCount: number;
+  counters: WeeklyCounters;
 };
 
 export function activityToSnapshot(activity: BusinessWeeklyActivity): ActivitySnapshotJson {
@@ -24,9 +22,6 @@ export function activityToSnapshot(activity: BusinessWeeklyActivity): ActivitySn
     userId: activity.userId,
     chestDays: parseWeekdayFlagsJson(activity.chestDays),
     presenceDays: parseWeekdayFlagsJson(activity.presenceDays),
-    sherifCount: activity.sherifCount,
-    patientsCount: activity.patientsCount,
-    infusionsCount: activity.infusionsCount,
-    poppyMilkCount: activity.poppyMilkCount,
+    counters: parseWeeklyCounters(activity.counters),
   };
 }

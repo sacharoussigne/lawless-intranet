@@ -10,6 +10,12 @@ import { upsertDiscordProfileFromActivity } from '@/lib/businessDiscordProfile/s
 import { accountIdOfDiscord, syncRowAccountLinks } from '@/lib/people/accountLinks';
 import { resolveBotWeeklyActivityDisplayName } from '@/lib/businessWeeklyActivity/resolveDisplayName';
 import { activityToSnapshot } from '@/lib/businessWeeklyActivity/snapshot';
+import {
+  parseWeeklyCounters,
+  storedWeeklyCounters,
+  weeklyCounterValue,
+  type WeeklyCounters,
+} from '@/lib/businessWeeklyActivity/counters';
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import { tenantWhere } from '@/lib/business/tenantWhere';
 import type { BusinessWeeklyActivityCreateInput, BusinessWeeklyActivityUpdateInput } from '@/lib/businessWeeklyActivity/schemas';
@@ -120,36 +126,20 @@ type ActorContext = {
   meta?: WeeklyActivityMutationMeta;
 };
 
-const COUNTER_FIELDS = [
-  'sherifCount',
-  'patientsCount',
-  'infusionsCount',
-  'poppyMilkCount',
-] as const;
-
-type CounterField = (typeof COUNTER_FIELDS)[number];
-
-function counterDeltaToHistoryAction(
-  field: CounterField,
-  before: number,
-  after: number,
-): BusinessWeeklyActivityHistoryAction | null {
-  if (before === after) return null;
-  const up = after > before;
-  switch (field) {
-    case 'sherifCount':
-      return up ? 'INCREMENT_SHERIFF' : 'DECREMENT_SHERIFF';
-    case 'patientsCount':
-      return up ? 'INCREMENT_PATIENTS' : 'DECREMENT_PATIENTS';
-    case 'infusionsCount':
-      return up ? 'INCREMENT_INFUSIONS' : 'DECREMENT_INFUSIONS';
-    case 'poppyMilkCount':
-      return up ? 'INCREMENT_POPPY_MILK' : 'DECREMENT_POPPY_MILK';
-    default: {
-      const _exhaustive: never = field;
-      return _exhaustive;
-    }
+/** One history action per counter the bot changed: key and direction. */
+function counterChanges(
+  before: WeeklyCounters,
+  after: WeeklyCounters,
+): { counterKey: string; action: BusinessWeeklyActivityHistoryAction }[] {
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const changes: { counterKey: string; action: BusinessWeeklyActivityHistoryAction }[] = [];
+  for (const counterKey of keys) {
+    const from = weeklyCounterValue(before, counterKey);
+    const to = weeklyCounterValue(after, counterKey);
+    if (from === to) continue;
+    changes.push({ counterKey, action: to > from ? 'INCREMENT_COUNTER' : 'DECREMENT_COUNTER' });
   }
+  return changes;
 }
 
 function botMetaChanged(
@@ -206,10 +196,7 @@ export async function createBusinessWeeklyActivityWithHistory(
         userId: linkedUserId ?? undefined,
         chestDays: chestDays as Prisma.InputJsonValue,
         presenceDays: presenceDays as Prisma.InputJsonValue,
-        sherifCount: input.sherifCount,
-        patientsCount: input.patientsCount,
-        infusionsCount: input.infusionsCount,
-        poppyMilkCount: input.poppyMilkCount,
+        counters: storedWeeklyCounters(input.counters ?? {}) as Prisma.InputJsonValue,
       },
     });
 
@@ -278,10 +265,13 @@ export async function updateBusinessWeeklyActivityWithHistory(
     if (input.displayName !== undefined) data.displayName = input.displayName;
     if (input.chestDays !== undefined) data.chestDays = input.chestDays as Prisma.InputJsonValue;
     if (input.presenceDays !== undefined) data.presenceDays = input.presenceDays as Prisma.InputJsonValue;
-    if (input.sherifCount !== undefined) data.sherifCount = input.sherifCount;
-    if (input.patientsCount !== undefined) data.patientsCount = input.patientsCount;
-    if (input.infusionsCount !== undefined) data.infusionsCount = input.infusionsCount;
-    if (input.poppyMilkCount !== undefined) data.poppyMilkCount = input.poppyMilkCount;
+    if (input.counters !== undefined) {
+      // The given counters replace their value; the others keep theirs.
+      data.counters = storedWeeklyCounters({
+        ...parseWeeklyCounters(existing.counters),
+        ...input.counters,
+      }) as Prisma.InputJsonValue;
+    }
 
     const updated = await tx.businessWeeklyActivity.update({
       where: { id },
@@ -317,17 +307,12 @@ export async function updateBusinessWeeklyActivityWithHistory(
         });
       }
     } else {
-      for (const field of COUNTER_FIELDS) {
-        const actionKind = counterDeltaToHistoryAction(
-          field,
-          existing[field],
-          row[field],
-        );
-        if (!actionKind) continue;
+      for (const change of counterChanges(prevSnap.counters, nextSnap.counters)) {
         await tx.businessWeeklyActivityHistory.create({
           data: {
             activityId: id,
-            action: actionKind,
+            action: change.action,
+            counterKey: change.counterKey,
             source: actor.source,
             actorUserId: actor.actorUserId,
             actorDiscordUserId: actor.actorDiscordUserId,
@@ -448,10 +433,6 @@ export async function findOrCreateBusinessActivityForParisDay(
         periodEnd: end,
         displayName,
         discordUserId,
-        sherifCount: 0,
-        patientsCount: 0,
-        infusionsCount: 0,
-        poppyMilkCount: 0,
       },
       actor,
     );

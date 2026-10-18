@@ -1,5 +1,10 @@
 import { APP_SETTINGS_DEFAULTS, type AppSettingsDTO } from '@/lib/appSettingsShared';
+import type { WeeklyCounterDefinition } from '@/lib/businessTypes';
 import type { SerializedBusinessWeeklyActivityRow } from '@/lib/businessWeeklyActivity/apiRow';
+import {
+  enabledWeeklyCounterDefinitions,
+  type WeeklyCounters,
+} from '@/lib/businessWeeklyActivity/counters';
 import type {
   BusinessWeeklyActivityCreateInput,
   BusinessWeeklyActivityUpdateInput,
@@ -12,10 +17,8 @@ import {
 export type WeeklyActivityFieldVisibility = {
   chestDays: boolean;
   presenceDays: boolean;
-  patientsCount: boolean;
-  sherifCount: boolean;
-  infusionsCount: boolean;
-  poppyMilkCount: boolean;
+  /** Counters of the business type that are not turned off, in display order. */
+  counters: WeeklyCounterDefinition[];
 };
 
 export function weeklyActivityFieldVisibilityFromSettings(
@@ -25,11 +28,28 @@ export function weeklyActivityFieldVisibilityFromSettings(
   return {
     chestDays: settings.weeklyActivityChestDaysVisible ?? d.weeklyActivityChestDaysVisible,
     presenceDays: settings.weeklyActivityPresenceDaysVisible ?? d.weeklyActivityPresenceDaysVisible,
-    patientsCount: settings.weeklyActivityPatientsVisible ?? d.weeklyActivityPatientsVisible,
-    sherifCount: settings.weeklyActivitySherifsVisible ?? d.weeklyActivitySherifsVisible,
-    infusionsCount: settings.weeklyActivityInfusionsVisible ?? d.weeklyActivityInfusionsVisible,
-    poppyMilkCount: settings.weeklyActivityPoppyMilkVisible ?? d.weeklyActivityPoppyMilkVisible,
+    counters: enabledWeeklyCounterDefinitions(
+      settings.businessType,
+      settings.weeklyActivityCounters ?? d.weeklyActivityCounters,
+    ),
   };
+}
+
+export function isWeeklyCounterVisible(
+  visibility: WeeklyActivityFieldVisibility,
+  key: string,
+): boolean {
+  return visibility.counters.some((c) => c.key === key);
+}
+
+/** Only the visible counters (the others, hidden or unknown, are dropped). */
+function visibleCounters(
+  counters: WeeklyCounters,
+  visibility: WeeklyActivityFieldVisibility,
+): WeeklyCounters {
+  return Object.fromEntries(
+    Object.entries(counters).filter(([key]) => isWeeklyCounterVisible(visibility, key)),
+  );
 }
 
 export function applyVisibilityToCreateInput(
@@ -40,10 +60,7 @@ export function applyVisibilityToCreateInput(
     ...input,
     chestDays: visibility.chestDays ? input.chestDays : emptyWeekdayFlags(),
     presenceDays: visibility.presenceDays ? input.presenceDays : emptyWeekdayFlags(),
-    sherifCount: visibility.sherifCount ? input.sherifCount : 0,
-    patientsCount: visibility.patientsCount ? input.patientsCount : 0,
-    infusionsCount: visibility.infusionsCount ? input.infusionsCount : 0,
-    poppyMilkCount: visibility.poppyMilkCount ? input.poppyMilkCount : 0,
+    counters: visibleCounters(input.counters ?? {}, visibility),
   };
 }
 
@@ -54,10 +71,7 @@ export function applyVisibilityToUpdateInput(
   const out: BusinessWeeklyActivityUpdateInput = { ...input };
   if (!visibility.chestDays) delete out.chestDays;
   if (!visibility.presenceDays) delete out.presenceDays;
-  if (!visibility.sherifCount) delete out.sherifCount;
-  if (!visibility.patientsCount) delete out.patientsCount;
-  if (!visibility.infusionsCount) delete out.infusionsCount;
-  if (!visibility.poppyMilkCount) delete out.poppyMilkCount;
+  if (out.counters) out.counters = visibleCounters(out.counters, visibility);
   return out;
 }
 
@@ -79,10 +93,8 @@ export function redactSerializedWeeklyActivityRow(
     presenceDaysSummary: visibility.presenceDays
       ? row.presenceDaysSummary
       : formatWeekdayFlagsSummary(emptyPresence),
-    sherifCount: visibility.sherifCount ? row.sherifCount : 0,
-    patientsCount: visibility.patientsCount ? row.patientsCount : 0,
-    infusionsCount: visibility.infusionsCount ? row.infusionsCount : 0,
-    poppyMilkCount: visibility.poppyMilkCount ? row.poppyMilkCount : 0,
+    // Every visible counter (0 when missing); the hidden ones are left out.
+    counters: Object.fromEntries(visibility.counters.map((c) => [c.key, row.counters[c.key] ?? 0])),
   };
 }
 
@@ -94,10 +106,9 @@ export function botPatchFieldVisibilityError(
 ): string | null {
   if (body.chestDays !== undefined && !visibility.chestDays) return BOT_FIELD_ERROR;
   if (body.presenceDays !== undefined && !visibility.presenceDays) return BOT_FIELD_ERROR;
-  if (body.sherifCount !== undefined && !visibility.sherifCount) return BOT_FIELD_ERROR;
-  if (body.patientsCount !== undefined && !visibility.patientsCount) return BOT_FIELD_ERROR;
-  if (body.infusionsCount !== undefined && !visibility.infusionsCount) return BOT_FIELD_ERROR;
-  if (body.poppyMilkCount !== undefined && !visibility.poppyMilkCount) return BOT_FIELD_ERROR;
+  for (const key of Object.keys(body.counters ?? {})) {
+    if (!isWeeklyCounterVisible(visibility, key)) return BOT_FIELD_ERROR;
+  }
   return null;
 }
 

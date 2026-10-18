@@ -50,11 +50,11 @@ export default async function EmployeePage({
   const userId = session?.user?.id ?? '';
   const hasAccessibleChests = await userHasAccessibleChests(business.id, effectiveRole);
 
-  const weeklyFeatureEnabled = appSettings.featureWeeklyDispensaryActivityEnabled;
-  const canViewWeekly = permissions?.weeklyDispensaryActivity.view ?? false;
-  const canEditAll = can(effectivePermissions, 'weekly_dispensary_activity', 'edit_all');
+  const weeklyFeatureEnabled = appSettings.featureWeeklyActivityEnabled;
+  const canViewWeekly = permissions?.weeklyActivity.view ?? false;
+  const canEditAll = can(effectivePermissions, 'weekly_activity', 'edit_all');
   const canEdit =
-    canEditAll || can(effectivePermissions, 'weekly_dispensary_activity', 'edit_own');
+    canEditAll || can(effectivePermissions, 'weekly_activity', 'edit_own');
 
   const salesFeatureEnabled = isAppFeatureEnabled(appSettings, 'sales');
   const canCreateSale = salesFeatureEnabled && (permissions?.sales.create ?? false);

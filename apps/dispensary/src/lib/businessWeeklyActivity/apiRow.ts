@@ -1,4 +1,5 @@
 import type { WeekdayFlags } from '@/lib/businessWeeklyActivity/weekdayFlags';
+import { parseWeeklyCounters, type WeeklyCounters } from '@/lib/businessWeeklyActivity/counters';
 import {
   countWeekdayTrues,
   formatWeekdayFlagsSummary,
@@ -17,10 +18,7 @@ type RowLike = {
   userId: string | null;
   chestDays: unknown;
   presenceDays: unknown;
-  sherifCount: number;
-  patientsCount: number;
-  infusionsCount: number;
-  poppyMilkCount: number;
+  counters: unknown;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -41,10 +39,8 @@ export type SerializedBusinessWeeklyActivityRow = {
   presenceTotal: number;
   chestDaysSummary: string;
   presenceDaysSummary: string;
-  sherifCount: number;
-  patientsCount: number;
-  infusionsCount: number;
-  poppyMilkCount: number;
+  /** Counter values by key (lib/businessTypes `weeklyCounters`). */
+  counters: WeeklyCounters;
   createdAt: string;
   updatedAt: string;
 };
@@ -68,10 +64,7 @@ export function serializeBusinessWeeklyActivityApiRow(r: RowLike): SerializedBus
     presenceTotal: countWeekdayTrues(presenceDays),
     chestDaysSummary: formatWeekdayFlagsSummary(chestDays),
     presenceDaysSummary: formatWeekdayFlagsSummary(presenceDays),
-    sherifCount: r.sherifCount,
-    patientsCount: r.patientsCount,
-    infusionsCount: r.infusionsCount,
-    poppyMilkCount: r.poppyMilkCount,
+    counters: parseWeeklyCounters(r.counters),
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };

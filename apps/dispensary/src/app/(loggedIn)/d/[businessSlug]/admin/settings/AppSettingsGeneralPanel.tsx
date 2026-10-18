@@ -19,6 +19,10 @@ import { slugifyBusinessName } from '@/lib/business/slug';
 import { tenantRoutes } from '@/types/routes';
 import { isModuleAllowedForType } from '@/lib/businessTypes';
 import type { AppFeatureKey } from '@/lib/appFeatures';
+import {
+  isWeeklyCounterEnabled,
+  weeklyCounterDefinitions,
+} from '@/lib/businessWeeklyActivity/counters';
 
 type FeatureToggle = {
   label: string;
@@ -54,8 +58,8 @@ export function AppSettingsGeneralPanel({
   const [featurePayrollEnabled, setFeaturePayrollEnabled] = useState(
     initial.featurePayrollEnabled,
   );
-  const [featureWeeklyDispensaryActivityEnabled, setFeatureWeeklyDispensaryActivityEnabled] =
-    useState(initial.featureWeeklyDispensaryActivityEnabled);
+  const [featureWeeklyActivityEnabled, setFeatureWeeklyActivityEnabled] =
+    useState(initial.featureWeeklyActivityEnabled);
   const [featureAgendaEnabled, setFeatureAgendaEnabled] = useState(
     initial.featureAgendaEnabled,
   );
@@ -74,17 +78,8 @@ export function AppSettingsGeneralPanel({
   const [weeklyActivityPresenceDaysVisible, setWeeklyActivityPresenceDaysVisible] = useState(
     initial.weeklyActivityPresenceDaysVisible ?? true,
   );
-  const [weeklyActivityPatientsVisible, setWeeklyActivityPatientsVisible] = useState(
-    initial.weeklyActivityPatientsVisible ?? true,
-  );
-  const [weeklyActivitySherifsVisible, setWeeklyActivitySherifsVisible] = useState(
-    initial.weeklyActivitySherifsVisible ?? true,
-  );
-  const [weeklyActivityInfusionsVisible, setWeeklyActivityInfusionsVisible] = useState(
-    initial.weeklyActivityInfusionsVisible ?? true,
-  );
-  const [weeklyActivityPoppyMilkVisible, setWeeklyActivityPoppyMilkVisible] = useState(
-    initial.weeklyActivityPoppyMilkVisible ?? true,
+  const [weeklyActivityCounters, setWeeklyActivityCounters] = useState(
+    initial.weeklyActivityCounters,
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,10 +96,10 @@ export function AppSettingsGeneralPanel({
       onChange: setFeaturePayrollEnabled,
     },
     {
-      feature: 'weeklyDispensaryActivity',
-      label: 'Activité hebdomadaire (dispensaire)',
-      checked: featureWeeklyDispensaryActivityEnabled,
-      onChange: setFeatureWeeklyDispensaryActivityEnabled,
+      feature: 'weeklyActivity',
+      label: 'Activité hebdomadaire',
+      checked: featureWeeklyActivityEnabled,
+      onChange: setFeatureWeeklyActivityEnabled,
     },
     { feature: 'agenda', label: 'Agenda & to-do', checked: featureAgendaEnabled, onChange: setFeatureAgendaEnabled },
     {
@@ -128,26 +123,13 @@ export function AppSettingsGeneralPanel({
       checked: weeklyActivityPresenceDaysVisible,
       onChange: setWeeklyActivityPresenceDaysVisible,
     },
-    {
-      label: 'Patients',
-      checked: weeklyActivityPatientsVisible,
-      onChange: setWeeklyActivityPatientsVisible,
-    },
-    {
-      label: 'Shérifs',
-      checked: weeklyActivitySherifsVisible,
-      onChange: setWeeklyActivitySherifsVisible,
-    },
-    {
-      label: 'Infusions',
-      checked: weeklyActivityInfusionsVisible,
-      onChange: setWeeklyActivityInfusionsVisible,
-    },
-    {
-      label: 'Lait de pavot',
-      checked: weeklyActivityPoppyMilkVisible,
-      onChange: setWeeklyActivityPoppyMilkVisible,
-    },
+    // Counters of the business type (lib/businessTypes).
+    ...weeklyCounterDefinitions(initial.businessType).map((counter) => ({
+      label: counter.label,
+      checked: isWeeklyCounterEnabled(weeklyActivityCounters, counter.key),
+      onChange: (checked: boolean) =>
+        setWeeklyActivityCounters((prev) => ({ ...prev, [counter.key]: checked })),
+    })),
   ];
 
   const handleSubmit = async () => {
@@ -161,17 +143,14 @@ export function AppSettingsGeneralPanel({
       featureSearchEnabled,
       featureMailsEnabled,
       featurePayrollEnabled,
-      featureWeeklyDispensaryActivityEnabled,
+      featureWeeklyActivityEnabled,
       featureAgendaEnabled,
       featureCabinetEnabled,
       featureSalesEnabled,
       featureMediaEnabled,
       weeklyActivityChestDaysVisible,
       weeklyActivityPresenceDaysVisible,
-      weeklyActivityPatientsVisible,
-      weeklyActivitySherifsVisible,
-      weeklyActivityInfusionsVisible,
-      weeklyActivityPoppyMilkVisible,
+      weeklyActivityCounters,
     });
     setSubmitting(false);
 
@@ -256,7 +235,7 @@ export function AppSettingsGeneralPanel({
               ))}
           </SimpleGrid>
 
-          {featureWeeklyDispensaryActivityEnabled && (
+          {featureWeeklyActivityEnabled && (
             <Stack gap="md" pt="sm">
               <hr className="disp-section-divider" />
               <div>

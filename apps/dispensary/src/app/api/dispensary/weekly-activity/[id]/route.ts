@@ -12,6 +12,7 @@ import {
 import { loadSerializedWeeklyActivityByIdForBusiness } from '@/lib/businessWeeklyActivity/loadSerializedRow';
 import prisma from '@/lib/prisma';
 import { businessWeeklyActivityBotPatchSchema } from '@/lib/businessWeeklyActivity/schemas';
+import { countersFromBotBody, toBotApiRow } from '@/lib/businessWeeklyActivity/botApiRow';
 import {
   deleteBusinessWeeklyActivityWithHistory,
   reconcileActivityUserIds,
@@ -83,7 +84,7 @@ async function handleGet(request: NextRequest, context: RouteContext) {
   if (!data) {
     return jsonError(404, 'Activité introuvable');
   }
-  return NextResponse.json({ status: 200, data });
+  return NextResponse.json({ status: 200, data: toBotApiRow(data, businessCtx.businessType) });
 }
 
 async function handlePatch(request: NextRequest, context: RouteContext) {
@@ -124,11 +125,15 @@ async function handlePatch(request: NextRequest, context: RouteContext) {
 
   const settings = await getAppSettings(businessCtx.businessId);
   const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
-  const fieldError = botPatchFieldVisibilityError(parsed.data, visibility);
+  // Counters through `counters` or their legacy fields (absolute values).
+  const { counters: _counters, sherifCount: _s, patientsCount: _p, infusionsCount: _i, poppyMilkCount: _m, ...meta } =
+    parsed.data;
+  const patch = { ...meta, counters: countersFromBotBody(businessCtx.businessType, parsed.data) };
+  const fieldError = botPatchFieldVisibilityError(patch, visibility);
   if (fieldError) {
     return jsonError(403, fieldError);
   }
-  const updateInput = applyVisibilityToUpdateInput(parsed.data, visibility);
+  const updateInput = applyVisibilityToUpdateInput(patch, visibility);
 
   try {
     await updateBusinessWeeklyActivityWithHistory(id, updateInput, {
@@ -145,7 +150,7 @@ async function handlePatch(request: NextRequest, context: RouteContext) {
     if (!data) {
       return jsonError(500, 'Erreur après mise à jour');
     }
-    return NextResponse.json({ status: 200, data });
+    return NextResponse.json({ status: 200, data: toBotApiRow(data, businessCtx.businessType) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erreur serveur';
     if (msg.includes('Unique constraint')) {
@@ -189,16 +194,16 @@ async function handleDelete(request: NextRequest, context: RouteContext) {
 }
 
 export const GET = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.get' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.get' },
   handleGet,
 );
 
 export const PATCH = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.update' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.update' },
   handlePatch,
 );
 
 export const DELETE = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.delete' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.delete' },
   handleDelete,
 );

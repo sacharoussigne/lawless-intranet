@@ -128,28 +128,26 @@ model UserUiPreferences {
 }
 
 model AppSettings {
-  businessId                             String   @id @map("dispensaryId")
-  business                               Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  businessName                           String   @default("Saint-Denis") @map("dispensaryName")
-  featureStockEnabled                    Boolean  @default(true)
-  featureBankEnabled                     Boolean  @default(true)
-  featureOrdersEnabled                   Boolean  @default(true)
-  featureSearchEnabled                   Boolean  @default(true)
-  featureMailsEnabled                    Boolean  @default(true)
-  featurePayrollEnabled                  Boolean  @default(true)
-  featureWeeklyDispensaryActivityEnabled Boolean  @default(true)
-  featureAgendaEnabled                   Boolean  @default(true)
-  featureCabinetEnabled                  Boolean  @default(true)
-  featureSalesEnabled                    Boolean  @default(true)
-  featureMediaEnabled                    Boolean  @default(true)
-  weeklyActivityChestDaysVisible         Boolean  @default(true)
-  weeklyActivityPresenceDaysVisible      Boolean  @default(true)
-  weeklyActivityPatientsVisible          Boolean  @default(true)
-  weeklyActivitySherifsVisible           Boolean  @default(true)
-  weeklyActivityInfusionsVisible         Boolean  @default(true)
-  weeklyActivityPoppyMilkVisible         Boolean  @default(true)
-  createdAt                              DateTime @default(now())
-  updatedAt                              DateTime @updatedAt
+  businessId                        String   @id @map("dispensaryId")
+  business                          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessName                      String   @default("Saint-Denis") @map("dispensaryName")
+  featureStockEnabled               Boolean  @default(true)
+  featureBankEnabled                Boolean  @default(true)
+  featureOrdersEnabled              Boolean  @default(true)
+  featureSearchEnabled              Boolean  @default(true)
+  featureMailsEnabled               Boolean  @default(true)
+  featurePayrollEnabled             Boolean  @default(true)
+  featureWeeklyActivityEnabled      Boolean  @default(true) @map("featureWeeklyDispensaryActivityEnabled")
+  featureAgendaEnabled              Boolean  @default(true)
+  featureCabinetEnabled             Boolean  @default(true)
+  featureSalesEnabled               Boolean  @default(true)
+  featureMediaEnabled               Boolean  @default(true)
+  weeklyActivityChestDaysVisible    Boolean  @default(true)
+  weeklyActivityPresenceDaysVisible Boolean  @default(true)
+  /// Weekly activity counters of the business type: key → enabled (a missing key is enabled).
+  weeklyActivityCounters            Json     @default("{}")
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
 
   @@map("app_settings")
 }
@@ -162,6 +160,10 @@ enum BusinessWeeklyActivityHistoryAction {
   DECREMENT_CHEST
   UPDATE_CHEST_DAYS
   UPDATE_PRESENCE_DAYS
+  /// Counter of the business type (`counterKey`).
+  INCREMENT_COUNTER
+  DECREMENT_COUNTER
+  /// Legacy: per-counter actions, migrated to INCREMENT_/DECREMENT_COUNTER.
   INCREMENT_SHERIFF
   DECREMENT_SHERIFF
   INCREMENT_PALEFRENIER
@@ -184,23 +186,21 @@ enum BusinessWeeklyActivityHistorySource {
 }
 
 model BusinessWeeklyActivity {
-  id             String                          @id @default(uuid())
-  businessId     String                          @map("dispensaryId")
-  business       Business                        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  periodStart    DateTime
-  periodEnd      DateTime
-  displayName    String
-  discordUserId  String
-  userId         String?
-  chestDays      Json
-  presenceDays   Json
-  sherifCount    Int                             @default(0)
-  patientsCount  Int                             @default(0)
-  infusionsCount Int                             @default(0)
-  poppyMilkCount Int                             @default(0)
-  createdAt      DateTime                        @default(now())
-  updatedAt      DateTime                        @updatedAt
-  history        BusinessWeeklyActivityHistory[]
+  id            String                          @id @default(uuid())
+  businessId    String                          @map("dispensaryId")
+  business      Business                        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  periodStart   DateTime
+  periodEnd     DateTime
+  displayName   String
+  discordUserId String
+  userId        String?
+  chestDays     Json
+  presenceDays  Json
+  /// Counters of the business type (lib/businessTypes `weeklyCounters`): key → value, a missing key is 0.
+  counters      Json                            @default("{}")
+  createdAt     DateTime                        @default(now())
+  updatedAt     DateTime                        @updatedAt
+  history       BusinessWeeklyActivityHistory[]
 
   @@unique([businessId, discordUserId, periodStart, periodEnd])
   @@index([discordUserId])
@@ -222,6 +222,8 @@ model BusinessWeeklyActivityHistory {
   actorImpersonatedById String?
   previousValues        Json?
   nextValues            Json?
+  /// Counter of INCREMENT_/DECREMENT_COUNTER.
+  counterKey            String?
   createdAt             DateTime                            @default(now())
 
   @@index([activityId])

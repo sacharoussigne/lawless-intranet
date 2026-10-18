@@ -32,18 +32,11 @@ export function EditWeeklyActivityModal({
 
   const [eChestFlags, setEChestFlags] = useState<WeekdayFlags>(() => emptyWeekdayFlags());
   const [ePresenceFlags, setEPresenceFlags] = useState<WeekdayFlags>(() => emptyWeekdayFlags());
-  const [eSheriff, setESheriff] = useState(0);
-  const [ePatients, setEPatients] = useState(0);
-  const [eInfusions, setEInfusions] = useState(0);
-  const [ePoppy, setEPoppy] = useState(0);
+  const [eCounters, setECounters] = useState<Record<string, number>>({});
   const [eDisplayName, setEDisplayName] = useState('');
 
   const hasWeeklyScheduleFields = fieldVisibility.chestDays || fieldVisibility.presenceDays;
-  const hasWeeklyCounterFields =
-    fieldVisibility.sherifCount ||
-    fieldVisibility.patientsCount ||
-    fieldVisibility.infusionsCount ||
-    fieldVisibility.poppyMilkCount;
+  const hasWeeklyCounterFields = fieldVisibility.counters.length > 0;
 
   const disabledWeekdayKeys = useMemo(() => {
     if (!row || canEditAll) return new Set<WeekdayKey>();
@@ -57,10 +50,7 @@ export function EditWeeklyActivityModal({
     if (!row) return;
     setEChestFlags({ ...row.chestDays });
     setEPresenceFlags({ ...row.presenceDays });
-    setESheriff(row.sherifCount);
-    setEPatients(row.patientsCount);
-    setEInfusions(row.infusionsCount);
-    setEPoppy(row.poppyMilkCount);
+    setECounters({ ...row.counters });
     setEDisplayName(row.displayName);
   }, [row]);
 
@@ -70,10 +60,14 @@ export function EditWeeklyActivityModal({
       id: row.id,
       ...(fieldVisibility.chestDays ? { chestDays: eChestFlags } : {}),
       ...(fieldVisibility.presenceDays ? { presenceDays: ePresenceFlags } : {}),
-      ...(fieldVisibility.sherifCount ? { sherifCount: eSheriff } : {}),
-      ...(fieldVisibility.patientsCount ? { patientsCount: ePatients } : {}),
-      ...(fieldVisibility.infusionsCount ? { infusionsCount: eInfusions } : {}),
-      ...(fieldVisibility.poppyMilkCount ? { poppyMilkCount: ePoppy } : {}),
+      // Only the visible counters: the hidden ones keep their value.
+      ...(hasWeeklyCounterFields
+        ? {
+            counters: Object.fromEntries(
+              fieldVisibility.counters.map((c) => [c.key, eCounters[c.key] ?? 0]),
+            ),
+          }
+        : {}),
     };
     await updateMutation.mutateAsync({
       payload: canEditAll
@@ -138,38 +132,17 @@ export function EditWeeklyActivityModal({
             <>
               {hasWeeklyScheduleFields && <Divider />}
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                {fieldVisibility.sherifCount && (
+                {fieldVisibility.counters.map((counter) => (
                   <NumberInput
-                    label="Shérifs"
-                    value={eSheriff}
-                    onChange={(v) => setESheriff(Number(v) || 0)}
+                    key={counter.key}
+                    label={counter.label}
+                    value={eCounters[counter.key] ?? 0}
+                    onChange={(v) =>
+                      setECounters((prev) => ({ ...prev, [counter.key]: Number(v) || 0 }))
+                    }
                     min={0}
                   />
-                )}
-                {fieldVisibility.patientsCount && (
-                  <NumberInput
-                    label="Patients"
-                    value={ePatients}
-                    onChange={(v) => setEPatients(Number(v) || 0)}
-                    min={0}
-                  />
-                )}
-                {fieldVisibility.infusionsCount && (
-                  <NumberInput
-                    label="Infusions"
-                    value={eInfusions}
-                    onChange={(v) => setEInfusions(Number(v) || 0)}
-                    min={0}
-                  />
-                )}
-                {fieldVisibility.poppyMilkCount && (
-                  <NumberInput
-                    label="Lait de pavot"
-                    value={ePoppy}
-                    onChange={(v) => setEPoppy(Number(v) || 0)}
-                    min={0}
-                  />
-                )}
+                ))}
               </SimpleGrid>
             </>
           )}

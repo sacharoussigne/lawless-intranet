@@ -11,6 +11,7 @@ import {
 } from '@/lib/businessWeeklyActivity/parisPeriodLabels';
 import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import type { WeeklyActivityListItem } from './hooks/useWeeklyActivityQueries';
+import { COUNTER_ACCESSOR_PREFIX } from './weeklyActivityUtils';
 
 type WeeklyActivityTableProps = {
   rows: WeeklyActivityListItem[];
@@ -125,17 +126,14 @@ export function WeeklyActivityTable({
         ),
       });
     }
-    if (fieldVisibility.patientsCount) {
-      cols.push({ accessor: 'patientsCount', title: 'Patients', sortable: true });
-    }
-    if (fieldVisibility.sherifCount) {
-      cols.push({ accessor: 'sherifCount', title: 'Shérifs', sortable: true });
-    }
-    if (fieldVisibility.infusionsCount) {
-      cols.push({ accessor: 'infusionsCount', title: 'Infusions', sortable: true });
-    }
-    if (fieldVisibility.poppyMilkCount) {
-      cols.push({ accessor: 'poppyMilkCount', title: 'Lait de pavot', sortable: true });
+    // One column per visible counter of the business type (lib/businessTypes).
+    for (const counter of fieldVisibility.counters) {
+      cols.push({
+        accessor: `${COUNTER_ACCESSOR_PREFIX}${counter.key}`,
+        title: counter.label,
+        sortable: true,
+        render: (r) => r.counters[counter.key] ?? 0,
+      });
     }
     cols.push({
       accessor: 'actions',

@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import type { BusinessType } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import {
   assertBotBusinessWeeklyActivityEnabled,
@@ -6,7 +7,7 @@ import {
 } from '@/lib/businessWeeklyActivityApiAuth';
 
 export async function resolveBotBusinessContext(request: NextRequest): Promise<
-  | { ok: true; businessId: string }
+  | { ok: true; businessId: string; businessType: BusinessType }
   | { ok: false; status: number; error: string }
 > {
   const businessId = getBusinessIdFromBotRequest(request);
@@ -16,7 +17,7 @@ export async function resolveBotBusinessContext(request: NextRequest): Promise<
 
   const exists = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true },
+    select: { id: true, type: true },
   });
   if (!exists) {
     return { ok: false, status: 404, error: 'Dispensaire introuvable' };
@@ -27,5 +28,5 @@ export async function resolveBotBusinessContext(request: NextRequest): Promise<
     return { ok: false, status: feature.status, error: feature.error };
   }
 
-  return { ok: true, businessId };
+  return { ok: true, businessId, businessType: exists.type };
 }

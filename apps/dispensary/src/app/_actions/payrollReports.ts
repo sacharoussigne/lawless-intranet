@@ -15,6 +15,7 @@ import {
   isPayrollReportType,
 } from '@/lib/payroll/constants';
 import { mergeHtmlAndWeeklyActivity, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
+import { weeklyCounterDefinitions } from '@/lib/businessWeeklyActivity/counters';
 import { attachDiscordProfilesToActivities } from '@/lib/businessDiscordProfile/attachProfiles';
 import { type ParsedPayrollTable, parsePayrollHtmlTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
@@ -257,7 +258,11 @@ async function createPayrollReportFromFormUnlogged(businessSlug: string, formDat
     )) as WaRow[];
   }
 
-  const employeesMerged = mergeHtmlAndWeeklyActivity(parsed, activitiesWithNames);
+  const employeesMerged = mergeHtmlAndWeeklyActivity(
+    parsed,
+    activitiesWithNames,
+    weeklyCounterDefinitions(ctx.tenant.business.type),
+  );
 
   if (employeesMerged.length === 0) {
     return {

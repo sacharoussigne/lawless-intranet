@@ -38,10 +38,10 @@ async function WeeklyActivityContent({ businessSlug }: { businessSlug: string })
   ]);
   const rows = getDataOrThrow(result, 'Erreur lors du chargement de l’activité hebdomadaire');
 
-  const canEditAll = can(effectivePermissions, 'weekly_dispensary_activity', 'edit_all');
+  const canEditAll = can(effectivePermissions, 'weekly_activity', 'edit_all');
   const canEdit =
     canEditAll ||
-    can(effectivePermissions, 'weekly_dispensary_activity', 'edit_own');
+    can(effectivePermissions, 'weekly_activity', 'edit_own');
 
   const defaultDisplayName = viewerDiscordId
     ? await resolveDiscordPersonName(prisma, business.id, viewerDiscordId, session.user.name)

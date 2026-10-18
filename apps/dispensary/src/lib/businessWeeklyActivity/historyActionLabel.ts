@@ -1,5 +1,14 @@
 /** French labels for history action enum (UI). */
-export function formatBusinessHistoryAction(action: string): string {
+export function formatBusinessHistoryAction(
+  action: string,
+  /** Label of the counter of INCREMENT_/DECREMENT_COUNTER. */
+  counterLabel?: string | null,
+): string {
+  if (action === 'INCREMENT_COUNTER' || action === 'DECREMENT_COUNTER') {
+    const verb = action === 'INCREMENT_COUNTER' ? 'Incrément' : 'Décrément';
+    return counterLabel ? `${verb} ${counterLabel.toLowerCase()}` : `${verb} compteur`;
+  }
+  // Legacy per-counter actions (migrated to INCREMENT_/DECREMENT_COUNTER).
   const map: Record<string, string> = {
     CREATE: 'Création',
     DELETE: 'Suppression',

@@ -6,7 +6,7 @@ export const APP_FEATURE_KEYS = [
   'search',
   'mails',
   'payroll',
-  'weeklyDispensaryActivity',
+  'weeklyActivity',
   'agenda',
   'cabinet',
   'sales',

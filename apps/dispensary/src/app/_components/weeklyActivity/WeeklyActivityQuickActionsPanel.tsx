@@ -1,14 +1,7 @@
 'use client';
 
 import { Alert, Button, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
-import {
-  IconCashRegister,
-  IconDroplet,
-  IconMilk,
-  IconShield,
-  IconUserPlus,
-  IconUserCheck,
-} from '@tabler/icons-react';
+import { IconCashRegister, IconUserCheck } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import { parisWeekdayKey } from '@/lib/businessWeeklyActivity/weekdayFlags';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
@@ -18,6 +11,7 @@ import {
   useMarkOwnWeeklyPresenceTodayMutation,
 } from '@/app/(loggedIn)/d/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklyActivityWeekBounds } from '@/lib/businessWeeklyActivity/queryKeys';
+import { WEEKLY_COUNTER_ICONS } from './counterIcons';
 import classes from './WeeklyActivityQuickActionsPanel.module.scss';
 
 type WeeklyActivityQuickActionsPanelProps = {
@@ -27,19 +21,6 @@ type WeeklyActivityQuickActionsPanelProps = {
   hasDiscord: boolean;
   canEdit: boolean;
 };
-
-type CounterField = 'patientsCount' | 'sherifCount' | 'infusionsCount' | 'poppyMilkCount';
-
-const COUNTER_ACTIONS: {
-  field: CounterField;
-  label: string;
-  icon: typeof IconUserPlus;
-}[] = [
-  { field: 'patientsCount', label: 'Patients', icon: IconUserPlus },
-  { field: 'sherifCount', label: 'Shérifs', icon: IconShield },
-  { field: 'infusionsCount', label: 'Infusion', icon: IconDroplet },
-  { field: 'poppyMilkCount', label: 'Lait pavot', icon: IconMilk },
-];
 
 export function WeeklyActivityQuickActionsPanel({
   row,
@@ -63,7 +44,8 @@ export function WeeklyActivityQuickActionsPanel({
   const isLoading =
     chestMutation.isPending || presenceMutation.isPending || incrementMutation.isPending;
 
-  const visibleCounters = COUNTER_ACTIONS.filter((action) => fieldVisibility[action.field]);
+  // Counters of the business type that are not turned off (lib/businessTypes).
+  const visibleCounters = fieldVisibility.counters;
 
   return (
     <Paper withBorder shadow="sm" radius="md" p={{ base: 'md', sm: 'lg' }}>
@@ -113,24 +95,25 @@ export function WeeklyActivityQuickActionsPanel({
 
           {visibleCounters.length > 0 && (
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={{ base: 6, sm: 'sm' }}>
-              {visibleCounters.map((action) => {
-                const Icon = action.icon;
-                const value = row?.[action.field] ?? 0;
+              {visibleCounters.map((counter) => {
+                const Icon = WEEKLY_COUNTER_ICONS[counter.icon];
+                const label = counter.shortLabel ?? counter.label;
+                const value = row?.counters[counter.key] ?? 0;
                 return (
                   <UnstyledButton
-                    key={action.field}
+                    key={counter.key}
                     className={classes.counterTile}
                     disabled={isLoading}
-                    aria-label={`${action.label} : ${value}, ajouter 1`}
+                    aria-label={`${label} : ${value}, ajouter 1`}
                     onClick={() =>
-                      incrementMutation.mutate({ field: action.field, weekBounds })
+                      incrementMutation.mutate({ counterKey: counter.key, weekBounds })
                     }
                   >
                     <div className={classes.counterTileInner}>
                       <div className={classes.counterTileLabel}>
                         <Icon size={16} stroke={1.75} className={classes.counterIcon} />
                         <Text size="sm" truncate className={classes.counterName}>
-                          {action.label}
+                          {label}
                         </Text>
                         <Text size="sm" fw={600} className={classes.counterValue}>
                           {value}

@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import type { BusinessType } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { parseWeeklyCounterSettings } from '@/lib/businessWeeklyActivity/counters';
 import {
   APP_SETTINGS_DEFAULTS,
   APP_FEATURE_DISABLED_MESSAGE,
@@ -29,17 +30,14 @@ function mapFromDb(businessType: BusinessType, row: {
   featureSearchEnabled: boolean;
   featureMailsEnabled: boolean;
   featurePayrollEnabled: boolean;
-  featureWeeklyDispensaryActivityEnabled: boolean;
+  featureWeeklyActivityEnabled: boolean;
   featureAgendaEnabled: boolean;
   featureCabinetEnabled: boolean;
   featureSalesEnabled: boolean;
   featureMediaEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
-  weeklyActivityPatientsVisible: boolean;
-  weeklyActivitySherifsVisible: boolean;
-  weeklyActivityInfusionsVisible: boolean;
-  weeklyActivityPoppyMilkVisible: boolean;
+  weeklyActivityCounters: unknown;
 }): AppSettingsDTO {
   return {
     businessType,
@@ -50,7 +48,7 @@ function mapFromDb(businessType: BusinessType, row: {
     featureSearchEnabled: row.featureSearchEnabled,
     featureMailsEnabled: row.featureMailsEnabled,
     featurePayrollEnabled: row.featurePayrollEnabled,
-    featureWeeklyDispensaryActivityEnabled: row.featureWeeklyDispensaryActivityEnabled,
+    featureWeeklyActivityEnabled: row.featureWeeklyActivityEnabled,
     featureAgendaEnabled:
       row.featureAgendaEnabled ?? APP_SETTINGS_DEFAULTS.featureAgendaEnabled,
     featureCabinetEnabled:
@@ -64,14 +62,7 @@ function mapFromDb(businessType: BusinessType, row: {
     weeklyActivityPresenceDaysVisible:
       row.weeklyActivityPresenceDaysVisible ??
       APP_SETTINGS_DEFAULTS.weeklyActivityPresenceDaysVisible,
-    weeklyActivityPatientsVisible:
-      row.weeklyActivityPatientsVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityPatientsVisible,
-    weeklyActivitySherifsVisible:
-      row.weeklyActivitySherifsVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivitySherifsVisible,
-    weeklyActivityInfusionsVisible:
-      row.weeklyActivityInfusionsVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityInfusionsVisible,
-    weeklyActivityPoppyMilkVisible:
-      row.weeklyActivityPoppyMilkVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityPoppyMilkVisible,
+    weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
   };
 }
 
@@ -96,7 +87,7 @@ export async function loadAppSettingsFromDb(businessId: string): Promise<AppSett
 export function getAppSettings(businessId: string) {
   return unstable_cache(
     () => loadAppSettingsFromDb(businessId),
-    ['app-settings', businessId, 'v3'],
+    ['app-settings', businessId, 'v4'],
     {
       tags: [appSettingsCacheTag(businessId)],
       revalidate: 86400,

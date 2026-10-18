@@ -1,7 +1,8 @@
 import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
 import { isBusinessBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/businessWeeklyActivityApiAuth';
-import { businessWeeklyActivityCreateSchema } from '@/lib/businessWeeklyActivity/schemas';
+import { businessWeeklyActivityBotCreateSchema } from '@/lib/businessWeeklyActivity/schemas';
+import { countersFromBotBody, toBotApiRow } from '@/lib/businessWeeklyActivity/botApiRow';
 import { getAppSettings } from '@/lib/appSettings';
 import {
   applyVisibilityToCreateInput,
@@ -35,7 +36,10 @@ async function handleGet(request: Request) {
     businessCtx.businessId,
   );
 
-  return NextResponse.json({ status: 200, data });
+  return NextResponse.json({
+    status: 200,
+    data: data.map((row) => toBotApiRow(row, businessCtx.businessType)),
+  });
 }
 
 async function handlePost(request: Request) {
@@ -59,7 +63,7 @@ async function handlePost(request: Request) {
     return jsonError(400, 'Corps JSON invalide');
   }
 
-  const parsed = businessWeeklyActivityCreateSchema.safeParse(body);
+  const parsed = businessWeeklyActivityBotCreateSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(422, parsed.error.issues[0]?.message ?? 'Données invalides');
   }
@@ -71,7 +75,10 @@ async function handlePost(request: Request) {
   try {
     const settings = await getAppSettings(businessCtx.businessId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
-    const createInput = applyVisibilityToCreateInput(parsed.data, visibility);
+    const createInput = applyVisibilityToCreateInput(
+      { ...parsed.data, counters: countersFromBotBody(businessCtx.businessType, parsed.data) },
+      visibility,
+    );
 
     const created = await createBusinessWeeklyActivityWithHistory(createInput, {
       source: 'DISCORD_BOT',
@@ -90,7 +97,7 @@ async function handlePost(request: Request) {
 
     return NextResponse.json({
       status: 200,
-      data,
+      data: toBotApiRow(data, businessCtx.businessType),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erreur serveur';
@@ -102,11 +109,11 @@ async function handlePost(request: Request) {
 }
 
 export const GET = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.list' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.list' },
   handleGet,
 );
 
 export const POST = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.create' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.create' },
   handlePost,
 );

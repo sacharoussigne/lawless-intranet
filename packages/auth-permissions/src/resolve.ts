@@ -137,7 +137,7 @@ export type PermissionsObject = {
     view: boolean;
     create: boolean;
   };
-  weeklyDispensaryActivity: {
+  weeklyActivity: {
     view: boolean;
     editOwn: boolean;
     editAll: boolean;
@@ -196,10 +196,10 @@ export function toPermissionsObject(
       view: has("payroll_reports", "view"),
       create: has("payroll_reports", "create"),
     },
-    weeklyDispensaryActivity: {
-      view: has("weekly_dispensary_activity", "view"),
-      editOwn: has("weekly_dispensary_activity", "edit_own"),
-      editAll: has("weekly_dispensary_activity", "edit_all"),
+    weeklyActivity: {
+      view: has("weekly_activity", "view"),
+      editOwn: has("weekly_activity", "edit_own"),
+      editAll: has("weekly_activity", "edit_all"),
     },
     stockStatistics: {
       view: has("stock_statistics", "view"),

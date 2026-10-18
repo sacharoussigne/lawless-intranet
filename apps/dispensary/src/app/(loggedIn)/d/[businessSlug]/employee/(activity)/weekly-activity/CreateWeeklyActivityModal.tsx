@@ -50,17 +50,10 @@ export function CreateWeeklyActivityModal({
   const [cDisplayName, setCDisplayName] = useState('');
   const [cChestFlags, setCChestFlags] = useState<WeekdayFlags>(() => emptyWeekdayFlags());
   const [cPresenceFlags, setCPresenceFlags] = useState<WeekdayFlags>(() => emptyWeekdayFlags());
-  const [cSheriff, setCSheriff] = useState(0);
-  const [cPatients, setCPatients] = useState(0);
-  const [cInfusions, setCInfusions] = useState(0);
-  const [cPoppy, setCPoppy] = useState(0);
+  const [cCounters, setCCounters] = useState<Record<string, number>>({});
 
   const hasWeeklyScheduleFields = fieldVisibility.chestDays || fieldVisibility.presenceDays;
-  const hasWeeklyCounterFields =
-    fieldVisibility.sherifCount ||
-    fieldVisibility.patientsCount ||
-    fieldVisibility.infusionsCount ||
-    fieldVisibility.poppyMilkCount;
+  const hasWeeklyCounterFields = fieldVisibility.counters.length > 0;
 
   const createWeekBounds = getBankWeekBounds(cWeekDateValue ?? defaultWeekMonday);
 
@@ -70,10 +63,7 @@ export function CreateWeeklyActivityModal({
     setCDisplayName('');
     setCChestFlags(emptyWeekdayFlags());
     setCPresenceFlags(emptyWeekdayFlags());
-    setCSheriff(0);
-    setCPatients(0);
-    setCInfusions(0);
-    setCPoppy(0);
+    setCCounters({});
   };
 
   const handleClose = () => {
@@ -102,10 +92,9 @@ export function CreateWeeklyActivityModal({
       periodEnd: end,
       chestDays: fieldVisibility.chestDays ? cChestFlags : emptyWeekdayFlags(),
       presenceDays: fieldVisibility.presenceDays ? cPresenceFlags : emptyWeekdayFlags(),
-      sherifCount: fieldVisibility.sherifCount ? cSheriff : 0,
-      patientsCount: fieldVisibility.patientsCount ? cPatients : 0,
-      infusionsCount: fieldVisibility.infusionsCount ? cInfusions : 0,
-      poppyMilkCount: fieldVisibility.poppyMilkCount ? cPoppy : 0,
+      counters: Object.fromEntries(
+        fieldVisibility.counters.map((c) => [c.key, cCounters[c.key] ?? 0]),
+      ),
       ...(canEditAll && cTargetUserId
         ? {
             targetDiscordUserId: cTargetUserId,
@@ -238,38 +227,17 @@ export function CreateWeeklyActivityModal({
                 Compteurs
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                {fieldVisibility.sherifCount && (
+                {fieldVisibility.counters.map((counter) => (
                   <NumberInput
-                    label="Shérifs"
-                    value={cSheriff}
-                    onChange={(v) => setCSheriff(Number(v) || 0)}
+                    key={counter.key}
+                    label={counter.label}
+                    value={cCounters[counter.key] ?? 0}
+                    onChange={(v) =>
+                      setCCounters((prev) => ({ ...prev, [counter.key]: Number(v) || 0 }))
+                    }
                     min={0}
                   />
-                )}
-                {fieldVisibility.patientsCount && (
-                  <NumberInput
-                    label="Patients"
-                    value={cPatients}
-                    onChange={(v) => setCPatients(Number(v) || 0)}
-                    min={0}
-                  />
-                )}
-                {fieldVisibility.infusionsCount && (
-                  <NumberInput
-                    label="Infusions"
-                    value={cInfusions}
-                    onChange={(v) => setCInfusions(Number(v) || 0)}
-                    min={0}
-                  />
-                )}
-                {fieldVisibility.poppyMilkCount && (
-                  <NumberInput
-                    label="Lait de pavot"
-                    value={cPoppy}
-                    onChange={(v) => setCPoppy(Number(v) || 0)}
-                    min={0}
-                  />
-                )}
+                ))}
               </SimpleGrid>
             </div>
           </>

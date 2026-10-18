@@ -9,6 +9,7 @@ import {
   weeklyActivityFieldVisibilityFromSettings,
 } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import { loadSerializedWeeklyActivityByIdForBusiness } from '@/lib/businessWeeklyActivity/loadSerializedRow';
+import { toBotApiRow } from '@/lib/businessWeeklyActivity/botApiRow';
 import { logServerError } from '@/lib/logs/writer';
 import type { BotWeekdayFlagMarkResult } from '@/lib/businessWeeklyActivity/service';
 import { botSetWeekdayFlag } from '@/lib/businessWeeklyActivity/service';
@@ -23,22 +24,23 @@ export function jsonBotError(status: number, error: string) {
  * 500 that would make the bot report a failure. The reload error is logged.
  */
 async function serializeFlagResultActivity(businessId: string, result: BotWeekdayFlagMarkResult) {
+  const settings = await getAppSettings(businessId);
   try {
     const loaded = await loadSerializedWeeklyActivityByIdForBusiness(result.activity.id, businessId);
-    if (loaded) return loaded;
+    if (loaded) return toBotApiRow(loaded, settings.businessType);
   } catch (error) {
     logServerError({
       error,
       status: 500,
       message: 'Rechargement de l’activité impossible après la mise à jour (réponse dégradée)',
-      feature: 'weeklyDispensaryActivity',
+      feature: 'weeklyActivity',
       businessId,
       event: 'bot.weeklyActivity.reload',
     });
   }
   const row = result.activity;
-  const visibility = weeklyActivityFieldVisibilityFromSettings(await getAppSettings(businessId));
-  return redactSerializedWeeklyActivityRow(
+  const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
+  const redacted = redactSerializedWeeklyActivityRow(
     serializeBusinessWeeklyActivityApiRow({
       ...row,
       resolvedDisplayName:
@@ -48,6 +50,7 @@ async function serializeFlagResultActivity(businessId: string, result: BotWeekda
     }),
     visibility,
   );
+  return toBotApiRow(redacted, settings.businessType);
 }
 
 export async function respondToBotWeekdayFlagResult(

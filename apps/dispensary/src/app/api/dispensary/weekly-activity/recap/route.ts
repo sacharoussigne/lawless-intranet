@@ -1,5 +1,6 @@
 import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
+import { toBotApiRow } from '@/lib/businessWeeklyActivity/botApiRow';
 import type { NextRequest } from 'next/server';
 import { isBusinessBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/businessWeeklyActivityApiAuth';
 import { listSerializedWeeklyActivities } from '@/lib/businessWeeklyActivity/listSerialized';
@@ -58,12 +59,12 @@ async function handleGet(request: NextRequest) {
     data: {
       periodStart: periodStart.toISOString(),
       periodEnd: periodEnd.toISOString(),
-      rows: sorted,
+      rows: sorted.map((row) => toBotApiRow(row, businessCtx.businessType)),
     },
   });
 }
 
 export const GET = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.recap' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.recap' },
   handleGet,
 );

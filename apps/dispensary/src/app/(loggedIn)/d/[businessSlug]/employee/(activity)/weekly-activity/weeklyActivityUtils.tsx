@@ -58,6 +58,9 @@ export function doctorKey(row: WeeklyActivityListItem): string {
   return `name:${row.resolvedDisplayName}`;
 }
 
+/** Table column of a counter: `counter:<key>`. */
+export const COUNTER_ACCESSOR_PREFIX = 'counter:';
+
 export function compareWeeklyActivityRows(
   a: WeeklyActivityListItem,
   b: WeeklyActivityListItem,
@@ -77,14 +80,9 @@ export function compareWeeklyActivityRows(
     cmp = (a.discordProfileAccountNumber ?? 0) - (b.discordProfileAccountNumber ?? 0);
   } else if (columnAccessor === 'periodStart') {
     cmp = new Date(a.periodStart).getTime() - new Date(b.periodStart).getTime();
-  } else if (columnAccessor === 'patientsCount') {
-    cmp = a.patientsCount - b.patientsCount;
-  } else if (columnAccessor === 'sherifCount') {
-    cmp = a.sherifCount - b.sherifCount;
-  } else if (columnAccessor === 'infusionsCount') {
-    cmp = a.infusionsCount - b.infusionsCount;
-  } else if (columnAccessor === 'poppyMilkCount') {
-    cmp = a.poppyMilkCount - b.poppyMilkCount;
+  } else if (columnAccessor.startsWith(COUNTER_ACCESSOR_PREFIX)) {
+    const key = columnAccessor.slice(COUNTER_ACCESSOR_PREFIX.length);
+    cmp = (a.counters[key] ?? 0) - (b.counters[key] ?? 0);
   } else if (columnAccessor === 'chestTotal') {
     cmp = a.chestTotal - b.chestTotal;
   } else if (columnAccessor === 'presenceTotal') {
