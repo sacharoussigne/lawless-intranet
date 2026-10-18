@@ -52,7 +52,7 @@ describe('discordIdOfUser', () => {
 describe('reconcileAccountLinks', () => {
   function fakeClient() {
     return {
-      businessDiscordProfile: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      person: { updateMany: vi.fn(async () => ({ count: 1 })) },
       businessWeeklyActivity: { updateMany: vi.fn(async () => ({ count: 1 })) },
     };
   }
@@ -66,9 +66,9 @@ describe('reconcileAccountLinks', () => {
 
     expect(links?.get(DISCORD)).toBe('u-new');
     expect(links?.get('999999999999999999')).toBeNull();
-    expect(client.businessDiscordProfile.updateMany).toHaveBeenCalledWith({
+    // The person is shared by every business: its link is updated everywhere.
+    expect(client.person.updateMany).toHaveBeenCalledWith({
       where: {
-        businessId: 'd1',
         discordUserId: DISCORD,
         OR: [{ userId: null }, { userId: { not: 'u-new' } }],
       },
@@ -84,7 +84,7 @@ describe('reconcileAccountLinks', () => {
     auth.resolveUsersByDiscordIds.mockRejectedValue(new Error('fetch failed'));
     const client = fakeClient();
     await expect(reconcileAccountLinks(client as never, 'd1', [DISCORD])).resolves.toBeUndefined();
-    expect(client.businessDiscordProfile.updateMany).not.toHaveBeenCalled();
+    expect(client.person.updateMany).not.toHaveBeenCalled();
   });
 });
 
@@ -93,7 +93,7 @@ describe('syncRowAccountLinks', () => {
   const row = (discordUserId: string, userId: string | null) => ({ businessId: 'd1', discordUserId, userId });
   function fakeClient() {
     return {
-      businessDiscordProfile: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      person: { updateMany: vi.fn(async () => ({ count: 1 })) },
       businessWeeklyActivity: { updateMany: vi.fn(async () => ({ count: 1 })) },
     };
   }
@@ -110,7 +110,7 @@ describe('syncRowAccountLinks', () => {
     const rows = [row(DISCORD, 'u-ok')];
     await expect(syncRowAccountLinks(client as never, rows)).resolves.toEqual(rows);
     expect(client.businessWeeklyActivity.updateMany).not.toHaveBeenCalled();
-    expect(client.businessDiscordProfile.updateMany).not.toHaveBeenCalled();
+    expect(client.person.updateMany).not.toHaveBeenCalled();
   });
 
   it('relinks only the Discord ids whose rows are stale, with a single auth call', async () => {

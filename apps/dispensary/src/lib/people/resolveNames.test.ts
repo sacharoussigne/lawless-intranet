@@ -23,6 +23,10 @@ type Where = Record<string, unknown>;
 function matches(p: Profile, where: Where): boolean {
   return Object.entries(where).every(([key, condition]) => {
     if (key === 'OR') return (condition as Where[]).some((w) => matches(p, w));
+    // personInBusiness: the person is known by this business.
+    if (key === 'businesses') {
+      return (condition as { some: { businessId: string } }).some.businessId === p.businessId;
+    }
     const value = p[key as keyof Profile];
     if (condition && typeof condition === 'object') {
       if ('in' in condition) return (condition.in as unknown[]).includes(value);
@@ -32,10 +36,10 @@ function matches(p: Profile, where: Where): boolean {
   });
 }
 
-/** In-memory `businessDiscordProfile` delegate, enough for the queries of resolveNames. */
+/** In-memory `person` delegate (one business per person here), enough for the queries of resolveNames. */
 function fakeClient(profiles: Profile[]) {
   return {
-    businessDiscordProfile: {
+    person: {
       findMany: async ({ where }: { where: Where }) =>
         profiles
           .filter((p) => matches(p, where))

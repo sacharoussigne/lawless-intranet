@@ -17,7 +17,7 @@ vi.mock('@/lib/authUsers', () => ({
   fetchUserProfiles: mocks.fetchUserProfiles,
 }));
 vi.mock('@/lib/prisma', () => ({
-  default: { businessDiscordProfile: { findMany: mocks.findMany } },
+  default: { person: { findMany: mocks.findMany } },
 }));
 
 const { resolveActorIds, resolveActorNames } = await import('@/lib/logs/actors');

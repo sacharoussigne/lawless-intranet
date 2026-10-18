@@ -15,6 +15,8 @@ import {
   createDiscordProfile,
   DiscordProfileConflictError,
   DiscordProfileNotFoundError,
+  findBusinessProfile,
+  findBusinessProfiles,
   updateDiscordProfileFields,
   type DiscordProfileSnapshot,
 } from '@/lib/businessDiscordProfile/service';
@@ -59,7 +61,7 @@ const updatePersonSchema = z.object({
 });
 
 function toPerson(
-  profile: DiscordProfileSnapshot & { updatedAt: Date },
+  profile: DiscordProfileSnapshot,
   accountName: string | null,
 ): BusinessPerson {
   return {
@@ -74,21 +76,9 @@ function toPerson(
   };
 }
 
-const profileSelect = {
-  discordUserId: true,
-  lastDisplayName: true,
-  fixedDisplayName: true,
-  role: true,
-  accountNumber: true,
-  userId: true,
-  updatedAt: true,
-} as const;
-
 async function loadPerson(businessId: string, discordUserId: string): Promise<BusinessPerson> {
-  const profile = await prisma.businessDiscordProfile.findUniqueOrThrow({
-    where: { businessId_discordUserId: { businessId, discordUserId } },
-    select: profileSelect,
-  });
+  const profile = await findBusinessProfile(prisma, businessId, discordUserId);
+  if (!profile) throw new DiscordProfileNotFoundError('Profil introuvable pour cette personne');
   const account = profile.userId
     ? (await fetchUserProfiles([profile.userId])).get(profile.userId)
     : undefined;
@@ -102,7 +92,7 @@ export async function listBusinessPeople(businessSlug: string) {
     const { businessId } = ctx.tenant;
 
     const [initialProfiles, members] = await Promise.all([
-      prisma.businessDiscordProfile.findMany({ where: { businessId }, select: profileSelect }),
+      findBusinessProfiles(prisma, businessId),
       prisma.businessMember.findMany({ where: { businessId }, select: { userId: true } }),
     ]);
 

@@ -27,7 +27,7 @@ model Business {
   settings                 AppSettings?
   payrollWeeklyReports     PayrollWeeklyReport[]
   businessWeeklyActivities BusinessWeeklyActivity[]
-  businessDiscordProfiles  BusinessDiscordProfile[]
+  people                   BusinessPerson[]
   cabinets                 Cabinet[]
 
   @@index([createdById])
@@ -232,29 +232,44 @@ model BusinessWeeklyActivityHistory {
   @@map("dispensary_weekly_activity_history")
 }
 
-model BusinessDiscordProfile {
-  id               String   @id @default(uuid())
-  businessId       String   @map("dispensaryId")
-  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  discordUserId    String
+/// A person of the RP server, keyed by its Discord ID, shared by every business
+/// (docs/MULTI-BUSINESS.md): with or without an intranet account.
+model Person {
+  id               String           @id @default(uuid())
+  discordUserId    String           @unique
   /// Latest name sent by the bot or the activity form (history, fallback).
   lastDisplayName  String
   /// Name set by hand (Gestion › Personnes): shown everywhere, never overwritten by the bot.
   fixedDisplayName String?
-  role             String?
-  accountNumber    Int?
+  /// RP bank account: payroll pays to this number, one person per number.
+  accountNumber    Int?             @unique
   /// SSO account linked to this Discord ID, filled as soon as one exists.
   userId           String?
   createdById      String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  businesses       BusinessPerson[]
 
-  @@unique([businessId, discordUserId])
-  /// Payroll pays to this number: one person per number in a dispensary (NULLs allowed).
-  @@unique([businessId, accountNumber])
-  @@index([businessId])
-  @@index([businessId, userId])
-  @@map("dispensary_discord_profile")
+  @@index([userId])
+  @@map("person")
+}
+
+/// A person known by a business (Gestion › Personnes, weekly activity, payroll).
+model BusinessPerson {
+  id          String   @id @default(uuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  personId    String
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// Grade in this business (payroll).
+  role        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([businessId, personId])
+  @@index([personId])
+  @@map("business_person")
 }
 
 enum CabinetAccessLevel {

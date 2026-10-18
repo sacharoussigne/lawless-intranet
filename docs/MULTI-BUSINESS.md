@@ -377,6 +377,21 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
 - **Paie et récap des horaires :** ils lisent les compteurs à travers le registre (`payrollStat`, `hoursSignal`).
 - **Interface :** les boutons rapides, le tableau, les formulaires, la vue compacte, l'historique et les réglages sont générés depuis les compteurs du type.
 
+### Phase 4 : ce qui a été fait
+
+- **Données :** `dispensary_discord_profile` est découpé en deux tables :
+  - `person`, une par ID Discord : nom du bot, nom fixé, n° de compte (unique sur toute la plateforme), lien SSO ;
+  - `business_person`, le rattachement à une entreprise, avec le grade.
+
+  La migration `shared_people` garde les identifiants des profils comme identifiants des rattachements.
+- **Lectures :** elles restent limitées aux personnes connues de l'entreprise (`personInBusiness`). L'affichage ne change donc pas.
+- **Écritures :**
+  - le nom fixé et le n° de compte s'appliquent à la personne, dans toutes ses entreprises ;
+  - le grade reste propre à chaque entreprise ;
+  - ajouter dans Gestion › Personnes quelqu'un qui est déjà connu ailleurs le rattache, sans créer de doublon ;
+  - le lien vers le compte SSO est mis à jour pour la personne, donc partout.
+- **Code :** les lectures sont dans `lib/businessDiscordProfile/queries.ts` (sans import Prisma à l'exécution), les écritures dans `service.ts`.
+
 ## 11. Questions encore ouvertes
 
 - D'éventuels **autres modules propres** au general store.

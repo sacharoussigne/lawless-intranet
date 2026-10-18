@@ -1,8 +1,5 @@
-import type { PrismaClient } from '@prisma/client';
-import { loadDiscordProfilesByIds } from '@/lib/businessDiscordProfile/service';
+import { loadDiscordProfilesByIds, type ProfileDb } from '@/lib/businessDiscordProfile/queries';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
-
-type ProfileDb = Pick<PrismaClient, 'businessDiscordProfile'>;
 
 type ActivityWithResolvedName = {
   businessId: string;

@@ -1,25 +1,21 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
+import {
+  findBusinessProfile,
+  personSelect,
+  snapshotOf,
+  type DiscordProfileSnapshot,
+  type ProfileDb,
+} from '@/lib/businessDiscordProfile/queries';
 
-type ProfileDb = Pick<PrismaClient, 'businessDiscordProfile'>;
-
-export type DiscordProfileSnapshot = {
-  discordUserId: string;
-  lastDisplayName: string;
-  fixedDisplayName: string | null;
-  role: string | null;
-  accountNumber: number | null;
-  userId: string | null;
-};
-
-const snapshotSelect = {
-  discordUserId: true,
-  lastDisplayName: true,
-  fixedDisplayName: true,
-  role: true,
-  accountNumber: true,
-  userId: true,
-} as const;
+export {
+  findBusinessProfile,
+  findBusinessProfiles,
+  loadDiscordProfilesByIds,
+  personInBusiness,
+  type DiscordProfileSnapshot,
+  type ProfileDb,
+} from '@/lib/businessDiscordProfile/queries';
 
 export const DISCORD_PROFILE_DUPLICATE_MESSAGE = 'Une personne avec ce Discord ID existe déjà.';
 
@@ -52,6 +48,19 @@ function normalizeOptionalText(value: string | null | undefined): string | null 
   return trimmed ? trimDisplayName(trimmed) : null;
 }
 
+/** Links a person to a business (no-op when already linked). */
+async function ensureBusinessLink(
+  client: ProfileDb,
+  businessId: string,
+  personId: string,
+): Promise<void> {
+  await client.businessPerson.upsert({
+    where: { businessId_personId: { businessId, personId } },
+    create: { businessId, personId },
+    update: {},
+  });
+}
+
 export async function upsertDiscordProfileFromActivity(
   client: ProfileDb,
   input: {
@@ -70,27 +79,16 @@ export async function upsertDiscordProfileFromActivity(
 
   // Intranet rows carry the fixed name: never copy it back into the bot's name
   // (same rule as migration 20261016150000).
-  const existing = await client.businessDiscordProfile.findUnique({
-    where: {
-      businessId_discordUserId: {
-        businessId: input.businessId,
-        discordUserId: input.discordUserId,
-      },
-    },
+  const existing = await client.person.findUnique({
+    where: { discordUserId: input.discordUserId },
     select: { fixedDisplayName: true },
   });
   const keepLastName = existing?.fixedDisplayName === lastDisplayName;
 
   // `fixedDisplayName` is never touched here: a name set by hand wins over the bot.
-  await client.businessDiscordProfile.upsert({
-    where: {
-      businessId_discordUserId: {
-        businessId: input.businessId,
-        discordUserId: input.discordUserId,
-      },
-    },
+  const person = await client.person.upsert({
+    where: { discordUserId: input.discordUserId },
     create: {
-      businessId: input.businessId,
       discordUserId: input.discordUserId,
       lastDisplayName,
       userId: linkedUserId ?? null,
@@ -99,26 +97,9 @@ export async function upsertDiscordProfileFromActivity(
       ...(keepLastName ? {} : { lastDisplayName }),
       ...(linkedUserId !== undefined ? { userId: linkedUserId } : {}),
     },
+    select: { id: true },
   });
-}
-
-export async function loadDiscordProfilesByIds(
-  client: ProfileDb,
-  businessId: string,
-  discordUserIds: string[],
-): Promise<Map<string, DiscordProfileSnapshot>> {
-  const unique = [...new Set(discordUserIds.filter(Boolean))];
-  if (unique.length === 0) return new Map();
-
-  const rows = await client.businessDiscordProfile.findMany({
-    where: {
-      businessId,
-      discordUserId: { in: unique },
-    },
-    select: snapshotSelect,
-  });
-
-  return new Map(rows.map((row) => [row.discordUserId, row]));
+  await ensureBusinessLink(client, input.businessId, person.id);
 }
 
 /** Fixed name of a profile, for a new activity row (the bot's nickname otherwise). */
@@ -127,22 +108,19 @@ export async function findFixedDisplayName(
   businessId: string,
   discordUserId: string,
 ): Promise<string | null> {
-  const profile = await client.businessDiscordProfile.findUnique({
-    where: { businessId_discordUserId: { businessId, discordUserId } },
-    select: { fixedDisplayName: true },
-  });
+  const profile = await findBusinessProfile(client, businessId, discordUserId);
   return normalizeOptionalText(profile?.fixedDisplayName);
 }
 
+/** An account number is personal: one person per number, across every business. */
 async function assertAccountNumberAvailable(
   client: ProfileDb,
-  businessId: string,
   accountNumber: number | null | undefined,
   discordUserId: string,
 ) {
   if (accountNumber == null) return;
-  const other = await client.businessDiscordProfile.findFirst({
-    where: { businessId, accountNumber, NOT: { discordUserId } },
+  const other = await client.person.findFirst({
+    where: { accountNumber, NOT: { discordUserId } },
     select: { lastDisplayName: true, fixedDisplayName: true },
   });
   if (other) {
@@ -152,6 +130,10 @@ async function assertAccountNumberAvailable(
   }
 }
 
+/**
+ * Adds a person to a business (Gestion › Personnes). A person already known
+ * elsewhere is linked: the name and account number given here update it.
+ */
 export async function createDiscordProfile(
   client: ProfileDb,
   input: {
@@ -166,44 +148,44 @@ export async function createDiscordProfile(
     lastKnownName?: string | null;
   },
 ): Promise<DiscordProfileSnapshot> {
-  const existing = await client.businessDiscordProfile.findUnique({
-    where: {
-      businessId_discordUserId: {
-        businessId: input.businessId,
-        discordUserId: input.discordUserId,
-      },
-    },
-    select: { id: true },
-  });
-  if (existing) {
+  if (await findBusinessProfile(client, input.businessId, input.discordUserId)) {
     throw new DiscordProfileConflictError(DISCORD_PROFILE_DUPLICATE_MESSAGE);
   }
-  await assertAccountNumberAvailable(
-    client,
-    input.businessId,
-    input.accountNumber,
-    input.discordUserId,
-  );
+  await assertAccountNumberAvailable(client, input.accountNumber, input.discordUserId);
 
   const name = trimDisplayName(input.displayName);
-  return client.businessDiscordProfile
-    .create({
-      data: {
-        businessId: input.businessId,
+  const role = normalizeOptionalText(input.role);
+  try {
+    const person = await client.person.upsert({
+      where: { discordUserId: input.discordUserId },
+      create: {
         discordUserId: input.discordUserId,
         // The bot's name: unknown until it sends one (the fixed name is kept apart).
         lastDisplayName: input.lastKnownName ?? '',
         fixedDisplayName: name,
-        role: normalizeOptionalText(input.role),
         accountNumber: input.accountNumber ?? null,
         userId: input.userId,
         createdById: input.createdById,
       },
-      select: snapshotSelect,
-    })
-    .catch((error: unknown) => {
-      throw toConflict(error);
+      update: {
+        fixedDisplayName: name,
+        ...(input.accountNumber != null ? { accountNumber: input.accountNumber } : {}),
+        ...(input.userId ? { userId: input.userId } : {}),
+      },
+      select: personSelect,
     });
+    await client.businessPerson.create({
+      data: {
+        businessId: input.businessId,
+        personId: person.id,
+        role,
+        createdById: input.createdById,
+      },
+    });
+    return snapshotOf(person, role);
+  } catch (error) {
+    throw toConflict(error);
+  }
 }
 
 export async function updateDiscordProfileFields(
@@ -217,42 +199,37 @@ export async function updateDiscordProfileFields(
     accountNumber?: number | null;
   },
 ): Promise<DiscordProfileSnapshot> {
-  const existing = await client.businessDiscordProfile.findUnique({
-    where: {
-      businessId_discordUserId: {
-        businessId: input.businessId,
-        discordUserId: input.discordUserId,
-      },
-    },
+  const link = await client.businessPerson.findFirst({
+    where: { businessId: input.businessId, person: { discordUserId: input.discordUserId } },
+    select: { id: true, personId: true, role: true },
   });
-  if (!existing) {
+  if (!link) {
     throw new DiscordProfileNotFoundError('Profil introuvable pour cette personne');
   }
 
-  const data: {
-    fixedDisplayName?: string | null;
-    role?: string | null;
-    accountNumber?: number | null;
-  } = {};
+  // The name and the account number belong to the person, the grade to this business.
+  const personData: { fixedDisplayName?: string | null; accountNumber?: number | null } = {};
   if (input.fixedDisplayName !== undefined) {
-    data.fixedDisplayName = normalizeOptionalText(input.fixedDisplayName);
-  }
-  if (input.role !== undefined) {
-    data.role = normalizeOptionalText(input.role);
+    personData.fixedDisplayName = normalizeOptionalText(input.fixedDisplayName);
   }
   if (input.accountNumber !== undefined) {
-    await assertAccountNumberAvailable(
-      client,
-      input.businessId,
-      input.accountNumber,
-      input.discordUserId,
-    );
-    data.accountNumber = input.accountNumber;
+    await assertAccountNumberAvailable(client, input.accountNumber, input.discordUserId);
+    personData.accountNumber = input.accountNumber;
   }
 
-  return client.businessDiscordProfile
-    .update({ where: { id: existing.id }, data, select: snapshotSelect })
-    .catch((error: unknown) => {
-      throw toConflict(error);
+  try {
+    let role = link.role;
+    if (input.role !== undefined) {
+      role = normalizeOptionalText(input.role);
+      await client.businessPerson.update({ where: { id: link.id }, data: { role } });
+    }
+    const person = await client.person.update({
+      where: { id: link.personId },
+      data: personData,
+      select: personSelect,
     });
+    return snapshotOf(person, role);
+  } catch (error) {
+    throw toConflict(error);
+  }
 }

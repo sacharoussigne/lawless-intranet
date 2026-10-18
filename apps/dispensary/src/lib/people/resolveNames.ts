@@ -2,8 +2,11 @@ import type { PrismaClient } from '@prisma/client';
 import { lookupDiscordIdsByUserIds } from '@/lib/people/accountLinks';
 import { getLatestDiscordDisplayName } from '@/lib/businessWeeklyActivity/resolveDisplayName';
 import { applyFixedNames, pickProfileDisplayName } from '@/lib/people/displayName';
-
-type ProfileDb = Pick<PrismaClient, 'businessDiscordProfile'>;
+import {
+  findBusinessProfile,
+  personInBusiness,
+  type ProfileDb,
+} from '@/lib/businessDiscordProfile/queries';
 
 /** Fixed names of intranet accounts (userId → name), through their Discord profile. */
 export async function loadFixedNamesForUsers(
@@ -22,9 +25,9 @@ export async function loadFixedNamesForUsers(
     (id): id is string => Boolean(id),
   );
 
-  const profiles = await client.businessDiscordProfile.findMany({
+  const profiles = await client.person.findMany({
     where: {
-      businessId,
+      ...personInBusiness(businessId),
       fixedDisplayName: { not: null },
       OR: [
         { discordUserId: { in: currentDiscordIds } },
@@ -78,10 +81,7 @@ export async function resolveDiscordPersonName(
   fallback: string,
 ): Promise<string> {
   const [profile, latest] = await Promise.all([
-    client.businessDiscordProfile.findUnique({
-      where: { businessId_discordUserId: { businessId, discordUserId } },
-      select: { fixedDisplayName: true, lastDisplayName: true },
-    }),
+    findBusinessProfile(client, businessId, discordUserId),
     getLatestDiscordDisplayName(client, businessId, discordUserId),
   ]);
   return pickProfileDisplayName(profile, latest ?? fallback);
@@ -95,9 +95,9 @@ export async function findUserIdsByBusinessName(
 ): Promise<string[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const profiles = await client.businessDiscordProfile.findMany({
+  const profiles = await client.person.findMany({
     where: {
-      businessId,
+      ...personInBusiness(businessId),
       userId: { not: null },
       OR: [
         { fixedDisplayName: { contains: q, mode: 'insensitive' } },

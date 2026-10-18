@@ -45,6 +45,7 @@ import {
   DiscordProfileNotFoundError,
   loadDiscordProfilesByIds,
   updateDiscordProfileFields,
+  personInBusiness,
 } from '@/lib/businessDiscordProfile/service';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
 import { applyBusinessNamesToUsers, resolveDiscordPersonName } from '@/lib/people/resolveNames';
@@ -391,8 +392,8 @@ export type WeeklyActivityTarget = {
  */
 async function loadWeeklyActivityTargets(businessId: string): Promise<WeeklyActivityTarget[]> {
   const [profiles, members] = await Promise.all([
-    prisma.businessDiscordProfile.findMany({
-      where: { businessId },
+    prisma.person.findMany({
+      where: personInBusiness(businessId),
       select: { discordUserId: true, userId: true, fixedDisplayName: true, lastDisplayName: true },
     }),
     prisma.businessMember.findMany({ where: { businessId }, select: { userId: true } }),
@@ -438,8 +439,8 @@ async function loadWeeklyActivityTargets(businessId: string): Promise<WeeklyActi
  * dispensary, or a member whose account holds this Discord id.
  */
 async function isWeeklyActivityTarget(businessId: string, discordUserId: string): Promise<boolean> {
-  const profile = await prisma.businessDiscordProfile.findUnique({
-    where: { businessId_discordUserId: { businessId, discordUserId } },
+  const profile = await prisma.person.findFirst({
+    where: { discordUserId, ...personInBusiness(businessId) },
     select: { discordUserId: true },
   });
   if (profile) return true;

@@ -146,7 +146,7 @@ export async function accountIdOfDiscord(discordUserId: string): Promise<string 
   return accounts.get(discordUserId)?.userId ?? null;
 }
 
-type LinkDb = Pick<PrismaClient, 'businessDiscordProfile' | 'businessWeeklyActivity'>;
+type LinkDb = Pick<PrismaClient, 'person' | 'businessWeeklyActivity'>;
 
 /**
  * Brings `userId` up to date on the profiles and activity rows of these Discord
@@ -170,10 +170,13 @@ export async function reconcileAccountLinks(
         userId === null
           ? { userId: { not: null } }
           : { OR: [{ userId: null }, { userId: { not: userId } }] };
-      const where = { businessId, discordUserId, ...stale };
+      // The person is shared by every business: its link is global.
       return [
-        client.businessDiscordProfile.updateMany({ where, data: { userId } }),
-        client.businessWeeklyActivity.updateMany({ where, data: { userId } }),
+        client.person.updateMany({ where: { discordUserId, ...stale }, data: { userId } }),
+        client.businessWeeklyActivity.updateMany({
+          where: { businessId, discordUserId, ...stale },
+          data: { userId },
+        }),
       ];
     }),
   );
