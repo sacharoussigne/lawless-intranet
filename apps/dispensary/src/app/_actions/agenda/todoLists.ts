@@ -75,12 +75,12 @@ function mapTodoList(list: AgendaTodoListRecord): AgendaTodoListDTO {
 }
 
 export async function listAgendaTodoLists(
-  dispensarySlug: string,
+  businessSlug: string,
   agendaId: string,
   options?: { archives?: boolean },
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const lists = await listAgendaTodoListsApi(agendaId, {
@@ -95,12 +95,12 @@ export async function listAgendaTodoLists(
 }
 
 async function createAgendaTodoListUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { agendaId: string; name: string },
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = createTodoListSchema.parse(data);
@@ -118,12 +118,12 @@ async function createAgendaTodoListUnlogged(
 }
 
 async function updateAgendaTodoListUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string; name: string },
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateTodoListSchema.parse(data);
@@ -141,12 +141,12 @@ async function updateAgendaTodoListUnlogged(
 }
 
 async function deleteAgendaTodoListUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = deleteTodoListSchema.parse({ id });
@@ -163,12 +163,12 @@ async function deleteAgendaTodoListUnlogged(
 }
 
 async function createAgendaTodoCategoryUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { listId: string; name: string },
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = createTodoCategorySchema.parse(data);
@@ -186,12 +186,12 @@ async function createAgendaTodoCategoryUnlogged(
 }
 
 async function updateAgendaTodoCategoryUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string; name: string },
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateTodoCategorySchema.parse(data);
@@ -209,12 +209,12 @@ async function updateAgendaTodoCategoryUnlogged(
 }
 
 async function deleteAgendaTodoCategoryUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = deleteTodoCategorySchema.parse({ id });
@@ -231,12 +231,12 @@ async function deleteAgendaTodoCategoryUnlogged(
 }
 
 async function createAgendaTodoTaskUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { categoryId: string; title: string; description?: string | null },
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = createTodoTaskSchema.parse(data);
@@ -257,7 +257,7 @@ async function createAgendaTodoTaskUnlogged(
 }
 
 async function updateAgendaTodoTaskUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     title?: string;
@@ -269,7 +269,7 @@ async function updateAgendaTodoTaskUnlogged(
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateTodoTaskSchema.parse(data);
@@ -293,12 +293,12 @@ async function updateAgendaTodoTaskUnlogged(
 }
 
 async function deleteAgendaTodoTaskUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = deleteTodoTaskSchema.parse({ id });
@@ -315,12 +315,12 @@ async function deleteAgendaTodoTaskUnlogged(
 }
 
 async function reorderAgendaTodoCategoriesUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { items: { id: string; order: number }[] },
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = reorderSchema.parse(data);
@@ -340,7 +340,7 @@ async function reorderAgendaTodoCategoriesUnlogged(
 }
 
 async function moveAgendaTodoTaskUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     taskId: string;
     sourceCategoryId: string;
@@ -351,7 +351,7 @@ async function moveAgendaTodoTaskUnlogged(
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = moveTodoTaskSchema.parse(data);

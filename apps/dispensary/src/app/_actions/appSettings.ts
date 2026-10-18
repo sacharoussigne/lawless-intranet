@@ -11,9 +11,9 @@ import {
   getAppSettings,
   type AppSettingsDTO,
 } from '@/lib/appSettings';
-import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
+import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
 
-export type DispensarySettingsAdminDTO = AppSettingsDTO & {
+export type BusinessSettingsAdminDTO = AppSettingsDTO & {
   slug: string;
 };
 
@@ -25,7 +25,7 @@ const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug invalide (lettres minuscules, chiffres et tirets)');
 
 const updateSchema = z.object({
-  dispensaryName: z
+  businessName: z
     .string()
     .trim()
     .min(1, 'Le nom est requis')
@@ -51,21 +51,21 @@ const updateSchema = z.object({
 });
 
 export async function getAppSettingsForAdmin(
-  dispensarySlug: string,
+  businessSlug: string,
 ): Promise<
-  | { status: 200; data: DispensarySettingsAdminDTO }
+  | { status: 200; data: BusinessSettingsAdminDTO }
   | { status: number; error: string }
 > {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
 
-    const settings = await getAppSettings(auth.ctx.dispensaryId);
-    const data: DispensarySettingsAdminDTO = {
+    const settings = await getAppSettings(auth.ctx.businessId);
+    const data: BusinessSettingsAdminDTO = {
       ...settings,
-      slug: auth.ctx.dispensary.slug,
+      slug: auth.ctx.business.slug,
     };
     return { status: 200, data };
   } catch (error) {
@@ -84,18 +84,18 @@ export async function getAppSettingsForAdmin(
 }
 
 async function updateAppSettingsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: z.infer<typeof updateSchema>,
 ): Promise<
-  | { status: 200; data: DispensarySettingsAdminDTO }
+  | { status: 200; data: BusinessSettingsAdminDTO }
   | { status: number; error: string }
 > {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
-    const { dispensaryId, dispensary } = auth.ctx;
+    const { businessId, business } = auth.ctx;
 
     const parsed = updateSchema.safeParse(input);
     if (!parsed.success) {
@@ -106,9 +106,9 @@ async function updateAppSettingsUnlogged(
     }
 
     const newSlug = parsed.data.slug;
-    if (newSlug !== dispensary.slug) {
-      const taken = await prisma.dispensary.findFirst({
-        where: { slug: newSlug, id: { not: dispensaryId } },
+    if (newSlug !== business.slug) {
+      const taken = await prisma.business.findFirst({
+        where: { slug: newSlug, id: { not: businessId } },
         select: { id: true },
       });
       if (taken) {
@@ -117,18 +117,18 @@ async function updateAppSettingsUnlogged(
     }
 
     const [, row] = await prisma.$transaction([
-      prisma.dispensary.update({
-        where: { id: dispensaryId },
+      prisma.business.update({
+        where: { id: businessId },
         data: {
-          name: parsed.data.dispensaryName,
+          name: parsed.data.businessName,
           slug: newSlug,
         },
       }),
       prisma.appSettings.upsert({
-        where: { dispensaryId },
+        where: { businessId },
         create: {
-          dispensaryId,
-          dispensaryName: parsed.data.dispensaryName,
+          businessId,
+          businessName: parsed.data.businessName,
           featureStockEnabled: parsed.data.featureStockEnabled,
           featureBankEnabled: parsed.data.featureBankEnabled,
           featureOrdersEnabled: parsed.data.featureOrdersEnabled,
@@ -149,7 +149,7 @@ async function updateAppSettingsUnlogged(
           weeklyActivityPoppyMilkVisible: parsed.data.weeklyActivityPoppyMilkVisible,
         },
         update: {
-          dispensaryName: parsed.data.dispensaryName,
+          businessName: parsed.data.businessName,
           featureStockEnabled: parsed.data.featureStockEnabled,
           featureBankEnabled: parsed.data.featureBankEnabled,
           featureOrdersEnabled: parsed.data.featureOrdersEnabled,
@@ -172,15 +172,15 @@ async function updateAppSettingsUnlogged(
       }),
     ]);
 
-    updateTag(appSettingsCacheTag(dispensaryId));
-    revalidatePath(`/d/${dispensary.slug}`, 'layout');
-    if (newSlug !== dispensary.slug) {
+    updateTag(appSettingsCacheTag(businessId));
+    revalidatePath(`/d/${business.slug}`, 'layout');
+    if (newSlug !== business.slug) {
       revalidatePath(`/d/${newSlug}`, 'layout');
     }
     revalidatePath('/platform/dispensaries');
 
-    const data: DispensarySettingsAdminDTO = {
-      dispensaryName: row.dispensaryName,
+    const data: BusinessSettingsAdminDTO = {
+      businessName: row.businessName,
       slug: newSlug,
       featureStockEnabled: row.featureStockEnabled,
       featureBankEnabled: row.featureBankEnabled,

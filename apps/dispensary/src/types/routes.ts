@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { DEFAULT_DISPENSARY_SLUG } from '@/lib/dispensary/constants';
+import { DEFAULT_BUSINESS_SLUG } from '@/lib/business/constants';
 import type { FormEntityType } from '@/lib/cabinet/formSchema';
 
-export function dispensaryBase(slug: string): string {
+export function businessBase(slug: string): string {
   return `/d/${encodeURIComponent(slug)}`;
 }
 
@@ -25,7 +25,7 @@ export const EMPLOYEE_MODULE_SEGMENTS = [
 export type EmployeeModuleSegment = (typeof EMPLOYEE_MODULE_SEGMENTS)[number];
 
 export function tenantRoutes(slug: string) {
-  const base = dispensaryBase(slug);
+  const base = businessBase(slug);
   const employeeBase = `${base}/employee`;
   return {
     employee: {
@@ -102,7 +102,7 @@ export const routes = {
     index: '/test',
   },
   platform: {
-    dispensaries: '/platform/dispensaries',
+    businesses: '/platform/dispensaries',
     users: '/platform/users',
     logs: '/platform/logs',
   },
@@ -119,7 +119,7 @@ export const routes = {
     verifyEmail: '/auth/verify-email',
     noAccess: '/auth/no-access',
     noManagementAccess: '/auth/no-management-access',
-    noDispensaryAccess: '/auth/no-dispensary-access',
+    noBusinessAccess: '/auth/no-dispensary-access',
   },
   redirect: (request: NextRequest, route: string) => {
     return NextResponse.redirect(new URL(route, request.url));
@@ -151,7 +151,7 @@ function tenantPathForLegacy(legacyPath: string, slug: string): string {
   return `/d/${slug}${legacyPath}`;
 }
 
-export function legacyPathToTenant(pathname: string, slug: string = DEFAULT_DISPENSARY_SLUG): string | null {
+export function legacyPathToTenant(pathname: string, slug: string = DEFAULT_BUSINESS_SLUG): string | null {
   for (const legacy of LEGACY_TENANT_PATHS) {
     if (pathname === legacy) {
       return tenantPathForLegacy(legacy, slug);

@@ -19,7 +19,7 @@ export type ChestStockMoveItemInput = {
 };
 
 async function moveItemsWithChestsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     mode: ChestStockMoveMode;
     items: ChestStockMoveItemInput[];
@@ -31,11 +31,11 @@ async function moveItemsWithChestsUnlogged(
   const actionLabel = isTake ? 'prendre' : 'déposer';
 
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
 
     const validItems = data.items.filter((item) => item.quantity > 0 && item.chestId);
@@ -45,7 +45,7 @@ async function moveItemsWithChestsUnlogged(
 
     await moveItemsWithChestsApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         mode: data.mode,
         items: validItems,
         userId,

@@ -13,7 +13,7 @@ import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 type TransferItem = { itemId: string; quantity: number };
 
 async function transferMultipleStockUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     sourceChestId: string;
     destinationChestId: string;
@@ -23,7 +23,7 @@ async function transferMultipleStockUnlogged(
   _meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
@@ -33,7 +33,7 @@ async function transferMultipleStockUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const { sourceChestId, destinationChestId, items } = data;
 
@@ -54,7 +54,7 @@ async function transferMultipleStockUnlogged(
 
     await transferStock(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         sourceChestId,
         destinationChestId,
         items: validItems,

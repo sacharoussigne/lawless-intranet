@@ -53,7 +53,7 @@ const reorderItemsSchema = z.object({
 });
 
 async function createItemUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     description?: string;
@@ -68,13 +68,13 @@ async function createItemUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createItemSchema.parse(data);
     const item = await createItemClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -85,17 +85,17 @@ async function createItemUnlogged(
 }
 
 export async function getItems(
-  dispensarySlug: string,
+  businessSlug: string,
   options?: { companyGroupId?: string | null },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const items = await listItems(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         ...(options?.companyGroupId ? { companyGroupId: options.companyGroupId } : {}),
       },
       await inventoryCookie(),
@@ -108,7 +108,7 @@ export async function getItems(
 }
 
 async function updateItemUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -124,13 +124,13 @@ async function updateItemUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateItemSchema.parse(data);
     const item = await updateItemClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -140,15 +140,15 @@ async function updateItemUnlogged(
   }
 }
 
-async function deleteItemUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteItemUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteItemSchema.parse(data);
     await deleteItemClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -159,17 +159,17 @@ async function deleteItemUnlogged(dispensarySlug: string, data: { id: string }) 
 }
 
 async function reorderItemsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { items: { id: string; order: number }[] },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = reorderItemsSchema.parse(data);
     await reorderItemsClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 

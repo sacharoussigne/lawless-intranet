@@ -38,7 +38,7 @@ export function getDefaultMailName(
 export function templateToMailTemplate(template: TemplateRecord) {
   return {
     id: template.id,
-    dispensaryId: template.scopeId,
+    businessId: template.scopeId,
     name: template.name,
     description: template.description,
     content: template.content,
@@ -52,7 +52,7 @@ export function templateToMailTemplate(template: TemplateRecord) {
 export function documentToMail(document: DocumentRecord) {
   return {
     id: document.id,
-    dispensaryId: document.scopeId,
+    businessId: document.scopeId,
     senderId: document.ownerId,
     name: document.name,
     receiver: getMailReceiver(document.metadata),
@@ -121,17 +121,17 @@ export function resolveMailDocumentAccess(
 }
 
 export async function attachOwnerNames<T extends { ownerId?: string | null }>(
-  dispensaryId: string,
+  businessId: string,
   items: T[],
 ): Promise<Array<T & { ownerName: string | null }>> {
-  const { fetchDispensaryUserProfiles } = await import('@/lib/people/userProfiles');
+  const { fetchBusinessUserProfiles } = await import('@/lib/people/userProfiles');
   const ownerIds = [
     ...new Set(items.map((item) => item.ownerId).filter((id): id is string => Boolean(id))),
   ];
 
   const profiles =
     ownerIds.length > 0
-      ? await fetchDispensaryUserProfiles(dispensaryId, ownerIds)
+      ? await fetchBusinessUserProfiles(businessId, ownerIds)
       : new Map<string, { name: string }>();
 
   return items.map((item) => ({

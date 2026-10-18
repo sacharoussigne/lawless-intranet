@@ -22,7 +22,7 @@ import {
 import { IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { AppModal } from '@/app/_components/AppModal/AppModal';
-import { useRequiredDispensarySlug } from '@/app/_contexts/PermissionsContext';
+import { useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
 import { createSale } from '@/app/_actions/sales';
 import { getSaleEffectiveTotal } from '@/lib/sales/pricing';
 import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
@@ -65,7 +65,7 @@ export function SaleModal({
   chests: chestsProp,
   onCreated,
 }: SaleModalProps) {
-  const dispensarySlug = useRequiredDispensarySlug();
+  const businessSlug = useRequiredBusinessSlug();
   const queryClient = useQueryClient();
   const { clientId } = useSalesRealtime({});
   const [defaultChestId, setDefaultChestId] = useState<string | null>(initialChestId);
@@ -77,28 +77,28 @@ export function SaleModal({
   const [debouncedCustomerQuery] = useDebouncedValue(customerName.trim(), 300);
 
   const sellableQuery = useQuery({
-    queryKey: ['sellable-items', dispensarySlug],
-    queryFn: async () => handleAction(await fetchRead(dispensarySlug, 'sellableItems')) as SellableItem[],
-    enabled: opened && Boolean(dispensarySlug),
+    queryKey: ['sellable-items', businessSlug],
+    queryFn: async () => handleAction(await fetchRead(businessSlug, 'sellableItems')) as SellableItem[],
+    enabled: opened && Boolean(businessSlug),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 
   const chestsQuery = useQuery({
-    queryKey: ['chests-list', dispensarySlug, true],
-    queryFn: async () => handleAction(await fetchRead(dispensarySlug, 'chestsList', { onlyEnabled: true })) as ChestListItem[],
-    enabled: opened && Boolean(dispensarySlug) && !chestsProp,
+    queryKey: ['chests-list', businessSlug, true],
+    queryFn: async () => handleAction(await fetchRead(businessSlug, 'chestsList', { onlyEnabled: true })) as ChestListItem[],
+    enabled: opened && Boolean(businessSlug) && !chestsProp,
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 
   const customerSearchQuery = useQuery({
-    queryKey: ['individual-customers-search', dispensarySlug, debouncedCustomerQuery],
+    queryKey: ['individual-customers-search', businessSlug, debouncedCustomerQuery],
     queryFn: async () =>
       handleAction(
-        await fetchRead(dispensarySlug, 'individualCustomerSearch', {
+        await fetchRead(businessSlug, 'individualCustomerSearch', {
           query: debouncedCustomerQuery,
         }),
       ) as Array<{ id: string; name: string }>,
-    enabled: opened && Boolean(dispensarySlug) && debouncedCustomerQuery.length >= 2,
+    enabled: opened && Boolean(businessSlug) && debouncedCustomerQuery.length >= 2,
     staleTime: 30_000,
   });
 
@@ -115,10 +115,10 @@ export function SaleModal({
 
   const chestStockQueries = useQueries({
     queries: trackedChestIds.map((chestId) => ({
-      queryKey: stockKeys.items(dispensarySlug, chestId),
+      queryKey: stockKeys.items(businessSlug, chestId),
       queryFn: async () =>
-        handleAction(await fetchRead(dispensarySlug, 'itemsWithStock', { chestId })) as ItemWithRelations[],
-      enabled: opened && Boolean(dispensarySlug && chestId),
+        handleAction(await fetchRead(businessSlug, 'itemsWithStock', { chestId })) as ItemWithRelations[],
+      enabled: opened && Boolean(businessSlug && chestId),
       staleTime: DEFAULT_STALE_TIME_MS,
     })),
   });
@@ -158,7 +158,7 @@ export function SaleModal({
         .filter((line) => line.quantity > 0);
 
       const result = await createSale(
-        dispensarySlug,
+        businessSlug,
         {
           defaultChestId,
           customerName: customerName.trim() || null,
@@ -177,11 +177,11 @@ export function SaleModal({
         message: 'Vente enregistrée',
         color: 'moss',
       });
-      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', dispensarySlug] });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', businessSlug] });
       for (const chestId of trackedChestIds) {
-        void queryClient.invalidateQueries({ queryKey: stockKeys.items(dispensarySlug, chestId) });
+        void queryClient.invalidateQueries({ queryKey: stockKeys.items(businessSlug, chestId) });
       }
-      void queryClient.invalidateQueries({ queryKey: stockKeys.items(dispensarySlug, null) });
+      void queryClient.invalidateQueries({ queryKey: stockKeys.items(businessSlug, null) });
       onCreated?.();
       onClose();
     },

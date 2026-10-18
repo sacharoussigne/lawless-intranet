@@ -2,8 +2,8 @@ import type { NextRequest, NextResponse } from 'next/server';
 import { can } from '@lawless-intranet/auth-permissions';
 
 export type TenantMiddlewareContext = {
-  dispensaryId: string;
-  dispensarySlug: string;
+  businessId: string;
+  businessSlug: string;
   effectiveRole: string | null;
   effectivePermissions: string[];
 };

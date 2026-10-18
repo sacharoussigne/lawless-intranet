@@ -3,7 +3,7 @@
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import { canEditCabinetFormSchema } from '@/lib/cabinet/access';
 import { saveFormSchemaEntitySchema } from '@/app/_actions/cabinet/schemas';
 import type { CabinetFormSchemas, FormEntitySchema, FormEntityType } from '@/lib/cabinet/formSchema';
@@ -22,14 +22,14 @@ function entityKey(entityType: FormEntityType): keyof CabinetFormSchemas {
 }
 
 async function loadAndGuardSchemas(
-  dispensarySlug: string,
+  businessSlug: string,
   cabinetId: string,
 ) {
-  const ctx = await getCabinetSessionContext(dispensarySlug);
+  const ctx = await getCabinetSessionContext(businessSlug);
   if (!ctx.ok) return { error: ctx.response };
 
   const canEdit = await canEditCabinetFormSchema(
-    ctx.tenant.dispensaryId,
+    ctx.tenant.businessId,
     cabinetId,
     ctx.session.user.id,
     ctx.session.user.role,
@@ -40,7 +40,7 @@ async function loadAndGuardSchemas(
   }
 
   const cabinet = await prisma.cabinet.findFirst({
-    where: { id: cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
+    where: { id: cabinetId, ...tenantWhere(ctx.tenant.businessId) },
     select: { formSchemas: true, displaySettings: true, name: true },
   });
   if (!cabinet) {
@@ -55,9 +55,9 @@ async function loadAndGuardSchemas(
   };
 }
 
-export async function getCabinetFormSchemas(dispensarySlug: string, cabinetId: string) {
+export async function getCabinetFormSchemas(businessSlug: string, cabinetId: string) {
   try {
-    const loaded = await loadAndGuardSchemas(dispensarySlug, cabinetId);
+    const loaded = await loadAndGuardSchemas(businessSlug, cabinetId);
     if ('error' in loaded && loaded.error) return loaded.error;
 
     const { cabinetName, schemas, displaySettings } = loaded as {
@@ -77,7 +77,7 @@ export async function getCabinetFormSchemas(dispensarySlug: string, cabinetId: s
 
 async function saveCabinetConfiguration(
   cabinetId: string,
-  dispensaryId: string,
+  businessId: string,
   schemas: CabinetFormSchemas,
   displaySettings?: CabinetDisplaySettings,
 ) {
@@ -91,13 +91,13 @@ async function saveCabinetConfiguration(
   }
 
   await prisma.cabinet.update({
-    where: { id: cabinetId, ...tenantWhere(dispensaryId) },
+    where: { id: cabinetId, ...tenantWhere(businessId) },
     data,
   });
 }
 
 async function saveFormSchemaEntityUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     cabinetId: string;
     entityType: FormEntityType;
@@ -110,7 +110,7 @@ async function saveFormSchemaEntityUnlogged(
     const incomingDisplaySettings = data.displaySettings
       ? cabinetDisplaySettingsSchema.parse(data.displaySettings)
       : undefined;
-    const loaded = await loadAndGuardSchemas(dispensarySlug, validated.cabinetId);
+    const loaded = await loadAndGuardSchemas(businessSlug, validated.cabinetId);
     if ('error' in loaded && loaded.error) return loaded.error;
 
     const { ctx, schemas, displaySettings: savedDisplaySettingsBeforeSave } = loaded as {
@@ -150,7 +150,7 @@ async function saveFormSchemaEntityUnlogged(
 
     await saveCabinetConfiguration(
       validated.cabinetId,
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       schemas,
       incomingDisplaySettings,
     );

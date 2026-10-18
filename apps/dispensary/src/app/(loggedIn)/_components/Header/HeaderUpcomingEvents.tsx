@@ -128,10 +128,10 @@ function EventGroup({
 }
 
 export function HeaderUpcomingEvents({
-  dispensarySlug,
+  businessSlug,
   agendaHref,
 }: {
-  dispensarySlug: string;
+  businessSlug: string;
   agendaHref: string;
 }) {
   const router = useRouter();
@@ -151,9 +151,9 @@ export function HeaderUpcomingEvents({
   const bounds = useMemo(() => getTodayTomorrowBounds(todayKey), [todayKey]);
 
   const eventsQuery = useQuery({
-    queryKey: agendaKeys.upcoming(dispensarySlug, bounds),
+    queryKey: agendaKeys.upcoming(businessSlug, bounds),
     queryFn: async () => {
-      const result = await fetchRead(dispensarySlug, 'agendaEvents', {
+      const result = await fetchRead(businessSlug, 'agendaEvents', {
         rangeStart: bounds.rangeStart,
         rangeEnd: bounds.rangeEnd,
       });
@@ -169,10 +169,10 @@ export function HeaderUpcomingEvents({
   const invalidateEvents = useCallback(() => {
     // The agenda page invalidates the same key for the same event: join its refetch.
     void queryClient.invalidateQueries(
-      { queryKey: agendaKeys.eventsAll(dispensarySlug) },
+      { queryKey: agendaKeys.eventsAll(businessSlug) },
       { cancelRefetch: false },
     );
-  }, [dispensarySlug, queryClient]);
+  }, [businessSlug, queryClient]);
 
   // Only topics the user may see reach this client (agenda membership or participation).
   useAgendaRealtime({ onEventsChange: invalidateEvents });

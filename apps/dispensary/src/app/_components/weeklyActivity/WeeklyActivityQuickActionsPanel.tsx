@@ -9,15 +9,15 @@ import {
   IconUserPlus,
   IconUserCheck,
 } from '@tabler/icons-react';
-import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import { parisWeekdayKey } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
+import { parisWeekdayKey } from '@/lib/businessWeeklyActivity/weekdayFlags';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   useIncrementOwnWeeklyCounterMutation,
   useMarkOwnWeeklyChestTodayMutation,
   useMarkOwnWeeklyPresenceTodayMutation,
-} from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
-import type { WeeklyActivityWeekBounds } from '@/lib/dispensaryWeeklyActivity/queryKeys';
+} from '@/app/(loggedIn)/d/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityWeekBounds } from '@/lib/businessWeeklyActivity/queryKeys';
 import classes from './WeeklyActivityQuickActionsPanel.module.scss';
 
 type WeeklyActivityQuickActionsPanelProps = {

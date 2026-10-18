@@ -1,5 +1,5 @@
 /** A person of the dispensary, keyed by Discord ID, with or without an intranet account. */
-export type DispensaryPerson = {
+export type BusinessPerson = {
   discordUserId: string;
   /** Name shown everywhere: fixed name, otherwise the latest name sent by the bot. */
   displayName: string;
@@ -19,7 +19,7 @@ export type MemberWithoutProfile = {
   discordUserId: string;
 };
 
-export type DispensaryPeopleList = {
-  people: DispensaryPerson[];
+export type BusinessPeopleList = {
+  people: BusinessPerson[];
   membersWithoutProfile: MemberWithoutProfile[];
 };

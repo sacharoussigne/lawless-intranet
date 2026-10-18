@@ -146,7 +146,7 @@ export async function accountIdOfDiscord(discordUserId: string): Promise<string 
   return accounts.get(discordUserId)?.userId ?? null;
 }
 
-type LinkDb = Pick<PrismaClient, 'dispensaryDiscordProfile' | 'dispensaryWeeklyActivity'>;
+type LinkDb = Pick<PrismaClient, 'businessDiscordProfile' | 'businessWeeklyActivity'>;
 
 /**
  * Brings `userId` up to date on the profiles and activity rows of these Discord
@@ -156,7 +156,7 @@ type LinkDb = Pick<PrismaClient, 'dispensaryDiscordProfile' | 'dispensaryWeeklyA
  */
 export async function reconcileAccountLinks(
   client: LinkDb,
-  dispensaryId: string,
+  businessId: string,
   discordIds: string[],
 ): Promise<Map<string, string | null> | undefined> {
   const accounts = await lookupAccountsByDiscordIds(discordIds);
@@ -170,17 +170,17 @@ export async function reconcileAccountLinks(
         userId === null
           ? { userId: { not: null } }
           : { OR: [{ userId: null }, { userId: { not: userId } }] };
-      const where = { dispensaryId, discordUserId, ...stale };
+      const where = { businessId, discordUserId, ...stale };
       return [
-        client.dispensaryDiscordProfile.updateMany({ where, data: { userId } }),
-        client.dispensaryWeeklyActivity.updateMany({ where, data: { userId } }),
+        client.businessDiscordProfile.updateMany({ where, data: { userId } }),
+        client.businessWeeklyActivity.updateMany({ where, data: { userId } }),
       ];
     }),
   );
   return userIdByDiscord;
 }
 
-type LinkedRow = { dispensaryId: string; discordUserId: string; userId: string | null };
+type LinkedRow = { businessId: string; discordUserId: string; userId: string | null };
 
 /**
  * Rows with `userId` set to the current account of their Discord id. Writes
@@ -196,18 +196,18 @@ export async function syncRowAccountLinks<T extends LinkedRow>(client: LinkDb, r
     return account === undefined ? undefined : (account?.userId ?? null);
   };
 
-  const staleByDispensary = new Map<string, Set<string>>();
+  const staleByBusiness = new Map<string, Set<string>>();
   for (const row of rows) {
     const userId = linkOf(row);
     if (userId === undefined || userId === row.userId) continue;
-    const ids = staleByDispensary.get(row.dispensaryId) ?? new Set<string>();
+    const ids = staleByBusiness.get(row.businessId) ?? new Set<string>();
     ids.add(row.discordUserId);
-    staleByDispensary.set(row.dispensaryId, ids);
+    staleByBusiness.set(row.businessId, ids);
   }
   // Cached lookups: no new auth call here.
   await Promise.all(
-    [...staleByDispensary].map(([dispensaryId, discordIds]) =>
-      reconcileAccountLinks(client, dispensaryId, [...discordIds]),
+    [...staleByBusiness].map(([businessId, discordIds]) =>
+      reconcileAccountLinks(client, businessId, [...discordIds]),
     ),
   );
 

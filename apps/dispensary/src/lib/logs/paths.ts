@@ -25,7 +25,7 @@ const SEGMENT_FEATURES: Record<string, LogFeature> = {
 };
 
 /** Dispensary slug of an app path (`/d/<slug>/…`, `/api/d/<slug>/…`), if any. */
-export function dispensarySlugFromPath(pathname: string | null | undefined): string | null {
+export function businessSlugFromPath(pathname: string | null | undefined): string | null {
   const match = pathname?.match(/^(?:\/api)?\/d\/([^/?#]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }

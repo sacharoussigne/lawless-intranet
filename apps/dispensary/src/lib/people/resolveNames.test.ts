@@ -7,11 +7,11 @@ const auth = vi.hoisted(() => ({
 }));
 vi.mock('@lawless-intranet/auth-client/internal', () => auth);
 
-const { applyDispensaryNamesToUsers, loadFixedNamesForUsers } = await import('@/lib/people/resolveNames');
+const { applyBusinessNamesToUsers, loadFixedNamesForUsers } = await import('@/lib/people/resolveNames');
 const { clearAccountLinkCache } = await import('@/lib/people/accountLinks');
 
 type Profile = {
-  dispensaryId: string;
+  businessId: string;
   discordUserId: string;
   userId: string | null;
   fixedDisplayName: string | null;
@@ -32,10 +32,10 @@ function matches(p: Profile, where: Where): boolean {
   });
 }
 
-/** In-memory `dispensaryDiscordProfile` delegate, enough for the queries of resolveNames. */
+/** In-memory `businessDiscordProfile` delegate, enough for the queries of resolveNames. */
 function fakeClient(profiles: Profile[]) {
   return {
-    dispensaryDiscordProfile: {
+    businessDiscordProfile: {
       findMany: async ({ where }: { where: Where }) =>
         profiles
           .filter((p) => matches(p, where))
@@ -46,7 +46,7 @@ function fakeClient(profiles: Profile[]) {
 
 function profile(overrides: Partial<Profile>): Profile {
   return {
-    dispensaryId: 'd1',
+    businessId: 'd1',
     discordUserId: '111111111111111111',
     userId: null,
     fixedDisplayName: null,
@@ -124,17 +124,17 @@ describe('loadFixedNamesForUsers', () => {
 
   it('only reads the profiles of the dispensary', async () => {
     auth.resolveDiscordIdsForUserIds.mockResolvedValue(new Map([['u1', '111111111111111111']]));
-    const client = fakeClient([profile({ dispensaryId: 'other', userId: 'u1', fixedDisplayName: 'Ailleurs' })]);
+    const client = fakeClient([profile({ businessId: 'other', userId: 'u1', fixedDisplayName: 'Ailleurs' })]);
     const names = await loadFixedNamesForUsers(client, 'd1', ['u1']);
     expect(names.size).toBe(0);
   });
 });
 
-describe('applyDispensaryNamesToUsers', () => {
+describe('applyBusinessNamesToUsers', () => {
   it('keeps the SSO names when nothing can be read', async () => {
     auth.resolveDiscordIdsForUserIds.mockRejectedValue(new Error('fetch failed'));
     const users = new Map([['u9', { name: 'SSO' }]]);
-    const named = await applyDispensaryNamesToUsers(fakeClient([]), 'd1', users);
+    const named = await applyBusinessNamesToUsers(fakeClient([]), 'd1', users);
     expect(named.get('u9')?.name).toBe('SSO');
   });
 });

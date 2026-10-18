@@ -8,11 +8,11 @@ export async function assertAppFeatureEnabledMiddleware(
   session: AppMiddlewareSession,
   feature: AppFeatureKey,
 ): Promise<NextResponse> {
-  const dispensaryId = session?.tenant?.dispensaryId;
-  if (!dispensaryId) {
+  const businessId = session?.tenant?.businessId;
+  if (!businessId) {
     return routes.redirect(request, routes.auth.noAccess);
   }
-  const settings = await loadAppSettingsFromDb(dispensaryId);
+  const settings = await loadAppSettingsFromDb(businessId);
   if (isAppFeatureEnabled(settings, feature)) {
     return NextResponse.next();
   }

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { dispensarySlugFromPath, featureFromPath } from './paths';
+import { businessSlugFromPath, featureFromPath } from './paths';
 
-describe('dispensarySlugFromPath', () => {
+describe('businessSlugFromPath', () => {
   it('reads the slug of page and API paths', () => {
-    expect(dispensarySlugFromPath('/d/saint-denis/employee/stock')).toBe('saint-denis');
-    expect(dispensarySlugFromPath('/api/d/saint-denis/read/items')).toBe('saint-denis');
-    expect(dispensarySlugFromPath('/platform/users')).toBeNull();
-    expect(dispensarySlugFromPath(null)).toBeNull();
+    expect(businessSlugFromPath('/d/saint-denis/employee/stock')).toBe('saint-denis');
+    expect(businessSlugFromPath('/api/d/saint-denis/read/items')).toBe('saint-denis');
+    expect(businessSlugFromPath('/platform/users')).toBeNull();
+    expect(businessSlugFromPath(null)).toBeNull();
   });
 });
 

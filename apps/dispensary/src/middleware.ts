@@ -15,9 +15,9 @@ import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatur
 import { hasTenantAccessMiddleware } from './middlewares/hasTenantAccessMiddleware';
 import { chain } from './middlewares/chain';
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
-import { enrichSessionWithTenant } from './lib/dispensary/middlewareSession';
-import { parseDispensarySlugFromPathname } from './lib/dispensary/slug';
-import { DEFAULT_DISPENSARY_SLUG } from './lib/dispensary/constants';
+import { enrichSessionWithTenant } from './lib/business/middlewareSession';
+import { parseBusinessSlugFromPathname } from './lib/business/slug';
+import { DEFAULT_BUSINESS_SLUG } from './lib/business/constants';
 import {
   hasApplicationAccessMiddleware,
   hasBankAccessMiddleware,
@@ -35,7 +35,7 @@ import {
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  const legacyTarget = legacyPathToTenant(pathname, DEFAULT_DISPENSARY_SLUG);
+  const legacyTarget = legacyPathToTenant(pathname, DEFAULT_BUSINESS_SLUG);
   if (legacyTarget) {
     const url = new URL(legacyTarget, req.url);
     url.search = req.nextUrl.search;
@@ -64,7 +64,7 @@ export async function middleware(req: NextRequest) {
       )
     : null;
 
-  const slug = parseDispensarySlugFromPathname(pathname);
+  const slug = parseBusinessSlugFromPathname(pathname);
   const t = slug ? tenantRoutes(slug) : null;
 
   const middlewares = [];
@@ -73,7 +73,7 @@ export async function middleware(req: NextRequest) {
     if (
       pathname !== routes.auth.noAccess &&
       pathname !== routes.auth.noManagementAccess &&
-      pathname !== routes.auth.noDispensaryAccess
+      pathname !== routes.auth.noBusinessAccess
     ) {
       middlewares.push(hasToBeLoggedOutMiddleware);
     }
@@ -213,7 +213,7 @@ export const config = {
     '/settings/:path*',
     '/admin/:path*',
     '/platform/:path*',
-    '/d/:dispensarySlug/:path*',
+    '/d/:businessSlug/:path*',
     '/test/:path*',
     '/inventory/:path*',
     '/orders/:path*',

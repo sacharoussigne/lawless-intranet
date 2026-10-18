@@ -428,6 +428,6 @@ curl -sS -X DELETE \
 ## Fichiers de référence (code)
 
 - Routes : `src/app/api/dispensary/weekly-activity/route.ts`, `src/app/api/dispensary/weekly-activity/recap/route.ts`, `src/app/api/dispensary/weekly-activity/[id]/route.ts`, `src/app/api/dispensary/weekly-activity/bot/caisse/route.ts`, `src/app/api/dispensary/weekly-activity/bot/presence/route.ts`
-- Validation : `src/lib/dispensaryWeeklyActivity/schemas.ts` (dont schémas corps `bot/caisse` et `bot/presence`), `src/lib/dispensaryWeeklyActivity/weekdayFlags.ts`, `src/lib/dispensaryWeeklyActivity/botDayEdit.ts`
-- Sérialisation : `src/lib/dispensaryWeeklyActivity/apiRow.ts`, `src/lib/dispensaryWeeklyActivity/loadSerializedRow.ts`
-- Vérification du secret et du dispensaire : `src/lib/dispensaryWeeklyActivityApiAuth.ts`, `src/lib/dispensaryWeeklyActivity/botRequestContext.ts`
+- Validation : `src/lib/businessWeeklyActivity/schemas.ts` (dont schémas corps `bot/caisse` et `bot/presence`), `src/lib/businessWeeklyActivity/weekdayFlags.ts`, `src/lib/businessWeeklyActivity/botDayEdit.ts`
+- Sérialisation : `src/lib/businessWeeklyActivity/apiRow.ts`, `src/lib/businessWeeklyActivity/loadSerializedRow.ts`
+- Vérification du secret et du dispensaire : `src/lib/businessWeeklyActivityApiAuth.ts`, `src/lib/businessWeeklyActivity/botRequestContext.ts`

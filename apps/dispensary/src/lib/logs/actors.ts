@@ -42,7 +42,7 @@ export async function resolveActorIds(query: string): Promise<ActorIds> {
       ? bestEffort(() => resolveDiscordIdsForUserIds([q]), new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
     q.length >= 2
-      ? prisma.dispensaryDiscordProfile.findMany({
+      ? prisma.businessDiscordProfile.findMany({
           where: {
             OR: [
               { fixedDisplayName: { contains: q, mode: 'insensitive' } },
@@ -89,7 +89,7 @@ export async function resolveActorNames(
 
   const [accounts, profiles, accountsByDiscord] = await Promise.all([
     bestEffort(() => fetchUserProfiles(userIds), new Map()),
-    prisma.dispensaryDiscordProfile.findMany({
+    prisma.businessDiscordProfile.findMany({
       where: {
         OR: [{ discordUserId: { in: discordIds } }, { userId: { in: userIds } }],
       },

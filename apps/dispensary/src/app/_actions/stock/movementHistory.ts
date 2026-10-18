@@ -1,7 +1,7 @@
 'use server';
 
 import { withStockChange } from '@/lib/stock/realtime/broadcast';
-import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod';
@@ -57,7 +57,7 @@ const getStockMovementReconciliationSchema = z.object({
 });
 
 export async function getStockMovementsPage(
-  dispensarySlug: string,
+  businessSlug: string,
   params: {
     page?: number;
     pageSize?: number;
@@ -70,7 +70,7 @@ export async function getStockMovementsPage(
   } = {},
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock_statistics',
@@ -80,12 +80,12 @@ export async function getStockMovementsPage(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const filters = getStockMovementsPageSchema.parse(params);
     const page = await listStockMovements(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         page: filters.page,
         pageSize: filters.pageSize,
         itemSearch: filters.itemSearch,
@@ -105,7 +105,7 @@ export async function getStockMovementsPage(
           .filter((id): id is string => Boolean(id)),
       ),
     ];
-    const profiles = userIds.length > 0 ? await fetchDispensaryUserProfiles(dispensaryId, userIds) : new Map();
+    const profiles = userIds.length > 0 ? await fetchBusinessUserProfiles(businessId, userIds) : new Map();
 
     const items = page.items.map((row) => ({
       id: row.id,
@@ -139,7 +139,7 @@ export async function getStockMovementsPage(
 }
 
 async function updateStockMovementUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     quantity?: number;
@@ -148,7 +148,7 @@ async function updateStockMovementUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
@@ -158,12 +158,12 @@ async function updateStockMovementUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = updateStockMovementSchema.parse(data);
     const updated = await updateStockMovementApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: validated.id,
         quantity: validated.quantity,
         kind: validated.kind,
@@ -182,18 +182,18 @@ async function updateStockMovementUnlogged(
 }
 
 async function deleteStockMovementUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string },
 ) {
-  return deleteStockMovements(dispensarySlug, { ids: [data.id] });
+  return deleteStockMovements(businessSlug, { ids: [data.id] });
 }
 
 async function deleteStockMovementsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { ids: string[] },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
@@ -203,14 +203,14 @@ async function deleteStockMovementsUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = deleteStockMovementsSchema.parse(data);
     const uniqueIds = [...new Set(validated.ids)];
 
     const result = await deleteStockMovementsApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         ids: uniqueIds,
       },
       await inventoryCookie(),
@@ -226,7 +226,7 @@ async function deleteStockMovementsUnlogged(
 }
 
 export async function getStockMovementReconciliation(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     itemId: string;
     chestFilter?: 'all' | 'global' | string;
@@ -235,7 +235,7 @@ export async function getStockMovementReconciliation(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock_statistics',
@@ -244,12 +244,12 @@ export async function getStockMovementReconciliation(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = getStockMovementReconciliationSchema.parse(data);
     const record = await getStockMovementReconciliationApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         itemId: validated.itemId,
         chestFilter: validated.chestFilter,
         from: validated.from.toISOString(),

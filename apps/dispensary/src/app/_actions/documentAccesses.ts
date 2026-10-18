@@ -1,7 +1,7 @@
 'use server';
 
-import { applyDispensaryNamesToUsers } from '@/lib/people/resolveNames';
-import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
+import { applyBusinessNamesToUsers } from '@/lib/people/resolveNames';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -31,22 +31,22 @@ const revokeAccessSchema = z.object({
 
 
 async function enrichAccessesWithUsers<T extends { userId: string }>(
-  dispensaryId: string,
+  businessId: string,
   accesses: T[],
 ) {
-  const usersById = await fetchDispensaryUserProfiles(
-    dispensaryId,
+  const usersById = await fetchBusinessUserProfiles(
+    businessId,
     accesses.map((access) => access.userId),
   );
   return attachUserProfiles(accesses, usersById);
 }
 
 export async function listTemplateAccessesAction(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { templateId: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -56,7 +56,7 @@ export async function listTemplateAccessesAction(
 
     return {
       status: 200,
-      data: await enrichAccessesWithUsers(ctx.tenant.dispensaryId, accesses),
+      data: await enrichAccessesWithUsers(ctx.tenant.businessId, accesses),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération des accès');
@@ -64,7 +64,7 @@ export async function listTemplateAccessesAction(
 }
 
 async function grantTemplateAccessActionUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     templateId: string;
     userId: string;
@@ -72,7 +72,7 @@ async function grantTemplateAccessActionUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -101,11 +101,11 @@ async function grantTemplateAccessActionUnlogged(
 }
 
 async function revokeTemplateAccessActionUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { templateId: string; userId: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -130,11 +130,11 @@ async function revokeTemplateAccessActionUnlogged(
 }
 
 export async function listDocumentAccessesAction(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { documentId: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -144,7 +144,7 @@ export async function listDocumentAccessesAction(
 
     return {
       status: 200,
-      data: await enrichAccessesWithUsers(ctx.tenant.dispensaryId, accesses),
+      data: await enrichAccessesWithUsers(ctx.tenant.businessId, accesses),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération des accès');
@@ -152,7 +152,7 @@ export async function listDocumentAccessesAction(
 }
 
 async function grantDocumentAccessActionUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     documentId: string;
     userId: string;
@@ -160,7 +160,7 @@ async function grantDocumentAccessActionUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -189,11 +189,11 @@ async function grantDocumentAccessActionUnlogged(
 }
 
 async function revokeDocumentAccessActionUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { documentId: string; userId: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -217,9 +217,9 @@ async function revokeDocumentAccessActionUnlogged(
   }
 }
 
-export async function searchUsersForDocumentAccess(dispensarySlug: string, query: string) {
+export async function searchUsersForDocumentAccess(businessSlug: string, query: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -229,9 +229,9 @@ export async function searchUsersForDocumentAccess(dispensarySlug: string, query
       return { status: 200, data: [] };
     }
 
-    const users = await applyDispensaryNamesToUsers(
+    const users = await applyBusinessNamesToUsers(
       prisma,
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       new Map((await searchAuthUsers(q)).map((user) => [user.id, user])),
     );
 

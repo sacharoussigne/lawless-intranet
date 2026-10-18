@@ -17,11 +17,11 @@ export {
   appSettingsCacheTag,
   isAppFeatureEnabled,
   normalizeAppSettings,
-  dispensarySiteTitle,
+  businessSiteTitle,
 } from '@/lib/appSettingsShared';
 
 function mapFromDb(row: {
-  dispensaryName: string;
+  businessName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
   featureOrdersEnabled: boolean;
@@ -41,7 +41,7 @@ function mapFromDb(row: {
   weeklyActivityPoppyMilkVisible: boolean;
 }): AppSettingsDTO {
   return {
-    dispensaryName: row.dispensaryName?.trim() || APP_SETTINGS_DEFAULTS.dispensaryName,
+    businessName: row.businessName?.trim() || APP_SETTINGS_DEFAULTS.businessName,
     featureStockEnabled: row.featureStockEnabled,
     featureBankEnabled: row.featureBankEnabled,
     featureOrdersEnabled: row.featureOrdersEnabled,
@@ -73,10 +73,10 @@ function mapFromDb(row: {
   };
 }
 
-export async function loadAppSettingsFromDb(dispensaryId: string): Promise<AppSettingsDTO> {
+export async function loadAppSettingsFromDb(businessId: string): Promise<AppSettingsDTO> {
   try {
     const row = await prisma.appSettings.findUnique({
-      where: { dispensaryId },
+      where: { businessId },
     });
     if (!row) {
       return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
@@ -87,22 +87,22 @@ export async function loadAppSettingsFromDb(dispensaryId: string): Promise<AppSe
   }
 }
 
-export function getAppSettings(dispensaryId: string) {
+export function getAppSettings(businessId: string) {
   return unstable_cache(
-    () => loadAppSettingsFromDb(dispensaryId),
-    ['app-settings', dispensaryId, 'v2'],
+    () => loadAppSettingsFromDb(businessId),
+    ['app-settings', businessId, 'v2'],
     {
-      tags: [appSettingsCacheTag(dispensaryId)],
+      tags: [appSettingsCacheTag(businessId)],
       revalidate: 86400,
     },
   )();
 }
 
 export async function getAppFeatureActionBlock(
-  dispensaryId: string,
+  businessId: string,
   feature: AppFeatureKey,
 ): Promise<{ status: 403; error: string } | null> {
-  const settings = await getAppSettings(dispensaryId);
+  const settings = await getAppSettings(businessId);
   if (isAppFeatureEnabled(settings, feature)) {
     return null;
   }
@@ -110,10 +110,10 @@ export async function getAppFeatureActionBlock(
 }
 
 export async function getAppFeaturesActionBlock(
-  dispensaryId: string,
+  businessId: string,
   features: AppFeatureKey[],
 ): Promise<{ status: 403; error: string } | null> {
-  const settings = await getAppSettings(dispensaryId);
+  const settings = await getAppSettings(businessId);
   const hasDisabled = features.some((f) => !isAppFeatureEnabled(settings, f));
   if (!hasDisabled) {
     return null;

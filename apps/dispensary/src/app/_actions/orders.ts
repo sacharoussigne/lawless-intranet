@@ -60,7 +60,7 @@ const createOrderSchema = z
   );
 
 async function createOrderUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name?: string;
     status?: 'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED';
@@ -75,7 +75,7 @@ async function createOrderUnlogged(
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'orders',
       permission: {
         resource: 'orders',
@@ -85,13 +85,13 @@ async function createOrderUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createOrderSchema.parse(data);
 
     const order = await createOrderApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         name: validatedData.name,
         status: validatedData.status,
         type: validatedData.type,
@@ -105,7 +105,7 @@ async function createOrderUnlogged(
       await inventoryCookie(),
     );
 
-    emitOrdersChange(dispensaryId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
+    emitOrdersChange(businessId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
 
     return {
       status: 201,
@@ -203,8 +203,8 @@ const getActiveOrdersForCompanyGroupSchema = z.object({
   companyGroupId: z.string().uuid('ID de groupe invalide'),
 });
 
-async function requireOrdersViewContext(dispensarySlug: string) {
-  return requireTenantServerActionContext(dispensarySlug, {
+async function requireOrdersViewContext(businessSlug: string) {
+  return requireTenantServerActionContext(businessSlug, {
     feature: 'orders',
     permission: {
       resource: 'orders',
@@ -216,7 +216,7 @@ async function requireOrdersViewContext(dispensarySlug: string) {
 }
 
 export async function getOrdersPage(
-  dispensarySlug: string,
+  businessSlug: string,
   params: {
     page?: number;
     pageSize?: number;
@@ -228,16 +228,16 @@ export async function getOrdersPage(
   } = {},
 ) {
   try {
-    const ctx = await requireOrdersViewContext(dispensarySlug);
+    const ctx = await requireOrdersViewContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const { page, pageSize, status, type, search, createdAtFrom, createdAtTo } =
       getOrdersPageSchema.parse(params);
 
     const result = await listOrdersPage(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         page,
         pageSize,
         status: status?.filter(Boolean) ?? undefined,
@@ -268,16 +268,16 @@ export async function getOrdersPage(
   }
 }
 
-export async function getOrderById(dispensarySlug: string, data: { id: string }) {
+export async function getOrderById(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireOrdersViewContext(dispensarySlug);
+    const ctx = await requireOrdersViewContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const { id } = getOrderByIdSchema.parse(data);
 
     const order = await getOrderByIdApi(
-      { ...inventoryScope(dispensaryId), id },
+      { ...inventoryScope(businessId), id },
       await inventoryCookie(),
     );
 
@@ -291,18 +291,18 @@ export async function getOrderById(dispensarySlug: string, data: { id: string })
 }
 
 export async function getActiveOrdersForCompanyGroup(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { companyGroupId: string },
 ) {
   try {
-    const ctx = await requireOrdersViewContext(dispensarySlug);
+    const ctx = await requireOrdersViewContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const { companyGroupId } = getActiveOrdersForCompanyGroupSchema.parse(data);
 
     const orders = await getActiveOrdersForCompanyGroupApi(
-      { ...inventoryScope(dispensaryId), companyGroupId },
+      { ...inventoryScope(businessId), companyGroupId },
       await inventoryCookie(),
     );
 
@@ -316,7 +316,7 @@ export async function getActiveOrdersForCompanyGroup(
 }
 
 async function updateOrderUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name?: string;
@@ -329,7 +329,7 @@ async function updateOrderUnlogged(
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'orders',
       permission: {
         resource: 'orders',
@@ -339,7 +339,7 @@ async function updateOrderUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     if ((data as { status?: string }).status === 'COMPLETED') {
       return {
@@ -352,7 +352,7 @@ async function updateOrderUnlogged(
 
     const order = await updateOrderApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: validatedData.id,
         name: validatedData.name,
         status: validatedData.status,
@@ -364,7 +364,7 @@ async function updateOrderUnlogged(
       await inventoryCookie(),
     );
 
-    emitOrdersChange(dispensaryId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
+    emitOrdersChange(businessId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
 
     return {
       status: 200,
@@ -376,7 +376,7 @@ async function updateOrderUnlogged(
 }
 
 async function completeOrderUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name?: string;
@@ -390,7 +390,7 @@ async function completeOrderUnlogged(
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'orders',
       permission: {
         resource: 'orders',
@@ -400,13 +400,13 @@ async function completeOrderUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const validatedData = completeOrderSchema.parse(data);
 
     const order = await completeOrderApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: validatedData.id,
         skipStock: validatedData.skipStock,
         stockLines: validatedData.stockLines,
@@ -420,9 +420,9 @@ async function completeOrderUnlogged(
       await inventoryCookie(),
     );
 
-    emitOrdersChange(dispensaryId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
+    emitOrdersChange(businessId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
     if (!validatedData.skipStock && (validatedData.stockLines?.length ?? 0) > 0) {
-      emitStockChange(dispensaryId, parseRealtimeMutationMeta(meta));
+      emitStockChange(businessId, parseRealtimeMutationMeta(meta));
     }
 
     return {
@@ -435,12 +435,12 @@ async function completeOrderUnlogged(
 }
 
 async function deleteOrderUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string },
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'orders',
       permission: {
         resource: 'orders',
@@ -450,16 +450,16 @@ async function deleteOrderUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteOrderSchema.parse(data);
 
     await deleteOrderApi(
-      { ...inventoryScope(dispensaryId), id: validatedData.id },
+      { ...inventoryScope(businessId), id: validatedData.id },
       await inventoryCookie(),
     );
 
-    emitOrdersChange(dispensaryId, { orderId: validatedData.id }, parseRealtimeMutationMeta(meta));
+    emitOrdersChange(businessId, { orderId: validatedData.id }, parseRealtimeMutationMeta(meta));
 
     return {
       status: 200,

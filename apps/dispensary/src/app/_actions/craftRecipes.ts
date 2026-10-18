@@ -42,18 +42,18 @@ const deleteCraftRecipeSchema = z.object({
 });
 
 export async function getCraftRecipesByItemId(
-  dispensarySlug: string,
+  businessSlug: string,
   itemId: string,
   onlyEnabled: boolean = false,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const craftRecipes = await listCraftRecipesByItemId(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         itemId,
         onlyEnabled: onlyEnabled || undefined,
       },
@@ -67,7 +67,7 @@ export async function getCraftRecipesByItemId(
 }
 
 async function createCraftRecipeUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     description?: string;
@@ -78,13 +78,13 @@ async function createCraftRecipeUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createCraftRecipeSchema.parse(data);
     const craftRecipe = await createCraftRecipeClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -95,7 +95,7 @@ async function createCraftRecipeUnlogged(
 }
 
 async function updateCraftRecipeUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -106,13 +106,13 @@ async function updateCraftRecipeUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateCraftRecipeSchema.parse(data);
     const craftRecipe = await updateCraftRecipeClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -122,15 +122,15 @@ async function updateCraftRecipeUnlogged(
   }
 }
 
-async function deleteCraftRecipeUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteCraftRecipeUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteCraftRecipeSchema.parse(data);
     await deleteCraftRecipeClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 

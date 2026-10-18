@@ -34,14 +34,14 @@ const deleteAssignmentSchema = z.object({
 
 async function validateOrgTemplate(
   templateId: string,
-  dispensaryId: string,
+  businessId: string,
   cookieHeader: string | null,
 ) {
   const template = await getTemplate(templateId, { cookieHeader });
 
   if (
     template.type !== ORDER_TEMPLATE_TYPE ||
-    template.scopeId !== dispensaryId ||
+    template.scopeId !== businessId ||
     template.ownerId !== null
   ) {
     return null;
@@ -62,7 +62,7 @@ function withTemplateSummary<T extends { templateId: string }>(
 
 
 async function createOrderLetterTemplateAssignmentUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     orderType: OrderType;
     orderStatus: OrderStatus;
@@ -70,16 +70,16 @@ async function createOrderLetterTemplateAssignmentUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createAssignmentSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
 
     const template = await validateOrgTemplate(
       validatedData.mailTemplateId,
-      dispensaryId,
+      businessId,
       cookieHeader,
     );
 
@@ -92,7 +92,7 @@ async function createOrderLetterTemplateAssignmentUnlogged(
 
     const assignment = await createOrderMailAssignment(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         orderType: validatedData.orderType,
         orderStatus: validatedData.orderStatus,
         templateId: validatedData.mailTemplateId,
@@ -112,14 +112,14 @@ async function createOrderLetterTemplateAssignmentUnlogged(
   }
 }
 
-export async function getOrderLetterTemplateAssignments(dispensarySlug: string) {
+export async function getOrderLetterTemplateAssignments(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const assignments = await listOrderMailAssignments(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -154,20 +154,20 @@ export async function getOrderLetterTemplateAssignments(dispensarySlug: string) 
 }
 
 export async function getOrderLetterTemplateAssignmentByTypeAndStatus(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     orderType: OrderType;
     orderStatus: OrderStatus;
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const assignment = await getOrderMailAssignment(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         orderType: data.orderType,
         orderStatus: data.orderStatus,
       },
@@ -202,23 +202,23 @@ export async function getOrderLetterTemplateAssignmentByTypeAndStatus(
 }
 
 async function updateOrderLetterTemplateAssignmentUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     mailTemplateId: string;
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateAssignmentSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
 
     const template = await validateOrgTemplate(
       validatedData.mailTemplateId,
-      dispensaryId,
+      businessId,
       cookieHeader,
     );
 
@@ -231,7 +231,7 @@ async function updateOrderLetterTemplateAssignmentUnlogged(
 
     const assignment = await updateOrderMailAssignment(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: validatedData.id,
         templateId: validatedData.mailTemplateId,
       },
@@ -251,17 +251,17 @@ async function updateOrderLetterTemplateAssignmentUnlogged(
 }
 
 async function deleteOrderLetterTemplateAssignmentUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteAssignmentSchema.parse(data);
     await deleteOrderMailAssignment(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 

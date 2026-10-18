@@ -1,8 +1,8 @@
-import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
+import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import {
   WEEKDAY_KEYS,
   type WeekdayFlags,
-} from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
+} from '@/lib/businessWeeklyActivity/weekdayFlags';
 
 export const COMPACT_DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as const;
 

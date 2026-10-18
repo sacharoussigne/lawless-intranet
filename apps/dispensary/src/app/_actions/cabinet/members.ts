@@ -3,32 +3,32 @@
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import { canManageCabinetMembers } from '@/lib/cabinet/access';
-import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
+import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
 import {
   upsertCabinetMemberSchema,
   removeCabinetMemberSchema,
 } from '@/app/_actions/cabinet/schemas';
 import {
   getCabinetSessionContext,
-  searchEligibleDispensaryUsersForCabinet,
-  validateDispensaryUserIds,
+  searchEligibleBusinessUsersForCabinet,
+  validateBusinessUserIds,
 } from '@/app/_actions/cabinet/internals';
 import { enrichAgendaMembers } from '@/lib/enrichUsers';
 
 async function upsertCabinetMemberUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { cabinetId: string; userId: string; accessLevel: 'OWNER' | 'WRITE' | 'READ' },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = upsertCabinetMemberSchema.parse(data);
 
     const canManage = await canManageCabinetMembers(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.cabinetId,
       ctx.session.user.id,
       ctx.session.user.role,
@@ -40,14 +40,14 @@ async function upsertCabinetMemberUnlogged(
     }
 
     const cabinet = await prisma.cabinet.findFirst({
-      where: { id: validated.cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
+      where: { id: validated.cabinetId, ...tenantWhere(ctx.tenant.businessId) },
       select: { id: true },
     });
     if (!cabinet) {
       return { status: 404, error: 'Cabinet introuvable' };
     }
 
-    const validUser = await validateDispensaryUserIds(ctx.tenant.dispensaryId, [
+    const validUser = await validateBusinessUserIds(ctx.tenant.businessId, [
       validated.userId,
     ]);
     if (!validUser) {
@@ -69,7 +69,7 @@ async function upsertCabinetMemberUnlogged(
       update: { accessLevel: validated.accessLevel },
     });
 
-    const [enriched] = await enrichAgendaMembers(ctx.tenant.dispensaryId, [member]);
+    const [enriched] = await enrichAgendaMembers(ctx.tenant.businessId, [member]);
 
     return { status: 200, data: enriched };
   } catch (error) {
@@ -78,17 +78,17 @@ async function upsertCabinetMemberUnlogged(
 }
 
 async function removeCabinetMemberUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { cabinetId: string; userId: string },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = removeCabinetMemberSchema.parse(data);
 
     const canManage = await canManageCabinetMembers(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.cabinetId,
       ctx.session.user.id,
       ctx.session.user.role,
@@ -141,27 +141,27 @@ async function removeCabinetMemberUnlogged(
   }
 }
 
-export async function searchDispensaryUsersForCabinet(
-  dispensarySlug: string,
+export async function searchBusinessUsersForCabinet(
+  businessSlug: string,
   query: string,
   options?: { adminContext?: boolean },
 ) {
   try {
-    let dispensaryId: string;
+    let businessId: string;
 
     if (options?.adminContext) {
-      const auth = await requireDispensaryAdminContext(dispensarySlug);
+      const auth = await requireBusinessAdminContext(businessSlug);
       if (!auth.ok) {
         return { status: auth.status, error: auth.error };
       }
-      dispensaryId = auth.ctx.dispensaryId;
+      businessId = auth.ctx.businessId;
     } else {
-      const ctx = await getCabinetSessionContext(dispensarySlug);
+      const ctx = await getCabinetSessionContext(businessSlug);
       if (!ctx.ok) return ctx.response;
-      dispensaryId = ctx.tenant.dispensaryId;
+      businessId = ctx.tenant.businessId;
     }
 
-    const data = await searchEligibleDispensaryUsersForCabinet(dispensaryId, query);
+    const data = await searchEligibleBusinessUsersForCabinet(businessId, query);
 
     return { status: 200, data };
   } catch (error) {

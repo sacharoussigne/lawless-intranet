@@ -3,7 +3,7 @@
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import type { CabinetPatientSummaryDTO } from '@/types/cabinet';
 import {
   createPatientSchema,
@@ -26,17 +26,17 @@ import {
 import { parseCabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 
 export async function listCabinetPatients(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { cabinetId: string; search?: string },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = listPatientsSchema.parse(data);
 
     const guard = await guardCabinetRead(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -50,7 +50,7 @@ export async function listCabinetPatients(
     const patients = await prisma.cabinetPatient.findMany({
       where: {
         cabinetId: validated.cabinetId,
-        cabinet: tenantWhere(ctx.tenant.dispensaryId),
+        cabinet: tenantWhere(ctx.tenant.businessId),
         ...(search
           ? {
               OR: [
@@ -82,15 +82,15 @@ export async function listCabinetPatients(
   }
 }
 
-export async function getCabinetPatient(dispensarySlug: string, patientId: string) {
+export async function getCabinetPatient(businessSlug: string, patientId: string) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const patient = await prisma.cabinetPatient.findFirst({
       where: {
         id: patientId,
-        cabinet: tenantWhere(ctx.tenant.dispensaryId),
+        cabinet: tenantWhere(ctx.tenant.businessId),
       },
       include: {
         cabinet: { select: { id: true, name: true, formSchemas: true, displaySettings: true } },
@@ -103,7 +103,7 @@ export async function getCabinetPatient(dispensarySlug: string, patientId: strin
     }
 
     const guard = await guardCabinetRead(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       patient.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -128,7 +128,7 @@ export async function getCabinetPatient(dispensarySlug: string, patientId: strin
 }
 
 async function createCabinetPatientUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     cabinetId: string;
     firstName: string;
@@ -139,13 +139,13 @@ async function createCabinetPatientUnlogged(
   },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = createPatientSchema.parse(data);
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -155,7 +155,7 @@ async function createCabinetPatientUnlogged(
     }
 
     const cabinet = await prisma.cabinet.findFirst({
-      where: { id: validated.cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
+      where: { id: validated.cabinetId, ...tenantWhere(ctx.tenant.businessId) },
       select: { formSchemas: true },
     });
     if (!cabinet) {
@@ -191,7 +191,7 @@ async function createCabinetPatientUnlogged(
 }
 
 async function updateCabinetPatientUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     cabinetId: string;
@@ -203,13 +203,13 @@ async function updateCabinetPatientUnlogged(
   },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updatePatientSchema.parse(data);
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -222,7 +222,7 @@ async function updateCabinetPatientUnlogged(
       where: {
         id: validated.id,
         cabinetId: validated.cabinetId,
-        cabinet: tenantWhere(ctx.tenant.dispensaryId),
+        cabinet: tenantWhere(ctx.tenant.businessId),
       },
       include: { cabinet: { select: { formSchemas: true } } },
     });
@@ -257,9 +257,9 @@ async function updateCabinetPatientUnlogged(
   }
 }
 
-async function deleteCabinetPatientUnlogged(dispensarySlug: string, id: string) {
+async function deleteCabinetPatientUnlogged(businessSlug: string, id: string) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = deletePatientSchema.parse({ id });
@@ -267,7 +267,7 @@ async function deleteCabinetPatientUnlogged(dispensarySlug: string, id: string) 
     const existing = await prisma.cabinetPatient.findFirst({
       where: {
         id: validated.id,
-        cabinet: tenantWhere(ctx.tenant.dispensaryId),
+        cabinet: tenantWhere(ctx.tenant.businessId),
       },
       select: { cabinetId: true },
     });
@@ -276,7 +276,7 @@ async function deleteCabinetPatientUnlogged(dispensarySlug: string, id: string) 
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       existing.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,

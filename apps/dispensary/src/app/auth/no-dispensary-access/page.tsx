@@ -2,7 +2,7 @@ import { type Metadata } from 'next';
 import { Container, Title, Text } from '@mantine/core';
 import { redirect } from 'next/navigation';
 import { getAuthSession } from '@/lib/authSession';
-import { listAccessibleDispensaries } from '@/lib/dispensary/context';
+import { listAccessibleBusinesses } from '@/lib/business/context';
 import { tenantRoutes } from '@/types/routes';
 import LogoutButton from '../no-access/LogoutButton';
 
@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   title: 'Aucun dispensaire accessible',
 };
 
-export default async function NoDispensaryAccessPage() {
+export default async function NoBusinessAccessPage() {
   const session = await getAuthSession();
   if (session) {
-    const accessible = await listAccessibleDispensaries(session);
+    const accessible = await listAccessibleBusinesses(session);
     if (accessible.length > 0) {
       redirect(tenantRoutes(accessible[0].slug).employee.index);
     }

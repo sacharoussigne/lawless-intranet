@@ -19,11 +19,11 @@ export type StockConsumptionStatsResult = {
 };
 
 export async function getStockConsumptionStats(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { from: Date; to: Date },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock_statistics',
@@ -33,11 +33,11 @@ export async function getStockConsumptionStats(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const result = await getStockConsumptionStatsApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         from: data.from.toISOString(),
         to: data.to.toISOString(),
       },

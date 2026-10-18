@@ -1,9 +1,9 @@
-import type { DispensaryWeeklyActivity } from '@prisma/client';
-import { parseWeekdayFlagsJson, type WeekdayFlags } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
+import type { BusinessWeeklyActivity } from '@prisma/client';
+import { parseWeekdayFlagsJson, type WeekdayFlags } from '@/lib/businessWeeklyActivity/weekdayFlags';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
 import { cleanText, type ParsedPayrollTable, PAYROLL_DAYS } from '@/lib/payroll/parsePayrollHtmlTable';
 
-type WaRow = DispensaryWeeklyActivity & {
+type WaRow = BusinessWeeklyActivity & {
   resolvedDisplayName: string;
   discordProfileRole?: string | null;
   discordProfileAccountNumber?: number | null;

@@ -10,10 +10,10 @@ import classes from './MobileTabBar.module.scss';
 /** Bottom tab bar of the phone app (hidden from the `sm` breakpoint by CSS, no layout shift). */
 export function MobileTabBar() {
   const pathname = usePathname();
-  const { dispensarySlug, appSettings, permissions, agendaModuleAccess } = usePermissions();
-  if (!dispensarySlug) return null;
+  const { businessSlug, appSettings, permissions, agendaModuleAccess } = usePermissions();
+  if (!businessSlug) return null;
 
-  const t = tenantRoutes(dispensarySlug);
+  const t = tenantRoutes(businessSlug);
   const tabs = getMobileTabs({ t, appSettings, permissions, agendaModuleAccess });
   const active = pathname ? getActiveMobileTab(pathname, t) : null;
 

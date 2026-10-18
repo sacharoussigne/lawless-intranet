@@ -1,6 +1,6 @@
 import { getAuthSession } from '@/lib/authSession';
 import { routes } from '@/types/routes';
-import { listAccessibleDispensaries } from '@/lib/dispensary/context';
+import { listAccessibleBusinesses } from '@/lib/business/context';
 import { redirect } from 'next/navigation';
 import { tenantRoutes } from '@/types/routes';
 
@@ -10,9 +10,9 @@ export default async function Home() {
     redirect(routes.auth.login);
   }
 
-  const accessible = await listAccessibleDispensaries(session);
+  const accessible = await listAccessibleBusinesses(session);
   if (accessible.length === 0) {
-    redirect(routes.auth.noDispensaryAccess);
+    redirect(routes.auth.noBusinessAccess);
   }
   redirect(tenantRoutes(accessible[0].slug).employee.index);
 }

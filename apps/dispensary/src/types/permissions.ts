@@ -3,7 +3,7 @@ import type { PermissionsObject } from '@lawless-intranet/auth-permissions';
 
 export type Permissions = PermissionsObject;
 
-export type AccessibleDispensary = {
+export type AccessibleBusiness = {
   id: string;
   slug: string;
   name: string;
@@ -14,9 +14,9 @@ export interface PermissionsContextType {
   userRole: string | null;
   loading: boolean;
   appSettings: AppSettingsDTO;
-  dispensarySlug: string | null;
-  dispensaryId: string | null;
-  accessibleDispensaries: AccessibleDispensary[];
+  businessSlug: string | null;
+  businessId: string | null;
+  accessibleBusinesses: AccessibleBusiness[];
   agendaModuleAccess: boolean;
   accessibleAgendaIds: string[];
   cabinetModuleAccess: boolean;

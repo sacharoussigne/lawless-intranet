@@ -335,6 +335,27 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
 | 7 | General store | Le type `GENERAL_STORE` : thème bleu, logo, rôles, compteurs, module catalogue de prix, création depuis `/platform`. |
 | 8 | Mise en prod et nettoyage | Déploiement multi-hôtes (`business`, `dispensaire`, `gs`), puis renommage final de l'app (`apps/dispensary` → `apps/business`, Docker, turbo, docs, `CLAUDE.md`) et fin des libellés « dispensaire » codés en dur. |
 
+### Phase 1 : ce qui a été fait
+
+- **Renommé :**
+  - les modèles Prisma (`Business`, `BusinessMember`, `BusinessRolePermission`, `BusinessMemberPermission`, `BusinessDiscordProfile`, `BusinessWeeklyActivity*`) et les champs `businessId` / `businessName`, avec des `@map` / `@@map` vers les tables, colonnes et enums existants. `prisma migrate diff` est vide : il n'y a aucune migration ;
+  - tous les identifiants TypeScript de l'app (`dispensarySlug` → `businessSlug`, `dispensaryId` → `businessId`, etc.) ;
+  - les dossiers `lib/dispensary` → `lib/business`, `lib/dispensaryWeeklyActivity` → `lib/businessWeeklyActivity` et `lib/dispensaryDiscordProfile` → `lib/businessDiscordProfile` ;
+  - les fichiers `_actions/dispensary*` et les composants `Dispensary*` ;
+  - le paramètre de route `[dispensarySlug]` → `[businessSlug]` ;
+  - les paramètres de `packages/realtime/src/topics.ts`.
+- **Gardé tel quel**, pour les phases suivantes :
+  - les URLs (`/d/…`, `/api/dispensary/…`, `/platform/dispensaries`, `/auth/no-dispensary-access`) ;
+  - les en-têtes et paramètres des bots (`x-dispensary-id`, `?dispensaryId=`) ;
+  - `scopeType: 'dispensary'` ;
+  - la feature `weeklyDispensaryActivity` et la permission `weekly_dispensary_activity` ;
+  - les noms d'événements des logs ;
+  - les variables d'env (`DISPENSARY_*`) ;
+  - les libellés de l'UI ;
+  - le préfixe CSS `--disp-*` ;
+  - le nom de l'app.
+- Le nom `BusinessWeeklyActivity` est provisoire : la phase 3 refond l'activité hebdo (`weeklyActivity` est déjà pris par d'autres identifiants).
+
 ## 11. Questions encore ouvertes
 
 - D'éventuels **autres modules propres** au general store.

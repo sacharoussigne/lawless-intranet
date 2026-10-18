@@ -1,8 +1,8 @@
 import type { CabinetAccessLevel } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { hasRole } from '@lawless-intranet/auth-permissions';
-import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { isPlatformAdmin } from '@/lib/business/platformAdmin';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import { Role } from '@/types/enum/roles';
 import {
   canOwnCabinet,
@@ -11,10 +11,10 @@ import {
 } from '@/types/cabinet';
 
 export type CabinetAccessResult =
-  | { ok: true; accessLevel: CabinetAccessLevel | null; isDispensaryAdmin: boolean }
+  | { ok: true; accessLevel: CabinetAccessLevel | null; isBusinessAdmin: boolean }
   | { ok: false; status: number; error: string };
 
-export function isDispensaryAdminRole(
+export function isBusinessAdminRole(
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): boolean {
@@ -22,14 +22,14 @@ export function isDispensaryAdminRole(
 }
 
 export async function resolveCabinetAccess(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   userId: string,
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): Promise<CabinetAccessResult> {
   const cabinet = await prisma.cabinet.findFirst({
-    where: { id: cabinetId, ...tenantWhere(dispensaryId) },
+    where: { id: cabinetId, ...tenantWhere(businessId) },
     select: { id: true },
   });
 
@@ -49,19 +49,19 @@ export async function resolveCabinetAccess(
   return {
     ok: true,
     accessLevel: membership.accessLevel,
-    isDispensaryAdmin: isDispensaryAdminRole(platformRole, effectiveRole),
+    isBusinessAdmin: isBusinessAdminRole(platformRole, effectiveRole),
   };
 }
 
 export async function requireCabinetRead(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   userId: string,
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): Promise<CabinetAccessResult> {
   const access = await resolveCabinetAccess(
-    dispensaryId,
+    businessId,
     cabinetId,
     userId,
     platformRole,
@@ -77,14 +77,14 @@ export async function requireCabinetRead(
 }
 
 export async function requireCabinetWrite(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   userId: string,
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): Promise<CabinetAccessResult> {
   const access = await resolveCabinetAccess(
-    dispensaryId,
+    businessId,
     cabinetId,
     userId,
     platformRole,
@@ -100,14 +100,14 @@ export async function requireCabinetWrite(
 }
 
 export async function requireCabinetOwner(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   userId: string,
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): Promise<CabinetAccessResult> {
   const access = await resolveCabinetAccess(
-    dispensaryId,
+    businessId,
     cabinetId,
     userId,
     platformRole,
@@ -123,13 +123,13 @@ export async function requireCabinetOwner(
 }
 
 export async function canManageCabinetMembers(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   userId: string,
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): Promise<boolean> {
-  if (isDispensaryAdminRole(platformRole, effectiveRole)) {
+  if (isBusinessAdminRole(platformRole, effectiveRole)) {
     return true;
   }
 
@@ -142,13 +142,13 @@ export async function canManageCabinetMembers(
 }
 
 export async function canEditCabinetFormSchema(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   userId: string,
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): Promise<boolean> {
-  if (isDispensaryAdminRole(platformRole, effectiveRole)) {
+  if (isBusinessAdminRole(platformRole, effectiveRole)) {
     return true;
   }
 
@@ -161,13 +161,13 @@ export async function canEditCabinetFormSchema(
 }
 
 export async function listAccessibleCabinetIds(
-  dispensaryId: string,
+  businessId: string,
   userId: string,
 ): Promise<string[]> {
   const memberships = await prisma.cabinetMember.findMany({
     where: {
       userId,
-      cabinet: tenantWhere(dispensaryId),
+      cabinet: tenantWhere(businessId),
     },
     select: { cabinetId: true },
   });
@@ -176,13 +176,13 @@ export async function listAccessibleCabinetIds(
 }
 
 export async function userHasAnyCabinetAccess(
-  dispensaryId: string,
+  businessId: string,
   userId: string,
 ): Promise<boolean> {
   const membershipCount = await prisma.cabinetMember.count({
     where: {
       userId,
-      cabinet: tenantWhere(dispensaryId),
+      cabinet: tenantWhere(businessId),
     },
   });
 

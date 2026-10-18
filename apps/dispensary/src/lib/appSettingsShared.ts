@@ -12,7 +12,7 @@ export type AppFeatureKey =
   | 'media';
 
 export type AppSettingsDTO = {
-  dispensaryName: string;
+  businessName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
   featureOrdersEnabled: boolean;
@@ -33,7 +33,7 @@ export type AppSettingsDTO = {
 };
 
 export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
-  dispensaryName: 'Saint-Denis',
+  businessName: 'Saint-Denis',
   featureStockEnabled: true,
   featureBankEnabled: true,
   featureOrdersEnabled: true,
@@ -59,8 +59,8 @@ export function normalizeAppSettings(
   return { ...APP_SETTINGS_DEFAULTS, ...settings };
 }
 
-export function appSettingsCacheTag(dispensaryId: string): string {
-  return `app-settings-${dispensaryId}`;
+export function appSettingsCacheTag(businessId: string): string {
+  return `app-settings-${businessId}`;
 }
 
 export const APP_FEATURE_DISABLED_MESSAGE =
@@ -100,8 +100,8 @@ export function isAppFeatureEnabled(
   }
 }
 
-export function dispensarySiteTitle(settings: AppSettingsDTO): string {
+export function businessSiteTitle(settings: AppSettingsDTO): string {
   const name =
-    settings.dispensaryName.trim() || APP_SETTINGS_DEFAULTS.dispensaryName;
+    settings.businessName.trim() || APP_SETTINGS_DEFAULTS.businessName;
   return `Dispensaire ${name}`;
 }

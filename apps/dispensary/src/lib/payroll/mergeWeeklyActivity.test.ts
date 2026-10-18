@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DispensaryWeeklyActivity } from '@prisma/client';
+import type { BusinessWeeklyActivity } from '@prisma/client';
 import { mergeHtmlAndWeeklyActivity, mergeScheduleOr, payrollNameKey } from '@/lib/payroll/mergeWeeklyActivity';
 import type { ParsedPayrollTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { PAYROLL_DAYS } from '@/lib/payroll/parsePayrollHtmlTable';
@@ -10,7 +10,7 @@ type EmployeeSchedule = PayrollReportResult['employees'][number]['schedule'];
 const emptyDay = { caisse: null as string | null, presence: null as string | null };
 
 function row(
-  overrides: Partial<DispensaryWeeklyActivity> & {
+  overrides: Partial<BusinessWeeklyActivity> & {
     resolvedDisplayName: string;
     discordProfileRole?: string | null;
     discordProfileAccountNumber?: number | null;
@@ -19,7 +19,7 @@ function row(
 ): Parameters<typeof mergeHtmlAndWeeklyActivity>[1][number] {
   return {
     id: 'wa-1',
-    dispensaryId: 'dispensary-1',
+    businessId: 'dispensary-1',
     periodStart: new Date(),
     periodEnd: new Date(),
     displayName: 'Test',

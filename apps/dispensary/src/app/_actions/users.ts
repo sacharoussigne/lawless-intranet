@@ -17,7 +17,7 @@ import {
 import { getAuthSession } from '@/lib/authSession';
 import { type Role } from '@/types/enum/roles';
 import { actionErrorParser } from '@/lib/action';
-import { requirePlatformAdminContext } from '@/lib/dispensary/serverActionContext';
+import { requirePlatformAdminContext } from '@/lib/business/serverActionContext';
 import { getAuthRequestContext } from '@/lib/authRequest';
 
 const roleEnum = z.enum([

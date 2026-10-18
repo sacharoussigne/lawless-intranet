@@ -24,7 +24,7 @@ export type AppLogEntry = {
   outcome?: LogOutcome;
   message: string;
   source: LogSource;
-  dispensaryId?: string | null;
+  businessId?: string | null;
   userId?: string | null;
   discordUserId?: string | null;
   impersonatedById?: string | null;

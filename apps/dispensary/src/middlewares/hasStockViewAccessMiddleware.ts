@@ -17,9 +17,9 @@ export async function hasStockViewAccessMiddleware(
   }
 
   const userRole = getMiddlewareRole(session);
-  const dispensaryId = session.tenant?.dispensaryId;
-  if (dispensaryId) {
-    const hasChests = await userHasAccessibleChests(dispensaryId, userRole);
+  const businessId = session.tenant?.businessId;
+  if (businessId) {
+    const hasChests = await userHasAccessibleChests(businessId, userRole);
     if (!hasChests) {
       return routes.redirect(request, routes.auth.noAccess);
     }
