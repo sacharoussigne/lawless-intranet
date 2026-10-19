@@ -8,6 +8,7 @@ import {
   createPayrollReportFromForm,
   deletePayrollReport,
   updatePayrollReportResultJson,
+  type PayrollPerson,
 } from '@/app/_actions/payrollReports';
 import { handleAction } from '@/lib/action';
 import { fetchRead } from '@/lib/read/fetchRead';
@@ -87,6 +88,24 @@ export function usePayrollImportableActivityWeeks(enabled: boolean) {
   return useQuery({
     queryKey: payrollKeys.importableActivityWeeks(dispensarySlug),
     queryFn: () => fetchPayrollImportableActivityWeeks(dispensarySlug),
+    enabled: Boolean(dispensarySlug && enabled),
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
+async function fetchPayrollPeople(dispensarySlug: string): Promise<PayrollPerson[]> {
+  const result = await fetchRead(dispensarySlug, 'payrollPeople');
+  const data = handleAction(result) as { people?: PayrollPerson[] } | undefined;
+  return data?.people ?? [];
+}
+
+/** People of the dispensary offered when adding someone to a report (edit mode). */
+export function usePayrollPeople(enabled: boolean) {
+  const dispensarySlug = useRequiredDispensarySlug();
+
+  return useQuery({
+    queryKey: payrollKeys.people(dispensarySlug),
+    queryFn: () => fetchPayrollPeople(dispensarySlug),
     enabled: Boolean(dispensarySlug && enabled),
     staleTime: DEFAULT_STALE_TIME_MS,
   });

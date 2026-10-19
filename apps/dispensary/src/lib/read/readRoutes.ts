@@ -66,6 +66,7 @@ import {
   getPayrollReportById,
   listPayrollImportableActivityWeeks,
   listPayrollReports,
+  listPayrollPeople,
 } from '@/app/_actions/payrollReports';
 import { getIndividualCustomers, searchIndividualCustomers } from '@/app/_actions/individualCustomers';
 import {
@@ -180,6 +181,7 @@ export const readRoutes = {
   payrollReport: (slug: string, input: { id: string }) => getPayrollReportById(slug, input?.id),
   payrollImportableWeeks: (slug: string, _input?: undefined) =>
     listPayrollImportableActivityWeeks(slug),
+  payrollPeople: (slug: string, _input?: undefined) => listPayrollPeople(slug),
 
   // Bank (bank-ui, see lib/bank/bankUiActions; getOrCreateWeek writes, it stays an action)
   bankWeeks: (slug: string, _input?: undefined) => getBankWeeks(slug),
