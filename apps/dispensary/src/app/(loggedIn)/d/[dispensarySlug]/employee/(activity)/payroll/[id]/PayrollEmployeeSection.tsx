@@ -147,7 +147,6 @@ export function PayrollEmployeeSection({
                       <NumberInput
                         size="xs"
                         label="N° de compte"
-                        description="Pour ce rapport uniquement"
                         placeholder="Inconnu"
                         min={1}
                         max={999999}
