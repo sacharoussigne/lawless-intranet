@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { Alert, Button, Container, Group, Text, Title } from '@mantine/core';
 import { modals } from '@mantine/modals';
@@ -13,6 +14,7 @@ import {
   useUpdatePayrollReportMutation,
   type PayrollReportDetail as PayrollReportDetailType,
 } from '../hooks/usePayrollQueries';
+import { AddPayrollEmployeeModal } from './AddPayrollEmployeeModal';
 import { PayrollEmployeeSection } from './PayrollEmployeeSection';
 import { PayrollTotalsPaper } from './PayrollTotalsPaper';
 import { PayrollVirementsSection } from './PayrollVirementsSection';
@@ -46,9 +48,13 @@ export default function PayrollReportDetail({
     isDirty,
     pricingSectionOpen,
     setPricingSectionOpen,
+    employeeKeys,
     updateSchedule,
     patchEmployeeStats,
     patchEmployeePayrollSettings,
+    addEmployee,
+    removeEmployee,
+    patchEmployeeIdentity,
     patchReportCaissePrice,
     patchReportCaisseSalePrice,
     patchReportPatientCarePrice,
@@ -56,6 +62,8 @@ export default function PayrollReportDetail({
     handleCancelEdit,
     markSaved,
   } = usePayrollReportDraft(report);
+  const [openedEmployeeKey, setOpenedEmployeeKey] = useState<string | null>(null);
+  const [addEmployeeOpened, setAddEmployeeOpened] = useState(false);
 
   const handleSave = () => {
     if (!draft || updateMutation.isPending) return;
@@ -175,12 +183,26 @@ export default function PayrollReportDetail({
           <PayrollVirementsSection draft={draft} wireDescription={wireDescription} />
           <PayrollEmployeeSection
             draft={draft}
+            employeeKeys={employeeKeys}
+            openedKey={openedEmployeeKey}
+            onOpenedKeyChange={setOpenedEmployeeKey}
             canEdit={canEdit}
             isEditing={isEditing}
+            onAddEmployee={() => setAddEmployeeOpened(true)}
+            onRemoveEmployee={removeEmployee}
+            onPatchEmployeeIdentity={patchEmployeeIdentity}
             onUpdateSchedule={updateSchedule}
             onPatchEmployeeStats={patchEmployeeStats}
             onPatchEmployeePayrollSettings={patchEmployeePayrollSettings}
           />
+          {canEdit && (
+            <AddPayrollEmployeeModal
+              opened={addEmployeeOpened}
+              onClose={() => setAddEmployeeOpened(false)}
+              employees={draft.employees}
+              onAdd={(identity) => setOpenedEmployeeKey(addEmployee(identity))}
+            />
+          )}
         </>
       )}
 

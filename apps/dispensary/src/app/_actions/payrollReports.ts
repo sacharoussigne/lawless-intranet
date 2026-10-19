@@ -29,6 +29,12 @@ import { extractPayrollListSummary } from '@/lib/payroll/listSummary';
 import { actionErrorParser } from '@/lib/action';
 import { reportServerError } from '@/lib/logs/errorReporter';
 import { withLoggedAction } from '@/lib/logs/writer';
+import { pickProfileDisplayName } from '@/lib/people/displayName';
+import { findBusinessProfiles } from '@/lib/businessDiscordProfile/queries';
+import {
+  toPayrollEmployeeRole,
+  type PayrollEmployeeRole,
+} from '@/lib/businessDiscordProfile/constants';
 
 const MAX_CAISSE_PRICE_USD = 1_000_000;
 const MAX_HTML_CHARS = 600_000;
@@ -264,14 +270,7 @@ async function createPayrollReportFromFormUnlogged(businessSlug: string, formDat
     weeklyCounterDefinitions(ctx.tenant.business.type),
   );
 
-  if (employeesMerged.length === 0) {
-    return {
-      status: 400,
-      error: importWeeklyActivity
-        ? 'Aucune donnée : collez le tableau HTML et/ou assurez-vous qu’il existe des entrées d’activité hebdomadaire pour la semaine d’import choisie.'
-        : 'Collez le tableau HTML (au moins une ligne employé) ou activez l’import d’activité hebdomadaire.',
-    };
-  }
+  // No HTML and nothing imported: the report starts empty, people are added on its page.
 
   const { weekStart, weekEnd } = weekRangeFromIsoDate(weekStartStr);
 
@@ -445,6 +444,41 @@ export async function listPayrollImportableActivityWeeks(businessSlug: string) {
       })),
     },
   };
+}
+
+export type PayrollPerson = {
+  discordUserId: string;
+  name: string;
+  /** Grade when it is a payroll role (PAYROLL_EMPLOYEE_ROLES), null otherwise. */
+  role: PayrollEmployeeRole | null;
+  accountNumber: number | null;
+};
+
+/** People of the business (Gestion › Personnes) offered when adding someone to a report. */
+export async function listPayrollPeople(businessSlug: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollCreateGuardOptions);
+  if (!ctx.ok) return ctx.response;
+  const { businessId } = ctx.tenant;
+
+  const profiles = await findBusinessProfiles(prisma, businessId);
+  const accounts = await fetchBusinessUserProfiles(
+    businessId,
+    profiles.map((p) => p.userId).filter((id): id is string => Boolean(id)),
+  );
+
+  const people: PayrollPerson[] = profiles
+    .map((p) => ({
+      discordUserId: p.discordUserId,
+      name: pickProfileDisplayName(
+        p,
+        (p.userId ? accounts.get(p.userId)?.name : undefined) ?? p.discordUserId,
+      ),
+      role: toPayrollEmployeeRole(p.role),
+      accountNumber: p.accountNumber,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+  return { status: 200, data: { people } };
 }
 
 /*

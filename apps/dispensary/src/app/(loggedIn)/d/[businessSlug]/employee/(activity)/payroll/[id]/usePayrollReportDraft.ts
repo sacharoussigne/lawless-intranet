@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { payrollReportResultSchema, type PayrollReportResult } from '@/lib/payroll/schema';
 import { recalculatePayrollResult } from '@/lib/payroll/recalculatePayrollResult';
+import { createPayrollEmployee } from '@/lib/payroll/employee';
 import type { PayrollDay } from './payrollDetailUtils';
 
 export function usePayrollReportDraft(report: {
@@ -14,6 +15,10 @@ export function usePayrollReportDraft(report: {
   const [isEditing, setIsEditing] = useState(false);
   const [pricingSectionOpen, setPricingSectionOpen] = useState(false);
   const [baselineSnapshot, setBaselineSnapshot] = useState('');
+  /** Stable React key of each employee (same order as `draft.employees`): names change while typing. */
+  const [employeeKeys, setEmployeeKeys] = useState<string[]>([]);
+  const nextKey = useRef(0);
+  const newKey = () => `emp-${nextKey.current++}`;
 
   const resultFingerprint = JSON.stringify(report.resultJson ?? null);
 
@@ -29,6 +34,7 @@ export function usePayrollReportDraft(report: {
       const r = recalculatePayrollResult(p.data);
       setDraft(r);
       setBaselineSnapshot(JSON.stringify(r));
+      setEmployeeKeys(r.employees.map(() => newKey()));
     } else {
       setDraft(null);
       setBaselineSnapshot('');
@@ -116,6 +122,48 @@ export function usePayrollReportDraft(report: {
     [],
   );
 
+  /** Adds someone to the report (empty schedule and stats); returns its key, to open its section. */
+  const addEmployee = useCallback(
+    (identity: { name: string; role: string; id: number | null }): string => {
+      const key = newKey();
+      setDraft((prev) =>
+        prev
+          ? recalculatePayrollResult({
+              ...prev,
+              employees: [...prev.employees, createPayrollEmployee(identity)],
+            })
+          : prev,
+      );
+      setEmployeeKeys((prev) => [...prev, key]);
+      return key;
+    },
+    [],
+  );
+
+  const removeEmployee = useCallback((empIndex: number) => {
+    setDraft((prev) =>
+      prev
+        ? recalculatePayrollResult({
+            ...prev,
+            employees: prev.employees.filter((_, i) => i !== empIndex),
+          })
+        : prev,
+    );
+    setEmployeeKeys((prev) => prev.filter((_, i) => i !== empIndex));
+  }, []);
+
+  /** Name, grade and account number of this report only (the person's profile is not changed). */
+  const patchEmployeeIdentity = useCallback(
+    (empIndex: number, patch: { name?: string; role?: string; id?: number | null }) => {
+      setDraft((prev) => {
+        if (!prev) return prev;
+        const employees = prev.employees.map((e, i) => (i === empIndex ? { ...e, ...patch } : e));
+        return recalculatePayrollResult({ ...prev, employees });
+      });
+    },
+    [],
+  );
+
   const patchReportCaissePrice = useCallback((value: number | string) => {
     if (value === '' || value === undefined) return;
     const n = typeof value === 'number' ? value : Number(value);
@@ -149,7 +197,9 @@ export function usePayrollReportDraft(report: {
       try {
         const p = payrollReportResultSchema.safeParse(JSON.parse(baselineSnapshot) as unknown);
         if (p.success) {
-          setDraft(recalculatePayrollResult(p.data));
+          const r = recalculatePayrollResult(p.data);
+          setDraft(r);
+          setEmployeeKeys(r.employees.map(() => newKey()));
         }
       } catch {
         // keep current draft if baseline is invalid
@@ -172,9 +222,13 @@ export function usePayrollReportDraft(report: {
     isDirty,
     pricingSectionOpen,
     setPricingSectionOpen,
+    employeeKeys,
     updateSchedule,
     patchEmployeeStats,
     patchEmployeePayrollSettings,
+    addEmployee,
+    removeEmployee,
+    patchEmployeeIdentity,
     patchReportCaissePrice,
     patchReportCaisseSalePrice,
     patchReportPatientCarePrice,

@@ -115,14 +115,6 @@ export default function PayrollNewPageClient() {
       });
       return;
     }
-    if (!importWeeklyActivity && !tableHtml.trim()) {
-      notifications.show({
-        title: 'Données manquantes',
-        message: 'Sans import weekly activity, collez le HTML du tableau des salaires.',
-        color: 'danger',
-      });
-      return;
-    }
     if (!Number.isFinite(caissePriceUsd) || caissePriceUsd <= 0 || caissePriceUsd > MAX_CAISSE_PRICE_USD) {
       notifications.show({
         title: 'Montant reversé invalide',
@@ -360,12 +352,13 @@ export default function PayrollNewPageClient() {
                 <>
                   Colle la balise{' '}
                   <Text span ff="monospace" size="xs">{`<table>…</table>`}</Text> telle qu’exportée.
-                  L’import weekly activity est désactivé : le HTML est requis.
+                  Sans HTML ni import, le rapport est créé vide : ajoute ensuite les personnes depuis
+                  le rapport (bouton Modifier).
                 </>
               )}
             </Alert>
             <Textarea
-              label={importWeeklyActivity ? 'Source HTML (optionnel)' : 'Source HTML (requis)'}
+              label="Source HTML (optionnel)"
               description={`${htmlCharCount.toLocaleString('fr-FR')} caractère${htmlCharCount === 1 ? '' : 's'}`}
               placeholder="<table>...</table>"
               value={tableHtml}
