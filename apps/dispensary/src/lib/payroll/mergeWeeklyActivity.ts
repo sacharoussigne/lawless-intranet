@@ -1,9 +1,11 @@
-import type { DispensaryWeeklyActivity } from '@prisma/client';
-import { parseWeekdayFlagsJson, type WeekdayFlags } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
+import type { BusinessWeeklyActivity } from '@prisma/client';
+import { parseWeekdayFlagsJson, type WeekdayFlags } from '@/lib/businessWeeklyActivity/weekdayFlags';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
+import type { WeeklyCounterDefinition, WeeklyCounterPayrollStat } from '@/lib/businessTypes';
+import { parseWeeklyCounters, weeklyCounterValue } from '@/lib/businessWeeklyActivity/counters';
 import { cleanText, type ParsedPayrollTable, PAYROLL_DAYS } from '@/lib/payroll/parsePayrollHtmlTable';
 
-type WaRow = DispensaryWeeklyActivity & {
+type WaRow = BusinessWeeklyActivity & {
   resolvedDisplayName: string;
   discordProfileRole?: string | null;
   discordProfileAccountNumber?: number | null;
@@ -64,6 +66,25 @@ export function mergeScheduleOr(
   return out;
 }
 
+/** Payroll stats filled from the counters of a row (lib/businessTypes `payrollStat`). */
+function payrollStatsOf(
+  wa: WaRow | undefined,
+  counterDefinitions: readonly WeeklyCounterDefinition[],
+): Record<WeeklyCounterPayrollStat, number> {
+  const stats: Record<WeeklyCounterPayrollStat, number> = {
+    sherifs: 0,
+    patients_soignes: 0,
+    poppy_milk_offertes: 0,
+    infusions_ginseng_offertes: 0,
+  };
+  if (!wa) return stats;
+  const counters = parseWeeklyCounters(wa.counters);
+  for (const c of counterDefinitions) {
+    if (c.payrollStat) stats[c.payrollStat] += weeklyCounterValue(counters, c.key);
+  }
+  return stats;
+}
+
 function numMax(a: number | null | undefined, b: number | null | undefined): number {
   return Math.max(a ?? 0, b ?? 0);
 }
@@ -120,7 +141,12 @@ export function buildWeeklyActivityByNameKey(activities: WaRow[]): { map: Map<st
 /**
  * Merges parsed HTML with weekly activity rows: union of people, OR schedules, max numeric stats.
  */
-export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activities: WaRow[]): PayrollReportResult['employees'] {
+export function mergeHtmlAndWeeklyActivity(
+  parsed: ParsedPayrollTable,
+  activities: WaRow[],
+  /** Counters of the business type: those with a `payrollStat` feed the payroll. */
+  counterDefinitions: readonly WeeklyCounterDefinition[],
+): PayrollReportResult['employees'] {
   const { map: waByNameKey } = buildWeeklyActivityByNameKey(activities);
   const matchedActIds = new Set<string>();
   const out: PayrollReportResult['employees'] = [];
@@ -132,8 +158,9 @@ export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activitie
       matchedActIds.add(wa.id);
     }
 
-    const sSher = Math.max(row.stats.sherifs ?? 0, wa ? wa.sherifCount : 0);
-    const patients = Math.max(row.stats.patients_soignes ?? 0, wa ? wa.patientsCount : 0);
+    const waStats = payrollStatsOf(wa, counterDefinitions);
+    const sSher = Math.max(row.stats.sherifs ?? 0, waStats.sherifs);
+    const patients = Math.max(row.stats.patients_soignes ?? 0, waStats.patients_soignes);
 
     let schedule = row.schedule as PayrollReportResult['employees'][number]['schedule'];
     if (wa) {
@@ -157,8 +184,8 @@ export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activitie
         nombre_caisses: row.stats.nombre_caisses,
         nombre_presences: row.stats.nombre_presences,
         patients_soignes: patients,
-        poppy_milk_offertes: numMax(0, wa?.poppyMilkCount),
-        infusions_ginseng_offertes: numMax(0, wa?.infusionsCount),
+        poppy_milk_offertes: numMax(0, waStats.poppy_milk_offertes),
+        infusions_ginseng_offertes: numMax(0, waStats.infusions_ginseng_offertes),
         sherifs: sSher > 0 ? sSher : null,
         palefreniers: row.stats.palefreniers,
       },
@@ -171,6 +198,7 @@ export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activitie
     const pr = parseWeekdayFlagsJson(wa.presenceDays);
     const schedule = scheduleFromWaFlags(ch, pr);
     const label = cleanText(wa.resolvedDisplayName) || cleanText(wa.displayName) || '—';
+    const waStats = payrollStatsOf(wa, counterDefinitions);
     out.push({
       name: label,
       role: roleFromSources(wa, ''),
@@ -178,13 +206,13 @@ export function mergeHtmlAndWeeklyActivity(parsed: ParsedPayrollTable, activitie
       salary_supplement_usd: 0,
       schedule,
       stats: {
-        sherifs: wa.sherifCount > 0 ? wa.sherifCount : null,
+        sherifs: waStats.sherifs > 0 ? waStats.sherifs : null,
         palefreniers: null,
         nombre_caisses: 0,
         nombre_presences: 0,
-        patients_soignes: wa.patientsCount,
-        poppy_milk_offertes: wa.poppyMilkCount,
-        infusions_ginseng_offertes: wa.infusionsCount,
+        patients_soignes: waStats.patients_soignes,
+        poppy_milk_offertes: waStats.poppy_milk_offertes,
+        infusions_ginseng_offertes: waStats.infusions_ginseng_offertes,
       },
     });
   }

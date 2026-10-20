@@ -13,16 +13,16 @@ import {
 } from '@/lib/inventory/client';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 
-export async function getLastStockDaysByChest(dispensarySlug: string) {
+export async function getLastStockDaysByChest(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const data = await getLastStockDaysByChestApi(
-      { ...inventoryScope(dispensaryId), effectiveRole },
+      { ...inventoryScope(businessId), effectiveRole },
       await inventoryCookie(),
     );
 
@@ -38,19 +38,19 @@ export async function getLastStockDaysByChest(dispensarySlug: string) {
 }
 
 export async function getItemsWithStock(
-  dispensarySlug: string,
+  businessSlug: string,
   chestId?: string | null,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const data = await queryItemsWithStock(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         chestId,
         effectiveRole,
       },
@@ -64,20 +64,20 @@ export async function getItemsWithStock(
 }
 
 export async function getItemsWithStockForDate(
-  dispensarySlug: string,
+  businessSlug: string,
   date: Date,
   chestId?: string | null,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const data = await queryItemsWithStockForDate(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         date: date.toISOString(),
         chestId,
         effectiveRole,
@@ -92,19 +92,19 @@ export async function getItemsWithStockForDate(
 }
 
 export async function getItemsWithDetailedStock(
-  dispensarySlug: string,
+  businessSlug: string,
   itemIds?: string[],
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'search',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const data = await queryItemsWithDetailedStock(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         itemIds,
         effectiveRole,
       },

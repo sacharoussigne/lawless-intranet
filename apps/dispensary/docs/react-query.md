@@ -14,7 +14,7 @@ Ce guide décrit le standard du projet pour charger et muter des données serveu
 Le `QueryProvider` est monté dans le layout dispensary :
 
 - [`src/lib/react-query/QueryProvider.tsx`](../src/lib/react-query/QueryProvider.tsx)
-- [`src/app/(loggedIn)/d/[dispensarySlug]/layout.tsx`](../src/app/(loggedIn)/d/[dispensarySlug]/layout.tsx)
+- [`src/app/(loggedIn)/[businessSlug]/layout.tsx`](../src/app/(loggedIn)/[businessSlug]/layout.tsx)
 
 Valeurs par défaut : `staleTime: 5s`, `refetchOnWindowFocus: false`.
 
@@ -25,7 +25,7 @@ Le `QueryClient` du navigateur survit aux navigations client, et `initialData` (
 Next exécute les server actions **une par une par onglet**, dans la file de la navigation. Une relecture React Query, une recherche au fil de la frappe ou le jeton temps réel attendent donc la mutation en cours, et inversement. Les relectures client passent par :
 
 - `src/lib/read/readRoutes.ts` : registre fermé `clé → action de lecture` (seules les clés listées existent) ;
-- `src/app/api/d/[dispensarySlug]/read/[query]/route.ts` : la route GET (`createReadRouteHandler` de `@lawless-intranet/host-kit/read`) ;
+- `src/app/api/d/[businessSlug]/read/[query]/route.ts` : la route GET (`createReadRouteHandler` de `@lawless-intranet/host-kit/read`) ;
 - `src/lib/read/fetchRead.ts` : le client typé, `fetchRead(slug, '<clé>', input)`.
 
 L'action est réutilisée telle quelle : auth, tenant, feature et permission restent dans l'action (le middleware ne couvre pas `/api`). L'entrée passe en query string (`?input=`), les `Date` sont conservées. Même forme de résultat qu'une action : `{ status, data?, error? }`.
@@ -38,8 +38,8 @@ Pour une nouvelle lecture : l'inscrire au registre, puis l'appeler avec `fetchRe
 
 ```tsx
 const [itemsResult, checksResult] = await Promise.all([
-  getItemsWithStock(dispensarySlug),
-  getStockChecksSummary(dispensarySlug),
+  getItemsWithStock(businessSlug),
+  getStockChecksSummary(businessSlug),
 ]);
 const items = getDataOrThrow(itemsResult, '...');
 const checks = getDataOrThrow(checksResult, '...');
@@ -49,18 +49,18 @@ return <StockPageClient initialItems={items} initialStockChecksSummary={checks} 
 
 ### Client — hook query
 
-Référence : [`src/app/(loggedIn)/d/[dispensarySlug]/stock/hooks/useStockQueries.ts`](../src/app/(loggedIn)/d/[dispensarySlug]/stock/hooks/useStockQueries.ts)
+Référence : [`src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts`](../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
 
 ```tsx
 export function useStockItems(chestId: string | null, initialData: ItemWithRelations[]) {
-  const { dispensarySlug } = usePermissions();
+  const { businessSlug } = usePermissions();
 
   return useQuery({
-    queryKey: stockKeys.items(dispensarySlug!, chestId),
-    queryFn: () => fetchStockItems(dispensarySlug!, chestId),
+    queryKey: stockKeys.items(businessSlug!, chestId),
+    queryFn: () => fetchStockItems(businessSlug!, chestId),
     initialData: chestId === null ? initialData : undefined,
     placeholderData: (previous) => previous,
-    enabled: Boolean(dispensarySlug),
+    enabled: Boolean(businessSlug),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 }
@@ -70,7 +70,7 @@ Points clés :
 
 - Passer `initialData` depuis le SSR quand la clé correspond au premier rendu (`chestId === null`)
 - Ne **pas** ajouter un `useEffect` + `loadItems()` en parallèle du SSR
-- Inclure `dispensarySlug` dans les query keys (multi-tenant)
+- Inclure `businessSlug` dans les query keys (multi-tenant)
 
 ## Pattern mutation
 
@@ -80,7 +80,7 @@ export function useUpdateStockMutation() {
 
   return useMutation({
     mutationFn: async (vars) => {
-      const result = await updateStock(dispensarySlug!, vars.stockData, vars.targetChestId, ...);
+      const result = await updateStock(businessSlug!, vars.stockData, vars.targetChestId, ...);
       handleAction(result);
       return vars;
     },
@@ -153,6 +153,6 @@ Le pattern `useState` + `useEffect` + `loadX()` (ex. agenda) est **legacy**. Lor
 
 Module **stock** :
 
-- [`useStockQueries.ts`](../src/app/(loggedIn)/d/[dispensarySlug]/stock/hooks/useStockQueries.ts)
-- [`StockPageClient.tsx`](../src/app/(loggedIn)/d/[dispensarySlug]/stock/StockPageClient.tsx)
+- [`useStockQueries.ts`](../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
+- [`StockPageClient.tsx`](../src/app/(loggedIn)/[businessSlug]/stock/StockPageClient.tsx)
 - [`queryKeys.ts`](../src/lib/stock/queryKeys.ts)

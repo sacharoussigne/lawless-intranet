@@ -1,4 +1,4 @@
-import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import type { AuthUserPublic } from '@lawless-intranet/types';
 
 export type UserProfile = {
@@ -31,20 +31,20 @@ export function toUserProfile(
 
 /** Rows with their user, named as in the dispensary (fixed name first). */
 export async function enrichRowsWithUsers<T extends { userId: string }>(
-  dispensaryId: string,
+  businessId: string,
   rows: T[],
 ): Promise<Array<T & { user: UserProfile }>> {
-  const [enriched] = await enrichRowGroupsWithUsers(dispensaryId, [rows]);
+  const [enriched] = await enrichRowGroupsWithUsers(businessId, [rows]);
   return enriched ?? [];
 }
 
 /** Several lists (members of every agenda…) in one user lookup instead of one per list. */
 export async function enrichRowGroupsWithUsers<T extends { userId: string }>(
-  dispensaryId: string,
+  businessId: string,
   groups: T[][],
 ): Promise<Array<Array<T & { user: UserProfile }>>> {
-  const usersById = await fetchDispensaryUserProfiles(
-    dispensaryId,
+  const usersById = await fetchBusinessUserProfiles(
+    businessId,
     groups.flatMap((rows) => rows.map((row) => row.userId)),
   );
   return groups.map((rows) =>
@@ -56,15 +56,15 @@ export async function enrichRowGroupsWithUsers<T extends { userId: string }>(
 }
 
 export async function enrichAgendaMembers<T extends { userId: string }>(
-  dispensaryId: string,
+  businessId: string,
   members: T[],
 ) {
-  return enrichRowsWithUsers(dispensaryId, members);
+  return enrichRowsWithUsers(businessId, members);
 }
 
 export async function enrichEventParticipants<T extends { id: string; userId: string }>(
-  dispensaryId: string,
+  businessId: string,
   participants: T[],
 ) {
-  return enrichRowsWithUsers(dispensaryId, participants);
+  return enrichRowsWithUsers(businessId, participants);
 }

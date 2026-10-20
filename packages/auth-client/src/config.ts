@@ -1,7 +1,8 @@
 function getAuthUrl(): string {
+  // `||`: a NEXT_PUBLIC_* left empty at build time (Dockerfile ARG) must fall through.
   return (
-    process.env.AUTH_URL ??
-    process.env.NEXT_PUBLIC_AUTH_URL ??
+    process.env.AUTH_URL?.trim() ||
+    process.env.NEXT_PUBLIC_AUTH_URL?.trim() ||
     'http://localhost:3001'
   );
 }
@@ -16,9 +17,9 @@ export type AuthRequestContext =
 
 function getDefaultOrigin(): string {
   return (
-    process.env.DISPENSARY_URL ??
-    process.env.NEXT_PUBLIC_DISPENSARY_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.DISPENSARY_URL?.trim() ||
+    process.env.NEXT_PUBLIC_DISPENSARY_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     'http://localhost:3000'
   );
 }

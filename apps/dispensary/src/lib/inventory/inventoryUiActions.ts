@@ -14,19 +14,19 @@ import { fetchRead } from '@/lib/read/fetchRead';
  * Binds the dispensary server actions to the inventory-ui action contract.
  * `clientId`: this tab's realtime socket, so stock changes are not echoed back to it.
  */
-export function createDispensaryInventoryActions(
-  dispensarySlug: string,
+export function createBusinessInventoryActions(
+  businessSlug: string,
   clientId?: string | null,
 ): InventoryUiActions {
   const meta = realtimeMutationMeta(clientId);
   return {
     // Reads go over GET (lib/read): they do not queue behind server actions.
     getItemsWithStock: (chestId) =>
-      toUiResult(fetchRead(dispensarySlug, 'itemsWithStock', { chestId })),
+      toUiResult(fetchRead(businessSlug, 'itemsWithStock', { chestId })),
     updateStock: (input) =>
       toUiResult(
         updateStock(
-          dispensarySlug,
+          businessSlug,
           input.stockData,
           input.targetChestId,
           { skipHistory: input.skipHistory },
@@ -34,7 +34,7 @@ export function createDispensaryInventoryActions(
         ),
       ),
     craftItem: async (input) => {
-      const result = await toUiResult(craftItem(dispensarySlug, input, meta));
+      const result = await toUiResult(craftItem(businessSlug, input, meta));
       if (result.data === undefined) {
         return { status: result.status, error: result.error ?? 'Erreur' };
       }
@@ -47,23 +47,23 @@ export function createDispensaryInventoryActions(
       return { status: result.status, data: { quantityProduced } };
     },
     transferMultipleStock: (input) =>
-      toUiResult(transferMultipleStock(dispensarySlug, input, meta)) as Promise<
+      toUiResult(transferMultipleStock(businessSlug, input, meta)) as Promise<
         InventoryActionResult<{ success: true }>
       >,
     moveItemsWithChests: (input) =>
-      toUiResult(moveItemsWithChests(dispensarySlug, input, meta)) as Promise<
+      toUiResult(moveItemsWithChests(businessSlug, input, meta)) as Promise<
         InventoryActionResult<{ success: true; count: number; mode: 'take' | 'deposit' }>
       >,
-    getStockChecksSummary: () => toUiResult(fetchRead(dispensarySlug, 'stockChecksSummary')),
+    getStockChecksSummary: () => toUiResult(fetchRead(businessSlug, 'stockChecksSummary')),
     getChestStockVisibility: (chestId) =>
-      toUiResult(fetchRead(dispensarySlug, 'chestStockVisibility', { chestId })),
+      toUiResult(fetchRead(businessSlug, 'chestStockVisibility', { chestId })),
     setChestCategoryHidden: (input) =>
-      toUiResult(setChestCategoryHidden(dispensarySlug, input)),
-    setChestItemHidden: (input) => toUiResult(setChestItemHidden(dispensarySlug, input)),
-    getLastStockDaysByChest: () => toUiResult(fetchRead(dispensarySlug, 'lastStockDaysByChest')),
+      toUiResult(setChestCategoryHidden(businessSlug, input)),
+    setChestItemHidden: (input) => toUiResult(setChestItemHidden(businessSlug, input)),
+    getLastStockDaysByChest: () => toUiResult(fetchRead(businessSlug, 'lastStockDaysByChest')),
     getCraftRecipesByItemId: async (itemId, onlyEnabled) => {
       const result = await toUiResult(
-        fetchRead(dispensarySlug, 'craftRecipes', { itemId, onlyEnabled }),
+        fetchRead(businessSlug, 'craftRecipes', { itemId, onlyEnabled }),
       );
       if (result.data === undefined) {
         return { status: result.status, error: result.error ?? 'Erreur' };

@@ -1,0 +1,177 @@
+'use server';
+
+import { applyBusinessNamesToUsers } from '@/lib/people/resolveNames';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
+import { loggedAction } from '@/lib/logs/writer';
+import prisma from '@/lib/prisma';
+import { z } from 'zod';
+import { actionErrorParser } from '@/lib/action';
+import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
+import { tenantWhere } from '@/lib/business/tenantWhere';
+import { BUSINESS_MEMBER_ROLES, serializeRoleList } from '@/types/enum/roles';
+import { isMemberRoleAllowedForType } from '@/lib/businessTypes';
+import {
+  attachUserProfiles,
+  fetchUserProfile,
+  searchAuthUsers,
+} from '@/lib/authUsers';
+
+const businessRoleEnum = z.enum(BUSINESS_MEMBER_ROLES);
+
+const upsertMemberSchema = z.object({
+  userId: z.string().min(1),
+  roles: z.array(businessRoleEnum).min(1, 'Au moins un rôle est requis'),
+  description: z
+    .string()
+    .max(200)
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === undefined || value === null) return undefined;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }),
+});
+
+export async function listBusinessMembers(businessSlug: string) {
+  const auth = await requireBusinessAdminContext(businessSlug);
+  if (!auth.ok) {
+    return { status: auth.status, error: auth.error };
+  }
+
+  const members = await prisma.businessMember.findMany({
+    where: { businessId: auth.ctx.businessId },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const usersById = await fetchBusinessUserProfiles(
+    auth.ctx.businessId,
+    members.map((member) => member.userId),
+  );
+  const enriched = attachUserProfiles(members, usersById).sort((a, b) =>
+    (a.user?.name ?? a.userId).localeCompare(b.user?.name ?? b.userId, 'fr'),
+  );
+
+  return { status: 200, data: enriched };
+}
+
+async function upsertBusinessMemberUnlogged(
+  businessSlug: string,
+  data: {
+    userId: string;
+    roles: z.infer<typeof businessRoleEnum>[];
+    description?: string | null;
+  },
+) {
+  try {
+    const auth = await requireBusinessAdminContext(businessSlug);
+    if (!auth.ok) {
+      return { status: auth.status, error: auth.error };
+    }
+
+    const validated = upsertMemberSchema.parse(data);
+    const { type } = auth.ctx.business;
+    if (validated.roles.some((r) => !isMemberRoleAllowedForType(type, r))) {
+      return { status: 400, error: 'Rôle invalide pour ce type d’entreprise' };
+    }
+    const user = await fetchUserProfile(validated.userId);
+    if (!user) {
+      return { status: 404, error: 'Utilisateur introuvable' };
+    }
+
+    const role = serializeRoleList(validated.roles);
+    const descriptionProvided = validated.description !== undefined;
+
+    const member = await prisma.businessMember.upsert({
+      where: {
+        businessId_userId: {
+          businessId: auth.ctx.businessId,
+          userId: validated.userId,
+        },
+      },
+      create: {
+        businessId: auth.ctx.businessId,
+        userId: validated.userId,
+        role,
+        description: validated.description ?? null,
+      },
+      update: {
+        role,
+        ...(descriptionProvided ? { description: validated.description ?? null } : {}),
+      },
+    });
+
+    return { status: 200, data: member };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la mise à jour du membre');
+  }
+}
+
+async function removeBusinessMemberUnlogged(businessSlug: string, userId: string) {
+  try {
+    const auth = await requireBusinessAdminContext(businessSlug);
+    if (!auth.ok) {
+      return { status: auth.status, error: auth.error };
+    }
+
+    await prisma.businessMember.deleteMany({
+      where: {
+        userId,
+        ...tenantWhere(auth.ctx.businessId),
+      },
+    });
+
+    return { status: 200 };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors de la suppression du membre');
+  }
+}
+
+export async function searchUsersForBusinessInvite(businessSlug: string, query: string) {
+  const auth = await requireBusinessAdminContext(businessSlug);
+  if (!auth.ok) {
+    return { status: auth.status, error: auth.error };
+  }
+
+  const q = query.trim();
+  if (q.length < 2) {
+    return { status: 200, data: [] };
+  }
+
+  const users = await applyBusinessNamesToUsers(
+    prisma,
+    auth.ctx.businessId,
+    new Map((await searchAuthUsers(q)).map((user) => [user.id, user])),
+  );
+
+  return {
+    status: 200,
+    data: [...users.values()].map((user) => ({ id: user.id, name: user.name })),
+  };
+}
+
+/* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
+
+export async function upsertBusinessMember(
+  ...args: Parameters<typeof upsertBusinessMemberUnlogged>
+) {
+  return loggedAction(
+    {
+      feature: 'settings',
+      event: 'dispensaryMembers.upsertDispensaryMember',
+      target: ([, data]) => data.userId,
+    },
+    args,
+    () => upsertBusinessMemberUnlogged(...args),
+  );
+}
+
+export async function removeBusinessMember(
+  ...args: Parameters<typeof removeBusinessMemberUnlogged>
+) {
+  return loggedAction(
+    { feature: 'settings', event: 'dispensaryMembers.removeDispensaryMember' },
+    args,
+    () => removeBusinessMemberUnlogged(...args),
+  );
+}

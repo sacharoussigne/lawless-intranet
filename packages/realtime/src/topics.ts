@@ -4,21 +4,21 @@ export const realtimeTopics = {
   agenda: (agendaId: string) => `agenda:${agendaId}`,
   /** Agenda list changes for a scope (create, rename, delete). */
   agendas: (scopeType: string, scopeId: string) => `agendas:${scopeType}:${scopeId}`,
-  /** Orders of a dispensary (create, update, status, delete). */
-  orders: (dispensaryId: string) => `orders:${dispensaryId}`,
-  /** Every sale of a dispensary (viewers with `sales:view_all`). */
-  sales: (dispensaryId: string) => `sales:${dispensaryId}`,
-  /** Sales of one seller in a dispensary (the seller, with `sales:view`). */
-  salesOfUser: (dispensaryId: string, userId: string) => `sales:${dispensaryId}:user:${userId}`,
-  /** Every weekly activity of a dispensary (viewers with `edit_all`). */
-  weeklyActivity: (dispensaryId: string) => `weeklyactivity:${dispensaryId}`,
-  /** Weekly activity of one member in a dispensary (the member, with `view`). */
-  weeklyActivityOfUser: (dispensaryId: string, userId: string) =>
-    `weeklyactivity:${dispensaryId}:user:${userId}`,
+  /** Orders of a business (create, update, status, delete). */
+  orders: (businessId: string) => `orders:${businessId}`,
+  /** Every sale of a business (viewers with `sales:view_all`). */
+  sales: (businessId: string) => `sales:${businessId}`,
+  /** Sales of one seller in a business (the seller, with `sales:view`). */
+  salesOfUser: (businessId: string, userId: string) => `sales:${businessId}:user:${userId}`,
+  /** Every weekly activity of a business (viewers with `edit_all`). */
+  weeklyActivity: (businessId: string) => `weeklyactivity:${businessId}`,
+  /** Weekly activity of one member in a business (the member, with `view`). */
+  weeklyActivityOfUser: (businessId: string, userId: string) =>
+    `weeklyactivity:${businessId}:user:${userId}`,
   /** Animal waitlist of a shelter (viewers with `waitlist:manage`). */
   waitlist: (shelterId: string) => `waitlist:${shelterId}`,
-  /** Stock of a dispensary (quantities, movements, crafts, items and chests): viewers with `stock:view`. */
-  stock: (dispensaryId: string) => `stock:${dispensaryId}`,
+  /** Stock of a business (quantities, movements, crafts, items and chests): viewers with `stock:view`. */
+  stock: (businessId: string) => `stock:${businessId}`,
   /** Media library of a scope (folders and files). */
   media: (scopeType: string, scopeId: string) => `media:${scopeType}:${scopeId}`,
   /** Per-user notifications (participant events, access changes). */

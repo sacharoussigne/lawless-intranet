@@ -6,14 +6,14 @@ import { usePathname } from 'next/navigation';
 import { ActionIcon, Text } from '@mantine/core';
 import { IconArrowBackUp, IconChevronLeft } from '@tabler/icons-react';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { dispensarySiteTitle } from '@/lib/appSettingsShared';
+import { businessSiteTitle } from '@/lib/appSettingsShared';
 import { getMobileSectionTitle } from '@/lib/navigation/mobileNav';
 import { routes, tenantRoutes } from '@/types/routes';
 import classes from './Header.module.scss';
 
 type MobileHeaderProps = {
   /** Tenant of the page; null on account settings / platform pages. */
-  dispensarySlug: string | null;
+  businessSlug: string | null;
   /** Where the back arrow leads outside a tenant (the Profile tab of the default dispensary). */
   backHref: string | null;
   isImpersonating: boolean;
@@ -26,7 +26,7 @@ type MobileHeaderProps = {
  * in the bottom tab bar, account actions in the Profile tab.
  */
 export function MobileHeader({
-  dispensarySlug,
+  businessSlug,
   backHref,
   isImpersonating,
   stoppingImpersonation,
@@ -34,8 +34,8 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const pathname = usePathname() ?? '';
   const { appSettings } = usePermissions();
-  const siteTitle = dispensarySiteTitle(appSettings);
-  const t = dispensarySlug ? tenantRoutes(dispensarySlug) : null;
+  const siteTitle = businessSiteTitle(appSettings);
+  const t = businessSlug ? tenantRoutes(businessSlug) : null;
   const title = t
     ? getMobileSectionTitle(pathname, t, siteTitle)
     : pathname.startsWith(routes.settings.index)

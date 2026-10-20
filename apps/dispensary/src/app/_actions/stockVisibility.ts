@@ -23,20 +23,20 @@ const setHiddenSchema = z.object({
 });
 
 export async function getChestStockVisibility(
-  dispensarySlug: string,
+  businessSlug: string,
   chestId: string,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: { resource: 'stock', action: 'view' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const parsedChestId = chestIdSchema.parse(chestId);
     const data = await getChestStockVisibilityClient(
-      { ...inventoryScope(dispensaryId), chestId: parsedChestId },
+      { ...inventoryScope(businessId), chestId: parsedChestId },
       await inventoryCookie(),
     ) as ChestStockVisibilityRecord;
 
@@ -47,11 +47,11 @@ export async function getChestStockVisibility(
 }
 
 async function setChestCategoryHiddenUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { chestId: string; categoryId: string; hidden: boolean },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
@@ -60,11 +60,11 @@ async function setChestCategoryHiddenUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = setHiddenSchema.extend({ categoryId: categoryIdSchema }).parse(input);
     await setChestCategoryHiddenClient(
-      { ...inventoryScope(dispensaryId), ...validated },
+      { ...inventoryScope(businessId), ...validated },
       await inventoryCookie(),
     );
 
@@ -75,11 +75,11 @@ async function setChestCategoryHiddenUnlogged(
 }
 
 async function setChestItemHiddenUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { chestId: string; itemId: string; hidden: boolean },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
@@ -88,11 +88,11 @@ async function setChestItemHiddenUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = setHiddenSchema.extend({ itemId: itemIdSchema }).parse(input);
     await setChestItemHiddenClient(
-      { ...inventoryScope(dispensaryId), ...validated },
+      { ...inventoryScope(businessId), ...validated },
       await inventoryCookie(),
     );
 

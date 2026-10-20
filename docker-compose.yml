@@ -94,6 +94,9 @@ services:
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
+      # Host of each kind of business (docs/DOCKER.md, « Plusieurs hôtes »): DISPENSARY=dispensaire.example.com,...
+      BUSINESS_TYPE_HOSTS: "${BUSINESS_TYPE_HOSTS:-}"
+      # One host or a comma-separated list (main host + one per kind of business)
       VIRTUAL_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
       VIRTUAL_PORT: "3000"
       LETSENCRYPT_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
@@ -122,6 +125,7 @@ services:
       DATABASE_URL: "${DOCUMENTS_DATABASE_URL:?err}"
       AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
+      SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
       DOCUMENTS_INTERNAL_SECRET: "${DOCUMENTS_INTERNAL_SECRET:?err}"
       VIRTUAL_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
       VIRTUAL_PORT: "3002"
@@ -258,6 +262,8 @@ services:
       # Publishes changes (waitlist) to the realtime server over the private network
       REALTIME_INTERNAL_URL: "http://realtime:3008"
       REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
+      # Protects the follow-up reminders cron route (api/cron/follow-ups)
+      FOLLOW_UP_CRON_SECRET: "${FOLLOW_UP_CRON_SECRET:-}"
     networks:
       - proxy
       - db
@@ -314,7 +320,8 @@ services:
       NODE_ENV: production
       WS_PORT: "3007"
       INTERNAL_PORT: "3008"
-      ALLOWED_ORIGINS: "${DISPENSARY_PUBLIC_URL:?err},${SHELTER_PUBLIC_URL:?err}"
+      # Every host of the business app (main URL + DISPENSARY_EXTRA_PUBLIC_URLS) and the shelter
+      ALLOWED_ORIGINS: "${DISPENSARY_PUBLIC_URL:?err},${DISPENSARY_EXTRA_PUBLIC_URLS:-},${SHELTER_PUBLIC_URL:?err}"
       REALTIME_TOKEN_SECRET: "${REALTIME_TOKEN_SECRET:?err}"
       REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
       TZ: "${TZ:-UTC}"

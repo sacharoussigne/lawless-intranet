@@ -9,7 +9,7 @@ import type {
 
 /** Tells every-sale viewers and the seller (topics checked in the realtime token) to refetch. */
 export function emitWeeklySalesChange(
-  dispensaryId: string,
+  businessId: string,
   event: Omit<WeeklySalesRealtimeEvent, 'originClientId' | 'type'> & {
     type?: 'weeklySales';
   },
@@ -18,8 +18,8 @@ export function emitWeeklySalesChange(
   after(async () => {
     await publishRealtime(
       [
-        realtimeTopics.sales(dispensaryId),
-        realtimeTopics.salesOfUser(dispensaryId, event.ownerUserId),
+        realtimeTopics.sales(businessId),
+        realtimeTopics.salesOfUser(businessId, event.ownerUserId),
       ],
       toWeeklySalesRealtimeEnvelope({
         type: 'weeklySales',

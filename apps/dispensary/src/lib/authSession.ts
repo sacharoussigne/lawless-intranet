@@ -23,6 +23,19 @@ function getDefaultAppOrigin(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 }
 
+/** Origin of the app on the host of this request when it is one of ours, else the configured URL. */
+export function appOriginFromHeaders(requestHeaders: Headers): string {
+  const origin = buildOriginFromHeaders(requestHeaders);
+  if (origin) {
+    try {
+      if (isAllowedCallbackHostname(new URL(origin).hostname)) return origin.replace(/\/$/, '');
+    } catch {
+      // fall through to configured public URL
+    }
+  }
+  return getDefaultAppOrigin();
+}
+
 export function getCallbackUrlFromRequest(request: NextRequest): string {
   const { pathname, search } = request.nextUrl;
   const pathWithSearch = `${pathname}${search}`;

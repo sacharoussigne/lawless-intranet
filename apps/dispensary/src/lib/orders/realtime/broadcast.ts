@@ -6,7 +6,7 @@ import type { OrdersMutationMeta, OrdersRealtimeEvent } from '@/lib/orders/realt
 
 /** Tells the dispensary's order viewers (topic checked in the realtime token) to refetch. */
 export function emitOrdersChange(
-  dispensaryId: string,
+  businessId: string,
   event: Omit<OrdersRealtimeEvent, 'originClientId' | 'type'> & {
     type?: 'orders';
   },
@@ -14,7 +14,7 @@ export function emitOrdersChange(
 ): void {
   after(async () => {
     await publishRealtime(
-      [realtimeTopics.orders(dispensaryId)],
+      [realtimeTopics.orders(businessId)],
       toOrdersRealtimeEnvelope({
         type: 'orders',
         orderId: event.orderId,

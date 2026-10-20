@@ -31,9 +31,9 @@ export const hasOrdersViewAccessMiddleware = requirePermissionMiddleware('orders
 export const hasPayrollReportsAccessMiddleware = requirePermissionMiddleware('payroll_reports', 'view', 'noManagementAccess');
 export const hasSearchAccessMiddleware = requirePermissionMiddleware('search', 'access');
 export const hasStockStatisticsAccessMiddleware = requirePermissionMiddleware('stock_statistics', 'view', 'noManagementAccess');
-export const hasWeeklyDispensaryActivityMiddleware = requirePermissionMiddleware('weekly_dispensary_activity', 'view');
-export const hasWeeklyDispensaryActivityEditAllMiddleware = requirePermissionMiddleware(
-  'weekly_dispensary_activity',
+export const hasWeeklyActivityMiddleware = requirePermissionMiddleware('weekly_activity', 'view');
+export const hasWeeklyActivityEditAllMiddleware = requirePermissionMiddleware(
+  'weekly_activity',
   'edit_all',
   'noManagementAccess',
 );

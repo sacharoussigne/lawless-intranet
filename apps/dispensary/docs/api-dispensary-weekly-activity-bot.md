@@ -24,7 +24,7 @@ Tous les chemins ci-dessous sont relatifs à cette base.
 |------|-----|
 | **400** | `X-Dispensary-Id` / `dispensaryId` absent |
 | **401** | Secret invalide |
-| **403** | Feature « activité hebdomadaire » désactivée pour ce dispensaire (`AppSettings.featureWeeklyDispensaryActivityEnabled`) |
+| **403** | Feature « activité hebdomadaire » désactivée pour ce dispensaire (`AppSettings.featureWeeklyActivityEnabled`) |
 | **404** | `dispensaryId` inconnu |
 
 En cas d’échec d’authentification par clé : **401** avec `{ "status": 401, "error": "Non autorisé" }`.
@@ -113,10 +113,11 @@ Ne retourne que les activités du dispensaire indiqué par `X-Dispensary-Id`.
 | `presenceTotal` | number | Nombre de jours avec présence |
 | `chestDaysSummary` | string | Résumé 7 caractères (lundi → dimanche) |
 | `presenceDaysSummary` | string | Idem |
-| `sherifCount` | number | Soins shérifs |
-| `patientsCount` | number | Patients |
-| `infusionsCount` | number | Infusions |
-| `poppyMilkCount` | number | Lait de pavot |
+| `counters` | object | Compteurs du type d’entreprise (`lib/businessTypes`), clé → valeur. Dispensaire : `patients`, `sheriffs`, `infusions`, `poppyMilk`. Seuls les compteurs visibles y figurent |
+| `sherifCount` | number | Soins shérifs (= `counters.sheriffs`, gardé pour les bots existants) |
+| `patientsCount` | number | Patients (= `counters.patients`) |
+| `infusionsCount` | number | Infusions (= `counters.infusions`) |
+| `poppyMilkCount` | number | Lait de pavot (= `counters.poppyMilk`) |
 | `createdAt`, `updatedAt` | string ISO | Horodatages |
 
 **Exemple (curl) :**
@@ -184,10 +185,8 @@ La ligne créée est rattachée au dispensaire `X-Dispensary-Id`.
 | `userId` | string \| null | Optionnel ; laisser absent en usage bot normal |
 | `chestDays` | object | Optionnel ; si absent, tous les jours à `false` |
 | `presenceDays` | object | Optionnel ; si absent, tous les jours à `false` |
-| `sherifCount` | number | |
-| `patientsCount` | number | |
-| `infusionsCount` | number | |
-| `poppyMilkCount` | number | |
+| `counters` | object | Optionnel ; compteurs clé → valeur (ex. `{"patients": 5}`), absents = 0 |
+| `sherifCount`, `patientsCount`, `infusionsCount`, `poppyMilkCount` | number | Optionnels ; anciens champs du dispensaire, toujours acceptés |
 
 Chaque objet `chestDays` / `presenceDays` doit contenir **exactement** les sept clés `lundi` … `dimanche` avec des booléens si tu l’envoies.
 
@@ -365,11 +364,14 @@ Met à jour une ligne existante. Tous les champs du corps sont **optionnels** ; 
 Champs possibles (tous optionnels) :
 
 - `periodStart`, `periodEnd`, `displayName`
-- `sherifCount`, `patientsCount`, `infusionsCount`, `poppyMilkCount`
+- `counters` : objet clé → valeur, pour n’importe quel compteur du type d’entreprise (ex. `{"patients": 8}`)
+- `sherifCount`, `patientsCount`, `infusionsCount`, `poppyMilkCount` : anciens champs du dispensaire, toujours acceptés (si les deux sont envoyés, `counters` l’emporte)
+
+Un compteur masqué dans les paramètres ou inconnu du type renvoie **403**.
 
 Les caisses et présences **par jour** ne sont pas modifiables via ce `PATCH` côté bot : utiliser **`POST …/bot/caisse`** et **`POST …/bot/presence`**. (L’intranet utilise les actions serveur dédiées.)
 
-**Comportement côté historique (bot) :** pour chaque compteur dont la valeur change, une entrée d’historique de type **incrément** ou **décrément** est enregistrée (shérifs, patients, infusions, lait de pavot) ; si la période ou le `displayName` change, une entrée **UPDATE** est aussi enregistrée. Les valeurs envoyées sont des **absolus** (pas des deltas) : l’API calcule la différence pour classer incrément / décrément.
+**Comportement côté historique (bot) :** pour chaque compteur dont la valeur change, une entrée d’historique de type **incrément** ou **décrément** est enregistrée, avec la clé du compteur ; si la période ou le `displayName` change, une entrée **UPDATE** est aussi enregistrée. Les valeurs envoyées sont des **absolus** (pas des deltas) : l’API calcule la différence pour classer incrément / décrément.
 
 **En-têtes :** `Authorization`, `X-Dispensary-Id`, `X-Discord-User-Id`
 
@@ -428,6 +430,6 @@ curl -sS -X DELETE \
 ## Fichiers de référence (code)
 
 - Routes : `src/app/api/dispensary/weekly-activity/route.ts`, `src/app/api/dispensary/weekly-activity/recap/route.ts`, `src/app/api/dispensary/weekly-activity/[id]/route.ts`, `src/app/api/dispensary/weekly-activity/bot/caisse/route.ts`, `src/app/api/dispensary/weekly-activity/bot/presence/route.ts`
-- Validation : `src/lib/dispensaryWeeklyActivity/schemas.ts` (dont schémas corps `bot/caisse` et `bot/presence`), `src/lib/dispensaryWeeklyActivity/weekdayFlags.ts`, `src/lib/dispensaryWeeklyActivity/botDayEdit.ts`
-- Sérialisation : `src/lib/dispensaryWeeklyActivity/apiRow.ts`, `src/lib/dispensaryWeeklyActivity/loadSerializedRow.ts`
-- Vérification du secret et du dispensaire : `src/lib/dispensaryWeeklyActivityApiAuth.ts`, `src/lib/dispensaryWeeklyActivity/botRequestContext.ts`
+- Validation : `src/lib/businessWeeklyActivity/schemas.ts` (dont schémas corps `bot/caisse` et `bot/presence`), `src/lib/businessWeeklyActivity/weekdayFlags.ts`, `src/lib/businessWeeklyActivity/botDayEdit.ts`
+- Sérialisation : `src/lib/businessWeeklyActivity/apiRow.ts`, `src/lib/businessWeeklyActivity/loadSerializedRow.ts`
+- Vérification du secret et du dispensaire : `src/lib/businessWeeklyActivityApiAuth.ts`, `src/lib/businessWeeklyActivity/botRequestContext.ts`

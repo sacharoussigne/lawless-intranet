@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { routes } from '@/types/routes';
-import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
+import { isPlatformAdmin } from '@/lib/business/platformAdmin';
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
 
 export async function hasPlatformAdminMiddleware(

@@ -1,6 +1,6 @@
 # Médiathèque (`apps/media`)
 
-Stockage de fichiers façon drive : images, PDF et **liens externes** rangés en dossiers, avec renommage, déplacement, suppression, aperçu et téléchargement. La médiathèque est branchée sur le **refuge** et le **dispensaire** : une médiathèque par refuge et une par dispensaire, cloisonnées par `scopeType` / `scopeId` (`shelter:<id>`, `dispensary:<id>`). Le service ne connaît pas les hôtes : chaque hôte vérifie le tenant, la feature et la permission avant de l'appeler.
+Stockage de fichiers façon drive : images, PDF et **liens externes** rangés en dossiers, avec renommage, déplacement, suppression, aperçu et téléchargement. La médiathèque est branchée sur le **refuge** et le **dispensaire** : une médiathèque par refuge et une par dispensaire, cloisonnées par `scopeType` / `scopeId` (`shelter:<id>`, `business:<id>` ; les fichiers envoyés avant la phase 6 de `docs/MULTI-BUSINESS.md` gardent leur clé S3 `dispensary/<id>/…`). Le service ne connaît pas les hôtes : chaque hôte vérifie le tenant, la feature et la permission avant de l'appeler.
 
 ## Fonctionnement
 

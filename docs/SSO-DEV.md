@@ -2,11 +2,28 @@
 
 ## Hosts
 
+> **Sous-domaines partagés (`*.lawless.localhost`)** : les navigateurs refusent un cookie
+> `Domain=.localhost` posé depuis un sous-domaine (`localhost` compte comme une extension de
+> premier niveau). Pour partager la session entre plusieurs hôtes (auth, dispensary,
+> business, gs…), utiliser un niveau de plus :
+> - auth : `AUTH_COOKIE_DOMAIN=.lawless.localhost`, `BETTER_AUTH_URL` et `NEXT_PUBLIC_AUTH_URL`
+>   = `http://auth.lawless.localhost:3001`. Les apps sur leurs sous-domaines sont alors
+>   reconnues d'office (`getTrustedOrigins`) ;
+> - Discord : ajouter `http://auth.lawless.localhost:3001/api/auth/callback/discord` aux redirects ;
+> - dispensary : `NEXT_PUBLIC_AUTH_URL` / `AUTH_URL` = `http://auth.lawless.localhost:3001`,
+>   `NEXT_PUBLIC_APP_URL=http://business.lawless.localhost:3000`,
+>   `BUSINESS_TYPE_HOSTS=DISPENSARY=dispensary.lawless.localhost:3000` ;
+> - Chrome résout `*.localhost` vers 127.0.0.1 tout seul ; sinon ajouter les hôtes ci-dessous.
+>
+> Sans partage entre hôtes, tout faire tourner sur `localhost:<port>` suffit.
+
 Add to your hosts file (required for SSO cookie sharing on `.localhost`):
 
 ```
 127.0.0.1 auth.localhost
 127.0.0.1 dispensary.localhost
+127.0.0.1 business.localhost
+127.0.0.1 gs.localhost
 127.0.0.1 shelter.localhost
 127.0.0.1 documents.localhost
 127.0.0.1 agenda.localhost
@@ -24,6 +41,7 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 |-----|-----|------|
 | auth (IdP) | http://auth.localhost:3001 | 3001 |
 | dispensary (RP) | http://dispensary.localhost:3000 | 3000 |
+| business app, every business / general stores (same server, `BUSINESS_TYPE_HOSTS`) | http://business.localhost:3000, http://gs.localhost:3000 | 3000 |
 | shelter (RP) | http://shelter.localhost:3006 | 3006 |
 | documents (API) | http://documents.localhost:3002 | 3002 |
 | agenda (API) | http://agenda.localhost:3003 | 3003 |

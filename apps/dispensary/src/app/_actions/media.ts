@@ -1,6 +1,6 @@
 'use server';
 
-import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { z } from 'zod/v3';
 import {
@@ -54,48 +54,48 @@ function linkLogContext(input: { url?: string; name?: string; id?: string; folde
 
 /** Runs a media operation for the current dispensary, with the shared guard and error mapping. */
 function withMedia<T>(
-  dispensarySlug: string,
+  businessSlug: string,
   fallback: string,
   run: (scope: ReturnType<typeof mediaScope>, options: Awaited<ReturnType<typeof mediaCookie>>) => Promise<T>,
 ) {
-  return withTenantService(dispensarySlug, mediaActionAuth, fallback, async (dispensaryId) =>
-    run(mediaScope(dispensaryId), await mediaCookie()),
+  return withTenantService(businessSlug, mediaActionAuth, fallback, async (businessId) =>
+    run(mediaScope(businessId), await mediaCookie()),
   );
 }
 
-export async function getMediaLibraryLimits(dispensarySlug: string) {
-  return withMedia(dispensarySlug, 'Erreur lors du chargement de la médiathèque', (_scope, options) =>
+export async function getMediaLibraryLimits(businessSlug: string) {
+  return withMedia(businessSlug, 'Erreur lors du chargement de la médiathèque', (_scope, options) =>
     getMediaLimits(options),
   );
 }
 
-export async function getMediaContents(dispensarySlug: string, folderId: string | null) {
-  return withMedia(dispensarySlug, 'Erreur lors du chargement du dossier', (scope, options) =>
+export async function getMediaContents(businessSlug: string, folderId: string | null) {
+  return withMedia(businessSlug, 'Erreur lors du chargement du dossier', (scope, options) =>
     getMediaFolderContents(scope, nullableIdSchema.parse(folderId), options),
   );
 }
 
-export async function getMediaTree(dispensarySlug: string) {
-  return withMedia(dispensarySlug, 'Erreur lors du chargement des dossiers', (scope, options) =>
+export async function getMediaTree(businessSlug: string) {
+  return withMedia(businessSlug, 'Erreur lors du chargement des dossiers', (scope, options) =>
     getMediaFolderTree(scope, options),
   );
 }
 
 async function createMediaLibraryFolderUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { parentId: string | null; name: string },
 ) {
-  return withMedia(dispensarySlug, 'Erreur lors de la création du dossier', (scope, options) => {
+  return withMedia(businessSlug, 'Erreur lors de la création du dossier', (scope, options) => {
     const data = z.object({ parentId: nullableIdSchema, name: nameSchema }).parse(input);
     return createMediaFolder(scope, data, options);
   });
 }
 
 async function updateMediaLibraryFolderUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { id: string; name?: string; parentId?: string | null },
 ) {
-  return withMedia(dispensarySlug, 'Erreur lors de la modification du dossier', (scope, options) => {
+  return withMedia(businessSlug, 'Erreur lors de la modification du dossier', (scope, options) => {
     const { id, ...data } = z
       .object({ id: idSchema, name: nameSchema.optional(), parentId: nullableIdSchema.optional() })
       .parse(input);
@@ -103,17 +103,17 @@ async function updateMediaLibraryFolderUnlogged(
   });
 }
 
-async function deleteMediaLibraryFolderUnlogged(dispensarySlug: string, id: string) {
-  return withMedia(dispensarySlug, 'Erreur lors de la suppression du dossier', (scope, options) =>
+async function deleteMediaLibraryFolderUnlogged(businessSlug: string, id: string) {
+  return withMedia(businessSlug, 'Erreur lors de la suppression du dossier', (scope, options) =>
     deleteMediaFolder(scope, idSchema.parse(id), options),
   );
 }
 
 async function requestMediaUploadUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { folderId: string | null; name: string; mimeType: string; size: number },
 ) {
-  return withMedia(dispensarySlug, "Erreur lors de la préparation de l'import", (scope, options) => {
+  return withMedia(businessSlug, "Erreur lors de la préparation de l'import", (scope, options) => {
     const data = z
       .object({
         folderId: nullableIdSchema,
@@ -126,17 +126,17 @@ async function requestMediaUploadUnlogged(
   });
 }
 
-async function completeMediaLibraryUploadUnlogged(dispensarySlug: string, fileId: string) {
-  return withMedia(dispensarySlug, "Erreur lors de la finalisation de l'import", (scope, options) =>
+async function completeMediaLibraryUploadUnlogged(businessSlug: string, fileId: string) {
+  return withMedia(businessSlug, "Erreur lors de la finalisation de l'import", (scope, options) =>
     completeMediaUpload(scope, idSchema.parse(fileId), options),
   );
 }
 
 async function updateMediaLibraryFileUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { id: string; name?: string; folderId?: string | null },
 ) {
-  return withMedia(dispensarySlug, 'Erreur lors de la modification du fichier', (scope, options) => {
+  return withMedia(businessSlug, 'Erreur lors de la modification du fichier', (scope, options) => {
     const { id, ...data } = z
       .object({ id: idSchema, name: nameSchema.optional(), folderId: nullableIdSchema.optional() })
       .parse(input);
@@ -144,45 +144,45 @@ async function updateMediaLibraryFileUnlogged(
   });
 }
 
-async function deleteMediaLibraryFileUnlogged(dispensarySlug: string, id: string) {
-  return withMedia(dispensarySlug, 'Erreur lors de la suppression du fichier', (scope, options) =>
+async function deleteMediaLibraryFileUnlogged(businessSlug: string, id: string) {
+  return withMedia(businessSlug, 'Erreur lors de la suppression du fichier', (scope, options) =>
     deleteMediaFile(scope, idSchema.parse(id), options),
   );
 }
 
-export async function getMediaLibraryDownloadUrl(dispensarySlug: string, id: string) {
-  return withMedia(dispensarySlug, 'Erreur lors du téléchargement', (scope, options) =>
+export async function getMediaLibraryDownloadUrl(businessSlug: string, id: string) {
+  return withMedia(businessSlug, 'Erreur lors du téléchargement', (scope, options) =>
     getMediaDownloadUrl(scope, idSchema.parse(id), options),
   );
 }
 
-async function shareMediaLibraryFileUnlogged(dispensarySlug: string, id: string) {
-  return withMedia(dispensarySlug, 'Erreur lors du partage du fichier', (scope, options) =>
+async function shareMediaLibraryFileUnlogged(businessSlug: string, id: string) {
+  return withMedia(businessSlug, 'Erreur lors du partage du fichier', (scope, options) =>
     shareMediaFile(scope, idSchema.parse(id), options),
   );
 }
 
-async function unshareMediaLibraryFileUnlogged(dispensarySlug: string, id: string) {
-  return withMedia(dispensarySlug, 'Erreur lors de la désactivation du lien', (scope, options) =>
+async function unshareMediaLibraryFileUnlogged(businessSlug: string, id: string) {
+  return withMedia(businessSlug, 'Erreur lors de la désactivation du lien', (scope, options) =>
     unshareMediaFile(scope, idSchema.parse(id), options),
   );
 }
 
 async function createMediaLibraryLinkUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { folderId: string | null; name: string; url: string },
 ) {
-  return withMedia(dispensarySlug, 'Erreur lors de l’ajout du lien', (scope, options) => {
+  return withMedia(businessSlug, 'Erreur lors de l’ajout du lien', (scope, options) => {
     const data = z.object({ folderId: nullableIdSchema, name: linkNameSchema, url: linkUrlSchema }).parse(input);
     return createMediaLink(scope, data, options);
   });
 }
 
 async function updateMediaLibraryLinkUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { id: string; name?: string; url?: string; folderId?: string | null },
 ) {
-  return withMedia(dispensarySlug, 'Erreur lors de la modification du lien', (scope, options) => {
+  return withMedia(businessSlug, 'Erreur lors de la modification du lien', (scope, options) => {
     const { id, ...data } = z
       .object({
         id: idSchema,
@@ -196,31 +196,31 @@ async function updateMediaLibraryLinkUnlogged(
 }
 
 async function moveMediaLibraryItemsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { folderIds: string[]; fileIds: string[]; linkIds: string[]; destinationId: string | null },
 ) {
-  return withMedia(dispensarySlug, 'Erreur lors du déplacement', (scope, options) => {
+  return withMedia(businessSlug, 'Erreur lors du déplacement', (scope, options) => {
     const data = itemsSchema.extend({ destinationId: nullableIdSchema }).parse(input);
     return moveMediaItems(scope, data, options);
   });
 }
 
 async function deleteMediaLibraryItemsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: { folderIds: string[]; fileIds: string[]; linkIds: string[] },
 ) {
-  return withMedia(dispensarySlug, 'Erreur lors de la suppression', (scope, options) =>
+  return withMedia(businessSlug, 'Erreur lors de la suppression', (scope, options) =>
     deleteMediaItems(scope, itemsSchema.parse(input), options),
   );
 }
 
 /** Uploader name for « Informations » (null when the account no longer exists). */
-export async function getMediaUserName(dispensarySlug: string, userId: string) {
+export async function getMediaUserName(businessSlug: string, userId: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, mediaActionAuth);
+    const ctx = await requireTenantServerActionContext(businessSlug, mediaActionAuth);
     if (!ctx.ok) return ctx.response;
     const id = z.string().min(1).max(255).parse(userId);
-    const profile = (await fetchDispensaryUserProfiles(ctx.tenant.dispensaryId, [id])).get(id);
+    const profile = (await fetchBusinessUserProfiles(ctx.tenant.businessId, [id])).get(id);
     return { status: 200, data: profile?.name ?? null };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement de l’utilisateur');

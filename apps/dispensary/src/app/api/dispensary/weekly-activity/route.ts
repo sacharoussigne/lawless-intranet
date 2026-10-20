@@ -1,29 +1,30 @@
 import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
-import { isDispensaryBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/dispensaryWeeklyActivityApiAuth';
-import { dispensaryWeeklyActivityCreateSchema } from '@/lib/dispensaryWeeklyActivity/schemas';
+import { isBusinessBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/businessWeeklyActivityApiAuth';
+import { businessWeeklyActivityBotCreateSchema } from '@/lib/businessWeeklyActivity/schemas';
+import { countersFromBotBody, toBotApiRow } from '@/lib/businessWeeklyActivity/botApiRow';
 import { getAppSettings } from '@/lib/appSettings';
 import {
   applyVisibilityToCreateInput,
   weeklyActivityFieldVisibilityFromSettings,
-} from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import { loadSerializedWeeklyActivityByIdForDispensary } from '@/lib/dispensaryWeeklyActivity/loadSerializedRow';
-import { listSerializedWeeklyActivities } from '@/lib/dispensaryWeeklyActivity/listSerialized';
-import { createDispensaryWeeklyActivityWithHistory } from '@/lib/dispensaryWeeklyActivity/service';
-import { resolveBotDispensaryContext } from '@/lib/dispensaryWeeklyActivity/botRequestContext';
+} from '@/lib/businessWeeklyActivity/fieldVisibility';
+import { loadSerializedWeeklyActivityByIdForBusiness } from '@/lib/businessWeeklyActivity/loadSerializedRow';
+import { listSerializedWeeklyActivities } from '@/lib/businessWeeklyActivity/listSerialized';
+import { createBusinessWeeklyActivityWithHistory } from '@/lib/businessWeeklyActivity/service';
+import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
 }
 
 async function handleGet(request: Request) {
-  const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
-  if (!isDispensaryBotApiAuthorized(req)) {
+  const req = request as Parameters<typeof isBusinessBotApiAuthorized>[0];
+  if (!isBusinessBotApiAuthorized(req)) {
     return jsonError(401, 'Non autorisé');
   }
-  const dispensaryCtx = await resolveBotDispensaryContext(req);
-  if (!dispensaryCtx.ok) {
-    return jsonError(dispensaryCtx.status, dispensaryCtx.error);
+  const businessCtx = await resolveBotBusinessContext(req);
+  if (!businessCtx.ok) {
+    return jsonError(businessCtx.status, businessCtx.error);
   }
   const discordUserId = getDiscordUserIdFromBotRequest(req);
   if (!discordUserId) {
@@ -31,21 +32,24 @@ async function handleGet(request: Request) {
   }
 
   const data = await listSerializedWeeklyActivities(
-    { dispensaryId: dispensaryCtx.dispensaryId, discordUserId },
-    dispensaryCtx.dispensaryId,
+    { businessId: businessCtx.businessId, discordUserId },
+    businessCtx.businessId,
   );
 
-  return NextResponse.json({ status: 200, data });
+  return NextResponse.json({
+    status: 200,
+    data: data.map((row) => toBotApiRow(row, businessCtx.businessType)),
+  });
 }
 
 async function handlePost(request: Request) {
-  const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
-  if (!isDispensaryBotApiAuthorized(req)) {
+  const req = request as Parameters<typeof isBusinessBotApiAuthorized>[0];
+  if (!isBusinessBotApiAuthorized(req)) {
     return jsonError(401, 'Non autorisé');
   }
-  const dispensaryCtx = await resolveBotDispensaryContext(req);
-  if (!dispensaryCtx.ok) {
-    return jsonError(dispensaryCtx.status, dispensaryCtx.error);
+  const businessCtx = await resolveBotBusinessContext(req);
+  if (!businessCtx.ok) {
+    return jsonError(businessCtx.status, businessCtx.error);
   }
   const discordUserId = getDiscordUserIdFromBotRequest(req);
   if (!discordUserId) {
@@ -59,7 +63,7 @@ async function handlePost(request: Request) {
     return jsonError(400, 'Corps JSON invalide');
   }
 
-  const parsed = dispensaryWeeklyActivityCreateSchema.safeParse(body);
+  const parsed = businessWeeklyActivityBotCreateSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(422, parsed.error.issues[0]?.message ?? 'Données invalides');
   }
@@ -69,20 +73,23 @@ async function handlePost(request: Request) {
   }
 
   try {
-    const settings = await getAppSettings(dispensaryCtx.dispensaryId);
+    const settings = await getAppSettings(businessCtx.businessId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
-    const createInput = applyVisibilityToCreateInput(parsed.data, visibility);
+    const createInput = applyVisibilityToCreateInput(
+      { ...parsed.data, counters: countersFromBotBody(businessCtx.businessType, parsed.data) },
+      visibility,
+    );
 
-    const created = await createDispensaryWeeklyActivityWithHistory(createInput, {
+    const created = await createBusinessWeeklyActivityWithHistory(createInput, {
       source: 'DISCORD_BOT',
       actorUserId: null,
       actorDiscordUserId: discordUserId,
-      dispensaryId: dispensaryCtx.dispensaryId,
+      businessId: businessCtx.businessId,
     });
 
-    const data = await loadSerializedWeeklyActivityByIdForDispensary(
+    const data = await loadSerializedWeeklyActivityByIdForBusiness(
       created.id,
-      dispensaryCtx.dispensaryId,
+      businessCtx.businessId,
     );
     if (!data) {
       return jsonError(500, 'Erreur après création');
@@ -90,7 +97,7 @@ async function handlePost(request: Request) {
 
     return NextResponse.json({
       status: 200,
-      data,
+      data: toBotApiRow(data, businessCtx.businessType),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erreur serveur';
@@ -102,11 +109,11 @@ async function handlePost(request: Request) {
 }
 
 export const GET = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.list' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.list' },
   handleGet,
 );
 
 export const POST = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.create' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.create' },
   handlePost,
 );

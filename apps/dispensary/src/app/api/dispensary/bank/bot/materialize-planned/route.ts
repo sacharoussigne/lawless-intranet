@@ -1,9 +1,10 @@
 import { withBotRouteLog } from '@/lib/logs/botRoute';
+import { serviceHost } from '@/lib/serviceHost';
 import { NextResponse } from 'next/server';
 import {
-  isDispensaryBotApiAuthorized,
-  getDispensaryIdFromBotRequest,
-} from '@/lib/dispensaryWeeklyActivityApiAuth';
+  isBusinessBotApiAuthorized,
+  getBusinessIdFromBotRequest,
+} from '@/lib/businessWeeklyActivityApiAuth';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import prisma from '@/lib/prisma';
 import { getBankUrl } from '@lawless-intranet/bank-client';
@@ -18,25 +19,25 @@ function jsonError(status: number, error: string) {
  * Optional query: ?date=YYYY-MM-DD
  */
 async function handlePost(request: Request) {
-  const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
-  if (!isDispensaryBotApiAuthorized(req)) {
+  const req = request as Parameters<typeof isBusinessBotApiAuthorized>[0];
+  if (!isBusinessBotApiAuthorized(req)) {
     return jsonError(401, 'Non autorisé');
   }
 
-  const dispensaryId = getDispensaryIdFromBotRequest(req);
-  if (!dispensaryId) {
+  const businessId = getBusinessIdFromBotRequest(req);
+  if (!businessId) {
     return jsonError(400, 'X-Dispensary-Id requis');
   }
 
-  const dispensary = await prisma.dispensary.findUnique({
-    where: { id: dispensaryId },
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
     select: { id: true },
   });
-  if (!dispensary) {
+  if (!business) {
     return jsonError(404, 'Dispensaire introuvable');
   }
 
-  const featureBlock = await getAppFeatureActionBlock(dispensaryId, 'bank');
+  const featureBlock = await getAppFeatureActionBlock(businessId, 'bank');
   if (featureBlock) {
     return jsonError(featureBlock.status, featureBlock.error);
   }
@@ -57,9 +58,9 @@ async function handlePost(request: Request) {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${botSecret}`,
-      'X-Scope-Type': 'dispensary',
-      'X-Scope-Id': dispensaryId,
-      'X-Dispensary-Id': dispensaryId,
+      'X-Scope-Type': serviceHost.scopeType,
+      'X-Scope-Id': businessId,
+      'X-Dispensary-Id': businessId,
     },
     cache: 'no-store',
   });

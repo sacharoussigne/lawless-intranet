@@ -3,7 +3,7 @@
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import { canEditCabinetFormSchema } from '@/lib/cabinet/access';
 import {
   cabinetDisplaySettingsSchema,
@@ -19,14 +19,14 @@ const updateDisplaySettingsSchema = z.object({
 });
 
 async function loadAndGuardDisplaySettings(
-  dispensarySlug: string,
+  businessSlug: string,
   cabinetId: string,
 ) {
-  const ctx = await getCabinetSessionContext(dispensarySlug);
+  const ctx = await getCabinetSessionContext(businessSlug);
   if (!ctx.ok) return { error: ctx.response };
 
   const canEdit = await canEditCabinetFormSchema(
-    ctx.tenant.dispensaryId,
+    ctx.tenant.businessId,
     cabinetId,
     ctx.session.user.id,
     ctx.session.user.role,
@@ -37,7 +37,7 @@ async function loadAndGuardDisplaySettings(
   }
 
   const cabinet = await prisma.cabinet.findFirst({
-    where: { id: cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
+    where: { id: cabinetId, ...tenantWhere(ctx.tenant.businessId) },
     select: { displaySettings: true, name: true },
   });
   if (!cabinet) {
@@ -52,11 +52,11 @@ async function loadAndGuardDisplaySettings(
 }
 
 export async function getCabinetDisplaySettings(
-  dispensarySlug: string,
+  businessSlug: string,
   cabinetId: string,
 ) {
   try {
-    const loaded = await loadAndGuardDisplaySettings(dispensarySlug, cabinetId);
+    const loaded = await loadAndGuardDisplaySettings(businessSlug, cabinetId);
     if ('error' in loaded && loaded.error) return loaded.error;
 
     const { cabinetName, displaySettings } = loaded as {
@@ -74,18 +74,18 @@ export async function getCabinetDisplaySettings(
 }
 
 async function updateCabinetDisplaySettingsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { cabinetId: string; displaySettings: CabinetDisplaySettings },
 ) {
   try {
     const validated = updateDisplaySettingsSchema.parse(data);
-    const loaded = await loadAndGuardDisplaySettings(dispensarySlug, validated.cabinetId);
+    const loaded = await loadAndGuardDisplaySettings(businessSlug, validated.cabinetId);
     if ('error' in loaded && loaded.error) return loaded.error;
 
     const { ctx } = loaded as { ctx: NonNullable<typeof loaded.ctx> };
 
     await prisma.cabinet.update({
-      where: { id: validated.cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
+      where: { id: validated.cabinetId, ...tenantWhere(ctx.tenant.businessId) },
       data: { displaySettings: validated.displaySettings as object },
     });
 

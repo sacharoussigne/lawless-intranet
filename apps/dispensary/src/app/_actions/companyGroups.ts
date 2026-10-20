@@ -32,7 +32,7 @@ const deleteCompanyGroupSchema = z.object({
 });
 
 async function createCompanyGroupUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     description?: string;
@@ -40,13 +40,13 @@ async function createCompanyGroupUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createCompanyGroupSchema.parse(data);
     const companyGroup = await createCompanyGroupClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -56,14 +56,14 @@ async function createCompanyGroupUnlogged(
   }
 }
 
-export async function getCompanyGroupsForSelect(dispensarySlug: string) {
+export async function getCompanyGroupsForSelect(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const companyGroups = await listCompanyGroupsForSelect(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -73,14 +73,14 @@ export async function getCompanyGroupsForSelect(dispensarySlug: string) {
   }
 }
 
-export async function getCompanyGroupsForOrders(dispensarySlug: string) {
+export async function getCompanyGroupsForOrders(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const companyGroups = await listCompanyGroupsForOrders(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -90,14 +90,14 @@ export async function getCompanyGroupsForOrders(dispensarySlug: string) {
   }
 }
 
-export async function getCompanyGroups(dispensarySlug: string) {
+export async function getCompanyGroups(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const companyGroups = await listCompanyGroups(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -108,7 +108,7 @@ export async function getCompanyGroups(dispensarySlug: string) {
 }
 
 async function updateCompanyGroupUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -117,14 +117,14 @@ async function updateCompanyGroupUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateCompanyGroupSchema.parse(data);
     const companyGroup = await updateCompanyGroupClient(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: validatedData.id,
         name: validatedData.name,
         description: validatedData.description,
@@ -139,15 +139,15 @@ async function updateCompanyGroupUnlogged(
   }
 }
 
-async function deleteCompanyGroupUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteCompanyGroupUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteCompanyGroupSchema.parse(data);
     await deleteCompanyGroupClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 

@@ -1,14 +1,17 @@
 import type { PrismaClient } from '@prisma/client';
 import { lookupDiscordIdsByUserIds } from '@/lib/people/accountLinks';
-import { getLatestDiscordDisplayName } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import { getLatestDiscordDisplayName } from '@/lib/businessWeeklyActivity/resolveDisplayName';
 import { applyFixedNames, pickProfileDisplayName } from '@/lib/people/displayName';
-
-type ProfileDb = Pick<PrismaClient, 'dispensaryDiscordProfile'>;
+import {
+  findBusinessProfile,
+  personInBusiness,
+  type ProfileDb,
+} from '@/lib/businessDiscordProfile/queries';
 
 /** Fixed names of intranet accounts (userId → name), through their Discord profile. */
 export async function loadFixedNamesForUsers(
   client: ProfileDb,
-  dispensaryId: string,
+  businessId: string,
   userIds: string[],
 ): Promise<Map<string, string>> {
   const unique = [...new Set(userIds.filter(Boolean))];
@@ -22,9 +25,9 @@ export async function loadFixedNamesForUsers(
     (id): id is string => Boolean(id),
   );
 
-  const profiles = await client.dispensaryDiscordProfile.findMany({
+  const profiles = await client.person.findMany({
     where: {
-      dispensaryId,
+      ...personInBusiness(businessId),
       fixedDisplayName: { not: null },
       OR: [
         { discordUserId: { in: currentDiscordIds } },
@@ -54,13 +57,13 @@ export async function loadFixedNamesForUsers(
  * person when there is one, the SSO name otherwise. Best effort: if the auth
  * service does not answer, the SSO names are kept.
  */
-export async function applyDispensaryNamesToUsers<T extends { name: string }>(
+export async function applyBusinessNamesToUsers<T extends { name: string }>(
   client: ProfileDb,
-  dispensaryId: string,
+  businessId: string,
   usersById: Map<string, T>,
 ): Promise<Map<string, T>> {
   try {
-    const fixed = await loadFixedNamesForUsers(client, dispensaryId, [...usersById.keys()]);
+    const fixed = await loadFixedNamesForUsers(client, businessId, [...usersById.keys()]);
     return applyFixedNames(usersById, fixed);
   } catch {
     return usersById;
@@ -72,32 +75,29 @@ export async function applyDispensaryNamesToUsers<T extends { name: string }>(
  * its profile or rows here, then `fallback` (SSO name, « Médecin <id> »…).
  */
 export async function resolveDiscordPersonName(
-  client: ProfileDb & Pick<PrismaClient, 'dispensaryWeeklyActivity'>,
-  dispensaryId: string,
+  client: ProfileDb & Pick<PrismaClient, 'businessWeeklyActivity'>,
+  businessId: string,
   discordUserId: string,
   fallback: string,
 ): Promise<string> {
   const [profile, latest] = await Promise.all([
-    client.dispensaryDiscordProfile.findUnique({
-      where: { dispensaryId_discordUserId: { dispensaryId, discordUserId } },
-      select: { fixedDisplayName: true, lastDisplayName: true },
-    }),
-    getLatestDiscordDisplayName(client, dispensaryId, discordUserId),
+    findBusinessProfile(client, businessId, discordUserId),
+    getLatestDiscordDisplayName(client, businessId, discordUserId),
   ]);
   return pickProfileDisplayName(profile, latest ?? fallback);
 }
 
 /** Accounts whose name in this dispensary (fixed or bot name) contains `query`: pickers find people by it too. */
-export async function findUserIdsByDispensaryName(
+export async function findUserIdsByBusinessName(
   client: ProfileDb,
-  dispensaryId: string,
+  businessId: string,
   query: string,
 ): Promise<string[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const profiles = await client.dispensaryDiscordProfile.findMany({
+  const profiles = await client.person.findMany({
     where: {
-      dispensaryId,
+      ...personInBusiness(businessId),
       userId: { not: null },
       OR: [
         { fixedDisplayName: { contains: q, mode: 'insensitive' } },

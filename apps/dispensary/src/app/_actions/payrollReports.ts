@@ -1,11 +1,11 @@
 'use server';
 
-import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { mergeResolvedDisplayNames } from '@/lib/dispensaryWeeklyActivity/resolveDisplayName';
+import { tenantWhere } from '@/lib/business/tenantWhere';
+import { mergeResolvedDisplayNames } from '@/lib/businessWeeklyActivity/resolveDisplayName';
 import {
   PAYROLL_CAISSE_SALE_USD,
   PAYROLL_CAISSE_USD,
@@ -15,7 +15,8 @@ import {
   isPayrollReportType,
 } from '@/lib/payroll/constants';
 import { mergeHtmlAndWeeklyActivity, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
-import { attachDiscordProfilesToActivities } from '@/lib/dispensaryDiscordProfile/attachProfiles';
+import { weeklyCounterDefinitions } from '@/lib/businessWeeklyActivity/counters';
+import { attachDiscordProfilesToActivities } from '@/lib/businessDiscordProfile/attachProfiles';
 import { type ParsedPayrollTable, parsePayrollHtmlTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import { weekRangeFromIsoDate } from '@/lib/payroll/week';
@@ -29,10 +30,11 @@ import { actionErrorParser } from '@/lib/action';
 import { reportServerError } from '@/lib/logs/errorReporter';
 import { withLoggedAction } from '@/lib/logs/writer';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
+import { findBusinessProfiles } from '@/lib/businessDiscordProfile/queries';
 import {
   toPayrollEmployeeRole,
   type PayrollEmployeeRole,
-} from '@/lib/dispensaryDiscordProfile/constants';
+} from '@/lib/businessDiscordProfile/constants';
 
 const MAX_CAISSE_PRICE_USD = 1_000_000;
 const MAX_HTML_CHARS = 600_000;
@@ -68,13 +70,13 @@ const payrollCreateGuardOptions = {
   },
 };
 
-export async function listPayrollReports(dispensarySlug: string) {
-  const ctx = await requireTenantServerActionContext(dispensarySlug, payrollViewGuardOptions);
+export async function listPayrollReports(businessSlug: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollViewGuardOptions);
   if (!ctx.ok) return ctx.response;
-  const { dispensaryId } = ctx.tenant;
+  const { businessId } = ctx.tenant;
 
   const rows = await prisma.payrollWeeklyReport.findMany({
-    where: tenantWhere(dispensaryId),
+    where: tenantWhere(businessId),
     orderBy: [{ weekStart: 'desc' }, { reportType: 'asc' }],
     take: PAYROLL_LIST_LIMIT,
     select: {
@@ -88,8 +90,8 @@ export async function listPayrollReports(dispensarySlug: string) {
     },
   });
 
-  const creatorsById = await fetchDispensaryUserProfiles(
-    dispensaryId,
+  const creatorsById = await fetchBusinessUserProfiles(
+    businessId,
     rows.map((row) => row.createdById),
   );
 
@@ -109,13 +111,13 @@ export async function listPayrollReports(dispensarySlug: string) {
   return { status: 200, data: { reports } };
 }
 
-export async function getPayrollReportById(dispensarySlug: string, id: string) {
-  const ctx = await requireTenantServerActionContext(dispensarySlug, payrollViewGuardOptions);
+export async function getPayrollReportById(businessSlug: string, id: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollViewGuardOptions);
   if (!ctx.ok) return ctx.response;
-  const { dispensaryId } = ctx.tenant;
+  const { businessId } = ctx.tenant;
 
   const report = await prisma.payrollWeeklyReport.findFirst({
-    where: { id, ...tenantWhere(dispensaryId) },
+    where: { id, ...tenantWhere(businessId) },
   });
 
   if (!report) {
@@ -123,7 +125,7 @@ export async function getPayrollReportById(dispensarySlug: string, id: string) {
   }
 
   const creator = (
-    await fetchDispensaryUserProfiles(dispensaryId, [report.createdById])
+    await fetchBusinessUserProfiles(businessId, [report.createdById])
   ).get(report.createdById);
 
   const serialized: SerializedPayrollReportDetail = {
@@ -143,10 +145,10 @@ export async function getPayrollReportById(dispensarySlug: string, id: string) {
   return { status: 200, data: { report: serialized } };
 }
 
-async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formData: FormData) {
-  const ctx = await requireTenantServerActionContext(dispensarySlug, payrollCreateGuardOptions);
+async function createPayrollReportFromFormUnlogged(businessSlug: string, formData: FormData) {
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollCreateGuardOptions);
   if (!ctx.ok) return ctx.response;
-  const { dispensaryId } = ctx.tenant;
+  const { businessId } = ctx.tenant;
 
   const weekRef = formData.get('weekStart');
   const weekStartStr = typeof weekRef === 'string' ? weekRef : null;
@@ -249,20 +251,24 @@ async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formD
     const range = weekRangeFromIsoDate(waWeekStartStr ?? weekStartStr);
     waImportStart = range.weekStart;
     waImportEnd = range.weekEnd;
-    const rawActivities = await prisma.dispensaryWeeklyActivity.findMany({
+    const rawActivities = await prisma.businessWeeklyActivity.findMany({
       where: {
         periodStart: waImportStart,
         periodEnd: waImportEnd,
-        ...tenantWhere(dispensaryId),
+        ...tenantWhere(businessId),
       },
     });
     activitiesWithNames = (await attachDiscordProfilesToActivities(
       prisma,
-      (await mergeResolvedDisplayNames(prisma, dispensaryId, rawActivities)) as WaRow[],
+      (await mergeResolvedDisplayNames(prisma, businessId, rawActivities)) as WaRow[],
     )) as WaRow[];
   }
 
-  const employeesMerged = mergeHtmlAndWeeklyActivity(parsed, activitiesWithNames);
+  const employeesMerged = mergeHtmlAndWeeklyActivity(
+    parsed,
+    activitiesWithNames,
+    weeklyCounterDefinitions(ctx.tenant.business.type),
+  );
 
   // No HTML and nothing imported: the report starts empty, people are added on its page.
 
@@ -270,8 +276,8 @@ async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formD
 
   const existing = await prisma.payrollWeeklyReport.findUnique({
     where: {
-      dispensaryId_weekStart_reportType: {
-        dispensaryId,
+      businessId_weekStart_reportType: {
+        businessId,
         weekStart,
         reportType,
       },
@@ -306,7 +312,7 @@ async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formD
     await prisma.payrollWeeklyReport.create({
       data: {
         id: reportId,
-        dispensaryId,
+        businessId,
         weekStart,
         weekEnd,
         reportType,
@@ -319,11 +325,11 @@ async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formD
     return { status: 200, data: { id: reportId } };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
-    reportServerError({ error: e, status: 500, message: msg, feature: 'payroll', dispensaryId });
+    reportServerError({ error: e, status: 500, message: msg, feature: 'payroll', businessId });
     await prisma.payrollWeeklyReport.create({
       data: {
         id: reportId,
-        dispensaryId,
+        businessId,
         weekStart,
         weekEnd,
         reportType,
@@ -336,28 +342,28 @@ async function createPayrollReportFromFormUnlogged(dispensarySlug: string, formD
 }
 
 async function updatePayrollReportResultJsonUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   resultJson: unknown,
 ) {
   try {
-    return await updatePayrollReportResultJsonInner(dispensarySlug, id, resultJson);
+    return await updatePayrollReportResultJsonInner(businessSlug, id, resultJson);
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la modification du rapport de paie');
   }
 }
 
 async function updatePayrollReportResultJsonInner(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   resultJson: unknown,
 ) {
-  const ctx = await requireTenantServerActionContext(dispensarySlug, payrollCreateGuardOptions);
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollCreateGuardOptions);
   if (!ctx.ok) return ctx.response;
-  const { dispensaryId } = ctx.tenant;
+  const { businessId } = ctx.tenant;
 
   const existing = await prisma.payrollWeeklyReport.findFirst({
-    where: { id, ...tenantWhere(dispensaryId) },
+    where: { id, ...tenantWhere(businessId) },
     select: { id: true, errorMessage: true, resultJson: true },
   });
 
@@ -388,21 +394,21 @@ async function updatePayrollReportResultJsonInner(
   return { status: 200, data: { resultJson: recalculated } };
 }
 
-async function deletePayrollReportUnlogged(dispensarySlug: string, id: string) {
+async function deletePayrollReportUnlogged(businessSlug: string, id: string) {
   try {
-    return await deletePayrollReportInner(dispensarySlug, id);
+    return await deletePayrollReportInner(businessSlug, id);
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression du rapport de paie');
   }
 }
 
-async function deletePayrollReportInner(dispensarySlug: string, id: string) {
-  const ctx = await requireTenantServerActionContext(dispensarySlug, payrollCreateGuardOptions);
+async function deletePayrollReportInner(businessSlug: string, id: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollCreateGuardOptions);
   if (!ctx.ok) return ctx.response;
-  const { dispensaryId } = ctx.tenant;
+  const { businessId } = ctx.tenant;
 
   const report = await prisma.payrollWeeklyReport.findFirst({
-    where: { id, ...tenantWhere(dispensaryId) },
+    where: { id, ...tenantWhere(businessId) },
     select: { id: true },
   });
 
@@ -415,14 +421,14 @@ async function deletePayrollReportInner(dispensarySlug: string, id: string) {
   return { status: 200 };
 }
 
-export async function listPayrollImportableActivityWeeks(dispensarySlug: string) {
-  const ctx = await requireTenantServerActionContext(dispensarySlug, payrollCreateGuardOptions);
+export async function listPayrollImportableActivityWeeks(businessSlug: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollCreateGuardOptions);
   if (!ctx.ok) return ctx.response;
-  const { dispensaryId } = ctx.tenant;
+  const { businessId } = ctx.tenant;
 
-  const groups = await prisma.dispensaryWeeklyActivity.groupBy({
+  const groups = await prisma.businessWeeklyActivity.groupBy({
     by: ['periodStart', 'periodEnd'],
-    where: tenantWhere(dispensaryId),
+    where: tenantWhere(businessId),
     _count: { _all: true },
     orderBy: { periodStart: 'desc' },
     take: 52,
@@ -448,25 +454,15 @@ export type PayrollPerson = {
   accountNumber: number | null;
 };
 
-/** People of the dispensary (Gestion › Personnes) offered when adding someone to a report. */
-export async function listPayrollPeople(dispensarySlug: string) {
-  const ctx = await requireTenantServerActionContext(dispensarySlug, payrollCreateGuardOptions);
+/** People of the business (Gestion › Personnes) offered when adding someone to a report. */
+export async function listPayrollPeople(businessSlug: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, payrollCreateGuardOptions);
   if (!ctx.ok) return ctx.response;
-  const { dispensaryId } = ctx.tenant;
+  const { businessId } = ctx.tenant;
 
-  const profiles = await prisma.dispensaryDiscordProfile.findMany({
-    where: { dispensaryId },
-    select: {
-      discordUserId: true,
-      fixedDisplayName: true,
-      lastDisplayName: true,
-      role: true,
-      accountNumber: true,
-      userId: true,
-    },
-  });
-  const accounts = await fetchDispensaryUserProfiles(
-    dispensaryId,
+  const profiles = await findBusinessProfiles(prisma, businessId);
+  const accounts = await fetchBusinessUserProfiles(
+    businessId,
     profiles.map((p) => p.userId).filter((id): id is string => Boolean(id)),
   );
 
@@ -502,7 +498,7 @@ function summarizePayrollForm(formData: FormData): Record<string, unknown> {
   return summary;
 }
 
-export async function createPayrollReportFromForm(dispensarySlug: string, formData: FormData) {
+export async function createPayrollReportFromForm(businessSlug: string, formData: FormData) {
   return withLoggedAction(
     {
       feature: 'payroll',
@@ -510,13 +506,13 @@ export async function createPayrollReportFromForm(dispensarySlug: string, formDa
       label: 'Création d’un rapport de paie',
       context: summarizePayrollForm(formData),
     },
-    () => createPayrollReportFromFormUnlogged(dispensarySlug, formData),
+    () => createPayrollReportFromFormUnlogged(businessSlug, formData),
     (result) => ('data' in result && result.data ? { context: result.data } : undefined),
   );
 }
 
 export async function updatePayrollReportResultJson(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   resultJson: unknown,
 ) {
@@ -527,11 +523,11 @@ export async function updatePayrollReportResultJson(
       label: 'Modification d’un rapport de paie',
       context: { id },
     },
-    () => updatePayrollReportResultJsonUnlogged(dispensarySlug, id, resultJson),
+    () => updatePayrollReportResultJsonUnlogged(businessSlug, id, resultJson),
   );
 }
 
-export async function deletePayrollReport(dispensarySlug: string, id: string) {
+export async function deletePayrollReport(businessSlug: string, id: string) {
   return withLoggedAction(
     {
       feature: 'payroll',
@@ -539,6 +535,6 @@ export async function deletePayrollReport(dispensarySlug: string, id: string) {
       label: 'Suppression d’un rapport de paie',
       context: { id },
     },
-    () => deletePayrollReportUnlogged(dispensarySlug, id),
+    () => deletePayrollReportUnlogged(businessSlug, id),
   );
 }

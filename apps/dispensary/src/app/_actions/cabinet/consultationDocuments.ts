@@ -1,6 +1,6 @@
 'use server';
 
-import { getDispensaryUserName } from '@/lib/people/userProfiles';
+import { getBusinessUserName } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -17,8 +17,8 @@ import {
   renderTemplate,
 } from '@lawless-intranet/mail-template-engine';
 import prisma from '@/lib/prisma';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
-import { getMemberDescription } from '@/lib/dispensary/memberDescription';
+import { tenantWhere } from '@/lib/business/tenantWhere';
+import { getMemberDescription } from '@/lib/business/memberDescription';
 import {
   getCabinetSessionContext,
   guardCabinetRead,
@@ -80,13 +80,13 @@ type ConsultationDocumentSource = {
 };
 
 async function getConsultationDocumentSource(
-  dispensaryId: string,
+  businessId: string,
   consultationId: string,
 ): Promise<ConsultationDocumentSource | null> {
   const consultation = await prisma.consultation.findFirst({
     where: {
       id: consultationId,
-      careEpisode: { patient: { cabinet: tenantWhere(dispensaryId) } },
+      careEpisode: { patient: { cabinet: tenantWhere(businessId) } },
     },
     select: {
       id: true,
@@ -158,20 +158,20 @@ function mapDocument(
 }
 
 export async function listConsultationDocuments(
-  dispensarySlug: string,
+  businessSlug: string,
   consultationId: string,
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
-    const source = await getConsultationDocumentSource(ctx.tenant.dispensaryId, consultationId);
+    const source = await getConsultationDocumentSource(ctx.tenant.businessId, consultationId);
     if (!source) {
       return { status: 404, error: 'Consultation introuvable' };
     }
 
     const guard = await guardCabinetRead(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       source.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -184,7 +184,7 @@ export async function listConsultationDocuments(
     const result = await listDocuments(
       {
         type: CONSULTATION_DOCUMENT_TYPE,
-        scopeId: ctx.tenant.dispensaryId,
+        scopeId: ctx.tenant.businessId,
         pageSize: 50,
       },
       { cookieHeader },
@@ -205,7 +205,7 @@ export async function listConsultationDocuments(
 }
 
 async function createFreeTextConsultationDocumentUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     consultationId: string;
     name: string;
@@ -214,11 +214,11 @@ async function createFreeTextConsultationDocumentUnlogged(
 ) {
   try {
     const validated = createFreeTextSchema.parse(data);
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const source = await getConsultationDocumentSource(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.consultationId,
     );
     if (!source) {
@@ -226,7 +226,7 @@ async function createFreeTextConsultationDocumentUnlogged(
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       source.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -239,7 +239,7 @@ async function createFreeTextConsultationDocumentUnlogged(
     const document = await createDocument(
       {
         type: CONSULTATION_DOCUMENT_TYPE,
-        scopeId: ctx.tenant.dispensaryId,
+        scopeId: ctx.tenant.businessId,
         name: validated.name,
         content: validated.content,
         metadata: buildConsultationDocumentMetadata({
@@ -263,7 +263,7 @@ async function createFreeTextConsultationDocumentUnlogged(
 }
 
 async function createConsultationDocumentFromTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     consultationId: string;
     templateId: string;
@@ -273,11 +273,11 @@ async function createConsultationDocumentFromTemplateUnlogged(
 ) {
   try {
     const validated = createFromTemplateSchema.parse(data);
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const source = await getConsultationDocumentSource(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.consultationId,
     );
     if (!source) {
@@ -285,7 +285,7 @@ async function createConsultationDocumentFromTemplateUnlogged(
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       source.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -308,14 +308,14 @@ async function createConsultationDocumentFromTemplateUnlogged(
       typeof (template.metadata as Record<string, unknown> | null | undefined)?.cabinetId ===
         'string' &&
       (template.metadata as Record<string, unknown>).cabinetId === source.cabinetId;
-    if (template.scopeId !== ctx.tenant.dispensaryId || template.type !== 'consultation-document-template' || !isSameCabinet) {
+    if (template.scopeId !== ctx.tenant.businessId || template.type !== 'consultation-document-template' || !isSameCabinet) {
       return { status: 404, error: 'Template introuvable' };
     }
 
     const document = await createDocument(
       {
         type: CONSULTATION_DOCUMENT_TYPE,
-        scopeId: ctx.tenant.dispensaryId,
+        scopeId: ctx.tenant.businessId,
         name: validated.name,
         content: validated.content,
         metadata: buildConsultationDocumentMetadata({
@@ -340,7 +340,7 @@ async function createConsultationDocumentFromTemplateUnlogged(
 }
 
 async function updateConsultationDocumentUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     consultationId: string;
@@ -350,11 +350,11 @@ async function updateConsultationDocumentUnlogged(
 ) {
   try {
     const validated = updateDocumentSchema.parse(data);
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const source = await getConsultationDocumentSource(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.consultationId,
     );
     if (!source) {
@@ -362,7 +362,7 @@ async function updateConsultationDocumentUnlogged(
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       source.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -375,7 +375,7 @@ async function updateConsultationDocumentUnlogged(
     const existing = await getDocument(validated.id, { cookieHeader });
     const metadata = parseConsultationDocumentMetadata(existing.metadata);
     if (
-      existing.scopeId !== ctx.tenant.dispensaryId ||
+      existing.scopeId !== ctx.tenant.businessId ||
       existing.type !== CONSULTATION_DOCUMENT_TYPE ||
       metadata?.consultationId !== validated.consultationId
     ) {
@@ -402,16 +402,16 @@ async function updateConsultationDocumentUnlogged(
 }
 
 async function deleteConsultationDocumentUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string; consultationId: string },
 ) {
   try {
     const validated = deleteDocumentSchema.parse(data);
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const source = await getConsultationDocumentSource(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.consultationId,
     );
     if (!source) {
@@ -419,7 +419,7 @@ async function deleteConsultationDocumentUnlogged(
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       source.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -432,7 +432,7 @@ async function deleteConsultationDocumentUnlogged(
     const existing = await getDocument(validated.id, { cookieHeader });
     const metadata = parseConsultationDocumentMetadata(existing.metadata);
     if (
-      existing.scopeId !== ctx.tenant.dispensaryId ||
+      existing.scopeId !== ctx.tenant.businessId ||
       existing.type !== CONSULTATION_DOCUMENT_TYPE ||
       metadata?.consultationId !== validated.consultationId
     ) {
@@ -450,7 +450,7 @@ async function deleteConsultationDocumentUnlogged(
 }
 
 export async function generateConsultationDocumentPreview(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { consultationId: string; templateId: string },
 ) {
   try {
@@ -461,11 +461,11 @@ export async function generateConsultationDocumentPreview(
       })
       .parse(data);
 
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const source = await getConsultationDocumentSource(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       validated.consultationId,
     );
     if (!source) {
@@ -473,7 +473,7 @@ export async function generateConsultationDocumentPreview(
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       source.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -491,7 +491,7 @@ export async function generateConsultationDocumentPreview(
         : null;
 
     if (
-      template.scopeId !== ctx.tenant.dispensaryId ||
+      template.scopeId !== ctx.tenant.businessId ||
       template.type !== 'consultation-document-template' ||
       templateCabinetId !== source.cabinetId
     ) {
@@ -517,13 +517,13 @@ export async function generateConsultationDocumentPreview(
       },
     });
     const memberDescription =
-      (await getMemberDescription(ctx.tenant.dispensaryId, ctx.session.user.id)) ?? '';
+      (await getMemberDescription(ctx.tenant.businessId, ctx.session.user.id)) ?? '';
     const preview = renderTemplate(
       template.content,
       buildUserTemplateRenderContext({
         inputs: {},
-        username: await getDispensaryUserName(
-          ctx.tenant.dispensaryId,
+        username: await getBusinessUserName(
+          ctx.tenant.businessId,
           ctx.session.user.id,
           ctx.session.user.name || 'Utilisateur',
         ),

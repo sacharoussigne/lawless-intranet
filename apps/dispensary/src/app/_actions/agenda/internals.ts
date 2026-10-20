@@ -1,11 +1,11 @@
 import { requireTenantServerActionContext, type AuthSession } from '@/lib/serverActionAuth';
-import { applyDispensaryNamesToUsers, findUserIdsByDispensaryName } from '@/lib/people/resolveNames';
+import { applyBusinessNamesToUsers, findUserIdsByBusinessName } from '@/lib/people/resolveNames';
 import prisma from '@/lib/prisma';
-import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { isPlatformAdmin } from '@/lib/business/platformAdmin';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import { batchGetUsers, searchUsers } from '@lawless-intranet/auth-client/server';
 import { getCookieHeader } from '@/lib/authUsers';
-import { isDispensaryAdminRole } from '@/lib/agenda/access';
+import { isBusinessAdminRole } from '@/lib/agenda/access';
 
 export type AgendaEligibleUser = {
   id: string;
@@ -14,8 +14,8 @@ export type AgendaEligibleUser = {
   image: string | null;
 };
 
-export async function searchEligibleDispensaryUsersForAgenda(
-  dispensaryId: string,
+export async function searchEligibleBusinessUsersForAgenda(
+  businessId: string,
   query: string,
 ): Promise<AgendaEligibleUser[]> {
   const q = query.trim();
@@ -24,13 +24,13 @@ export async function searchEligibleDispensaryUsersForAgenda(
   }
 
   const cookieHeader = await getCookieHeader();
-  const [members, matchingUsers, matchingByDispensaryName] = await Promise.all([
-    prisma.dispensaryMember.findMany({
-      where: { dispensaryId },
+  const [members, matchingUsers, matchingByBusinessName] = await Promise.all([
+    prisma.businessMember.findMany({
+      where: { businessId },
       select: { userId: true },
     }),
     searchUsers(q, cookieHeader),
-    findUserIdsByDispensaryName(prisma, dispensaryId, q),
+    findUserIdsByBusinessName(prisma, businessId, q),
   ]);
 
   const memberIds = new Set(members.map((member) => member.userId));
@@ -44,13 +44,13 @@ export async function searchEligibleDispensaryUsersForAgenda(
     }
   }
   // Members found by their name in the dispensary (fixed name), not only their account name.
-  for (const userId of matchingByDispensaryName) {
+  for (const userId of matchingByBusinessName) {
     if (memberIds.has(userId)) candidateIds.add(userId);
   }
 
-  const profiles = await applyDispensaryNamesToUsers(
+  const profiles = await applyBusinessNamesToUsers(
     prisma,
-    dispensaryId,
+    businessId,
     new Map((await batchGetUsers([...candidateIds], cookieHeader)).map((user) => [user.id, user])),
   );
 
@@ -65,14 +65,14 @@ export async function searchEligibleDispensaryUsersForAgenda(
     .slice(0, 20);
 }
 
-export async function requireAgendaFeatureContext(dispensarySlug: string) {
-  return requireTenantServerActionContext(dispensarySlug, {
+export async function requireAgendaFeatureContext(businessSlug: string) {
+  return requireTenantServerActionContext(businessSlug, {
     feature: 'agenda',
   });
 }
 
-export async function getAgendaSessionContext(dispensarySlug: string) {
-  const ctx = await requireAgendaFeatureContext(dispensarySlug);
+export async function getAgendaSessionContext(businessSlug: string) {
+  const ctx = await requireAgendaFeatureContext(businessSlug);
   if (!ctx.ok) return ctx;
   return {
     ok: true as const,
@@ -85,11 +85,11 @@ export function isScopeAdmin(
   session: AuthSession,
   effectiveRole: string | null | undefined,
 ): boolean {
-  return isDispensaryAdminRole(session.user.role, effectiveRole);
+  return isBusinessAdminRole(session.user.role, effectiveRole);
 }
 
-export async function validateDispensaryUserIds(
-  dispensaryId: string,
+export async function validateBusinessUserIds(
+  businessId: string,
   userIds: string[],
 ): Promise<boolean> {
   if (userIds.length === 0) return true;
@@ -104,9 +104,9 @@ export async function validateDispensaryUserIds(
 
   if (memberRequiredIds.length === 0) return true;
 
-  const memberCount = await prisma.dispensaryMember.count({
+  const memberCount = await prisma.businessMember.count({
     where: {
-      ...tenantWhere(dispensaryId),
+      ...tenantWhere(businessId),
       userId: { in: memberRequiredIds },
     },
   });

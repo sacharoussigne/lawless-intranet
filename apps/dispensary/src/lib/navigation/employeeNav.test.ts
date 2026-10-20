@@ -19,7 +19,7 @@ function permissions(granted: {
   return {
     stock: { view: granted.stock ?? false },
     stockStatistics: { view: granted.stats ?? false },
-    weeklyDispensaryActivity: { view: granted.weekly ?? false },
+    weeklyActivity: { view: granted.weekly ?? false },
     sales: { viewAll: granted.sales ?? false },
     payrollReports: { view: granted.payroll ?? false },
     orders: { view: others },

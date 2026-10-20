@@ -42,16 +42,16 @@ export type ChestStockCheckFormResponse = {
   config: ChestStockCheckConfigDTO | null;
 };
 
-export async function getChestStockCheckForm(dispensarySlug: string, chestId: string) {
+export async function getChestStockCheckForm(businessSlug: string, chestId: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       permission: { resource: 'application', action: 'management' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const data = await getChestStockCheckConfigsClient(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -66,16 +66,16 @@ export async function getChestStockCheckForm(dispensarySlug: string, chestId: st
   }
 }
 
-export async function getChestStockCheckConfigs(dispensarySlug: string) {
+export async function getChestStockCheckConfigs(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       permission: { resource: 'application', action: 'management' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const payload = await getChestStockCheckConfigsClient(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -86,7 +86,7 @@ export async function getChestStockCheckConfigs(dispensarySlug: string) {
 }
 
 async function upsertChestStockCheckConfigUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: {
     chestId: string;
     isEnabled: boolean;
@@ -94,15 +94,15 @@ async function upsertChestStockCheckConfigUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       permission: { resource: 'application', action: 'management' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = upsertChestStockCheckConfigSchema.parse(input);
     const config = await upsertChestStockCheckConfigClient(
-      { ...inventoryScope(dispensaryId), ...validated },
+      { ...inventoryScope(businessId), ...validated },
       await inventoryCookie(),
     );
 
@@ -117,16 +117,16 @@ export type StockChecksSummary = {
   configsByChestId: Record<string, ChestStockCheckConfigDTO>;
 };
 
-export async function getStockChecksSummary(dispensarySlug: string) {
+export async function getStockChecksSummary(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       permission: { resource: 'stock', action: 'view' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const payload = await getStockChecksSummaryClient(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 

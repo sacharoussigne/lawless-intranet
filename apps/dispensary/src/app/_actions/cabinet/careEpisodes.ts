@@ -3,7 +3,7 @@
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import type { CareEpisodeSummaryDTO } from '@/types/cabinet';
 import {
   createCareEpisodeSchema,
@@ -24,15 +24,15 @@ import {
 } from '@/lib/cabinet/formSchema';
 import { parseCabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 
-export async function listCareEpisodes(dispensarySlug: string, patientId: string) {
+export async function listCareEpisodes(businessSlug: string, patientId: string) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const patient = await prisma.cabinetPatient.findFirst({
       where: {
         id: patientId,
-        cabinet: tenantWhere(ctx.tenant.dispensaryId),
+        cabinet: tenantWhere(ctx.tenant.businessId),
       },
       select: { cabinetId: true },
     });
@@ -41,7 +41,7 @@ export async function listCareEpisodes(dispensarySlug: string, patientId: string
     }
 
     const guard = await guardCabinetRead(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       patient.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -71,15 +71,15 @@ export async function listCareEpisodes(dispensarySlug: string, patientId: string
   }
 }
 
-export async function getCareEpisode(dispensarySlug: string, episodeId: string) {
+export async function getCareEpisode(businessSlug: string, episodeId: string) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const episode = await prisma.careEpisode.findFirst({
       where: {
         id: episodeId,
-        patient: { cabinet: tenantWhere(ctx.tenant.dispensaryId) },
+        patient: { cabinet: tenantWhere(ctx.tenant.businessId) },
       },
       include: {
         patient: {
@@ -100,7 +100,7 @@ export async function getCareEpisode(dispensarySlug: string, episodeId: string) 
     }
 
     const guard = await guardCabinetRead(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       episode.patient.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -125,7 +125,7 @@ export async function getCareEpisode(dispensarySlug: string, episodeId: string) 
 }
 
 async function createCareEpisodeUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     patientId: string;
     motif: string;
@@ -134,7 +134,7 @@ async function createCareEpisodeUnlogged(
   },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = createCareEpisodeSchema.parse(data);
@@ -142,7 +142,7 @@ async function createCareEpisodeUnlogged(
     const patient = await prisma.cabinetPatient.findFirst({
       where: {
         id: validated.patientId,
-        cabinet: tenantWhere(ctx.tenant.dispensaryId),
+        cabinet: tenantWhere(ctx.tenant.businessId),
       },
       include: { cabinet: { select: { formSchemas: true } } },
     });
@@ -151,7 +151,7 @@ async function createCareEpisodeUnlogged(
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       patient.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -187,7 +187,7 @@ async function createCareEpisodeUnlogged(
 }
 
 async function updateCareEpisodeUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     patientId: string;
@@ -197,7 +197,7 @@ async function updateCareEpisodeUnlogged(
   },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateCareEpisodeSchema.parse(data);
@@ -206,7 +206,7 @@ async function updateCareEpisodeUnlogged(
       where: {
         id: validated.id,
         patientId: validated.patientId,
-        patient: { cabinet: tenantWhere(ctx.tenant.dispensaryId) },
+        patient: { cabinet: tenantWhere(ctx.tenant.businessId) },
       },
       include: {
         patient: { select: { cabinetId: true, cabinet: { select: { formSchemas: true } } } },
@@ -217,7 +217,7 @@ async function updateCareEpisodeUnlogged(
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       existing.patient.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -251,9 +251,9 @@ async function updateCareEpisodeUnlogged(
   }
 }
 
-async function deleteCareEpisodeUnlogged(dispensarySlug: string, id: string) {
+async function deleteCareEpisodeUnlogged(businessSlug: string, id: string) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = deleteCareEpisodeSchema.parse({ id });
@@ -261,7 +261,7 @@ async function deleteCareEpisodeUnlogged(dispensarySlug: string, id: string) {
     const existing = await prisma.careEpisode.findFirst({
       where: {
         id: validated.id,
-        patient: { cabinet: tenantWhere(ctx.tenant.dispensaryId) },
+        patient: { cabinet: tenantWhere(ctx.tenant.businessId) },
       },
       select: { patient: { select: { cabinetId: true } } },
     });
@@ -270,7 +270,7 @@ async function deleteCareEpisodeUnlogged(dispensarySlug: string, id: string) {
     }
 
     const guard = await guardCabinetWrite(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       existing.patient.cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,

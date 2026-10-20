@@ -1,7 +1,7 @@
 import { getAuthSession } from '@/lib/authSession';
 import { getAppFeatureActionBlock, type AppFeatureKey } from '@/lib/appSettings';
 import { can, checkRolePermission } from '@lawless-intranet/auth-permissions';
-import { requireTenantActionContext, type TenantActionContext } from '@/lib/dispensary/serverActionContext';
+import { requireTenantActionContext, type TenantActionContext } from '@/lib/business/serverActionContext';
 
 export type AuthSession = NonNullable<Awaited<ReturnType<typeof getAuthSession>>>;
 
@@ -21,10 +21,10 @@ export async function requireSession(): Promise<
 }
 
 export async function requireFeature(
-  dispensaryId: string,
+  businessId: string,
   feature: AppFeatureKey,
 ): Promise<{ ok: true } | { ok: false; response: ActionFailure }> {
-  const block = await getAppFeatureActionBlock(dispensaryId, feature);
+  const block = await getAppFeatureActionBlock(businessId, feature);
   if (block) {
     return { ok: false, response: block };
   }
@@ -95,19 +95,19 @@ export async function requireServerActionContext(
 }
 
 export async function requireTenantServerActionContext(
-  dispensarySlug: string,
+  businessSlug: string,
   options: ServerActionGuardOptions = {},
 ): Promise<
   | { ok: true; session: AuthSession; tenant: TenantActionContext }
   | { ok: false; response: ActionFailure }
 > {
-  const tenantResult = await requireTenantActionContext(dispensarySlug);
+  const tenantResult = await requireTenantActionContext(businessSlug);
   if (!tenantResult.ok) {
     return { ok: false, response: { status: tenantResult.status, error: tenantResult.error } };
   }
 
   if (options.feature) {
-    const featureResult = await requireFeature(tenantResult.ctx.dispensaryId, options.feature);
+    const featureResult = await requireFeature(tenantResult.ctx.businessId, options.feature);
     if (!featureResult.ok) return featureResult;
   }
 

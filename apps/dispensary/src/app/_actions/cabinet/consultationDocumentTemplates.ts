@@ -59,14 +59,14 @@ function mapTemplate(
 }
 
 async function requireCabinetTemplateReadContext(
-  dispensarySlug: string,
+  businessSlug: string,
   cabinetId: string,
 ) {
-  const ctx = await getCabinetSessionContext(dispensarySlug);
+  const ctx = await getCabinetSessionContext(businessSlug);
   if (!ctx.ok) return ctx;
 
   const guard = await guardCabinetRead(
-    ctx.tenant.dispensaryId,
+    ctx.tenant.businessId,
     cabinetId,
     ctx.session,
     ctx.tenant.effectiveRole,
@@ -82,14 +82,14 @@ async function requireCabinetTemplateReadContext(
 }
 
 async function requireCabinetTemplateOwnerContext(
-  dispensarySlug: string,
+  businessSlug: string,
   cabinetId: string,
 ) {
-  const ctx = await getCabinetSessionContext(dispensarySlug);
+  const ctx = await getCabinetSessionContext(businessSlug);
   if (!ctx.ok) return ctx;
 
   const guard = await guardCabinetOwner(
-    ctx.tenant.dispensaryId,
+    ctx.tenant.businessId,
     cabinetId,
     ctx.session,
     ctx.tenant.effectiveRole,
@@ -105,18 +105,18 @@ async function requireCabinetTemplateOwnerContext(
 }
 
 export async function listConsultationDocumentTemplates(
-  dispensarySlug: string,
+  businessSlug: string,
   cabinetId: string,
 ) {
   try {
-    const access = await requireCabinetTemplateReadContext(dispensarySlug, cabinetId);
+    const access = await requireCabinetTemplateReadContext(businessSlug, cabinetId);
     if (!access.ok) return access.response;
 
     const cookieHeader = await getServerCookieHeader();
     const result = await listTemplates(
       {
         type: CONSULTATION_DOCUMENT_TEMPLATE_TYPE,
-        scopeId: access.ctx.tenant.dispensaryId,
+        scopeId: access.ctx.tenant.businessId,
         ownerScope: 'org',
         pageSize: 50,
       },
@@ -138,18 +138,18 @@ export async function listConsultationDocumentTemplates(
 }
 
 export async function getConsultationDocumentTemplate(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string },
 ) {
   try {
     const validated = templateIdSchema.parse(data);
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(validated.id, { cookieHeader });
 
-    if (template.scopeId !== ctx.tenant.dispensaryId) {
+    if (template.scopeId !== ctx.tenant.businessId) {
       return { status: 404, error: 'Template introuvable' };
     }
 
@@ -160,7 +160,7 @@ export async function getConsultationDocumentTemplate(
     }
 
     const guard = await guardCabinetRead(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       cabinetId,
       ctx.session,
       ctx.tenant.effectiveRole,
@@ -179,7 +179,7 @@ export async function getConsultationDocumentTemplate(
 }
 
 async function createConsultationDocumentTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     cabinetId: string;
     name: string;
@@ -191,7 +191,7 @@ async function createConsultationDocumentTemplateUnlogged(
   try {
     const validated = createTemplateSchema.parse(data);
     const access = await requireCabinetTemplateOwnerContext(
-      dispensarySlug,
+      businessSlug,
       validated.cabinetId,
     );
     if (!access.ok) return access.response;
@@ -200,7 +200,7 @@ async function createConsultationDocumentTemplateUnlogged(
     const template = await createTemplate(
       {
         type: CONSULTATION_DOCUMENT_TEMPLATE_TYPE,
-        scopeId: access.ctx.tenant.dispensaryId,
+        scopeId: access.ctx.tenant.businessId,
         ownerId: null,
         name: validated.name,
         description: validated.description,
@@ -223,7 +223,7 @@ async function createConsultationDocumentTemplateUnlogged(
 }
 
 async function updateConsultationDocumentTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     cabinetId: string;
@@ -236,7 +236,7 @@ async function updateConsultationDocumentTemplateUnlogged(
   try {
     const validated = updateTemplateSchema.parse(data);
     const access = await requireCabinetTemplateOwnerContext(
-      dispensarySlug,
+      businessSlug,
       validated.cabinetId,
     );
     if (!access.ok) return access.response;
@@ -244,7 +244,7 @@ async function updateConsultationDocumentTemplateUnlogged(
     const cookieHeader = await getServerCookieHeader();
     const existing = await getTemplate(validated.id, { cookieHeader });
     if (
-      existing.scopeId !== access.ctx.tenant.dispensaryId ||
+      existing.scopeId !== access.ctx.tenant.businessId ||
       !isCabinetConsultationTemplate(existing, validated.cabinetId)
     ) {
       return { status: 404, error: 'Template introuvable' };
@@ -274,13 +274,13 @@ async function updateConsultationDocumentTemplateUnlogged(
 }
 
 async function deleteConsultationDocumentTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string; cabinetId: string },
 ) {
   try {
     const validated = updateTemplateSchema.pick({ id: true, cabinetId: true }).parse(data);
     const access = await requireCabinetTemplateOwnerContext(
-      dispensarySlug,
+      businessSlug,
       validated.cabinetId,
     );
     if (!access.ok) return access.response;
@@ -288,7 +288,7 @@ async function deleteConsultationDocumentTemplateUnlogged(
     const cookieHeader = await getServerCookieHeader();
     const existing = await getTemplate(validated.id, { cookieHeader });
     if (
-      existing.scopeId !== access.ctx.tenant.dispensaryId ||
+      existing.scopeId !== access.ctx.tenant.businessId ||
       !isCabinetConsultationTemplate(existing, validated.cabinetId)
     ) {
       return { status: 404, error: 'Template introuvable' };

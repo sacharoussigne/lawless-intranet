@@ -18,25 +18,25 @@ import {
 import { fetchRead } from '@/lib/read/fetchRead';
 
 /** Binds the dispensary server actions to the media-ui action contract (reads over GET, see lib/read). */
-export function createDispensaryMediaActions(dispensarySlug: string): MediaUiActions {
+export function createBusinessMediaActions(businessSlug: string): MediaUiActions {
   return {
     getFolderContents: (folderId) =>
-      toUiResult(fetchRead(dispensarySlug, 'mediaContents', { folderId })),
-    getFolderTree: () => toUiResult(fetchRead(dispensarySlug, 'mediaTree')),
-    createFolder: (input) => toUiResult(createMediaLibraryFolder(dispensarySlug, input)),
-    updateFolder: (input) => toUiResult(updateMediaLibraryFolder(dispensarySlug, input)),
-    deleteFolder: (id) => toUiResult(deleteMediaLibraryFolder(dispensarySlug, id)),
-    requestUpload: (input) => toUiResult(requestMediaUpload(dispensarySlug, input)),
-    completeUpload: (fileId) => toUiResult(completeMediaLibraryUpload(dispensarySlug, fileId)),
-    updateFile: (input) => toUiResult(updateMediaLibraryFile(dispensarySlug, input)),
-    deleteFile: (id) => toUiResult(deleteMediaLibraryFile(dispensarySlug, id)),
-    getDownloadUrl: (id) => toUiResult(fetchRead(dispensarySlug, 'mediaDownloadUrl', { id })),
-    createLink: (input) => toUiResult(createMediaLibraryLink(dispensarySlug, input)),
-    updateLink: (input) => toUiResult(updateMediaLibraryLink(dispensarySlug, input)),
-    moveItems: (input) => toUiResult(moveMediaLibraryItems(dispensarySlug, input)),
-    deleteItems: (input) => toUiResult(deleteMediaLibraryItems(dispensarySlug, input)),
-    shareFile: (id) => toUiResult(shareMediaLibraryFile(dispensarySlug, id)),
-    unshareFile: (id) => toUiResult(unshareMediaLibraryFile(dispensarySlug, id)),
-    getUserName: (userId) => toUiResult(fetchRead(dispensarySlug, 'mediaUserName', { userId })),
+      toUiResult(fetchRead(businessSlug, 'mediaContents', { folderId })),
+    getFolderTree: () => toUiResult(fetchRead(businessSlug, 'mediaTree')),
+    createFolder: (input) => toUiResult(createMediaLibraryFolder(businessSlug, input)),
+    updateFolder: (input) => toUiResult(updateMediaLibraryFolder(businessSlug, input)),
+    deleteFolder: (id) => toUiResult(deleteMediaLibraryFolder(businessSlug, id)),
+    requestUpload: (input) => toUiResult(requestMediaUpload(businessSlug, input)),
+    completeUpload: (fileId) => toUiResult(completeMediaLibraryUpload(businessSlug, fileId)),
+    updateFile: (input) => toUiResult(updateMediaLibraryFile(businessSlug, input)),
+    deleteFile: (id) => toUiResult(deleteMediaLibraryFile(businessSlug, id)),
+    getDownloadUrl: (id) => toUiResult(fetchRead(businessSlug, 'mediaDownloadUrl', { id })),
+    createLink: (input) => toUiResult(createMediaLibraryLink(businessSlug, input)),
+    updateLink: (input) => toUiResult(updateMediaLibraryLink(businessSlug, input)),
+    moveItems: (input) => toUiResult(moveMediaLibraryItems(businessSlug, input)),
+    deleteItems: (input) => toUiResult(deleteMediaLibraryItems(businessSlug, input)),
+    shareFile: (id) => toUiResult(shareMediaLibraryFile(businessSlug, id)),
+    unshareFile: (id) => toUiResult(unshareMediaLibraryFile(businessSlug, id)),
+    getUserName: (userId) => toUiResult(fetchRead(businessSlug, 'mediaUserName', { userId })),
   };
 }

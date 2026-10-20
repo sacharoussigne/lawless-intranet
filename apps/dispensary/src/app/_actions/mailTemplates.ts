@@ -1,6 +1,6 @@
 'use server';
 
-import { getDispensaryUserName } from '@/lib/people/userProfiles';
+import { getBusinessUserName } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -18,7 +18,7 @@ import {
 import { InventoryClientError } from '@lawless-intranet/inventory-client';
 import type { OrderStatus, OrderType } from '@lawless-intranet/types';
 import { requirePermission, requireTenantServerActionContext } from '@/lib/serverActionAuth';
-import { getMemberDescription } from '@/lib/dispensary/memberDescription';
+import { getMemberDescription } from '@/lib/business/memberDescription';
 import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import { renderTemplate, buildUserTemplateRenderContext } from '@lawless-intranet/mail-template-engine';
 import {
@@ -76,7 +76,7 @@ const getUserMailTemplateByIdSchema = z.object({
 
 
 async function createMailTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     description?: string;
@@ -85,11 +85,11 @@ async function createMailTemplateUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createMailTemplateSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
@@ -97,7 +97,7 @@ async function createMailTemplateUnlogged(
     const template = await createTemplate(
       {
         type: ORDER_TEMPLATE_TYPE,
-        scopeId: dispensaryId,
+        scopeId: businessId,
         ownerId: null,
         name: validatedData.name,
         description: validatedData.description,
@@ -116,19 +116,19 @@ async function createMailTemplateUnlogged(
   }
 }
 
-export async function getMailTemplates(dispensarySlug: string) {
+export async function getMailTemplates(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const cookieHeader = await getServerCookieHeader();
     const result = await listTemplates(
       {
         type: ORDER_TEMPLATE_TYPE,
-        scopeId: dispensaryId,
+        scopeId: businessId,
         ownerScope: 'org',
         pageSize: 50,
       },
@@ -145,22 +145,22 @@ export async function getMailTemplates(dispensarySlug: string) {
 }
 
 export async function getManagementMailTemplateById(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const { id } = getUserMailTemplateByIdSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(id, { cookieHeader });
 
     if (
-      template.scopeId !== dispensaryId ||
+      template.scopeId !== businessId ||
       template.ownerId !== null ||
       template.type !== ORDER_TEMPLATE_TYPE
     ) {
@@ -180,7 +180,7 @@ export async function getManagementMailTemplateById(
 }
 
 async function updateMailTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -190,17 +190,17 @@ async function updateMailTemplateUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateMailTemplateSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
     const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    if (existingTemplate.scopeId !== dispensaryId) {
+    if (existingTemplate.scopeId !== businessId) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -237,19 +237,19 @@ async function updateMailTemplateUnlogged(
   }
 }
 
-async function deleteMailTemplateUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteMailTemplateUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteMailTemplateSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
     const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    if (existingTemplate.scopeId !== dispensaryId) {
+    if (existingTemplate.scopeId !== businessId) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -278,18 +278,18 @@ async function deleteMailTemplateUnlogged(dispensarySlug: string, data: { id: st
 }
 
 export async function generateOrderMailPreview(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     orderId?: string;
     order?: OrderMailPreviewSource;
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     let order: OrderMailPreviewSource | null = data.order ?? null;
 
@@ -303,7 +303,7 @@ export async function generateOrderMailPreview(
 
       try {
         const dbOrder = await getOrderById(
-          { ...inventoryScope(dispensaryId), id: data.orderId },
+          { ...inventoryScope(businessId), id: data.orderId },
           await inventoryCookie(),
         );
 
@@ -335,7 +335,7 @@ export async function generateOrderMailPreview(
     try {
       assignment = await getOrderMailAssignment(
         {
-          ...inventoryScope(dispensaryId),
+          ...inventoryScope(businessId),
           orderType: order.type as OrderType,
           orderStatus: order.status as OrderStatus,
         },
@@ -355,14 +355,14 @@ export async function generateOrderMailPreview(
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(assignment.templateId, { cookieHeader });
     const memberDescription =
-      (await getMemberDescription(dispensaryId, ctx.session.user.id)) ?? '';
+      (await getMemberDescription(businessId, ctx.session.user.id)) ?? '';
 
     const preview = renderTemplate(
       template.content,
       buildUserTemplateRenderContext({
         inputs: {},
-        username: await getDispensaryUserName(
-          ctx.tenant.dispensaryId,
+        username: await getBusinessUserName(
+          ctx.tenant.businessId,
           ctx.session.user.id,
           ctx.session.user.name || 'Utilisateur',
         ),
@@ -386,7 +386,7 @@ export async function generateOrderMailPreview(
 }
 
 export async function getUserMailTemplatesPage(
-  dispensarySlug: string,
+  businessSlug: string,
   params: {
     page?: number;
     pageSize?: number;
@@ -394,11 +394,11 @@ export async function getUserMailTemplatesPage(
   } = {},
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const { page, pageSize, nameSearch } =
       getUserMailTemplatesPageSchema.parse(params);
@@ -407,7 +407,7 @@ export async function getUserMailTemplatesPage(
     const result = await listTemplates(
       {
         type: MAIL_DOCUMENT_TYPE,
-        scopeId: dispensaryId,
+        scopeId: businessId,
         ownerScope: 'accessible',
         page,
         pageSize,
@@ -430,7 +430,7 @@ export async function getUserMailTemplatesPage(
     return {
       status: 200,
       data: {
-        items: await attachOwnerNames(ctx.tenant.dispensaryId, mappedItems),
+        items: await attachOwnerNames(ctx.tenant.businessId, mappedItems),
         totalCount: result.totalCount,
         page: result.page,
         pageSize: result.pageSize,
@@ -442,21 +442,21 @@ export async function getUserMailTemplatesPage(
 }
 
 export async function getUserMailTemplateById(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const { id } = getUserMailTemplateByIdSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
     const template = await getTemplate(id, { cookieHeader });
 
-    if (template.scopeId !== dispensaryId || template.ownerId === null) {
+    if (template.scopeId !== businessId || template.ownerId === null) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -472,19 +472,19 @@ export async function getUserMailTemplateById(
   }
 }
 
-export async function getUserMailTemplateOptions(dispensarySlug: string) {
+export async function getUserMailTemplateOptions(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const cookieHeader = await getServerCookieHeader();
     const result = await listTemplates(
       {
         type: MAIL_DOCUMENT_TYPE,
-        scopeId: dispensaryId,
+        scopeId: businessId,
         ownerScope: 'accessible',
         pageSize: 50,
       },
@@ -508,7 +508,7 @@ export async function getUserMailTemplateOptions(dispensarySlug: string) {
 }
 
 async function createUserMailTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     description?: string;
@@ -517,11 +517,11 @@ async function createUserMailTemplateUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createMailTemplateSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
@@ -529,7 +529,7 @@ async function createUserMailTemplateUnlogged(
     const template = await createTemplate(
       {
         type: MAIL_DOCUMENT_TYPE,
-        scopeId: dispensaryId,
+        scopeId: businessId,
         ownerId: ctx.session.user.id,
         name: validatedData.name,
         description: validatedData.description,
@@ -549,7 +549,7 @@ async function createUserMailTemplateUnlogged(
 }
 
 async function updateUserMailTemplateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -559,17 +559,17 @@ async function updateUserMailTemplateUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const validatedData = updateMailTemplateSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
     const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    if (existingTemplate.scopeId !== dispensaryId) {
+    if (existingTemplate.scopeId !== businessId) {
       return {
         status: 404,
         error: 'Template introuvable',
@@ -606,19 +606,19 @@ async function updateUserMailTemplateUnlogged(
   }
 }
 
-async function deleteUserMailTemplateUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteUserMailTemplateUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const validatedData = deleteMailTemplateSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
     const existingTemplate = await getTemplate(validatedData.id, { cookieHeader });
 
-    if (existingTemplate.scopeId !== dispensaryId) {
+    if (existingTemplate.scopeId !== businessId) {
       return {
         status: 404,
         error: 'Template introuvable',

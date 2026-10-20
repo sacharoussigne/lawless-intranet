@@ -16,13 +16,13 @@ Lire [`docs/react-query.md`](../../docs/react-query.md) avant d'implémenter.
 2. **`queryFn`** : `() => handleAction(await serverAction(...))` — jamais Prisma direct depuis le client
 3. **SSR** : `initialData` depuis la page Server Component ; `staleTime` pour éviter le double fetch au montage
 4. **Mutations** : `useMutation` + `invalidateQueries` — pas de `loadX()` manuel post-mutation
-5. **Query keys** : `src/lib/<feature>/queryKeys.ts`, inclure `dispensarySlug`
+5. **Query keys** : `src/lib/<feature>/queryKeys.ts`, inclure `businessSlug`
 6. **Hooks** : `src/app/.../<feature>/hooks/` — copier la structure du module stock
 
 ## Structure de référence (stock)
 
 - [`src/lib/stock/queryKeys.ts`](../../src/lib/stock/queryKeys.ts)
-- [`src/app/(loggedIn)/d/[dispensarySlug]/stock/hooks/useStockQueries.ts`](../../src/app/(loggedIn)/d/[dispensarySlug]/stock/hooks/useStockQueries.ts)
+- [`src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts`](../../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
 - [`src/lib/react-query/QueryProvider.tsx`](../../src/lib/react-query/QueryProvider.tsx)
 
 ## Interdit dans du code neuf

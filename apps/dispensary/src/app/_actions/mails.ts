@@ -51,7 +51,7 @@ const getMailByIdSchema = z.object({
 
 
 async function createMailUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     receiver: string;
@@ -59,11 +59,11 @@ async function createMailUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createMailSchema.parse(data);
     const cookieHeader = await getServerCookieHeader();
@@ -71,7 +71,7 @@ async function createMailUnlogged(
     const document = await createDocument(
       {
         type: MAIL_DOCUMENT_TYPE,
-        scopeId: dispensaryId,
+        scopeId: businessId,
         name: validatedData.name,
         content: validatedData.content,
         metadata: buildMailDocumentMetadata(validatedData.receiver),
@@ -89,7 +89,7 @@ async function createMailUnlogged(
 }
 
 export async function getMailsPage(
-  dispensarySlug: string,
+  businessSlug: string,
   params: {
     page?: number;
     pageSize?: number;
@@ -98,11 +98,11 @@ export async function getMailsPage(
   } = {},
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const { page, pageSize, nameSearch, receiverSearch } =
       getMailsPageSchema.parse(params);
@@ -111,7 +111,7 @@ export async function getMailsPage(
     const result = await listDocuments(
       {
         type: MAIL_DOCUMENT_TYPE,
-        scopeId: dispensaryId,
+        scopeId: businessId,
         page,
         pageSize,
         nameSearch,
@@ -132,7 +132,7 @@ export async function getMailsPage(
     return {
       status: 200,
       data: {
-        items: await attachOwnerNames(ctx.tenant.dispensaryId, mappedItems),
+        items: await attachOwnerNames(ctx.tenant.businessId, mappedItems),
         totalCount: result.totalCount,
         page: result.page,
         pageSize: result.pageSize,
@@ -144,11 +144,11 @@ export async function getMailsPage(
 }
 
 export async function getMailById(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -168,7 +168,7 @@ export async function getMailById(
 }
 
 async function updateMailUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -177,7 +177,7 @@ async function updateMailUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;
@@ -204,9 +204,9 @@ async function updateMailUnlogged(
   }
 }
 
-async function deleteMailUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteMailUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'mails',
     });
     if (!ctx.ok) return ctx.response;

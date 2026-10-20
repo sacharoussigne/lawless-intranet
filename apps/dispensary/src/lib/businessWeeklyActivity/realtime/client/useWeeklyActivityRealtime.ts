@@ -1,0 +1,32 @@
+'use client';
+
+import { useCallback } from 'react';
+import { REALTIME_DOMAIN, type RealtimeEnvelope } from '@lawless-intranet/realtime';
+import { useRealtimeSocketEvents } from '@lawless-intranet/realtime/socket';
+import { fromWeeklyActivityRealtimeEnvelope } from '@/lib/businessWeeklyActivity/realtime/envelope';
+import type { WeeklyActivityRealtimeEvent } from '@/lib/businessWeeklyActivity/realtime/types';
+
+type UseWeeklyActivityRealtimeOptions = {
+  enabled?: boolean;
+  onChange?: (event: WeeklyActivityRealtimeEvent) => void;
+};
+
+const DOMAINS = [REALTIME_DOMAIN.weeklyActivity] as const;
+
+export function useWeeklyActivityRealtime({
+  enabled = true,
+  onChange,
+}: UseWeeklyActivityRealtimeOptions) {
+  const handleEvent = useCallback(
+    (envelope: RealtimeEnvelope) => {
+      onChange?.(fromWeeklyActivityRealtimeEnvelope(envelope));
+    },
+    [onChange],
+  );
+
+  useRealtimeSocketEvents({
+    enabled,
+    domains: DOMAINS,
+    onEvent: handleEvent,
+  });
+}

@@ -3,14 +3,14 @@
 import { z } from 'zod/v3';
 import type { Prisma } from '@/generated/prisma/client';
 import { actionErrorParser } from '@/lib/action';
-import { requirePlatformAdminContext } from '@/lib/dispensary/serverActionContext';
+import { requirePlatformAdminContext } from '@/lib/business/serverActionContext';
 import prisma from '@/lib/prisma';
 import { resolveActorIds, resolveActorNames } from '@/lib/logs/actors';
 
 const listAppLogsSchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(10).max(100).default(50),
-  dispensaryId: z.string().max(100).optional(),
+  businessId: z.string().max(100).optional(),
   feature: z.string().max(50).optional(),
   level: z.enum(['INFO', 'WARN', 'ERROR']).optional(),
   kind: z.enum(['ACTION', 'ERROR', 'BOT_REQUEST']).optional(),
@@ -38,7 +38,7 @@ export type AppLogRow = {
   outcome: string | null;
   message: string;
   source: 'INTRANET' | 'DISCORD_BOT' | 'SYSTEM';
-  dispensaryId: string | null;
+  businessId: string | null;
   userId: string | null;
   discordUserId: string | null;
   impersonatedById: string | null;
@@ -61,7 +61,7 @@ export async function listAppLogs(input: ListAppLogsInput) {
     const actor = filters.actor ? await resolveActorIds(filters.actor) : null;
 
     const where: Prisma.AppLogWhereInput = {
-      ...(filters.dispensaryId ? { dispensaryId: filters.dispensaryId } : {}),
+      ...(filters.businessId ? { businessId: filters.businessId } : {}),
       ...(filters.feature ? { feature: filters.feature } : {}),
       ...(filters.level ? { level: filters.level } : {}),
       ...(filters.kind ? { kind: filters.kind } : {}),

@@ -1,14 +1,14 @@
 import type { ReadRegistry } from '@lawless-intranet/host-kit/read';
 import {
-  getDispensaryWeeklyActivityHistory,
-  getDispensaryWeeklyHoursRecap,
-  listDispensaryWeeklyActivities,
-  listDispensaryWeeklyActivityTargets,
-} from '@/app/_actions/dispensaryWeeklyActivity';
+  getBusinessWeeklyActivityHistory,
+  getBusinessWeeklyHoursRecap,
+  listBusinessWeeklyActivities,
+  listBusinessWeeklyActivityTargets,
+} from '@/app/_actions/businessWeeklyActivity';
 import { getAgendaWithMembers, listAgendasForAdmin } from '@/app/_actions/agenda/agendas';
 import { getAgendaEvent, listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaEventTodoTasks } from '@/app/_actions/agenda/eventTodos';
-import { searchDispensaryUsersForAgenda } from '@/app/_actions/agenda/members';
+import { searchBusinessUsersForAgenda } from '@/app/_actions/agenda/members';
 import { listAgendaTodoLists } from '@/app/_actions/agenda/todoLists';
 import {
   getBankGlobalStats,
@@ -25,7 +25,7 @@ import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySetting
 import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
 import { getManagementCategoryItems } from '@/app/_actions/categoryItems';
 import { getRoleChestAccesses } from '@/app/_actions/chestAccess';
-import { listDispensaryPeople } from '@/app/_actions/dispensaryPeople';
+import { listBusinessPeople } from '@/app/_actions/businessPeople';
 import { getCompanies, getCompaniesForSelect } from '@/app/_actions/companies';
 import {
   getCompanyGroups,
@@ -46,9 +46,9 @@ import {
 import { getStockConsumptionStats } from '@/app/_actions/stock/statistics';
 import { getChestStockCheckForm, getStockChecksSummary } from '@/app/_actions/stockChecks';
 import { getChestStockVisibility } from '@/app/_actions/stockVisibility';
-import { searchDispensaryUsersForCabinet } from '@/app/_actions/cabinet/members';
-import { listDispensaryMembers, searchUsersForDispensaryInvite } from '@/app/_actions/dispensaryMembers';
-import { getDispensaryMemberPermissionOverrides } from '@/app/_actions/dispensaryPermissions';
+import { searchBusinessUsersForCabinet } from '@/app/_actions/cabinet/members';
+import { listBusinessMembers, searchUsersForBusinessInvite } from '@/app/_actions/businessMembers';
+import { getBusinessMemberPermissionOverrides } from '@/app/_actions/businessPermissions';
 import {
   listDocumentAccessesAction,
   listTemplateAccessesAction,
@@ -86,15 +86,15 @@ import { getActiveOrdersForCompanyGroup, getOrderById, getOrdersPage } from '@/a
  */
 export const readRoutes = {
   weeklyActivities: (slug: string, input: { periodStart: Date; periodEnd: Date }) =>
-    listDispensaryWeeklyActivities(slug, input),
+    listBusinessWeeklyActivities(slug, input),
   weeklyActivityTargets: (slug: string, _input?: undefined) =>
-    listDispensaryWeeklyActivityTargets(slug),
+    listBusinessWeeklyActivityTargets(slug),
   weeklyActivityHistory: (
     slug: string,
-    input: Parameters<typeof getDispensaryWeeklyActivityHistory>[1],
-  ) => getDispensaryWeeklyActivityHistory(slug, input),
-  weeklyHoursRecap: (slug: string, input: Parameters<typeof getDispensaryWeeklyHoursRecap>[1]) =>
-    getDispensaryWeeklyHoursRecap(slug, input),
+    input: Parameters<typeof getBusinessWeeklyActivityHistory>[1],
+  ) => getBusinessWeeklyActivityHistory(slug, input),
+  weeklyHoursRecap: (slug: string, input: Parameters<typeof getBusinessWeeklyHoursRecap>[1]) =>
+    getBusinessWeeklyHoursRecap(slug, input),
   weeklySales: (slug: string, input: { weekDate?: Date }) => listWeeklySales(slug, input?.weekDate),
   ordersPage: (slug: string, input: Parameters<typeof getOrdersPage>[1]) => getOrdersPage(slug, input),
   order: (slug: string, input: { id: string }) => getOrderById(slug, input),
@@ -113,7 +113,7 @@ export const readRoutes = {
   agendaEventTodoTasks: (slug: string, input: { eventId: string }) =>
     listAgendaEventTodoTasks(slug, input?.eventId),
   agendaUserSearch: (slug: string, input: { query: string; adminContext?: boolean }) =>
-    searchDispensaryUsersForAgenda(slug, input?.query, { adminContext: input?.adminContext }),
+    searchBusinessUsersForAgenda(slug, input?.query, { adminContext: input?.adminContext }),
 
   // Search-as-you-type (one request per debounced keystroke)
   individualCustomerSearch: (slug: string, input: { query: string }) =>
@@ -121,11 +121,11 @@ export const readRoutes = {
   cabinetPatients: (slug: string, input: Parameters<typeof listCabinetPatients>[1]) =>
     listCabinetPatients(slug, input),
   cabinetUserSearch: (slug: string, input: { query: string; adminContext?: boolean }) =>
-    searchDispensaryUsersForCabinet(slug, input?.query, { adminContext: input?.adminContext }),
+    searchBusinessUsersForCabinet(slug, input?.query, { adminContext: input?.adminContext }),
   documentAccessUserSearch: (slug: string, input: { query: string }) =>
     searchUsersForDocumentAccess(slug, input?.query),
   memberInviteUserSearch: (slug: string, input: { query: string }) =>
-    searchUsersForDispensaryInvite(slug, input?.query),
+    searchUsersForBusinessInvite(slug, input?.query),
 
   // Stock (inventory-ui, sales, orders, stock pages)
   itemsWithStock: (slug: string, input: { chestId?: string | null }) =>
@@ -194,7 +194,7 @@ export const readRoutes = {
   // Management catalog
   managementCategoryItems: (slug: string, _input?: undefined) => getManagementCategoryItems(slug),
   chests: (slug: string, _input?: undefined) => getChests(slug),
-  dispensaryPeople: (slug: string, _input?: undefined) => listDispensaryPeople(slug),
+  businessPeople: (slug: string, _input?: undefined) => listBusinessPeople(slug),
   roleChestAccesses: (slug: string, _input?: undefined) => getRoleChestAccesses(slug),
   chestStockCheckForm: (slug: string, input: { chestId: string }) =>
     getChestStockCheckForm(slug, input?.chestId),
@@ -221,9 +221,9 @@ export const readRoutes = {
   // Dispensary admin
   adminCabinets: (slug: string, _input?: undefined) => listCabinetsForAdmin(slug),
   adminAgendas: (slug: string, _input?: undefined) => listAgendasForAdmin(slug),
-  dispensaryMembers: (slug: string, _input?: undefined) => listDispensaryMembers(slug),
+  businessMembers: (slug: string, _input?: undefined) => listBusinessMembers(slug),
   memberPermissionOverrides: (slug: string, input: { userId: string }) =>
-    getDispensaryMemberPermissionOverrides(slug, input?.userId),
+    getBusinessMemberPermissionOverrides(slug, input?.userId),
 } satisfies ReadRegistry;
 
 export type ReadRoutes = typeof readRoutes;

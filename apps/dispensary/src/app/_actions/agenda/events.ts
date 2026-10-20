@@ -11,7 +11,7 @@ import {
 } from '@/app/_actions/agenda/schemas';
 import {
   getAgendaSessionContext,
-  validateDispensaryUserIds,
+  validateBusinessUserIds,
 } from '@/app/_actions/agenda/internals';
 import {
   agendaCookie,
@@ -46,11 +46,11 @@ function mapListEvent(event: AgendaEventRecord): AgendaEventDTO {
 }
 
 async function mapDetailEvent(
-  dispensaryId: string,
+  businessId: string,
   event: AgendaEventRecord,
   currentUserId: string,
 ): Promise<AgendaEventDTO> {
-  const participants = await enrichEventParticipants(dispensaryId, event.participants);
+  const participants = await enrichEventParticipants(businessId, event.participants);
   return {
     id: event.id,
     agendaId: event.agendaId,
@@ -87,18 +87,18 @@ async function mapDetailEvent(
 }
 
 export async function listAgendaEvents(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { agendaId?: string; rangeStart: string; rangeEnd: string },
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = listAgendaEventsSchema.parse(data);
 
     const events = await listAgendaEventsApi(
       {
-        ...agendaScope(ctx.tenant.dispensaryId),
+        ...agendaScope(ctx.tenant.businessId),
         agendaId: validated.agendaId,
         rangeStart: validated.rangeStart,
         rangeEnd: validated.rangeEnd,
@@ -112,16 +112,16 @@ export async function listAgendaEvents(
   }
 }
 
-export async function getAgendaEvent(dispensarySlug: string, eventId: string) {
+export async function getAgendaEvent(businessSlug: string, eventId: string) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const event = await getAgendaEventApi(eventId, await agendaCookie());
 
     return {
       status: 200,
-      data: await mapDetailEvent(ctx.tenant.dispensaryId, event, ctx.session.user.id),
+      data: await mapDetailEvent(ctx.tenant.businessId, event, ctx.session.user.id),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du chargement de l\'événement');
@@ -129,7 +129,7 @@ export async function getAgendaEvent(dispensarySlug: string, eventId: string) {
 }
 
 async function createAgendaEventUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     agendaId: string;
     title: string;
@@ -144,13 +144,13 @@ async function createAgendaEventUnlogged(
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = createAgendaEventSchema.parse(data);
 
-    const validUsers = await validateDispensaryUserIds(
-      ctx.tenant.dispensaryId,
+    const validUsers = await validateBusinessUserIds(
+      ctx.tenant.businessId,
       validated.participantUserIds,
     );
     if (!validUsers) {
@@ -174,7 +174,7 @@ async function createAgendaEventUnlogged(
 
     return {
       status: 201,
-      data: await mapDetailEvent(ctx.tenant.dispensaryId, event, ctx.session.user.id),
+      data: await mapDetailEvent(ctx.tenant.businessId, event, ctx.session.user.id),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la création de l\'événement');
@@ -182,7 +182,7 @@ async function createAgendaEventUnlogged(
 }
 
 async function updateAgendaEventUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     agendaId: string;
@@ -198,13 +198,13 @@ async function updateAgendaEventUnlogged(
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateAgendaEventSchema.parse(data);
 
-    const validUsers = await validateDispensaryUserIds(
-      ctx.tenant.dispensaryId,
+    const validUsers = await validateBusinessUserIds(
+      ctx.tenant.businessId,
       validated.participantUserIds,
     );
     if (!validUsers) {
@@ -229,7 +229,7 @@ async function updateAgendaEventUnlogged(
 
     return {
       status: 200,
-      data: await mapDetailEvent(ctx.tenant.dispensaryId, event, ctx.session.user.id),
+      data: await mapDetailEvent(ctx.tenant.businessId, event, ctx.session.user.id),
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la mise à jour de l\'événement');
@@ -237,12 +237,12 @@ async function updateAgendaEventUnlogged(
 }
 
 async function deleteAgendaEventUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = deleteAgendaEventSchema.parse({ id });

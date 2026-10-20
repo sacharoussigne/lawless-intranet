@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type { DispensaryWeeklyActivity } from '@prisma/client';
+import type { BusinessWeeklyActivity } from '@prisma/client';
 import { mergeHtmlAndWeeklyActivity, mergeScheduleOr, payrollNameKey } from '@/lib/payroll/mergeWeeklyActivity';
 import type { ParsedPayrollTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { PAYROLL_DAYS } from '@/lib/payroll/parsePayrollHtmlTable';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
+import { businessTypes } from '@/lib/businessTypes';
+
+const DISPENSARY_COUNTERS = businessTypes.DISPENSARY.weeklyCounters;
 
 type EmployeeSchedule = PayrollReportResult['employees'][number]['schedule'];
 
 const emptyDay = { caisse: null as string | null, presence: null as string | null };
 
 function row(
-  overrides: Partial<DispensaryWeeklyActivity> & {
+  overrides: Partial<BusinessWeeklyActivity> & {
     resolvedDisplayName: string;
     discordProfileRole?: string | null;
     discordProfileAccountNumber?: number | null;
@@ -19,7 +22,7 @@ function row(
 ): Parameters<typeof mergeHtmlAndWeeklyActivity>[1][number] {
   return {
     id: 'wa-1',
-    dispensaryId: 'dispensary-1',
+    businessId: 'dispensary-1',
     periodStart: new Date(),
     periodEnd: new Date(),
     displayName: 'Test',
@@ -27,10 +30,7 @@ function row(
     userId: null,
     chestDays: {},
     presenceDays: {},
-    sherifCount: 0,
-    patientsCount: 0,
-    infusionsCount: 0,
-    poppyMilkCount: 0,
+    counters: {},
     createdAt: new Date(),
     updatedAt: new Date(),
     user: null,
@@ -63,10 +63,10 @@ describe('mergeHtmlAndWeeklyActivity', () => {
       row({
         resolvedDisplayName: 'Alice',
         displayName: 'Alice',
-        patientsCount: 0,
+        counters: { patients: 0 },
       }),
     ];
-    const out = mergeHtmlAndWeeklyActivity(parsed, wa);
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa, DISPENSARY_COUNTERS);
     expect(out[0].stats.patients_soignes).toBe(5);
   });
 
@@ -80,12 +80,10 @@ describe('mergeHtmlAndWeeklyActivity', () => {
         id: 'w2',
         resolvedDisplayName: 'Bob',
         displayName: 'Bob',
-        patientsCount: 3,
-        poppyMilkCount: 1,
-        infusionsCount: 2,
+        counters: { patients: 3, poppyMilk: 1, infusions: 2 },
       }),
     ];
-    const out = mergeHtmlAndWeeklyActivity(parsed, wa);
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa, DISPENSARY_COUNTERS);
     expect(out).toHaveLength(1);
     expect(out[0].name).toBe('Bob');
     expect(out[0].stats.patients_soignes).toBe(3);
@@ -118,10 +116,10 @@ describe('mergeHtmlAndWeeklyActivity', () => {
         resolvedDisplayName: 'DiscordPseudo',
         displayName: 'DiscordPseudo',
         user: { name: 'IntranetOnly' },
-        patientsCount: 4,
+        counters: { patients: 4 },
       }),
     ];
-    const out = mergeHtmlAndWeeklyActivity(parsed, wa);
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa, DISPENSARY_COUNTERS);
     expect(out).toHaveLength(2);
     expect(out[0].name).toBe('IntranetOnly');
     expect(out[0].stats.patients_soignes).toBe(0);
@@ -157,7 +155,7 @@ describe('mergeHtmlAndWeeklyActivity', () => {
         discordProfileAccountNumber: 6408,
       }),
     ];
-    const out = mergeHtmlAndWeeklyActivity(parsed, wa);
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa, DISPENSARY_COUNTERS);
     expect(out[0].role).toBe('Médecin');
     expect(out[0].id).toBe(6408);
   });
@@ -174,10 +172,10 @@ describe('mergeHtmlAndWeeklyActivity', () => {
         displayName: 'Bob',
         discordProfileRole: 'Infirmier',
         discordProfileAccountNumber: 42,
-        patientsCount: 3,
+        counters: { patients: 3 },
       }),
     ];
-    const out = mergeHtmlAndWeeklyActivity(parsed, wa);
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa, DISPENSARY_COUNTERS);
     expect(out[0].role).toBe('Infirmier');
     expect(out[0].id).toBe(42);
   });
@@ -222,9 +220,13 @@ describe('mergeHtmlAndWeeklyActivity with a fixed name', () => {
       ],
       global_stats: { total_employees: 1, total_caisses: 0, total_sherifs: 0, total_palefreniers: 0 },
     };
-    const out = mergeHtmlAndWeeklyActivity(parsed, [
-      row({ displayName: 'jacky', resolvedDisplayName: 'Jack Reffle', patientsCount: 2, discordProfileAccountNumber: 42 }),
-    ]);
+    const out = mergeHtmlAndWeeklyActivity(
+      parsed,
+      [
+        row({ displayName: 'jacky', resolvedDisplayName: 'Jack Reffle', counters: { patients: 2 }, discordProfileAccountNumber: 42 }),
+      ],
+      DISPENSARY_COUNTERS,
+    );
     expect(out).toHaveLength(1);
     expect(out[0].name).toBe('Jack Reffle');
     expect(out[0].id).toBe(42);

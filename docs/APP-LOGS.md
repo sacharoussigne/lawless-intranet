@@ -70,7 +70,7 @@ Le logger (`src/lib/logs/`) ne lève jamais d'exception et ne ralentit pas la r�
 - **Toute nouvelle mutation exportée** (obligatoire, vérifié par `src/lib/logs/coverage.test.ts`) : le corps va dans `<nom>Unlogged`, l'export l'enveloppe.
 
   ```ts
-  async function createThingUnlogged(dispensarySlug: string, input: Input) {
+  async function createThingUnlogged(businessSlug: string, input: Input) {
     /* action standard */
   }
 

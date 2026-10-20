@@ -1,3 +1,5 @@
+import { businessHostConfig } from '@/lib/business/hosts';
+
 const BLOCKED_CALLBACK_HOSTS = new Set(['0.0.0.0', '127.0.0.1', 'localhost']);
 
 function getParentDomain(hostname: string): string | null {
@@ -29,6 +31,11 @@ export function isAllowedCallbackHostname(hostname: string): boolean {
   const configuredHost = getConfiguredAppHostname();
   if (configuredHost && hostname === configuredHost) {
     return true;
+  }
+
+  // Hosts of the kinds of business (BUSINESS_TYPE_HOSTS), e.g. gs.localhost in dev.
+  for (const host of businessHostConfig().typeByHost.keys()) {
+    if (host.split(':')[0] === hostname) return true;
   }
 
   const configuredParent = configuredHost ? getParentDomain(configuredHost) : null;

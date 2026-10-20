@@ -2,11 +2,11 @@ import { after } from 'next/server';
 import { headers } from 'next/headers';
 import type { Prisma } from '@/generated/prisma/client';
 import { getAuthSession } from '@/lib/authSession';
-import { resolveDispensaryFromSlug } from '@/lib/dispensary/context';
+import { resolveBusinessFromSlug } from '@/lib/business/context';
 import prisma from '@/lib/prisma';
 import { discordIdForLog } from './actorDiscordId';
 import { LOG_FEATURE_LABELS } from './labels';
-import { dispensarySlugFromPath, featureFromPath } from './paths';
+import { businessSlugFromPath, featureFromPath } from './paths';
 import { sanitizeLogContext, serializeError } from './sanitize';
 import {
   currentActionTargetId,
@@ -51,7 +51,7 @@ async function persist(entry: AppLogEntry): Promise<void> {
       outcome: entry.outcome ?? null,
       message: entry.message.slice(0, 2_000),
       source: entry.source,
-      dispensaryId: entry.dispensaryId ?? null,
+      businessId: entry.businessId ?? null,
       userId: entry.userId ?? null,
       discordUserId: entry.discordUserId ?? null,
       impersonatedById: entry.impersonatedById ?? null,
@@ -72,7 +72,7 @@ function toJson(value: unknown): Prisma.InputJsonValue | undefined {
 export type RequestLogContext = {
   path: string | null;
   feature: LogFeature;
-  dispensaryId: string | null;
+  businessId: string | null;
   userId: string | null;
   /** Platform admin acting as `userId` (impersonation). */
   impersonatedById: string | null;
@@ -91,15 +91,15 @@ export async function resolveRequestLogContext(): Promise<RequestLogContext> {
   } catch {
     path = null;
   }
-  const slug = dispensarySlugFromPath(path);
-  const [session, dispensary] = await Promise.all([
+  const slug = businessSlugFromPath(path);
+  const [session, business] = await Promise.all([
     getAuthSession().catch(() => null),
-    slug ? resolveDispensaryFromSlug(slug).catch(() => null) : Promise.resolve(null),
+    slug ? resolveBusinessFromSlug(slug).catch(() => null) : Promise.resolve(null),
   ]);
   return {
     path,
     feature: featureFromPath(path),
-    dispensaryId: dispensary?.id ?? null,
+    businessId: business?.id ?? null,
     userId: session?.user?.id ?? null,
     impersonatedById: session?.session?.impersonatedBy ?? null,
   };
@@ -116,21 +116,21 @@ type ActionLogInput = {
   durationMs?: number;
   /** Id of the object the action touched (created, updated, deleted…), when known. */
   targetId?: string | null;
-  dispensaryId?: string | null;
-  /** Tenant slug of the action: resolves the dispensary when `dispensaryId` is not given. */
-  dispensarySlug?: string | null;
+  businessId?: string | null;
+  /** Tenant slug of the action: resolves the business when `businessId` is not given. */
+  businessSlug?: string | null;
   userId?: string | null;
   discordUserId?: string | null;
   source?: 'INTRANET' | 'DISCORD_BOT' | 'SYSTEM';
 };
 
-async function resolveDispensaryId(input: ActionLogInput, request: RequestLogContext) {
-  if (input.dispensaryId) return input.dispensaryId;
-  if (input.dispensarySlug) {
-    const dispensary = await resolveDispensaryFromSlug(input.dispensarySlug).catch(() => null);
-    if (dispensary) return dispensary.id;
+async function resolveBusinessId(input: ActionLogInput, request: RequestLogContext) {
+  if (input.businessId) return input.businessId;
+  if (input.businessSlug) {
+    const business = await resolveBusinessFromSlug(input.businessSlug).catch(() => null);
+    if (business) return business.id;
   }
-  return request.dispensaryId;
+  return request.businessId;
 }
 
 /** One action of a sensitive feature (success, refusal or failure). Missing who/where come from the request. */
@@ -144,7 +144,7 @@ export function logAction(input: ActionLogInput): void {
       outcome: input.outcome,
       message: input.message,
       source: input.source ?? 'INTRANET',
-      dispensaryId: await resolveDispensaryId(input, request),
+      businessId: await resolveBusinessId(input, request),
       userId: input.userId ?? request.userId,
       discordUserId: input.discordUserId ?? (await discordIdForLog(input.userId ?? request.userId)),
       impersonatedById: request.impersonatedById,
@@ -164,7 +164,7 @@ export function logServerError(input: {
   status: number;
   message: string;
   feature?: string;
-  dispensaryId?: string;
+  businessId?: string;
   event?: string;
 }): void {
   // Read now, inside the action: same object id as its `ACTION` line.
@@ -178,7 +178,7 @@ export function logServerError(input: {
       outcome: 'failure' as const,
       message: input.message,
       source: 'INTRANET' as const,
-      dispensaryId: input.dispensaryId ?? request.dispensaryId,
+      businessId: input.businessId ?? request.businessId,
       userId: request.userId,
       discordUserId: await discordIdForLog(request.userId),
       impersonatedById: request.impersonatedById,
@@ -205,7 +205,7 @@ type LoggedRunMeta = {
   event: string;
   label: string;
   context?: unknown;
-  dispensarySlug?: string;
+  businessSlug?: string;
   /** Object id from the result, or from the input only when the action threw (no result). */
   target: (result: ActionResult | undefined) => unknown;
 };
@@ -237,7 +237,7 @@ async function runLogged<R extends ActionResult>(
       message: `${meta.label} (${OUTCOME_LABELS[outcome]})${reason}`,
       httpStatus: result.status,
       durationMs: Date.now() - startedAt,
-      dispensarySlug: meta.dispensarySlug,
+      businessSlug: meta.businessSlug,
       targetId: extra?.targetId === undefined ? safeTargetId(meta, result) : toTargetId(extra.targetId),
       context: { input: meta.context, ...(extra?.context === undefined ? {} : { result: extra.context }) },
     });
@@ -249,7 +249,7 @@ async function runLogged<R extends ActionResult>(
       outcome: 'failure',
       message: `${meta.label} (échec) : ${error instanceof Error ? error.message : String(error)}`,
       durationMs: Date.now() - startedAt,
-      dispensarySlug: meta.dispensarySlug,
+      businessSlug: meta.businessSlug,
       targetId: safeTargetId(meta, undefined),
       context: { input: meta.context },
       error,
@@ -305,7 +305,7 @@ export async function loggedAction<A extends unknown[], R extends ActionResult>(
       feature: meta.feature,
       event: meta.event,
       label: meta.label ?? `${LOG_FEATURE_LABELS[meta.feature]} · ${actionName}`,
-      dispensarySlug: tenant ? (args[0] as string) : undefined,
+      businessSlug: tenant ? (args[0] as string) : undefined,
       context: 'context' in meta ? meta.context : tenant ? args.slice(1) : args,
       target: (result) =>
         meta.target ? meta.target(args, result as R | undefined) : defaultTargetId(args[tenant ? 1 : 0], result),

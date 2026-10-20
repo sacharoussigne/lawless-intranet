@@ -1,6 +1,6 @@
 # dispensary
 
-Staff panel for RP dispensaries (default tenant: Saint-Denis), part of the **lawless-intranet** monorepo. Each dispensary is a tenant reachable at `/d/[dispensarySlug]`, with its own members, permissions and feature toggles.
+Staff panel for RP dispensaries (default tenant: Saint-Denis), part of the **lawless-intranet** monorepo. Each dispensary is a tenant reachable at `/d/[businessSlug]`, with its own members, permissions and feature toggles.
 
 Authentication is delegated to the `auth` app (SSO). Agenda, bank, documents and inventory data live in their own services, which this app calls through the `@lawless-intranet/*-client` packages.
 

@@ -3,10 +3,10 @@
 import { loggedAction } from '@/lib/logs/writer';
 import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
-import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import {
-  isDispensaryAdminRole,
+  isBusinessAdminRole,
   listAccessibleCabinetIds,
   userHasAnyCabinetAccess,
   canManageCabinetMembers,
@@ -21,7 +21,7 @@ import {
   getCabinetSessionContext,
   guardCabinetOwner,
   guardCabinetRead,
-  validateDispensaryUserIds,
+  validateBusinessUserIds,
 } from '@/app/_actions/cabinet/internals';
 import { enrichAgendaMembers, enrichRowGroupsWithUsers } from '@/lib/enrichUsers';
 import { createDefaultFormSchemas } from '@/lib/cabinet/formSchema';
@@ -33,21 +33,21 @@ const cabinetIncludeMembers = {
   _count: { select: { members: true, patients: true } },
 };
 
-export async function listCabinetsForAdmin(dispensarySlug: string) {
+export async function listCabinetsForAdmin(businessSlug: string) {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
 
     const cabinets = await prisma.cabinet.findMany({
-      where: tenantWhere(auth.ctx.dispensaryId),
+      where: tenantWhere(auth.ctx.businessId),
       include: cabinetIncludeMembers,
       orderBy: { name: 'asc' },
     });
 
     const membersByCabinet = await enrichRowGroupsWithUsers(
-      auth.ctx.dispensaryId,
+      auth.ctx.businessId,
       cabinets.map((cabinet) => cabinet.members),
     );
     const enriched = cabinets.map((cabinet, index) => ({
@@ -61,16 +61,16 @@ export async function listCabinetsForAdmin(dispensarySlug: string) {
   }
 }
 
-export async function getCabinetPageBootstrap(dispensarySlug: string) {
+export async function getCabinetPageBootstrap(businessSlug: string) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const { session } = ctx;
 
-    const hasAccess = await userHasAnyCabinetAccess(dispensaryId, session.user.id);
-    const isAdmin = isDispensaryAdminRole(session.user.role, effectiveRole);
+    const hasAccess = await userHasAnyCabinetAccess(businessId, session.user.id);
+    const isAdmin = isBusinessAdminRole(session.user.role, effectiveRole);
 
     if (!hasAccess) {
       return {
@@ -79,7 +79,7 @@ export async function getCabinetPageBootstrap(dispensarySlug: string) {
       };
     }
 
-    const cabinetIds = await listAccessibleCabinetIds(dispensaryId, session.user.id);
+    const cabinetIds = await listAccessibleCabinetIds(businessId, session.user.id);
 
     if (cabinetIds.length === 0) {
       return {
@@ -89,7 +89,7 @@ export async function getCabinetPageBootstrap(dispensarySlug: string) {
     }
 
     const cabinets = await prisma.cabinet.findMany({
-      where: { id: { in: cabinetIds }, ...tenantWhere(dispensaryId) },
+      where: { id: { in: cabinetIds }, ...tenantWhere(businessId) },
       include: {
         members: {
           where: { userId: session.user.id },
@@ -116,18 +116,18 @@ export async function getCabinetPageBootstrap(dispensarySlug: string) {
 }
 
 async function createCabinetUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { name: string; description?: string | null; ownerUserId: string },
 ) {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
 
     const validated = createCabinetSchema.parse(data);
 
-    const validOwner = await validateDispensaryUserIds(auth.ctx.dispensaryId, [
+    const validOwner = await validateBusinessUserIds(auth.ctx.businessId, [
       validated.ownerUserId,
     ]);
 
@@ -143,7 +143,7 @@ async function createCabinetUnlogged(
     const cabinet = await prisma.$transaction(async (tx) => {
       const created = await tx.cabinet.create({
         data: {
-          dispensaryId: auth.ctx.dispensaryId,
+          businessId: auth.ctx.businessId,
           name: validated.name,
           description: validated.description ?? null,
           formSchemas: defaultSchemas as object,
@@ -169,22 +169,22 @@ async function createCabinetUnlogged(
 }
 
 async function updateCabinetUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string; name: string; description?: string | null },
 ) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateCabinetSchema.parse(data);
-    const isAdmin = isDispensaryAdminRole(
+    const isAdmin = isBusinessAdminRole(
       ctx.session.user.role,
       ctx.tenant.effectiveRole,
     );
 
     if (!isAdmin) {
       const guard = await guardCabinetOwner(
-        ctx.tenant.dispensaryId,
+        ctx.tenant.businessId,
         validated.id,
         ctx.session,
         ctx.tenant.effectiveRole,
@@ -195,7 +195,7 @@ async function updateCabinetUnlogged(
     }
 
     const cabinet = await prisma.cabinet.update({
-      where: { id: validated.id, ...tenantWhere(ctx.tenant.dispensaryId) },
+      where: { id: validated.id, ...tenantWhere(ctx.tenant.businessId) },
       data: {
         name: validated.name,
         description: validated.description ?? null,
@@ -208,9 +208,9 @@ async function updateCabinetUnlogged(
   }
 }
 
-async function deleteCabinetUnlogged(dispensarySlug: string, id: string) {
+async function deleteCabinetUnlogged(businessSlug: string, id: string) {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
@@ -218,7 +218,7 @@ async function deleteCabinetUnlogged(dispensarySlug: string, id: string) {
     const validated = deleteCabinetSchema.parse({ id });
 
     await prisma.cabinet.deleteMany({
-      where: { id: validated.id, ...tenantWhere(auth.ctx.dispensaryId) },
+      where: { id: validated.id, ...tenantWhere(auth.ctx.businessId) },
     });
 
     return { status: 200 };
@@ -227,13 +227,13 @@ async function deleteCabinetUnlogged(dispensarySlug: string, id: string) {
   }
 }
 
-export async function getCabinetWithMembers(dispensarySlug: string, cabinetId: string) {
+export async function getCabinetWithMembers(businessSlug: string, cabinetId: string) {
   try {
-    const ctx = await getCabinetSessionContext(dispensarySlug);
+    const ctx = await getCabinetSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const canManage = await canManageCabinetMembers(
-      ctx.tenant.dispensaryId,
+      ctx.tenant.businessId,
       cabinetId,
       ctx.session.user.id,
       ctx.session.user.role,
@@ -242,7 +242,7 @@ export async function getCabinetWithMembers(dispensarySlug: string, cabinetId: s
 
     if (!canManage) {
       const readGuard = await guardCabinetRead(
-        ctx.tenant.dispensaryId,
+        ctx.tenant.businessId,
         cabinetId,
         ctx.session,
         ctx.tenant.effectiveRole,
@@ -253,7 +253,7 @@ export async function getCabinetWithMembers(dispensarySlug: string, cabinetId: s
     }
 
     const cabinet = await prisma.cabinet.findFirst({
-      where: { id: cabinetId, ...tenantWhere(ctx.tenant.dispensaryId) },
+      where: { id: cabinetId, ...tenantWhere(ctx.tenant.businessId) },
       include: cabinetIncludeMembers,
     });
 
@@ -265,7 +265,7 @@ export async function getCabinetWithMembers(dispensarySlug: string, cabinetId: s
       status: 200,
       data: {
         ...cabinet,
-        members: await enrichAgendaMembers(ctx.tenant.dispensaryId, cabinet.members),
+        members: await enrichAgendaMembers(ctx.tenant.businessId, cabinet.members),
       },
     };
   } catch (error) {

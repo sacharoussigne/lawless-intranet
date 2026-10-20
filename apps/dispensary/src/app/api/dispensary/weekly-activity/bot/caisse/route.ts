@@ -1,29 +1,29 @@
 import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { getAppSettings } from '@/lib/appSettings';
-import { isDispensaryBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/dispensaryWeeklyActivityApiAuth';
+import { isBusinessBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/businessWeeklyActivityApiAuth';
 import {
   botWeekdayFieldVisibilityError,
   weeklyActivityFieldVisibilityFromSettings,
-} from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
+} from '@/lib/businessWeeklyActivity/fieldVisibility';
 import {
   botEditWeekdayFlag,
   isCaisseEditBody,
   jsonBotError,
   mapBotRouteError,
   respondToBotWeekdayFlagResult,
-} from '@/lib/dispensaryWeeklyActivity/botRouteHandlers';
-import { dispensaryWeeklyActivityBotCaisseBodySchema } from '@/lib/dispensaryWeeklyActivity/schemas';
-import { botMarkChestForParisToday } from '@/lib/dispensaryWeeklyActivity/service';
-import { resolveBotDispensaryContext } from '@/lib/dispensaryWeeklyActivity/botRequestContext';
+} from '@/lib/businessWeeklyActivity/botRouteHandlers';
+import { businessWeeklyActivityBotCaisseBodySchema } from '@/lib/businessWeeklyActivity/schemas';
+import { botMarkChestForParisToday } from '@/lib/businessWeeklyActivity/service';
+import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
 
 async function handlePost(request: Request) {
-  const req = request as Parameters<typeof isDispensaryBotApiAuthorized>[0];
-  if (!isDispensaryBotApiAuthorized(req)) {
+  const req = request as Parameters<typeof isBusinessBotApiAuthorized>[0];
+  if (!isBusinessBotApiAuthorized(req)) {
     return jsonBotError(401, 'Non autorisé');
   }
-  const dispensaryCtx = await resolveBotDispensaryContext(req);
-  if (!dispensaryCtx.ok) {
-    return jsonBotError(dispensaryCtx.status, dispensaryCtx.error);
+  const businessCtx = await resolveBotBusinessContext(req);
+  if (!businessCtx.ok) {
+    return jsonBotError(businessCtx.status, businessCtx.error);
   }
 
   const discordUserId = getDiscordUserIdFromBotRequest(req);
@@ -41,12 +41,12 @@ async function handlePost(request: Request) {
     }
   }
 
-  const parsed = dispensaryWeeklyActivityBotCaisseBodySchema.safeParse(body);
+  const parsed = businessWeeklyActivityBotCaisseBodySchema.safeParse(body);
   if (!parsed.success) {
     return jsonBotError(422, parsed.error.issues[0]?.message ?? 'Données invalides');
   }
 
-  const settings = await getAppSettings(dispensaryCtx.dispensaryId);
+  const settings = await getAppSettings(businessCtx.businessId);
   const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
   const hiddenErr = botWeekdayFieldVisibilityError('chest', visibility);
   if (hiddenErr) {
@@ -56,24 +56,24 @@ async function handlePost(request: Request) {
   try {
     if (isCaisseEditBody(parsed.data)) {
       const result = await botEditWeekdayFlag(
-        dispensaryCtx.dispensaryId,
+        businessCtx.businessId,
         discordUserId,
         'chest',
         parsed.data,
       );
-      return respondToBotWeekdayFlagResult(dispensaryCtx.dispensaryId, result);
+      return respondToBotWeekdayFlagResult(businessCtx.businessId, result);
     }
 
-    const result = await botMarkChestForParisToday(dispensaryCtx.dispensaryId, discordUserId, {
+    const result = await botMarkChestForParisToday(businessCtx.businessId, discordUserId, {
       displayName: parsed.data.displayName,
     });
-    return respondToBotWeekdayFlagResult(dispensaryCtx.dispensaryId, result);
+    return respondToBotWeekdayFlagResult(businessCtx.businessId, result);
   } catch (e) {
     return mapBotRouteError(e);
   }
 }
 
 export const POST = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.caisse' },
+  { feature: 'weeklyActivity', event: 'bot.caisse' },
   handlePost,
 );

@@ -1,7 +1,7 @@
 'use server';
 
 import { emitStockChange } from '@/lib/stock/realtime/broadcast';
-import { fetchDispensaryUserProfiles } from '@/lib/people/userProfiles';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import type {
@@ -62,7 +62,7 @@ function parseMutationMeta(meta: unknown): SalesMutationMeta | undefined {
 }
 
 function emitSaleRealtime(
-  dispensaryId: string,
+  businessId: string,
   sale: { id: string; userId: string; createdAt: Date | string },
   meta?: SalesMutationMeta,
 ): void {
@@ -70,7 +70,7 @@ function emitSaleRealtime(
     typeof sale.createdAt === 'string' ? new Date(sale.createdAt) : sale.createdAt;
   const bounds = getBankWeekBounds(createdAt);
   emitWeeklySalesChange(
-    dispensaryId,
+    businessId,
     saleToWeeklySalesRealtimePayload({
       id: sale.id,
       userId: sale.userId,
@@ -175,12 +175,12 @@ function mapWeeklySaleRow(
 }
 
 async function createSaleUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   rawData: z.infer<typeof createSaleSchema>,
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'sales',
       permission: {
         resource: 'sales',
@@ -190,7 +190,7 @@ async function createSaleUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
     const mutationMeta = parseMutationMeta(meta);
 
@@ -198,7 +198,7 @@ async function createSaleUnlogged(
 
     const sale = await createSaleApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         userId,
         defaultChestId: data.defaultChestId,
         customerName: data.customerName,
@@ -221,11 +221,11 @@ async function createSaleUnlogged(
     const listItem = sale as unknown as Parameters<typeof mapWeeklySaleRow>[0];
 
     emitSaleRealtime(
-      dispensaryId,
+      businessId,
       { id: listItem.id, userId: listItem.userId, createdAt: listItem.createdAt },
       mutationMeta,
     );
-    emitStockChange(dispensaryId, mutationMeta);
+    emitStockChange(businessId, mutationMeta);
 
     return {
       status: 200,
@@ -234,7 +234,7 @@ async function createSaleUnlogged(
         new Map([
           [
             userId,
-            (await fetchDispensaryUserProfiles(dispensaryId, [userId])).get(userId)?.name ??
+            (await fetchBusinessUserProfiles(businessId, [userId])).get(userId)?.name ??
               ctx.session.user.name ??
               'Utilisateur',
           ],
@@ -247,12 +247,12 @@ async function createSaleUnlogged(
 }
 
 async function cancelSaleUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   saleId: string,
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'sales',
       permission: {
         resource: 'sales',
@@ -262,14 +262,14 @@ async function cancelSaleUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectivePermissions } = ctx.tenant;
+    const { businessId, effectivePermissions } = ctx.tenant;
     const userId = ctx.session.user.id;
     const canViewAll = can(effectivePermissions, 'sales', 'view_all');
     const mutationMeta = parseMutationMeta(meta);
 
     const sale = await cancelSaleApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: saleId,
         userId,
         canViewAll,
@@ -279,7 +279,7 @@ async function cancelSaleUnlogged(
     );
 
     emitSaleRealtime(
-      dispensaryId,
+      businessId,
       {
         id: saleId,
         userId: (sale as { userId?: string }).userId ?? userId,
@@ -287,7 +287,7 @@ async function cancelSaleUnlogged(
       },
       mutationMeta,
     );
-    emitStockChange(dispensaryId, mutationMeta);
+    emitStockChange(businessId, mutationMeta);
 
     return { status: 200, data: { success: true } };
   } catch (error) {
@@ -296,12 +296,12 @@ async function cancelSaleUnlogged(
 }
 
 async function depositSaleInCashRegisterUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   saleId: string,
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'sales',
       permission: {
         resource: 'sales',
@@ -311,7 +311,7 @@ async function depositSaleInCashRegisterUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
     const canDepositOthers =
       hasRole(effectiveRole, Role.ADMIN) || hasRole(effectiveRole, Role.DIRECTION);
@@ -319,7 +319,7 @@ async function depositSaleInCashRegisterUnlogged(
 
     const sale = await depositSaleApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: saleId,
         userId,
         canDepositOthers,
@@ -329,7 +329,7 @@ async function depositSaleInCashRegisterUnlogged(
     );
 
     emitSaleRealtime(
-      dispensaryId,
+      businessId,
       {
         id: saleId,
         userId: (sale as { userId?: string }).userId ?? userId,
@@ -345,12 +345,12 @@ async function depositSaleInCashRegisterUnlogged(
 }
 
 async function deleteSaleUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   saleId: string,
   meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'sales',
       permission: {
         resource: 'sales',
@@ -360,7 +360,7 @@ async function deleteSaleUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
     const mutationMeta = parseMutationMeta(meta);
 
@@ -370,7 +370,7 @@ async function deleteSaleUnlogged(
 
     await deleteSaleApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: saleId,
         userId,
         isAdmin: true,
@@ -380,11 +380,11 @@ async function deleteSaleUnlogged(
     );
 
     emitSaleRealtime(
-      dispensaryId,
+      businessId,
       { id: saleId, userId, createdAt: new Date() },
       mutationMeta,
     );
-    emitStockChange(dispensaryId, mutationMeta);
+    emitStockChange(businessId, mutationMeta);
 
     return { status: 200, data: { success: true } };
   } catch (error) {
@@ -393,11 +393,11 @@ async function deleteSaleUnlogged(
 }
 
 export async function listWeeklySales(
-  dispensarySlug: string,
+  businessSlug: string,
   weekDate?: Date,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'sales',
       permission: {
         resource: 'sales',
@@ -407,12 +407,12 @@ export async function listWeeklySales(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectivePermissions } = ctx.tenant;
+    const { businessId, effectivePermissions } = ctx.tenant;
     const canViewAll = can(effectivePermissions, 'sales', 'view_all');
 
     const weekly = await listWeeklySalesApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         weekDate: weekDate?.toISOString(),
         canViewAll,
       },
@@ -425,7 +425,7 @@ export async function listWeeklySales(
         ...weekly.byUser.map((row) => row.userId),
       ]),
     );
-    const profiles = await fetchDispensaryUserProfiles(dispensaryId, userIds);
+    const profiles = await fetchBusinessUserProfiles(businessId, userIds);
     const userNameById = new Map(
       Array.from(profiles.entries()).map(([id, profile]) => [id, profile.name]),
     );
@@ -457,9 +457,9 @@ export async function listWeeklySales(
   }
 }
 
-export async function getSellableItems(dispensarySlug: string) {
+export async function getSellableItems(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'sales',
       permission: {
         resource: 'sales',
@@ -468,10 +468,10 @@ export async function getSellableItems(dispensarySlug: string) {
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const items = await getSellableItemsApi(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 

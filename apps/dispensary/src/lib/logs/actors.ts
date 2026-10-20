@@ -42,7 +42,7 @@ export async function resolveActorIds(query: string): Promise<ActorIds> {
       ? bestEffort(() => resolveDiscordIdsForUserIds([q]), new Map<string, string>())
       : Promise.resolve(new Map<string, string>()),
     q.length >= 2
-      ? prisma.dispensaryDiscordProfile.findMany({
+      ? prisma.person.findMany({
           where: {
             OR: [
               { fixedDisplayName: { contains: q, mode: 'insensitive' } },
@@ -89,7 +89,7 @@ export async function resolveActorNames(
 
   const [accounts, profiles, accountsByDiscord] = await Promise.all([
     bestEffort(() => fetchUserProfiles(userIds), new Map()),
-    prisma.dispensaryDiscordProfile.findMany({
+    prisma.person.findMany({
       where: {
         OR: [{ discordUserId: { in: discordIds } }, { userId: { in: userIds } }],
       },
@@ -99,7 +99,7 @@ export async function resolveActorNames(
     bestEffort(() => resolveUsersByDiscordIds(discordIds), []),
   ]);
 
-  // Several dispensaries may know the same person: a fixed name wins, then the most recent.
+  // One person per Discord id; several may share an account: a fixed name wins, then the most recent.
   const sorted = [...profiles].sort(
     (a, b) => Number(Boolean(b.fixedDisplayName?.trim())) - Number(Boolean(a.fixedDisplayName?.trim())),
   );

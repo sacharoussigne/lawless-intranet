@@ -15,7 +15,7 @@ import {
 export function serviceActionError(
   error: unknown,
   fallback: string,
-  logContext?: { feature?: string; dispensaryId?: string },
+  logContext?: { feature?: string; businessId?: string },
 ) {
   const response = mapServiceActionError(error, fallback, parseActionError);
   reportServerError({ error, status: response.status, message: errorMessage(response), ...logContext });
@@ -34,13 +34,13 @@ export async function withTenantService<T>(
   call: (tenantId: string) => Promise<T>,
   successStatus = 200,
 ): Promise<ActionResponse<T>> {
-  let dispensaryId: string | undefined;
+  let businessId: string | undefined;
   try {
     const ctx = await requireTenantServerActionContext(slug, guard);
     if (!ctx.ok) return ctx.response;
-    dispensaryId = ctx.tenant.dispensaryId;
-    return { status: successStatus, data: await call(dispensaryId) };
+    businessId = ctx.tenant.businessId;
+    return { status: successStatus, data: await call(businessId) };
   } catch (error) {
-    return serviceActionError(error, fallback, { feature: guard.feature, dispensaryId });
+    return serviceActionError(error, fallback, { feature: guard.feature, businessId });
   }
 }

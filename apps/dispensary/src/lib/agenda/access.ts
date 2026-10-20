@@ -1,6 +1,6 @@
 import { hasRole } from '@lawless-intranet/auth-permissions';
 import { getAgendaAccess } from '@lawless-intranet/agenda-client/server';
-import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
+import { isPlatformAdmin } from '@/lib/business/platformAdmin';
 import { agendaCookie, agendaScope } from '@/lib/agenda/client';
 import { Role } from '@/types/enum/roles';
 import {
@@ -11,7 +11,7 @@ import {
 
 export { canOwnAgenda, canReadAgenda, canWriteAgenda };
 
-export function isDispensaryAdminRole(
+export function isBusinessAdminRole(
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): boolean {
@@ -23,30 +23,30 @@ export function canManageAgendaAsScopeAdmin(
   platformRole: string | null | undefined,
   effectiveRole: string | null | undefined,
 ): boolean {
-  return isDispensaryAdminRole(platformRole, effectiveRole);
+  return isBusinessAdminRole(platformRole, effectiveRole);
 }
 
 export async function listAccessibleAgendaIds(
-  dispensaryId: string,
+  businessId: string,
   _userId?: string,
   _platformRole?: string | null | undefined,
   _effectiveRole?: string | null | undefined,
 ): Promise<string[]> {
   const access = await getAgendaAccess(
-    agendaScope(dispensaryId),
+    agendaScope(businessId),
     await agendaCookie(),
   );
   return access.accessibleAgendaIds;
 }
 
 export async function userHasAnyAgendaAccess(
-  dispensaryId: string,
+  businessId: string,
   _userId?: string,
   _platformRole?: string | null | undefined,
   _effectiveRole?: string | null | undefined,
 ): Promise<boolean> {
   const access = await getAgendaAccess(
-    agendaScope(dispensaryId),
+    agendaScope(businessId),
     await agendaCookie(),
   );
   return access.hasAccess;

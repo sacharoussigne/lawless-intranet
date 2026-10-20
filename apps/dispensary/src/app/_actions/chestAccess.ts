@@ -10,18 +10,19 @@ import {
   listRoleChestAccesses,
   upsertRoleChestAccess as upsertRoleChestAccessClient,
 } from '@lawless-intranet/inventory-client/server';
-import { DISPENSARY_MEMBER_ROLES, Role, type DispensaryMemberRole } from '@/types/enum/roles';
+import { BUSINESS_MEMBER_ROLES, Role, type BusinessMemberRole } from '@/types/enum/roles';
+import { getBusinessTypeDefinition, isMemberRoleAllowedForType } from '@/lib/businessTypes';
 
-const dispensaryMemberRoleSchema = z
+const businessMemberRoleSchema = z
   .string()
   .refine(
-    (value): value is DispensaryMemberRole =>
-      (DISPENSARY_MEMBER_ROLES as readonly string[]).includes(value),
+    (value): value is BusinessMemberRole =>
+      (BUSINESS_MEMBER_ROLES as readonly string[]).includes(value),
     { message: 'Rôle invalide' },
   );
 
 const upsertRoleChestAccessSchema = z.object({
-  role: dispensaryMemberRoleSchema,
+  role: businessMemberRoleSchema,
   allChests: z.boolean(),
   chestIds: z.array(z.string().uuid()).default([]),
 });
@@ -32,9 +33,9 @@ export type RoleChestAccessRow = {
   chestIds: string[];
 };
 
-export async function getRoleChestAccesses(dispensarySlug: string) {
+export async function getRoleChestAccesses(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       permission: {
         resource: 'application',
         action: 'management',
@@ -42,10 +43,10 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId, business } = ctx.tenant;
 
     const accesses = await listRoleChestAccesses(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -60,7 +61,8 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
       ]),
     );
 
-    const data: RoleChestAccessRow[] = DISPENSARY_MEMBER_ROLES.map((role) => {
+    const roles = getBusinessTypeDefinition(business.type).memberRoles;
+    const data: RoleChestAccessRow[] = roles.map((role) => {
       if (role === Role.ADMIN) {
         return { role, allChests: true, chestIds: [] };
       }
@@ -74,7 +76,7 @@ export async function getRoleChestAccesses(dispensarySlug: string) {
 }
 
 async function upsertRoleChestAccessUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     role: string;
     allChests: boolean;
@@ -82,7 +84,7 @@ async function upsertRoleChestAccessUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       permission: {
         resource: 'application',
         action: 'management',
@@ -90,9 +92,12 @@ async function upsertRoleChestAccessUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId, business } = ctx.tenant;
 
     const validated = upsertRoleChestAccessSchema.parse(data);
+    if (!isMemberRoleAllowedForType(business.type, validated.role)) {
+      return { status: 400, error: 'Rôle invalide pour ce type d’entreprise' };
+    }
 
     if (validated.role === Role.ADMIN) {
       return {
@@ -103,7 +108,7 @@ async function upsertRoleChestAccessUnlogged(
 
     const access = await upsertRoleChestAccessClient(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         role: validated.role,
         allChests: validated.allChests,
         chestIds: validated.chestIds,

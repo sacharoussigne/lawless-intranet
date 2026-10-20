@@ -9,7 +9,7 @@ export type ServerErrorReport = {
   status: number;
   message: string;
   feature?: string;
-  dispensaryId?: string;
+  businessId?: string;
 };
 
 type Reporter = (report: ServerErrorReport) => void;

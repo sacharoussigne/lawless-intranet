@@ -1,0 +1,758 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Badge,
+  Box,
+  Button,
+  Center,
+  Drawer,
+  Group,
+  Indicator,
+  Pagination,
+  Paper,
+  Select,
+  SimpleGrid,
+  Stack,
+  Switch,
+  Table,
+  Text,
+  TextInput,
+} from '@mantine/core';
+import { DatePickerInput, DatesProvider } from '@mantine/dates';
+import { notifications } from '@mantine/notifications';
+import { DataTable, type DataTableColumn } from 'mantine-datatable';
+import { IconCashRegister, IconFilter, IconSearch } from '@tabler/icons-react';
+import {
+  cancelSale,
+  deleteSale,
+  depositSaleInCashRegister,
+  type SaleListItem,
+  type WeeklySalesSummary,
+} from '@/app/_actions/sales';
+import { fetchRead } from '@/lib/read/fetchRead';
+import { DataTableEmptyState } from '@/app/_components/DataTableEmptyState/DataTableEmptyState';
+import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
+import { handleAction } from '@/lib/action';
+import { getBankWeekBounds } from '@/lib/bankWeek';
+import { formatDate, parsePickerDate } from '@/lib/date';
+import dayjs from '@/lib/dayjs';
+import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
+import { SaleStatus } from '@lawless-intranet/inventory-client';
+import { apothecaryBooleanPills, apothecaryPillStyle } from '@/lib/apothecaryPill';
+import { amberPalette } from '@/lib/design-tokens';
+import { normalizeString } from '@/lib/string/normalizeString';
+import { salesMutationMeta } from '@/lib/sales/realtime/client/mutationMeta';
+import { useSalesRealtime } from '@/lib/sales/realtime/client/useSalesRealtime';
+import { useRealtimeSocketResync } from '@lawless-intranet/realtime/socket';
+
+const DEFAULT_PAGE_SIZE = 10;
+const STATUS_FILTER_STORAGE_KEY = 'employee-sales-status-filter';
+const STATUS_FILTER_VALUES = [
+  'completed',
+  'cancelled',
+  'deposited',
+  'not_deposited',
+] as const;
+
+function readStatusFilterPreference(): string | null {
+  try {
+    const raw = window.localStorage.getItem(STATUS_FILTER_STORAGE_KEY);
+    if (raw == null || raw === '') return null;
+    return (STATUS_FILTER_VALUES as readonly string[]).includes(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+type EmployeeWeeklySalesDashboardProps = {
+  businessSlug: string;
+  canCancel: boolean;
+  canDepositOthers: boolean;
+  canDelete: boolean;
+  canViewAll: boolean;
+  sessionUserId: string;
+  initialSummary: WeeklySalesSummary;
+  periodWeekDateValue: Date;
+  pageSize?: number;
+  detailVisible?: boolean;
+  onDetailVisibleChange?: (visible: boolean) => void;
+};
+
+export function EmployeeWeeklySalesDashboard({
+  businessSlug,
+  canCancel,
+  canDepositOthers,
+  canDelete,
+  canViewAll,
+  sessionUserId,
+  initialSummary,
+  periodWeekDateValue,
+  pageSize = DEFAULT_PAGE_SIZE,
+  detailVisible = true,
+  onDetailVisibleChange,
+}: EmployeeWeeklySalesDashboardProps) {
+  const queryClient = useQueryClient();
+  const [employeeFilter, setEmployeeFilter] = useState<string | null>(null);
+  const [dayFilter, setDayFilter] = useState<Date | null>(null);
+  const [itemFilter, setItemFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilterReady, setStatusFilterReady] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const handleRealtimeChange = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['weekly-sales', businessSlug] });
+  }, [businessSlug, queryClient]);
+
+  const { clientId } = useSalesRealtime({
+    onChange: handleRealtimeChange,
+  });
+  // Changes missed while disconnected.
+  useRealtimeSocketResync(handleRealtimeChange);
+  const mutationMeta = salesMutationMeta(clientId);
+
+  const currentWeekBounds = useMemo(
+    () => getBankWeekBounds(periodWeekDateValue),
+    [periodWeekDateValue],
+  );
+
+  useEffect(() => {
+    setStatusFilter(readStatusFilterPreference());
+    setStatusFilterReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!statusFilterReady) return;
+    try {
+      if (statusFilter == null) {
+        window.localStorage.removeItem(STATUS_FILTER_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter);
+      }
+    } catch {
+      // Ignore quota / private mode write failures.
+    }
+  }, [statusFilter, statusFilterReady]);
+
+  useEffect(() => {
+    setEmployeeFilter(null);
+    setDayFilter(null);
+    setItemFilter('');
+    setPage(1);
+  }, [periodWeekDateValue]);
+
+  const salesQuery = useQuery({
+    queryKey: [
+      'weekly-sales',
+      businessSlug,
+      currentWeekBounds.start.toISOString(),
+      currentWeekBounds.end.toISOString(),
+    ],
+    queryFn: async () =>
+      handleAction(
+        await fetchRead(businessSlug, 'weeklySales', { weekDate: currentWeekBounds.start }),
+      ) as WeeklySalesSummary,
+    initialData:
+      currentWeekBounds.start.getTime() ===
+      new Date(initialSummary.periodStart).getTime()
+        ? initialSummary
+        : undefined,
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+
+  const summary = salesQuery.data ?? initialSummary;
+
+  const cancelMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const result = await cancelSale(businessSlug, saleId, mutationMeta);
+      handleAction(result);
+      return saleId;
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Succès',
+        message: 'Vente annulée',
+        color: 'moss',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', businessSlug] });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de l\'annulation',
+        color: 'danger',
+      });
+    },
+  });
+
+  const depositMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const result = await depositSaleInCashRegister(businessSlug, saleId, mutationMeta);
+      handleAction(result);
+      return saleId;
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Succès',
+        message: 'Déposé en caisse',
+        color: 'moss',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', businessSlug] });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du dépôt en caisse',
+        color: 'danger',
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const result = await deleteSale(businessSlug, saleId, mutationMeta);
+      handleAction(result);
+      return saleId;
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Succès',
+        message: 'Vente supprimée',
+        color: 'moss',
+      });
+      void queryClient.invalidateQueries({ queryKey: ['weekly-sales', businessSlug] });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la suppression',
+        color: 'danger',
+      });
+    },
+  });
+
+  const employeeOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const sale of summary.sales) {
+      names.set(sale.userId, sale.userName);
+    }
+    return Array.from(names.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' }));
+  }, [summary.sales]);
+
+  const filteredSales = useMemo(() => {
+    const dayKey = dayFilter
+      ? dayjs(dayFilter).tz('Europe/Paris').format('YYYY-MM-DD')
+      : null;
+    const itemQuery = normalizeString(itemFilter.trim());
+
+    return summary.sales.filter((sale) => {
+      if (employeeFilter && sale.userId !== employeeFilter) return false;
+      if (dayKey) {
+        const saleDay = dayjs(sale.createdAt).tz('Europe/Paris').format('YYYY-MM-DD');
+        if (saleDay !== dayKey) return false;
+      }
+      if (itemQuery) {
+        const matchesItem = sale.items.some((item) =>
+          normalizeString(item.itemName).includes(itemQuery),
+        );
+        if (!matchesItem) return false;
+      }
+      if (statusFilter === 'completed' && sale.status !== SaleStatus.COMPLETED) return false;
+      if (statusFilter === 'cancelled' && sale.status !== SaleStatus.CANCELLED) return false;
+      if (statusFilter === 'deposited') {
+        if (sale.status !== SaleStatus.COMPLETED || !sale.depositedInCashRegister) return false;
+      }
+      if (statusFilter === 'not_deposited') {
+        if (sale.status !== SaleStatus.COMPLETED || sale.depositedInCashRegister) return false;
+      }
+      return true;
+    });
+  }, [summary.sales, employeeFilter, dayFilter, itemFilter, statusFilter]);
+
+  const totalRecords = filteredSales.length;
+  const maxPage = Math.max(1, Math.ceil(totalRecords / pageSize) || 1);
+  const safePage = Math.min(page, maxPage);
+  const paginatedSales = useMemo(
+    () => filteredSales.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredSales, safePage, pageSize],
+  );
+  const showSalesDetail = detailVisible;
+  const showDetailToggle = typeof onDetailVisibleChange === 'function';
+
+  const hasActiveFilters = Boolean(employeeFilter || dayFilter || itemFilter.trim() || statusFilter);
+
+  // Filters, shared by the table column headers (desktop) and the filters drawer (phones).
+  const dayFilterInput = (
+    <DatesProvider settings={{ locale: 'fr' }}>
+      <DatePickerInput
+        placeholder="Jour"
+        value={dayFilter ? formatDate(dayFilter) : null}
+        onChange={(value) => {
+          setDayFilter(parsePickerDate(value as Date | string | null));
+          setPage(1);
+        }}
+        clearable
+        minDate={formatDate(currentWeekBounds.start)}
+        maxDate={formatDate(currentWeekBounds.end)}
+        style={{ minWidth: 160 }}
+      />
+    </DatesProvider>
+  );
+  const employeeFilterInput = (
+    <Select
+      placeholder="Tous"
+      data={employeeOptions}
+      value={employeeFilter}
+      onChange={(value) => {
+        setEmployeeFilter(value);
+        setPage(1);
+      }}
+      clearable
+      searchable
+      style={{ minWidth: 160 }}
+    />
+  );
+  const itemFilterInput = (
+    <TextInput
+      placeholder="Rechercher un objet…"
+      leftSection={<IconSearch size={14} />}
+      value={itemFilter}
+      onChange={(event) => {
+        setItemFilter(event.currentTarget.value);
+        setPage(1);
+      }}
+      style={{ minWidth: 180 }}
+    />
+  );
+  const statusFilterInput = (
+    <Select
+      placeholder="Tous"
+      data={[
+        { value: 'completed', label: 'Validée' },
+        { value: 'cancelled', label: 'Annulée' },
+        { value: 'deposited', label: 'Déposé en caisse' },
+        { value: 'not_deposited', label: 'Non déposé' },
+      ]}
+      value={statusFilter}
+      onChange={(value) => {
+        setStatusFilter(value);
+        setPage(1);
+      }}
+      clearable
+      style={{ minWidth: 160 }}
+    />
+  );
+
+  const renderStatus = (sale: SaleListItem) => (
+    <Badge
+      variant="outline"
+      style={
+        sale.status === SaleStatus.COMPLETED
+          ? apothecaryBooleanPills.yes
+          : apothecaryPillStyle(amberPalette)
+      }
+    >
+      {sale.status === SaleStatus.COMPLETED ? 'Validée' : 'Annulée'}
+    </Badge>
+  );
+
+  const renderItems = (sale: SaleListItem) => (
+    <Stack gap={2}>
+      {sale.items.map((item) => (
+        <Text key={item.id} size="sm">
+          {item.quantity}× {item.itemName}{' '}
+          <Text span size="xs" c="dimmed">
+            ({item.source === 'POCKET' ? 'poche' : item.chestName ?? 'coffre'})
+          </Text>
+        </Text>
+      ))}
+    </Stack>
+  );
+
+  const renderTotal = (sale: SaleListItem) => (
+    <Stack gap={2}>
+      <Text size="sm">{sale.totalAmount.toFixed(2)} $</Text>
+      {sale.priceAdjustment !== 0 && (
+        <Text size="xs" c="dimmed">
+          dont {sale.priceAdjustment > 0 ? '+' : ''}
+          {sale.priceAdjustment.toFixed(2)} $
+        </Text>
+      )}
+    </Stack>
+  );
+
+  const renderSaleActions = (sale: SaleListItem, wrap = false) => {
+    const isCompleted = sale.status === SaleStatus.COMPLETED;
+    const canDepositSale =
+      isCompleted &&
+      !sale.depositedInCashRegister &&
+      (sale.userId === sessionUserId || canDepositOthers);
+    const canCancelSale =
+      canCancel &&
+      isCompleted &&
+      !sale.depositedInCashRegister &&
+      (sale.userId === sessionUserId || canViewAll);
+
+    if (
+      !canDepositSale &&
+      !canCancelSale &&
+      !canDelete &&
+      !(sale.depositedInCashRegister && isCompleted)
+    ) {
+      return null;
+    }
+
+    return (
+      <Group gap="xs" wrap={wrap ? 'wrap' : 'nowrap'}>
+        {sale.depositedInCashRegister && isCompleted && (
+          <Badge variant="outline" style={apothecaryBooleanPills.yes}>
+            Déposé en caisse
+          </Badge>
+        )}
+        {canDepositSale && (
+          <DeleteConfirmPopover
+            title="Déposer en caisse ?"
+            message="Action irréversible : la vente ne pourra plus être annulée."
+            confirmLabel="Confirmer"
+            confirmColor="sage"
+            onConfirm={async () => {
+              await depositMutation.mutateAsync(sale.id);
+            }}
+          >
+            <Button
+              size="xs"
+              variant="light"
+              color="sage"
+              loading={depositMutation.isPending && depositMutation.variables === sale.id}
+            >
+              Caisse
+            </Button>
+          </DeleteConfirmPopover>
+        )}
+        {canCancelSale && (
+          <DeleteConfirmPopover
+            title="Confirmer l'annulation ?"
+            message="Le stock coffre sera restauré. Cette action est irréversible."
+            confirmLabel="Confirmer"
+            onConfirm={async () => {
+              await cancelMutation.mutateAsync(sale.id);
+            }}
+          >
+            <Button
+              size="xs"
+              variant="light"
+              color="danger"
+              loading={cancelMutation.isPending && cancelMutation.variables === sale.id}
+            >
+              Annuler
+            </Button>
+          </DeleteConfirmPopover>
+        )}
+        {canDelete && (
+          <DeleteConfirmPopover
+            title="Supprimer la vente ?"
+            message="La vente sera définitivement supprimée. Le stock coffre sera restauré si elle était encore validée."
+            onConfirm={async () => {
+              await deleteMutation.mutateAsync(sale.id);
+            }}
+          >
+            <Button
+              size="xs"
+              variant="light"
+              color="danger"
+              loading={deleteMutation.isPending && deleteMutation.variables === sale.id}
+            >
+              Supprimer
+            </Button>
+          </DeleteConfirmPopover>
+        )}
+      </Group>
+    );
+  };
+
+  const columns: DataTableColumn<SaleListItem>[] = [
+    {
+      accessor: 'createdAt',
+      title: 'Date',
+      width: 130,
+      render: (sale) => (
+        <Stack gap={2}>
+          <Text size="sm">
+            {dayjs(sale.createdAt).tz('Europe/Paris').format('DD/MM HH:mm')}
+          </Text>
+          {sale.customerName && (
+            <Text size="xs" c="dimmed">
+              {sale.customerName}
+            </Text>
+          )}
+        </Stack>
+      ),
+      filter: dayFilterInput,
+    },
+    ...(canViewAll
+      ? [
+          {
+            accessor: 'userName',
+            title: 'Employé',
+            width: 160,
+            filter: employeeFilterInput,
+          } satisfies DataTableColumn<SaleListItem>,
+        ]
+      : []),
+    { accessor: 'items', title: 'Objets', render: renderItems, filter: itemFilterInput },
+    { accessor: 'totalAmount', title: 'Total', width: 110, render: renderTotal },
+    { accessor: 'status', title: 'Statut', width: 140, render: renderStatus, filter: statusFilterInput },
+    { accessor: 'actions', title: '', width: 220, render: (sale) => renderSaleActions(sale) },
+  ];
+
+  return (
+    <Stack gap="md">
+      <Group justify="space-between" align="center" wrap="wrap">
+        <Text
+          className="disp-display-title"
+          style={{ cursor: showDetailToggle ? 'pointer' : undefined }}
+          onClick={() => {
+            if (!onDetailVisibleChange) return;
+            onDetailVisibleChange(!showSalesDetail);
+          }}
+        >
+          Ventes de la semaine
+        </Text>
+        {showDetailToggle && onDetailVisibleChange && (
+          <Switch
+            label="Afficher le détail des ventes"
+            checked={showSalesDetail}
+            onChange={(event) => onDetailVisibleChange(event.currentTarget.checked)}
+            size="sm"
+          />
+        )}
+      </Group>
+
+      {showSalesDetail && (
+        <SimpleGrid cols={3} spacing={{ base: "xs", sm: "md" }}>
+          <Paper withBorder p={{ base: "xs", sm: "md" }}>
+            <Text size="xs" c="dimmed" tt="uppercase">
+              CA (ventes validées)
+            </Text>
+            <Text fw={700} fz={{ base: "md", sm: "xl" }}>
+              {summary.totalAmount.toFixed(2)} $
+            </Text>
+          </Paper>
+          <Paper withBorder p={{ base: "xs", sm: "md" }}>
+            <Text size="xs" c="dimmed" tt="uppercase">
+              Quantité vendue
+            </Text>
+            <Text fw={700} fz={{ base: "md", sm: "xl" }}>
+              {summary.totalQuantity}
+            </Text>
+          </Paper>
+          <Paper withBorder p={{ base: "xs", sm: "md" }}>
+            <Text size="xs" c="dimmed" tt="uppercase">
+              Ventes / annulées
+            </Text>
+            <Text fw={700} fz={{ base: "md", sm: "xl" }}>
+              {summary.completedCount} / {summary.cancelledCount}
+            </Text>
+          </Paper>
+        </SimpleGrid>
+      )}
+
+      {showSalesDetail && canViewAll && summary.byUser.length > 0 && (
+        <Paper withBorder p="md">
+          <Text size="sm" fw={600} mb="sm">
+            Par employé
+          </Text>
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Employé</Table.Th>
+                <Table.Th>Ventes</Table.Th>
+                <Table.Th>Quantité</Table.Th>
+                <Table.Th>CA</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {summary.byUser.map((row) => (
+                <Table.Tr key={row.userId}>
+                  <Table.Td>{row.userName}</Table.Td>
+                  <Table.Td>{row.completedCount}</Table.Td>
+                  <Table.Td>{row.totalQuantity}</Table.Td>
+                  <Table.Td>{row.totalAmount.toFixed(2)} $</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Paper>
+      )}
+
+      <Paper withBorder p="md">
+        <Group justify="space-between" mb="sm" wrap="wrap">
+          <Text size="sm" fw={600}>
+            Ventes
+          </Text>
+          {hasActiveFilters && (
+            <Button
+              variant="subtle"
+              color="slate"
+              size="xs"
+              onClick={() => {
+                setEmployeeFilter(null);
+                setDayFilter(null);
+                setItemFilter('');
+                setStatusFilter(null);
+                setPage(1);
+              }}
+            >
+              Réinitialiser les filtres
+            </Button>
+          )}
+        </Group>
+
+        <Box visibleFrom="sm">
+        <DataTable
+          idAccessor="id"
+          records={paginatedSales}
+          columns={columns}
+          fetching={salesQuery.isFetching}
+          minHeight={180}
+          highlightOnHover
+          withTableBorder={false}
+          totalRecords={totalRecords}
+          recordsPerPage={pageSize}
+          page={safePage}
+          onPageChange={setPage}
+          paginationSize="sm"
+          paginationText={({ from, to, totalRecords: total }) =>
+            `${from} - ${to} sur ${total} ventes`
+          }
+          emptyState={
+            <DataTableEmptyState
+              icon={IconCashRegister}
+              message={
+                summary.sales.length === 0
+                  ? 'Aucune vente sur cette semaine.'
+                  : 'Aucune vente ne correspond aux filtres.'
+              }
+            />
+          }
+        />
+        </Box>
+
+        <Box hiddenFrom="sm">
+          <SalesMobileList
+            sales={paginatedSales}
+            emptyMessage={
+              summary.sales.length === 0
+                ? 'Aucune vente sur cette semaine.'
+                : 'Aucune vente ne correspond aux filtres.'
+            }
+            page={safePage}
+            pageCount={maxPage}
+            onPageChange={setPage}
+            hasActiveFilters={hasActiveFilters}
+            filters={
+              <>
+                {dayFilterInput}
+                {canViewAll && employeeFilterInput}
+                {itemFilterInput}
+                {statusFilterInput}
+              </>
+            }
+            renderSale={(sale) => (
+              <Stack gap={6}>
+                <Group justify="space-between" wrap="nowrap" align="flex-start">
+                  <Stack gap={0} style={{ minWidth: 0 }}>
+                    <Text size="sm" fw={600}>
+                      {dayjs(sale.createdAt).tz('Europe/Paris').format('DD/MM HH:mm')}
+                      {canViewAll ? ` · ${sale.userName}` : ''}
+                    </Text>
+                    {sale.customerName && (
+                      <Text size="xs" c="dimmed">
+                        {sale.customerName}
+                      </Text>
+                    )}
+                  </Stack>
+                  {renderStatus(sale)}
+                </Group>
+                {renderItems(sale)}
+                <Group justify="space-between" align="flex-end" wrap="nowrap">
+                  {renderTotal(sale)}
+                </Group>
+                {renderSaleActions(sale, true)}
+              </Stack>
+            )}
+          />
+        </Box>
+      </Paper>
+    </Stack>
+  );
+}
+
+/** Phones: sales as cards, filters in a bottom drawer. */
+function SalesMobileList({
+  sales,
+  emptyMessage,
+  page,
+  pageCount,
+  onPageChange,
+  hasActiveFilters,
+  filters,
+  renderSale,
+}: {
+  sales: SaleListItem[];
+  emptyMessage: string;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
+  hasActiveFilters: boolean;
+  filters: ReactNode;
+  renderSale: (sale: SaleListItem) => ReactNode;
+}) {
+  const [filtersOpened, setFiltersOpened] = useState(false);
+  return (
+    <Stack gap="sm">
+      <Indicator disabled={!hasActiveFilters} size={10} offset={4}>
+        <Button
+          variant="light"
+          fullWidth
+          leftSection={<IconFilter size={16} />}
+          onClick={() => setFiltersOpened(true)}
+        >
+          Filtres
+        </Button>
+      </Indicator>
+      {sales.length === 0 ? (
+        <Text c="dimmed" ta="center" py="md" size="sm">
+          {emptyMessage}
+        </Text>
+      ) : (
+        sales.map((sale) => (
+          <Paper key={sale.id} withBorder radius="md" p="sm">
+            {renderSale(sale)}
+          </Paper>
+        ))
+      )}
+      {pageCount > 1 && (
+        <Center>
+          <Pagination total={pageCount} value={page} onChange={onPageChange} size="sm" />
+        </Center>
+      )}
+      <Drawer
+        opened={filtersOpened}
+        onClose={() => setFiltersOpened(false)}
+        position="bottom"
+        size="auto"
+        title="Filtres"
+        radius="md"
+      >
+        <Stack gap="md" pb="md">
+          {filters}
+          <Button onClick={() => setFiltersOpened(false)}>Voir les ventes</Button>
+        </Stack>
+      </Drawer>
+    </Stack>
+  );
+}

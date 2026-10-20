@@ -1,5 +1,8 @@
 const DEV_CALLBACK_HOSTS = new Set([
   'dispensary.localhost',
+  // Business app hosts in dev (docs/MULTI-BUSINESS.md).
+  'business.localhost',
+  'gs.localhost',
   'shelter.localhost',
   'localhost',
 ]);
@@ -45,8 +48,10 @@ export function isAllowedSsoHostname(hostname: string): boolean {
     return true;
   }
 
-  const dispensaryVirtualHost = process.env.DISPENSARY_VIRTUAL_HOST?.trim();
-  if (dispensaryVirtualHost && hostname === dispensaryVirtualHost) {
+  // The business app may be served on several hosts (comma-separated list).
+  const dispensaryVirtualHosts =
+    process.env.DISPENSARY_VIRTUAL_HOST?.split(',').map((h) => h.trim()) ?? [];
+  if (dispensaryVirtualHosts.includes(hostname)) {
     return true;
   }
 

@@ -1,8 +1,8 @@
 'use client';
 
 import { Paper, Stack, Text } from '@mantine/core';
-import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import { COMPACT_DAY_LABELS } from './compactDisplay';
 import { WeeklyActivityCompactRow } from './WeeklyActivityCompactRow';
 import classes from './WeeklyActivityCompact.module.scss';

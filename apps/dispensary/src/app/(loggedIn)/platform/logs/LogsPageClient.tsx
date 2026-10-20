@@ -62,7 +62,7 @@ function actorLabel(log: AppLogRow, names: Record<string, string>): string {
 
 type Filters = {
   period: LogPeriod;
-  dispensaryId: string | null;
+  businessId: string | null;
   feature: string | null;
   level: string | null;
   kind: string | null;
@@ -72,7 +72,7 @@ type Filters = {
 
 const EMPTY_FILTERS: Filters = {
   period: DEFAULT_LOG_PERIOD,
-  dispensaryId: null,
+  businessId: null,
   feature: null,
   level: null,
   kind: null,
@@ -119,13 +119,13 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
 
 function LogDetail({
   log,
-  dispensaryName,
+  businessName,
   actorNames,
   onShowTargetHistory,
   onShowActorHistory,
 }: {
   log: AppLogRow;
-  dispensaryName: string | null;
+  businessName: string | null;
   actorNames: Record<string, string>;
   onShowTargetHistory: (targetId: string) => void;
   onShowActorHistory: (actor: string) => void;
@@ -139,7 +139,7 @@ function LogDetail({
     ['Événement', log.event],
     ['Résultat', log.outcome ? LOG_OUTCOME_LABELS[log.outcome as LogOutcome] ?? log.outcome : null],
     ['Source', LOG_SOURCE_LABELS[log.source]],
-    ['Dispensaire', dispensaryName ?? log.dispensaryId],
+    ['Dispensaire', businessName ?? log.businessId],
     ['Utilisateur', withName(log.userId, actorNames)],
     ['En tant que (admin)', withName(log.impersonatedById, actorNames)],
     ['Discord', withName(log.discordUserId, actorNames)],
@@ -192,10 +192,10 @@ function LogDetail({
 
 export function LogsPageClient({
   initialLogs,
-  dispensaries,
+  businesses,
 }: {
   initialLogs: LogsPage | null;
-  dispensaries: { id: string; name: string }[];
+  businesses: { id: string; name: string }[];
 }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
@@ -207,7 +207,7 @@ export function LogsPageClient({
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AppLogRow | null>(null);
 
-  const dispensaryNames = new Map(dispensaries.map((dispensary) => [dispensary.id, dispensary.name]));
+  const businessNames = new Map(businesses.map((business) => [business.id, business.name]));
   const isInitialKey =
     page === 1 &&
     !debouncedSearch &&
@@ -222,7 +222,7 @@ export function LogsPageClient({
         page,
         pageSize: PAGE_SIZE,
         from: logPeriodStart(filters.period),
-        dispensaryId: filters.dispensaryId ?? undefined,
+        businessId: filters.businessId ?? undefined,
         feature: filters.feature ?? undefined,
         level: (filters.level as ListAppLogsInput['level']) ?? undefined,
         kind: (filters.kind as ListAppLogsInput['kind']) ?? undefined,
@@ -280,9 +280,9 @@ export function LogsPageClient({
           <Select
             label="Dispensaire"
             placeholder="Tous"
-            data={dispensaries.map((dispensary) => ({ value: dispensary.id, label: dispensary.name }))}
-            value={filters.dispensaryId}
-            onChange={(value) => updateFilter('dispensaryId', value)}
+            data={businesses.map((business) => ({ value: business.id, label: business.name }))}
+            value={filters.businessId}
+            onChange={(value) => updateFilter('businessId', value)}
             searchable
             clearable
           />
@@ -411,11 +411,11 @@ export function LogsPageClient({
               ),
             },
             {
-              accessor: 'dispensaryId',
+              accessor: 'businessId',
               title: 'Dispensaire',
               width: 150,
               render: (log) =>
-                log.dispensaryId ? dispensaryNames.get(log.dispensaryId) ?? log.dispensaryId : '—',
+                log.businessId ? businessNames.get(log.businessId) ?? log.businessId : '—',
             },
             {
               accessor: 'message',
@@ -444,7 +444,7 @@ export function LogsPageClient({
         {selected && (
           <LogDetail
             log={selected}
-            dispensaryName={selected.dispensaryId ? dispensaryNames.get(selected.dispensaryId) ?? null : null}
+            businessName={selected.businessId ? businessNames.get(selected.businessId) ?? null : null}
             actorNames={actorNames}
             onShowActorHistory={(id) => {
               // Everything this person did: account and Discord id, any period.
