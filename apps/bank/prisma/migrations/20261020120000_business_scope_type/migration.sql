@@ -1,0 +1,9 @@
+-- The business app (dispensaries, general stores…) now scopes its data with
+-- scopeType 'business' instead of 'dispensary' (docs/MULTI-BUSINESS.md, phase 6).
+-- Shelter rows ('shelter') are not touched; scopeId (the business id) is unchanged.
+
+UPDATE "bank_week" SET "scopeType" = 'business' WHERE "scopeType" = 'dispensary';
+UPDATE "bank_planned_transaction" SET "scopeType" = 'business' WHERE "scopeType" = 'dispensary';
+UPDATE "bank_planned_occurrence" SET "scopeType" = 'business' WHERE "scopeType" = 'dispensary';
+UPDATE "transaction_name_suggestion" SET "scopeType" = 'business' WHERE "scopeType" = 'dispensary';
+UPDATE "transaction_description_suggestion" SET "scopeType" = 'business' WHERE "scopeType" = 'dispensary';

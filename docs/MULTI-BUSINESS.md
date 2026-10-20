@@ -415,6 +415,14 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
   - auth accepte `business.localhost` et `gs.localhost` en dev, et une liste d'hôtes dans `DISPENSARY_VIRTUAL_HOST` (séparés par des virgules) en prod ;
 - **Prod :** la configuration est décrite dans `docs/DOCKER.md` › « Plusieurs hôtes ». Elle utilise `DISPENSARY_VIRTUAL_HOST` en liste, `BUSINESS_TYPE_HOSTS` et `DISPENSARY_EXTRA_PUBLIC_URLS` pour les origines realtime. Le compose et `docker/.env.example` sont prêts.
 
+### Phase 6 : ce qui a été fait
+
+- **Code :** `serviceHost` du dispensaire passe à `scopeType: 'business'`. Les clients agenda, médias, inventaire et banque, les topics realtime (`agendas:business:<id>`, `media:business:<id>`) et les liens de partage le suivent.
+- **Données :** une migration `business_scope_type` dans inventory (11 tables), bank (5), agenda (1) et media (3) passe `scopeType` de `'dispensary'` à `'business'`. Les lignes du refuge ne bougent pas, et documents n'a pas de type de scope.
+- **Médias :** les clés S3 enregistrées gardent leur préfixe `dispensary/<id>/`, donc les fichiers restent lisibles. `purgeScope` efface aussi l'ancien préfixe.
+- **Banque :** le bot `materialize-planned` utilise `business` quand `X-Scope-Type` est absent, ce qui couvre les anciens appels avec seulement `X-Dispensary-Id`.
+- **Déploiement :** les services appliquent leur migration au démarrage (`prisma migrate deploy`). Il faut déployer les services et le dispensaire ensemble.
+
 ## 11. Questions encore ouvertes
 
 - D'éventuels **autres modules propres** au general store.

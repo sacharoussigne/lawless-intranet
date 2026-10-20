@@ -1,4 +1,5 @@
 import { withBotRouteLog } from '@/lib/logs/botRoute';
+import { serviceHost } from '@/lib/serviceHost';
 import { NextResponse } from 'next/server';
 import {
   isBusinessBotApiAuthorized,
@@ -57,7 +58,7 @@ async function handlePost(request: Request) {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${botSecret}`,
-      'X-Scope-Type': 'dispensary',
+      'X-Scope-Type': serviceHost.scopeType,
       'X-Scope-Id': businessId,
       'X-Dispensary-Id': businessId,
     },
