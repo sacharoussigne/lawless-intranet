@@ -191,6 +191,18 @@ docker build \
 | `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION` | media | Bucket S3 de la médiathèque |
 | `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY` | media | Clés de l'utilisateur IAM du bucket |
 
+## Appels entre conteneurs (réseau `internal`)
+
+Les appels de serveur à serveur passent par le réseau Docker privé `internal` :
+- dispensary et shelter vers auth, documents, agenda, bank, inventory ;
+- les services vers auth, pour lire la session.
+
+On utilise `http://auth:3001`, `http://bank:3004`… plutôt que les URLs publiques. Une page en fait plusieurs, et chacun évite ainsi une résolution DNS publique, l'aller-retour par nginx-proxy et une négociation TLS.
+
+- Les `*_PUBLIC_URL` ne servent plus qu'au navigateur (`NEXT_PUBLIC_*`), à `VIRTUAL_HOST` et aux origines de confiance.
+- `internal` est un réseau `internal: true` : on ne sort pas par lui. L'accès sortant (Discord, S3) reste assuré par les autres réseaux.
+- `UV_THREADPOOL_SIZE=16` sur les conteneurs Node. Les résolutions DNS, les lectures de fichiers (fichiers statiques compris), zlib et la crypto partagent un pool de 4 threads par défaut, et quelques appels lents suffisaient à faire attendre tout le reste.
+
 ## Plusieurs hôtes (app business)
 
 L'app business (aujourd'hui `apps/dispensary`) sert **un seul conteneur sur plusieurs hôtes** (`docs/MULTI-BUSINESS.md`) :
