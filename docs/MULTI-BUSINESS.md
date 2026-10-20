@@ -1,6 +1,6 @@
 # Réflexion : une app multi-entreprises (« Business »)
 
-> Document de réflexion : **rien n'est codé**. Il sert à cadrer le chantier avant de démarrer.
+> Document de réflexion et journal des phases. Pour reprendre le chantier (état, façon de travailler, pièges), voir [`MULTI-BUSINESS-CONTEXT.md`](MULTI-BUSINESS-CONTEXT.md).
 
 ## Objectif
 
