@@ -1,5 +1,6 @@
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getAuthLoginRedirectUrl } from '@/lib/authSession';
+import { appOriginFromHeaders, getAuthLoginRedirectUrl } from '@/lib/authSession';
 
 export default async function LoginPage({
   searchParams,
@@ -7,7 +8,7 @@ export default async function LoginPage({
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const params = await searchParams;
-  const callbackUrl =
-    params.callbackUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  // Back to the host the user came from (dispensaire.*, gs.*, business.*…).
+  const callbackUrl = params.callbackUrl ?? appOriginFromHeaders(await headers());
   redirect(getAuthLoginRedirectUrl(callbackUrl));
 }

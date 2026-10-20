@@ -1,3 +1,4 @@
+import type { BusinessType } from '@prisma/client';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
 import type { PermissionsObject } from '@lawless-intranet/auth-permissions';
 
@@ -7,6 +8,9 @@ export type AccessibleBusiness = {
   id: string;
   slug: string;
   name: string;
+  type: BusinessType;
+  /** Where to open it from this host: '' (here) or `proto://host` of its type (lib/business/hosts). */
+  origin: string;
 };
 
 export interface PermissionsContextType {

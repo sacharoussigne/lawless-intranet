@@ -6,7 +6,7 @@ Guide pour travailler sur **lawless-intranet**.
 
 Intranet pour un serveur **RP western (RedM, ~1890)**. Il sert à des organisations en jeu : le **dispensaire de Saint-Denis** (stock, commandes, ventes, banque, courriers, paie, activité hebdo, agenda, cabinet) et le **refuge animalier** (animaux, espèces/races, suivis, liste d'attente, documents, banque).
 
-- **Multi-tenant** : chaque organisation a un slug. Routes `/d/[businessSlug]/…` (dispensary) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
+- **Multi-tenant** : chaque organisation a un slug. Routes `/[businessSlug]/…` (dispensary ; les slugs réservés sont dans `lib/business/slug.ts`, l'hôte peut filtrer le type d'entreprise via `BUSINESS_TYPE_HOSTS`, voir `lib/business/hosts.ts`) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
 - **Calendrier RP** : les dates sont stockées en réel et affichées **136 ans plus tôt** (`RP_DISPLAY_YEAR_OFFSET` dans `lib/rpCalendar.ts`). Ne jamais écrire de date RP en base. Côté UI, utiliser `formatRpDate`, `RpDateInput`, etc.
 - **Langue** : l'UI, les messages d'erreur et les docs sont en **français**. Le code (identifiants) et les messages de commit sont en **anglais**.
 

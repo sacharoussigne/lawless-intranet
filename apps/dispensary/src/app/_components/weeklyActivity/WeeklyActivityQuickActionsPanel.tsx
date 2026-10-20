@@ -4,12 +4,12 @@ import { Alert, Button, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@
 import { IconCashRegister, IconUserCheck } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import { parisWeekdayKey } from '@/lib/businessWeeklyActivity/weekdayFlags';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   useIncrementOwnWeeklyCounterMutation,
   useMarkOwnWeeklyChestTodayMutation,
   useMarkOwnWeeklyPresenceTodayMutation,
-} from '@/app/(loggedIn)/d/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
+} from '@/app/(loggedIn)/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklyActivityWeekBounds } from '@/lib/businessWeeklyActivity/queryKeys';
 import { WEEKLY_COUNTER_ICONS } from './counterIcons';
 import classes from './WeeklyActivityQuickActionsPanel.module.scss';

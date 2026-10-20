@@ -132,7 +132,7 @@ export function BusinessesPlatformClient({
                   <div>
                     <Text fw={600}>{displayName}</Text>
                     <Text size="sm" c="dimmed">
-                      /d/{d.slug} — {d._count.members} membre(s)
+                      /{d.slug} — {d._count.members} membre(s)
                     </Text>
                   </div>
                   <Group gap="sm">

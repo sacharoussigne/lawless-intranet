@@ -14,7 +14,7 @@ Ce guide décrit le standard du projet pour charger et muter des données serveu
 Le `QueryProvider` est monté dans le layout dispensary :
 
 - [`src/lib/react-query/QueryProvider.tsx`](../src/lib/react-query/QueryProvider.tsx)
-- [`src/app/(loggedIn)/d/[businessSlug]/layout.tsx`](../src/app/(loggedIn)/d/[businessSlug]/layout.tsx)
+- [`src/app/(loggedIn)/[businessSlug]/layout.tsx`](../src/app/(loggedIn)/[businessSlug]/layout.tsx)
 
 Valeurs par défaut : `staleTime: 5s`, `refetchOnWindowFocus: false`.
 
@@ -49,7 +49,7 @@ return <StockPageClient initialItems={items} initialStockChecksSummary={checks} 
 
 ### Client — hook query
 
-Référence : [`src/app/(loggedIn)/d/[businessSlug]/stock/hooks/useStockQueries.ts`](../src/app/(loggedIn)/d/[businessSlug]/stock/hooks/useStockQueries.ts)
+Référence : [`src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts`](../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
 
 ```tsx
 export function useStockItems(chestId: string | null, initialData: ItemWithRelations[]) {
@@ -153,6 +153,6 @@ Le pattern `useState` + `useEffect` + `loadX()` (ex. agenda) est **legacy**. Lor
 
 Module **stock** :
 
-- [`useStockQueries.ts`](../src/app/(loggedIn)/d/[businessSlug]/stock/hooks/useStockQueries.ts)
-- [`StockPageClient.tsx`](../src/app/(loggedIn)/d/[businessSlug]/stock/StockPageClient.tsx)
+- [`useStockQueries.ts`](../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
+- [`StockPageClient.tsx`](../src/app/(loggedIn)/[businessSlug]/stock/StockPageClient.tsx)
 - [`queryKeys.ts`](../src/lib/stock/queryKeys.ts)

@@ -2,8 +2,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_BUSINESS_SLUG } from '@/lib/business/constants';
 import type { FormEntityType } from '@/lib/cabinet/formSchema';
 
+/** Pages of a business live at `/<slug>/…` (slugs never take a reserved segment, see lib/business/slug). */
 export function businessBase(slug: string): string {
-  return `/d/${encodeURIComponent(slug)}`;
+  return `/${encodeURIComponent(slug)}`;
 }
 
 /** Public share link of a media file (no login, outside the middleware matcher). */
@@ -146,9 +147,9 @@ export const LEGACY_TENANT_PATHS = [
 function tenantPathForLegacy(legacyPath: string, slug: string): string {
   const segment = legacyPath.slice(1); // without leading /
   if (LEGACY_TO_EMPLOYEE_PREFIX.has(segment)) {
-    return `/d/${slug}/employee${legacyPath}`;
+    return `${businessBase(slug)}/employee${legacyPath}`;
   }
-  return `/d/${slug}${legacyPath}`;
+  return `${businessBase(slug)}${legacyPath}`;
 }
 
 export function legacyPathToTenant(pathname: string, slug: string = DEFAULT_BUSINESS_SLUG): string | null {
@@ -159,9 +160,9 @@ export function legacyPathToTenant(pathname: string, slug: string = DEFAULT_BUSI
     if (pathname.startsWith(`${legacy}/`)) {
       const segment = legacy.slice(1);
       if (LEGACY_TO_EMPLOYEE_PREFIX.has(segment)) {
-        return `/d/${slug}/employee${pathname}`;
+        return `${businessBase(slug)}/employee${pathname}`;
       }
-      return `/d/${slug}${pathname}`;
+      return `${businessBase(slug)}${pathname}`;
     }
   }
   if (pathname.startsWith('/platform')) {
@@ -171,21 +172,28 @@ export function legacyPathToTenant(pathname: string, slug: string = DEFAULT_BUSI
     if (pathname === '/admin/users' || pathname.startsWith('/admin/users/')) {
       return `/platform/users${pathname.slice('/admin/users'.length)}`;
     }
-    return `/d/${slug}${pathname}`;
+    return `${businessBase(slug)}${pathname}`;
   }
   return null;
 }
 
+/** Old business paths `/d/<slug>/…` → `/<slug>/…` (the `/d/` prefix was dropped). */
+export function prefixedBusinessPathToCanonical(pathname: string): string | null {
+  const match = pathname.match(/^\/d\/([^/]+)(\/.*)?$/);
+  if (!match) return null;
+  return `/${match[1]}${match[2] ?? ''}`;
+}
+
 /**
- * Redirect /d/:slug/(stock|orders|...)[/...] → /d/:slug/employee/(stock|orders|...)[/...]
- * Returns null if the path is already canonical or unrelated.
+ * Redirect /:slug/(stock|orders|...)[/...] → /:slug/employee/(stock|orders|...)[/...]
+ * Returns null if the path is already canonical or unrelated (`slug` is checked by the caller).
  */
 export function oldEmployeeModulePathToCanonical(pathname: string): string | null {
-  const match = pathname.match(/^\/d\/([^/]+)\/([^/]+)(\/.*)?$/);
+  const match = pathname.match(/^\/([^/]+)\/([^/]+)(\/.*)?$/);
   if (!match) return null;
   const [, slug, segment, rest = ''] = match;
   if (!(EMPLOYEE_MODULE_SEGMENTS as readonly string[]).includes(segment)) {
     return null;
   }
-  return `/d/${slug}/employee/${segment}${rest}`;
+  return `/${slug}/employee/${segment}${rest}`;
 }

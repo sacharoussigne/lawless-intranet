@@ -158,7 +158,11 @@ docker build \
 | Variable | App | Rôle |
 |----------|-----|------|
 | `AUTH_PUBLIC_URL` | auth + hosts | URL publique IdP — **build + runtime** (`NEXT_PUBLIC_AUTH_URL`) |
-| `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL publique RP — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
+| `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL **principale** de l'app business (toutes les entreprises) — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
+| `DISPENSARY_VIRTUAL_HOST` | dispensary + auth | Hôte(s) nginx-proxy / letsencrypt, liste séparée par des virgules (voir « Plusieurs hôtes ») |
+| `DISPENSARY_EXTRA_PUBLIC_URLS` | realtime | Autres URLs publiques de l'app business (origines websocket acceptées) |
+| `BUSINESS_TYPE_HOSTS` | dispensary | Hôte de chaque type d'entreprise (`DISPENSARY=dispensaire.example.com,…`), lu au runtime |
+| `FOLLOW_UP_CRON_SECRET` | shelter | Protège la route cron des relances de suivi |
 | `SHELTER_PUBLIC_URL` | auth + shelter | URL publique refuge — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
 | `DOCUMENTS_PUBLIC_URL` | documents + dispensary | URL service documents (`DOCUMENTS_URL` côté dispensary) |
 | `AGENDA_PUBLIC_URL` | agenda + dispensary | URL service agenda (`AGENDA_URL` côté dispensary) |
@@ -186,6 +190,33 @@ docker build \
 | `MEDIA_INTERNAL_SECRET` | media + shelter + dispensary | Secret hôte→media (toutes les routes) |
 | `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION` | media | Bucket S3 de la médiathèque |
 | `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY` | media | Clés de l'utilisateur IAM du bucket |
+
+## Plusieurs hôtes (app business)
+
+L'app business (aujourd'hui `apps/dispensary`) sert **un seul conteneur sur plusieurs hôtes** (`docs/MULTI-BUSINESS.md`) :
+
+| Hôte | Rôle |
+|---|---|
+| `business.example.com` | URL principale : toutes les entreprises de l'utilisateur, page de choix |
+| `dispensaire.example.com` | Dispensaires uniquement |
+| `gs.example.com` | General stores uniquement (phase 7) |
+
+Dans `.env.docker` :
+
+```env
+DISPENSARY_PUBLIC_URL=https://business.example.com
+DISPENSARY_VIRTUAL_HOST=business.example.com,dispensaire.example.com,gs.example.com
+DISPENSARY_EXTRA_PUBLIC_URLS=https://dispensaire.example.com,https://gs.example.com
+BUSINESS_TYPE_HOSTS=DISPENSARY=dispensaire.example.com
+AUTH_COOKIE_DOMAIN=.example.com
+```
+
+- **DNS** : un enregistrement par hôte vers le serveur. nginx-proxy route la liste `VIRTUAL_HOST` vers le conteneur, et le compagnon letsencrypt émet un certificat pour chaque nom de `LETSENCRYPT_HOST`.
+- **SSO** : un seul cookie sur `AUTH_COOKIE_DOMAIN`. Auth accepte les hôtes de `DISPENSARY_VIRTUAL_HOST` et tout sous-domaine du cookie, et la connexion revient sur l'hôte d'origine.
+- **Realtime** : `ALLOWED_ORIGINS` = URL principale + `DISPENSARY_EXTRA_PUBLIC_URLS` + refuge (compose).
+- **Migration depuis `dispensaire.example.com` seul** : garder ce domaine dans la liste et dans `BUSINESS_TYPE_HOSTS` ; les liens existants continuent de marcher (les anciens chemins `/d/<slug>/…` redirigent).
+- Les services (documents, agenda, bank, inventory) ne sont appelés que de serveur à serveur : leur CORS n'a pas besoin des autres hôtes.
+- Sans `BUSINESS_TYPE_HOSTS`, aucun routage par hôte : tout hôte se comporte comme l'URL principale.
 
 ## Serveur temps réel (WebSocket)
 

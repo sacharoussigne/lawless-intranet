@@ -7,7 +7,11 @@ import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { actionErrorParser } from '@/lib/action';
 import { requirePlatformAdminContext } from '@/lib/business/serverActionContext';
-import { slugifyBusinessName } from '@/lib/business/slug';
+import {
+  isReservedBusinessSlug,
+  RESERVED_BUSINESS_SLUG_MESSAGE,
+  slugifyBusinessName,
+} from '@/lib/business/slug';
 import { APP_SETTINGS_DEFAULTS } from '@/lib/appSettingsShared';
 import {
   agendaCookie,
@@ -32,7 +36,14 @@ import { ensureBusinessRolePermissions } from '@/lib/business/permissionsSeed';
 
 const createBusinessSchema = z.object({
   name: z.string().min(1).max(120),
-  slug: z.string().min(1).max(80).optional(),
+  slug: z
+    .string()
+    .trim()
+    .max(80)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug invalide (lettres minuscules, chiffres et tirets)')
+    .refine((slug) => !isReservedBusinessSlug(slug), RESERVED_BUSINESS_SLUG_MESSAGE)
+    .optional()
+    .or(z.literal('')),
 });
 
 const deleteBusinessSchema = z.object({

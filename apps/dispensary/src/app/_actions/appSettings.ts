@@ -12,6 +12,8 @@ import {
   type AppSettingsDTO,
 } from '@/lib/appSettings';
 import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
+import { businessBase } from '@/types/routes';
+import { isReservedBusinessSlug, RESERVED_BUSINESS_SLUG_MESSAGE } from '@/lib/business/slug';
 import {
   parseWeeklyCounterSettings,
   weeklyCounterDefinitions,
@@ -26,7 +28,8 @@ const slugSchema = z
   .trim()
   .min(1, 'Le slug est requis')
   .max(80, 'Le slug est trop long')
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug invalide (lettres minuscules, chiffres et tirets)');
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug invalide (lettres minuscules, chiffres et tirets)')
+  .refine((slug) => !isReservedBusinessSlug(slug), RESERVED_BUSINESS_SLUG_MESSAGE);
 
 const updateSchema = z.object({
   businessName: z
@@ -175,9 +178,9 @@ async function updateAppSettingsUnlogged(
     ]);
 
     updateTag(appSettingsCacheTag(businessId));
-    revalidatePath(`/d/${business.slug}`, 'layout');
+    revalidatePath(businessBase(business.slug), 'layout');
     if (newSlug !== business.slug) {
-      revalidatePath(`/d/${newSlug}`, 'layout');
+      revalidatePath(businessBase(newSlug), 'layout');
     }
     revalidatePath('/platform/dispensaries');
 

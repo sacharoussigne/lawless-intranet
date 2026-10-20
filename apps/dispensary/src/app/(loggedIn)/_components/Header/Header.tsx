@@ -32,7 +32,7 @@ import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/business/platformAdmin';
 import { DEFAULT_BUSINESS_SLUG } from '@/lib/business/constants';
-import { rewritePathWithBusinessSlug } from '@/lib/business/slug';
+import { businessSelectData, businessSwitchTarget } from '@/lib/business/switcher';
 import { getEmployeeNavItems } from '@/lib/navigation/employeeNav';
 
 export default function Header({
@@ -76,7 +76,12 @@ export default function Header({
 
   const handleBusinessChange = (newSlug: string | null) => {
     if (!newSlug || !pathname) return;
-    router.push(rewritePathWithBusinessSlug(pathname, newSlug));
+    const target = businessSwitchTarget(accessibleBusinesses, pathname, newSlug);
+    if (target.external) {
+      window.location.assign(target.href);
+    } else {
+      router.push(target.href);
+    }
   };
 
   const handleLogout = async () => {
@@ -184,11 +189,8 @@ export default function Header({
             </Link>
             {session && accessibleBusinesses.length > 1 && (
               <Select
-                aria-label="Dispensaire"
-                data={accessibleBusinesses.map((d) => ({
-                  value: d.slug,
-                  label: d.name,
-                }))}
+                aria-label="Entreprise"
+                data={businessSelectData(accessibleBusinesses)}
                 value={businessSlug ?? defaultTenantSlug ?? null}
                 onChange={handleBusinessChange}
                 allowDeselect={false}

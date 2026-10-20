@@ -22,7 +22,7 @@ Lire [`docs/react-query.md`](../../docs/react-query.md) avant d'implémenter.
 ## Structure de référence (stock)
 
 - [`src/lib/stock/queryKeys.ts`](../../src/lib/stock/queryKeys.ts)
-- [`src/app/(loggedIn)/d/[businessSlug]/stock/hooks/useStockQueries.ts`](../../src/app/(loggedIn)/d/[businessSlug]/stock/hooks/useStockQueries.ts)
+- [`src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts`](../../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
 - [`src/lib/react-query/QueryProvider.tsx`](../../src/lib/react-query/QueryProvider.tsx)
 
 ## Interdit dans du code neuf

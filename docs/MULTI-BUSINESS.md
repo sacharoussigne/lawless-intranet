@@ -392,6 +392,29 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
   - le lien vers le compte SSO est mis à jour pour la personne, donc partout.
 - **Code :** les lectures sont dans `lib/businessDiscordProfile/queries.ts` (sans import Prisma à l'exécution), les écritures dans `service.ts`.
 
+### Phase 5 : ce qui a été fait
+
+- **Chemins :** les pages d'une entreprise sont à `/<slug>/…` (dossier `app/(loggedIn)/[businessSlug]`) et `tenantRoutes` part de `/<slug>`.
+  - Les anciens `/d/<slug>/…` redirigent en 308, tout comme les anciens chemins sans entreprise.
+  - Les slugs réservés (`RESERVED_BUSINESS_SLUGS` : `api`, `auth`, `platform`, `settings`, `admin`, `partage`, `d`, `test` et les anciens chemins) sont refusés à la création et au renommage.
+  - Le matcher du middleware couvre toutes les pages, sauf `/api`, `/_next`, `/partage` et les fichiers statiques.
+  - Les routes internes `/api/d/<slug>/…` (lectures, jeton realtime) ne changent pas.
+- **Hôtes :** `BUSINESS_TYPE_HOSTS` (`DISPENSARY=dispensaire.aerokusu.fr,…`) associe chaque type à son hôte (`lib/business/hosts.ts`).
+  - Sur l'hôte d'un type, seules ses entreprises sont proposées.
+  - Une entreprise ouverte sur l'hôte d'un autre type est redirigée en 308 vers le sien.
+  - L'hôte principal, `NEXT_PUBLIC_APP_URL`, sert toutes les entreprises.
+  - Sans cette variable, rien ne change.
+- **Racine `/` :**
+  - une seule entreprise accessible sur cet hôte : on y entre directement ;
+  - plusieurs : page de choix groupée par type (`BusinessPicker`) ;
+  - aucune : page d'accueil avec les types d'entreprises et « demandez l'accès à votre responsable ».
+  - `/auth/no-dispensary-access` renvoie vers `/`.
+- **Sélecteur :** dans le header et dans la page Compte, il est groupé par type. Il garde la même page et change d'hôte si besoin (`AccessibleBusiness.origin`).
+- **SSO :**
+  - le dispensaire accepte les hôtes de `BUSINESS_TYPE_HOSTS` comme retour de connexion, et la connexion revient sur l'hôte d'origine ;
+  - auth accepte `business.localhost` et `gs.localhost` en dev, et une liste d'hôtes dans `DISPENSARY_VIRTUAL_HOST` (séparés par des virgules) en prod ;
+- **Prod :** la configuration est décrite dans `docs/DOCKER.md` › « Plusieurs hôtes ». Elle utilise `DISPENSARY_VIRTUAL_HOST` en liste, `BUSINESS_TYPE_HOSTS` et `DISPENSARY_EXTRA_PUBLIC_URLS` pour les origines realtime. Le compose et `docker/.env.example` sont prêts.
+
 ## 11. Questions encore ouvertes
 
 - D'éventuels **autres modules propres** au general store.

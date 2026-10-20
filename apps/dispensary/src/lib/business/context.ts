@@ -128,6 +128,7 @@ export async function listAccessibleBusinesses(session: SessionLike) {
     id: true,
     slug: true,
     name: true,
+    type: true,
     settings: { select: { businessName: true } },
   } as const;
 
@@ -142,6 +143,7 @@ export async function listAccessibleBusinesses(session: SessionLike) {
   return rows.map((d) => ({
     id: d.id,
     slug: d.slug,
+    type: d.type,
     name: d.settings?.businessName?.trim() || d.name,
   }));
 }

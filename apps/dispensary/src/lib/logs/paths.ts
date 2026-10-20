@@ -1,6 +1,7 @@
+import { parseBusinessSlugFromPathname } from '@/lib/business/slug';
 import type { LogFeature } from './types';
 
-/** Page segment (after /d/<slug>/<area>/) → feature. */
+/** Page segment (after /<slug>/<area>/) → feature. */
 const SEGMENT_FEATURES: Record<string, LogFeature> = {
   stock: 'stock',
   'stock-movements': 'stock',
@@ -24,10 +25,12 @@ const SEGMENT_FEATURES: Record<string, LogFeature> = {
   members: 'settings',
 };
 
-/** Dispensary slug of an app path (`/d/<slug>/…`, `/api/d/<slug>/…`), if any. */
+/** Business slug of an app path (`/<slug>/…`, `/api/d/<slug>/…`), if any. */
 export function businessSlugFromPath(pathname: string | null | undefined): string | null {
-  const match = pathname?.match(/^(?:\/api)?\/d\/([^/?#]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  if (!pathname) return null;
+  const api = pathname.match(/^\/api\/d\/([^/?#]+)/);
+  if (api) return decodeURIComponent(api[1]);
+  return parseBusinessSlugFromPathname(pathname);
 }
 
 /** Feature of the page an action was called from, best effort. */
@@ -35,10 +38,10 @@ export function featureFromPath(pathname: string | null | undefined): LogFeature
   if (!pathname) return 'unknown';
   if (pathname.startsWith('/platform') || pathname.startsWith('/admin')) return 'platform';
   if (pathname.startsWith('/settings')) return 'account';
+  if (!businessSlugFromPath(pathname)) return 'unknown';
   const segments = pathname.split(/[/?#]/).filter(Boolean);
-  const tenantIndex = segments[0] === 'api' ? 1 : 0;
-  if (segments[tenantIndex] !== 'd') return 'unknown';
-  const [area, page] = segments.slice(tenantIndex + 2);
+  // `/<slug>/<area>/<page>` or `/api/d/<slug>/<area>/<page>`.
+  const [area, page] = segments.slice(segments[0] === 'api' ? 3 : 1);
   if (page && SEGMENT_FEATURES[page]) return SEGMENT_FEATURES[page];
   if (area === 'management') return 'management';
   return 'unknown';
