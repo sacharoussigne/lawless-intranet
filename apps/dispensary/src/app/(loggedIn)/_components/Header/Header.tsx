@@ -27,34 +27,34 @@ import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
 import { MobileHeader } from './MobileHeader';
 import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { dispensarySiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
+import { businessSiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
 import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
-import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
-import { DEFAULT_DISPENSARY_SLUG } from '@/lib/dispensary/constants';
-import { rewritePathWithDispensarySlug } from '@/lib/dispensary/slug';
+import { isPlatformAdmin } from '@/lib/business/platformAdmin';
+import { DEFAULT_BUSINESS_SLUG } from '@/lib/business/constants';
+import { businessSelectData, businessSwitchTarget } from '@/lib/business/switcher';
 import { getEmployeeNavItems } from '@/lib/navigation/employeeNav';
 
 export default function Header({
   session,
   impersonatorDisplayName,
-  dispensarySlug: dispensarySlugProp,
+  businessSlug: businessSlugProp,
 }: Readonly<{
   session: AuthSession | null;
   impersonatorDisplayName?: string | null;
-  dispensarySlug?: string;
+  businessSlug?: string;
 }>) {
   const router = useRouter();
   const pathname = usePathname();
   const [userMenuOpened, setUserMenuOpened] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
-  const { permissions, userRole, appSettings, accessibleDispensaries, agendaModuleAccess, cabinetModuleAccess, hasAccessibleChests, dispensarySlug: ctxSlug } = usePermissions();
-  const dispensarySlug = dispensarySlugProp ?? ctxSlug;
-  const t = dispensarySlug ? tenantRoutes(dispensarySlug) : null;
+  const { permissions, userRole, appSettings, accessibleBusinesses, agendaModuleAccess, cabinetModuleAccess, hasAccessibleChests, businessSlug: ctxSlug } = usePermissions();
+  const businessSlug = businessSlugProp ?? ctxSlug;
+  const t = businessSlug ? tenantRoutes(businessSlug) : null;
   const isPlatformAdminUser = isPlatformAdmin(session?.user?.role);
   const defaultTenantSlug =
-    accessibleDispensaries.find((d) => d.slug === DEFAULT_DISPENSARY_SLUG)?.slug ??
-    accessibleDispensaries[0]?.slug ??
+    accessibleBusinesses.find((d) => d.slug === DEFAULT_BUSINESS_SLUG)?.slug ??
+    accessibleBusinesses[0]?.slug ??
     null;
 
   const isImpersonating = Boolean(session?.session.impersonatedBy);
@@ -74,9 +74,14 @@ export default function Header({
     }
   };
 
-  const handleDispensaryChange = (newSlug: string | null) => {
+  const handleBusinessChange = (newSlug: string | null) => {
     if (!newSlug || !pathname) return;
-    router.push(rewritePathWithDispensarySlug(pathname, newSlug));
+    const target = businessSwitchTarget(accessibleBusinesses, pathname, newSlug);
+    if (target.external) {
+      window.location.assign(target.href);
+    } else {
+      router.push(target.href);
+    }
   };
 
   const handleLogout = async () => {
@@ -154,7 +159,7 @@ export default function Header({
       : t.employee.index
     : defaultTenantSlug
       ? tenantRoutes(defaultTenantSlug).employee.index
-      : routes.platform.dispensaries;
+      : routes.platform.businesses;
 
   return (
     <header className={classes.header}>
@@ -162,7 +167,7 @@ export default function Header({
       <Container size={'xl'}>
         {session && (
           <MobileHeader
-            dispensarySlug={t ? (dispensarySlug ?? null) : null}
+            businessSlug={t ? (businessSlug ?? null) : null}
             backHref={defaultTenantSlug ? tenantRoutes(defaultTenantSlug).employee.account : null}
             isImpersonating={isImpersonating}
             stoppingImpersonation={stoppingImpersonation}
@@ -175,22 +180,19 @@ export default function Header({
             <Link href={logoHref} className={classes.logoLink}>
               <Image
                 src="/logo_dispensaire.png"
-                alt={dispensarySiteTitle(appSettings)}
+                alt={businessSiteTitle(appSettings)}
                 width={50}
                 height={50}
                 className="rounded-full"
                 style={{ borderRadius: '50%' }}
               />
             </Link>
-            {session && accessibleDispensaries.length > 1 && (
+            {session && accessibleBusinesses.length > 1 && (
               <Select
-                aria-label="Dispensaire"
-                data={accessibleDispensaries.map((d) => ({
-                  value: d.slug,
-                  label: d.name,
-                }))}
-                value={dispensarySlug ?? defaultTenantSlug ?? null}
-                onChange={handleDispensaryChange}
+                aria-label="Entreprise"
+                data={businessSelectData(accessibleBusinesses)}
+                value={businessSlug ?? defaultTenantSlug ?? null}
+                onChange={handleBusinessChange}
                 allowDeselect={false}
                 w={200}
                 size="sm"
@@ -257,9 +259,9 @@ export default function Header({
                     </ActionIcon>
                   </Tooltip>
                 )}
-                {appSettings.featureAgendaEnabled && agendaModuleAccess && dispensarySlug && (
+                {appSettings.featureAgendaEnabled && agendaModuleAccess && businessSlug && (
                   <HeaderUpcomingEvents
-                    dispensarySlug={dispensarySlug}
+                    businessSlug={businessSlug}
                     agendaHref={t.agenda.index}
                   />
                 )}
@@ -290,7 +292,7 @@ export default function Header({
                     {isPlatformAdminUser && (
                       <>
                         <Menu.Label>Plateforme</Menu.Label>
-                        <Menu.Item component={Link} href={routes.platform.dispensaries}>
+                        <Menu.Item component={Link} href={routes.platform.businesses}>
                           Dispensaires
                         </Menu.Item>
                         <Menu.Item component={Link} href={routes.platform.users}>
@@ -368,7 +370,7 @@ export default function Header({
                   <Button component={Link} href={routes.platform.users} variant="light">
                     Comptes utilisateurs
                   </Button>
-                  <Button component={Link} href={routes.platform.dispensaries} variant="light">
+                  <Button component={Link} href={routes.platform.businesses} variant="light">
                     Dispensaires
                   </Button>
                   <Button component={Link} href={routes.platform.logs} variant="light">

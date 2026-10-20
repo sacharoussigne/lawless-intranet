@@ -7,9 +7,9 @@ import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { agendaCookie, agendaScope, AGENDA_SCOPE_TYPE } from '@/lib/agenda/client';
 import { MEDIA_SCOPE_TYPE } from '@/lib/media/client';
 import {
-  canEditAllWeeklyDispensaryActivity,
-  canViewWeeklyDispensaryActivity,
-} from '@/lib/dispensaryWeeklyActivity/access';
+  canEditAllWeeklyActivity,
+  canViewWeeklyActivity,
+} from '@/lib/businessWeeklyActivity/access';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { getRealtimeTokenSecret } from '@/lib/realtime/socketConfig';
 
@@ -19,9 +19,9 @@ import { getRealtimeTokenSecret } from '@/lib/realtime/socketConfig';
  * topic must be checked here.
  * Served by GET `/api/d/<slug>/realtime-token`.
  */
-export async function createRealtimeToken(dispensarySlug: string) {
+export async function createRealtimeToken(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const secret = getRealtimeTokenSecret();
@@ -30,53 +30,53 @@ export async function createRealtimeToken(dispensarySlug: string) {
     }
 
     const userId = ctx.session.user.id;
-    const { dispensaryId, effectivePermissions } = ctx.tenant;
+    const { businessId, effectivePermissions } = ctx.tenant;
     const topics = [realtimeTopics.user(userId)];
 
-    const agendaBlocked = await getAppFeatureActionBlock(dispensaryId, 'agenda');
+    const agendaBlocked = await getAppFeatureActionBlock(businessId, 'agenda');
     if (!agendaBlocked) {
-      const access = await getAgendaAccess(agendaScope(dispensaryId), await agendaCookie());
-      topics.push(realtimeTopics.agendas(AGENDA_SCOPE_TYPE, dispensaryId));
+      const access = await getAgendaAccess(agendaScope(businessId), await agendaCookie());
+      topics.push(realtimeTopics.agendas(AGENDA_SCOPE_TYPE, businessId));
       for (const agendaId of access.accessibleAgendaIds) {
         topics.push(realtimeTopics.agenda(agendaId));
       }
     }
 
-    const ordersBlocked = await getAppFeatureActionBlock(dispensaryId, 'orders');
+    const ordersBlocked = await getAppFeatureActionBlock(businessId, 'orders');
     if (!ordersBlocked && can(effectivePermissions, 'orders', 'view')) {
-      topics.push(realtimeTopics.orders(dispensaryId));
+      topics.push(realtimeTopics.orders(businessId));
     }
 
     // No chest id is ever sent on this topic: roles limited to some chests learn nothing.
-    const stockBlocked = await getAppFeatureActionBlock(dispensaryId, 'stock');
+    const stockBlocked = await getAppFeatureActionBlock(businessId, 'stock');
     if (!stockBlocked && can(effectivePermissions, 'stock', 'view')) {
-      topics.push(realtimeTopics.stock(dispensaryId));
+      topics.push(realtimeTopics.stock(businessId));
     }
 
-    const salesBlocked = await getAppFeatureActionBlock(dispensaryId, 'sales');
+    const salesBlocked = await getAppFeatureActionBlock(businessId, 'sales');
     if (!salesBlocked && can(effectivePermissions, 'sales', 'view')) {
       topics.push(
         can(effectivePermissions, 'sales', 'view_all')
-          ? realtimeTopics.sales(dispensaryId)
-          : realtimeTopics.salesOfUser(dispensaryId, userId),
+          ? realtimeTopics.sales(businessId)
+          : realtimeTopics.salesOfUser(businessId, userId),
       );
     }
 
     const weeklyActivityBlocked = await getAppFeatureActionBlock(
-      dispensaryId,
-      'weeklyDispensaryActivity',
+      businessId,
+      'weeklyActivity',
     );
-    if (!weeklyActivityBlocked && canViewWeeklyDispensaryActivity(effectivePermissions)) {
+    if (!weeklyActivityBlocked && canViewWeeklyActivity(effectivePermissions)) {
       topics.push(
-        canEditAllWeeklyDispensaryActivity(effectivePermissions)
-          ? realtimeTopics.weeklyActivity(dispensaryId)
-          : realtimeTopics.weeklyActivityOfUser(dispensaryId, userId),
+        canEditAllWeeklyActivity(effectivePermissions)
+          ? realtimeTopics.weeklyActivity(businessId)
+          : realtimeTopics.weeklyActivityOfUser(businessId, userId),
       );
     }
 
-    const mediaBlocked = await getAppFeatureActionBlock(dispensaryId, 'media');
+    const mediaBlocked = await getAppFeatureActionBlock(businessId, 'media');
     if (!mediaBlocked && can(effectivePermissions, 'media', 'access')) {
-      topics.push(realtimeTopics.media(MEDIA_SCOPE_TYPE, dispensaryId));
+      topics.push(realtimeTopics.media(MEDIA_SCOPE_TYPE, businessId));
     }
 
     return { status: 200, data: signRealtimeToken({ userId, topics }, secret) };

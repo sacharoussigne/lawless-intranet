@@ -1,0 +1,305 @@
+'use client';
+
+import { useCallback, useMemo, useState } from 'react';
+import { Button, Container, Group, Paper, Select } from '@mantine/core';
+import { IconClockHour4, IconPlus } from '@tabler/icons-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import type { DataTableSortStatus } from 'mantine-datatable';
+import { useQueryClient } from '@tanstack/react-query';
+import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
+import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { WeekNavigation } from '@/app/_components/WeekNavigation/WeekNavigation';
+import { usePermissions, useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
+import { addParisWeeks, clampParisWeekDateToMax, getBankWeekBounds, getCurrentParisWeekStart } from '@/lib/bankWeek';
+import dayjs from '@/lib/dayjs';
+import { weeklyActivityFieldVisibilityFromSettings } from '@/lib/businessWeeklyActivity/fieldVisibility';
+import type { WeeklyActivityWeekBounds } from '@/lib/businessWeeklyActivity/queryKeys';
+import { useWeeklyActivityRealtime } from '@/lib/businessWeeklyActivity/realtime/client/useWeeklyActivityRealtime';
+import type { WeeklyActivityRealtimeEvent } from '@/lib/businessWeeklyActivity/realtime/types';
+import { CreateWeeklyActivityModal } from './CreateWeeklyActivityModal';
+import { EditDiscordProfileModal } from './EditDiscordProfileModal';
+import { EditWeeklyActivityModal } from './EditWeeklyActivityModal';
+import { HistoryWeeklyActivityModal } from './HistoryWeeklyActivityModal';
+import { WeeklyActivityTable } from './WeeklyActivityTable';
+import { WeeklyHoursRecapModal } from './WeeklyHoursRecapModal';
+import {
+  buildDoctorOptions,
+  compareWeeklyActivityRows,
+  doctorKey,
+} from './weeklyActivityUtils';
+import {
+  invalidateWeeklyActivityFromRealtimeEvent,
+  useDeleteWeeklyActivityMutation,
+  useWeeklyActivities,
+  useWeeklyActivityRealtimeResync,
+  type WeeklyActivityListItem,
+} from './hooks/useWeeklyActivityQueries';
+
+export default function WeeklyActivityPageClient({
+  initialWeekBounds,
+  initialRows,
+  canEditAll,
+  canEdit,
+  sessionUserId,
+  viewerDiscordId,
+  defaultDisplayName,
+}: {
+  initialWeekBounds: WeeklyActivityWeekBounds;
+  initialRows: WeeklyActivityListItem[];
+  canEditAll: boolean;
+  canEdit: boolean;
+  sessionUserId: string;
+  viewerDiscordId: string | null;
+  defaultDisplayName: string;
+}) {
+  const { appSettings } = usePermissions();
+  const businessSlug = useRequiredBusinessSlug();
+  const queryClient = useQueryClient();
+  const fieldVisibility = useMemo(
+    () => weeklyActivityFieldVisibilityFromSettings(appSettings),
+    [appSettings],
+  );
+
+  const defaultWeekMonday = useMemo(
+    () => getBankWeekBounds(new Date()).start,
+    [],
+  );
+  const currentParisWeekStart = useMemo(() => getCurrentParisWeekStart(), []);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editRow, setEditRow] = useState<WeeklyActivityListItem | null>(null);
+  const [profileRow, setProfileRow] = useState<WeeklyActivityListItem | null>(null);
+  const [historyActivityId, setHistoryActivityId] = useState<string | null>(null);
+  const [historyTitle, setHistoryTitle] = useState('');
+  const [hoursRecapOpen, setHoursRecapOpen] = useState(false);
+  const [selectedDoctorKey, setSelectedDoctorKey] = useState<string | null>(null);
+  const [periodWeekDateValue, setPeriodWeekDateValue] = useState<Date>(() =>
+    getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,
+  );
+  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<WeeklyActivityListItem>>({
+    columnAccessor: 'periodStart',
+    direction: 'desc',
+  });
+
+  const currentWeekBounds = useMemo(
+    () => getBankWeekBounds(periodWeekDateValue),
+    [periodWeekDateValue],
+  );
+
+  const queryWeekBounds = useMemo(
+    (): WeeklyActivityWeekBounds => ({
+      periodStart: currentWeekBounds.start,
+      periodEnd: currentWeekBounds.end,
+    }),
+    [currentWeekBounds],
+  );
+
+  const handleRealtimeChange = useCallback(
+    (event: WeeklyActivityRealtimeEvent) => {
+      invalidateWeeklyActivityFromRealtimeEvent(queryClient, businessSlug, event, {
+        visibleWeekBounds: queryWeekBounds,
+        openHistoryActivityId: historyActivityId,
+      });
+    },
+    [businessSlug, historyActivityId, queryClient, queryWeekBounds],
+  );
+
+  useWeeklyActivityRealtime({
+    enabled: true,
+    onChange: handleRealtimeChange,
+  });
+  useWeeklyActivityRealtimeResync();
+
+  const { data: rows = [], isFetching } = useWeeklyActivities(queryWeekBounds, {
+    bounds: initialWeekBounds,
+    rows: initialRows,
+  });
+
+  const deleteMutation = useDeleteWeeklyActivityMutation();
+
+  const doctorOptions = useMemo(() => buildDoctorOptions(rows), [rows]);
+
+  const hoursRecapDoctorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      if (!row.discordUserId) continue;
+      map.set(row.discordUserId, row.resolvedDisplayName);
+    }
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
+  }, [rows]);
+
+  const hoursRecapInitialDiscordUserId = useMemo(() => {
+    if (!selectedDoctorKey) return null;
+    return rows.find((r) => doctorKey(r) === selectedDoctorKey)?.discordUserId ?? null;
+  }, [rows, selectedDoctorKey]);
+
+  const filteredRows = useMemo(() => {
+    if (!selectedDoctorKey) return rows;
+    return rows.filter((r) => doctorKey(r) === selectedDoctorKey);
+  }, [rows, selectedDoctorKey]);
+
+  const sortedRows = useMemo(
+    () =>
+      [...filteredRows].sort((a, b) =>
+        compareWeeklyActivityRows(a, b, String(sortStatus.columnAccessor), sortStatus.direction),
+      ),
+    [filteredRows, sortStatus],
+  );
+
+  const handleOpenHistory = useCallback((row: WeeklyActivityListItem) => {
+    setHistoryActivityId(row.id);
+    setHistoryTitle(row.resolvedDisplayName);
+  }, []);
+
+  const handleOpenHistoryById = useCallback((activityId: string, title: string) => {
+    setHistoryActivityId(activityId);
+    setHistoryTitle(title);
+  }, []);
+
+  const handleDelete = useCallback(
+    (row: WeeklyActivityListItem) => {
+      void deleteMutation.mutateAsync({ id: row.id, weekBounds: queryWeekBounds });
+    },
+    [deleteMutation, queryWeekBounds],
+  );
+
+  const resetToCurrentWeek = () => {
+    setPeriodWeekDateValue(
+      getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,
+    );
+  };
+
+  return (
+    <Container size="xl" py="xl">
+      <PageHeader
+        title="Activité hebdomadaire"
+        actions={
+          canEdit ? (
+            <Button leftSection={<IconPlus size={18} />} onClick={() => setCreateOpen(true)}>
+              Nouvelle entrée
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <Paper shadow="sm" p="md" withBorder radius="md" mt="xl">
+        <ActiveFilters
+          filters={[
+            {
+              label: 'Médecin',
+              value: selectedDoctorKey,
+              displayValue:
+                (selectedDoctorKey
+                  ? doctorOptions.find((o) => o.value === selectedDoctorKey)?.label ??
+                    selectedDoctorKey
+                  : null) ?? undefined,
+              onRemove: () => setSelectedDoctorKey(null),
+            },
+            {
+              label: 'Période',
+              value: periodWeekDateValue.toISOString().slice(0, 10),
+              displayValue: `Semaine du ${format(currentWeekBounds.start, 'd MMM', { locale: fr })} au ${format(currentWeekBounds.end, 'd MMM yyyy', { locale: fr })}`,
+              onRemove: resetToCurrentWeek,
+            },
+          ]}
+        />
+
+        <Group gap="md" mb="md" wrap="wrap" align="flex-end">
+          <Select
+            label="Médecin"
+            placeholder="Tous"
+            data={doctorOptions}
+            value={selectedDoctorKey}
+            onChange={(v) => setSelectedDoctorKey(v || null)}
+            searchable
+            clearable
+            nothingFoundMessage="Aucun résultat"
+            style={{ minWidth: 260 }}
+          />
+          <WeekNavigation
+            weekStart={currentWeekBounds.start}
+            weekEnd={currentWeekBounds.end}
+            weekDateValue={periodWeekDateValue}
+            maxWeekStart={currentParisWeekStart}
+            onWeekChange={(d) => {
+              if (d) setPeriodWeekDateValue(clampParisWeekDateToMax(d, currentParisWeekStart));
+            }}
+            onPreviousWeek={() =>
+              setPeriodWeekDateValue((prev) => addParisWeeks(prev, -1))
+            }
+            onNextWeek={() =>
+              setPeriodWeekDateValue((prev) =>
+                clampParisWeekDateToMax(addParisWeeks(prev, 1), currentParisWeekStart),
+              )
+            }
+          />
+          <Button
+            variant="light"
+            color="sage"
+            leftSection={<IconClockHour4 size={18} />}
+            onClick={() => setHoursRecapOpen(true)}
+          >
+            Récap horaires
+          </Button>
+        </Group>
+
+        <WeeklyActivityTable
+          rows={sortedRows}
+          sortStatus={sortStatus}
+          onSortStatusChange={setSortStatus}
+          fieldVisibility={fieldVisibility}
+          canEdit={canEdit}
+          canEditAll={canEditAll}
+          sessionUserId={sessionUserId}
+          viewerDiscordId={viewerDiscordId}
+          isFetching={isFetching}
+          onOpenHistory={handleOpenHistory}
+          onStartEdit={setEditRow}
+          onEditProfile={setProfileRow}
+          onDelete={handleDelete}
+        />
+      </Paper>
+
+      <CreateWeeklyActivityModal
+        opened={createOpen}
+        onClose={() => setCreateOpen(false)}
+        canEditAll={canEditAll}
+        defaultDisplayName={defaultDisplayName}
+        defaultWeekMonday={defaultWeekMonday}
+        fieldVisibility={fieldVisibility}
+      />
+
+      <EditDiscordProfileModal
+        row={profileRow}
+        onClose={() => setProfileRow(null)}
+        canEditAll={canEditAll}
+      />
+
+      <EditWeeklyActivityModal
+        row={editRow}
+        onClose={() => setEditRow(null)}
+        canEditAll={canEditAll}
+        fieldVisibility={fieldVisibility}
+        weekBounds={queryWeekBounds}
+      />
+
+      <HistoryWeeklyActivityModal
+        activityId={historyActivityId}
+        title={historyTitle}
+        onClose={() => setHistoryActivityId(null)}
+      />
+
+      <WeeklyHoursRecapModal
+        opened={hoursRecapOpen}
+        onClose={() => setHoursRecapOpen(false)}
+        weekBounds={queryWeekBounds}
+        doctorOptions={hoursRecapDoctorOptions}
+        initialDiscordUserId={hoursRecapInitialDiscordUserId}
+        onOpenHistory={handleOpenHistoryById}
+      />
+    </Container>
+  );
+}

@@ -1,10 +1,11 @@
 import { withBotRouteLog } from '@/lib/logs/botRoute';
 import { NextResponse } from 'next/server';
+import { toBotApiRow } from '@/lib/businessWeeklyActivity/botApiRow';
 import type { NextRequest } from 'next/server';
-import { isDispensaryBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/dispensaryWeeklyActivityApiAuth';
-import { listSerializedWeeklyActivities } from '@/lib/dispensaryWeeklyActivity/listSerialized';
+import { isBusinessBotApiAuthorized, getDiscordUserIdFromBotRequest } from '@/lib/businessWeeklyActivityApiAuth';
+import { listSerializedWeeklyActivities } from '@/lib/businessWeeklyActivity/listSerialized';
 import { getBankWeekBounds } from '@/lib/bankWeek';
-import { resolveBotDispensaryContext } from '@/lib/dispensaryWeeklyActivity/botRequestContext';
+import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
 import dayjs from '@/lib/dayjs';
 
 function jsonError(status: number, error: string) {
@@ -14,13 +15,13 @@ function jsonError(status: number, error: string) {
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 async function handleGet(request: NextRequest) {
-  if (!isDispensaryBotApiAuthorized(request)) {
+  if (!isBusinessBotApiAuthorized(request)) {
     return jsonError(401, 'Non autorisé');
   }
 
-  const dispensaryCtx = await resolveBotDispensaryContext(request);
-  if (!dispensaryCtx.ok) {
-    return jsonError(dispensaryCtx.status, dispensaryCtx.error);
+  const businessCtx = await resolveBotBusinessContext(request);
+  if (!businessCtx.ok) {
+    return jsonError(businessCtx.status, businessCtx.error);
   }
 
   const dateParam = request.nextUrl.searchParams.get('date')?.trim() ?? '';
@@ -37,7 +38,7 @@ async function handleGet(request: NextRequest) {
   const optionalDiscord = getDiscordUserIdFromBotRequest(request);
 
   const overlapWhere = {
-    dispensaryId: dispensaryCtx.dispensaryId,
+    businessId: businessCtx.businessId,
     periodStart: { lte: periodEnd },
     periodEnd: { gte: periodStart },
     ...(optionalDiscord ? { discordUserId: optionalDiscord } : {}),
@@ -45,7 +46,7 @@ async function handleGet(request: NextRequest) {
 
   const rows = await listSerializedWeeklyActivities(
     overlapWhere,
-    dispensaryCtx.dispensaryId,
+    businessCtx.businessId,
     [{ displayName: 'asc' }, { discordUserId: 'asc' }],
   );
 
@@ -58,12 +59,12 @@ async function handleGet(request: NextRequest) {
     data: {
       periodStart: periodStart.toISOString(),
       periodEnd: periodEnd.toISOString(),
-      rows: sorted,
+      rows: sorted.map((row) => toBotApiRow(row, businessCtx.businessType)),
     },
   });
 }
 
 export const GET = withBotRouteLog(
-  { feature: 'weeklyDispensaryActivity', event: 'bot.weeklyActivity.recap' },
+  { feature: 'weeklyActivity', event: 'bot.weeklyActivity.recap' },
   handleGet,
 );

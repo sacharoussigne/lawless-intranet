@@ -1,16 +1,16 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { routes } from '@/types/routes';
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
-import { parseDispensarySlugFromPathname } from '@/lib/dispensary/slug';
-import { assertTenantAccessInMiddleware } from '@/lib/dispensary/middlewareSession';
-import { resolveDispensaryAccessDeniedRedirect } from '@/lib/dispensary/context';
+import { parseBusinessSlugFromPathname } from '@/lib/business/slug';
+import { assertTenantAccessInMiddleware } from '@/lib/business/middlewareSession';
+import { resolveBusinessAccessDeniedRedirect } from '@/lib/business/context';
 
 export async function hasTenantAccessMiddleware(
   request: NextRequest,
   session: AppMiddlewareSession,
 ) {
   const pathname = request.nextUrl.pathname;
-  const slug = parseDispensarySlugFromPathname(pathname);
+  const slug = parseBusinessSlugFromPathname(pathname);
   if (!slug) {
     return NextResponse.next();
   }
@@ -22,7 +22,7 @@ export async function hasTenantAccessMiddleware(
   }
   const allowed = await assertTenantAccessInMiddleware(session);
   if (!allowed) {
-    const target = await resolveDispensaryAccessDeniedRedirect(
+    const target = await resolveBusinessAccessDeniedRedirect(
       { user: session.user },
       pathname,
     );

@@ -11,9 +11,15 @@ import {
   getAppSettings,
   type AppSettingsDTO,
 } from '@/lib/appSettings';
-import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
+import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
+import { businessBase } from '@/types/routes';
+import { isReservedBusinessSlug, RESERVED_BUSINESS_SLUG_MESSAGE } from '@/lib/business/slug';
+import {
+  parseWeeklyCounterSettings,
+  weeklyCounterDefinitions,
+} from '@/lib/businessWeeklyActivity/counters';
 
-export type DispensarySettingsAdminDTO = AppSettingsDTO & {
+export type BusinessSettingsAdminDTO = AppSettingsDTO & {
   slug: string;
 };
 
@@ -22,10 +28,11 @@ const slugSchema = z
   .trim()
   .min(1, 'Le slug est requis')
   .max(80, 'Le slug est trop long')
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug invalide (lettres minuscules, chiffres et tirets)');
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug invalide (lettres minuscules, chiffres et tirets)')
+  .refine((slug) => !isReservedBusinessSlug(slug), RESERVED_BUSINESS_SLUG_MESSAGE);
 
 const updateSchema = z.object({
-  dispensaryName: z
+  businessName: z
     .string()
     .trim()
     .min(1, 'Le nom est requis')
@@ -37,35 +44,32 @@ const updateSchema = z.object({
   featureSearchEnabled: z.boolean(),
   featureMailsEnabled: z.boolean(),
   featurePayrollEnabled: z.boolean(),
-  featureWeeklyDispensaryActivityEnabled: z.boolean(),
+  featureWeeklyActivityEnabled: z.boolean(),
   featureAgendaEnabled: z.boolean(),
   featureCabinetEnabled: z.boolean(),
   featureSalesEnabled: z.boolean(),
   featureMediaEnabled: z.boolean(),
   weeklyActivityChestDaysVisible: z.boolean(),
   weeklyActivityPresenceDaysVisible: z.boolean(),
-  weeklyActivityPatientsVisible: z.boolean(),
-  weeklyActivitySherifsVisible: z.boolean(),
-  weeklyActivityInfusionsVisible: z.boolean(),
-  weeklyActivityPoppyMilkVisible: z.boolean(),
+  weeklyActivityCounters: z.record(z.string(), z.boolean()),
 });
 
 export async function getAppSettingsForAdmin(
-  dispensarySlug: string,
+  businessSlug: string,
 ): Promise<
-  | { status: 200; data: DispensarySettingsAdminDTO }
+  | { status: 200; data: BusinessSettingsAdminDTO }
   | { status: number; error: string }
 > {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
 
-    const settings = await getAppSettings(auth.ctx.dispensaryId);
-    const data: DispensarySettingsAdminDTO = {
+    const settings = await getAppSettings(auth.ctx.businessId);
+    const data: BusinessSettingsAdminDTO = {
       ...settings,
-      slug: auth.ctx.dispensary.slug,
+      slug: auth.ctx.business.slug,
     };
     return { status: 200, data };
   } catch (error) {
@@ -84,18 +88,18 @@ export async function getAppSettingsForAdmin(
 }
 
 async function updateAppSettingsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   input: z.infer<typeof updateSchema>,
 ): Promise<
-  | { status: 200; data: DispensarySettingsAdminDTO }
+  | { status: 200; data: BusinessSettingsAdminDTO }
   | { status: number; error: string }
 > {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
-    const { dispensaryId, dispensary } = auth.ctx;
+    const { businessId, business } = auth.ctx;
 
     const parsed = updateSchema.safeParse(input);
     if (!parsed.success) {
@@ -105,10 +109,17 @@ async function updateAppSettingsUnlogged(
       };
     }
 
+    // Only the counters of the business type, and only the turned-off ones (a missing key is enabled).
+    const counterSettings = Object.fromEntries(
+      weeklyCounterDefinitions(business.type)
+        .filter((c) => parsed.data.weeklyActivityCounters[c.key] === false)
+        .map((c) => [c.key, false]),
+    );
+
     const newSlug = parsed.data.slug;
-    if (newSlug !== dispensary.slug) {
-      const taken = await prisma.dispensary.findFirst({
-        where: { slug: newSlug, id: { not: dispensaryId } },
+    if (newSlug !== business.slug) {
+      const taken = await prisma.business.findFirst({
+        where: { slug: newSlug, id: { not: businessId } },
         select: { id: true },
       });
       if (taken) {
@@ -117,70 +128,65 @@ async function updateAppSettingsUnlogged(
     }
 
     const [, row] = await prisma.$transaction([
-      prisma.dispensary.update({
-        where: { id: dispensaryId },
+      prisma.business.update({
+        where: { id: businessId },
         data: {
-          name: parsed.data.dispensaryName,
+          name: parsed.data.businessName,
           slug: newSlug,
         },
       }),
       prisma.appSettings.upsert({
-        where: { dispensaryId },
+        where: { businessId },
         create: {
-          dispensaryId,
-          dispensaryName: parsed.data.dispensaryName,
+          businessId,
+          businessName: parsed.data.businessName,
           featureStockEnabled: parsed.data.featureStockEnabled,
           featureBankEnabled: parsed.data.featureBankEnabled,
           featureOrdersEnabled: parsed.data.featureOrdersEnabled,
           featureSearchEnabled: parsed.data.featureSearchEnabled,
           featureMailsEnabled: parsed.data.featureMailsEnabled,
           featurePayrollEnabled: parsed.data.featurePayrollEnabled,
-          featureWeeklyDispensaryActivityEnabled:
-            parsed.data.featureWeeklyDispensaryActivityEnabled,
+          featureWeeklyActivityEnabled:
+            parsed.data.featureWeeklyActivityEnabled,
           featureAgendaEnabled: parsed.data.featureAgendaEnabled,
           featureCabinetEnabled: parsed.data.featureCabinetEnabled,
           featureSalesEnabled: parsed.data.featureSalesEnabled,
           featureMediaEnabled: parsed.data.featureMediaEnabled,
           weeklyActivityChestDaysVisible: parsed.data.weeklyActivityChestDaysVisible,
           weeklyActivityPresenceDaysVisible: parsed.data.weeklyActivityPresenceDaysVisible,
-          weeklyActivityPatientsVisible: parsed.data.weeklyActivityPatientsVisible,
-          weeklyActivitySherifsVisible: parsed.data.weeklyActivitySherifsVisible,
-          weeklyActivityInfusionsVisible: parsed.data.weeklyActivityInfusionsVisible,
-          weeklyActivityPoppyMilkVisible: parsed.data.weeklyActivityPoppyMilkVisible,
+          weeklyActivityCounters: counterSettings,
         },
         update: {
-          dispensaryName: parsed.data.dispensaryName,
+          businessName: parsed.data.businessName,
           featureStockEnabled: parsed.data.featureStockEnabled,
           featureBankEnabled: parsed.data.featureBankEnabled,
           featureOrdersEnabled: parsed.data.featureOrdersEnabled,
           featureSearchEnabled: parsed.data.featureSearchEnabled,
           featureMailsEnabled: parsed.data.featureMailsEnabled,
           featurePayrollEnabled: parsed.data.featurePayrollEnabled,
-          featureWeeklyDispensaryActivityEnabled:
-            parsed.data.featureWeeklyDispensaryActivityEnabled,
+          featureWeeklyActivityEnabled:
+            parsed.data.featureWeeklyActivityEnabled,
           featureAgendaEnabled: parsed.data.featureAgendaEnabled,
           featureCabinetEnabled: parsed.data.featureCabinetEnabled,
           featureSalesEnabled: parsed.data.featureSalesEnabled,
           featureMediaEnabled: parsed.data.featureMediaEnabled,
           weeklyActivityChestDaysVisible: parsed.data.weeklyActivityChestDaysVisible,
           weeklyActivityPresenceDaysVisible: parsed.data.weeklyActivityPresenceDaysVisible,
-          weeklyActivityPatientsVisible: parsed.data.weeklyActivityPatientsVisible,
-          weeklyActivitySherifsVisible: parsed.data.weeklyActivitySherifsVisible,
-          weeklyActivityInfusionsVisible: parsed.data.weeklyActivityInfusionsVisible,
-          weeklyActivityPoppyMilkVisible: parsed.data.weeklyActivityPoppyMilkVisible,
+          weeklyActivityCounters: counterSettings,
         },
       }),
     ]);
 
-    updateTag(appSettingsCacheTag(dispensaryId));
-    revalidatePath(`/d/${dispensary.slug}`, 'layout');
-    if (newSlug !== dispensary.slug) {
-      revalidatePath(`/d/${newSlug}`, 'layout');
+    updateTag(appSettingsCacheTag(businessId));
+    revalidatePath(businessBase(business.slug), 'layout');
+    if (newSlug !== business.slug) {
+      revalidatePath(businessBase(newSlug), 'layout');
     }
     revalidatePath('/platform/dispensaries');
 
-    const data: DispensarySettingsAdminDTO = {
-      dispensaryName: row.dispensaryName,
+    const data: BusinessSettingsAdminDTO = {
+      businessType: business.type,
+      businessName: row.businessName,
       slug: newSlug,
       featureStockEnabled: row.featureStockEnabled,
       featureBankEnabled: row.featureBankEnabled,
@@ -188,17 +194,14 @@ async function updateAppSettingsUnlogged(
       featureSearchEnabled: row.featureSearchEnabled,
       featureMailsEnabled: row.featureMailsEnabled,
       featurePayrollEnabled: row.featurePayrollEnabled,
-      featureWeeklyDispensaryActivityEnabled: row.featureWeeklyDispensaryActivityEnabled,
+      featureWeeklyActivityEnabled: row.featureWeeklyActivityEnabled,
       featureAgendaEnabled: row.featureAgendaEnabled ?? true,
       featureCabinetEnabled: row.featureCabinetEnabled ?? true,
       featureSalesEnabled: row.featureSalesEnabled ?? true,
       featureMediaEnabled: row.featureMediaEnabled ?? true,
       weeklyActivityChestDaysVisible: row.weeklyActivityChestDaysVisible ?? true,
       weeklyActivityPresenceDaysVisible: row.weeklyActivityPresenceDaysVisible ?? true,
-      weeklyActivityPatientsVisible: row.weeklyActivityPatientsVisible ?? true,
-      weeklyActivitySherifsVisible: row.weeklyActivitySherifsVisible ?? true,
-      weeklyActivityInfusionsVisible: row.weeklyActivityInfusionsVisible ?? true,
-      weeklyActivityPoppyMilkVisible: row.weeklyActivityPoppyMilkVisible ?? true,
+      weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
     };
 
     return { status: 200, data };

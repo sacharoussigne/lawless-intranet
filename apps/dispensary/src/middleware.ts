@@ -3,8 +3,11 @@ import {
   routes,
   legacyPathToTenant,
   oldEmployeeModulePathToCanonical,
+  prefixedBusinessPathToCanonical,
   tenantRoutes,
 } from './types/routes';
+import prisma from './lib/prisma';
+import { businessTypeOfHost, hostOfBusinessType, requestHostOf } from './lib/business/hosts';
 import { getRequestAuthSession } from './lib/authSession';
 import { hasToBeLoggedOutMiddleware } from './middlewares/hasToBeLoggedOutMiddleware';
 import { hasToBeLoggedInMiddleware } from './middlewares/hasToBeLoggedInMiddleware';
@@ -15,9 +18,9 @@ import { assertAppFeatureEnabledMiddleware } from './middlewares/assertAppFeatur
 import { hasTenantAccessMiddleware } from './middlewares/hasTenantAccessMiddleware';
 import { chain } from './middlewares/chain';
 import type { AppMiddlewareSession } from '@/types/middlewareSession';
-import { enrichSessionWithTenant } from './lib/dispensary/middlewareSession';
-import { parseDispensarySlugFromPathname } from './lib/dispensary/slug';
-import { DEFAULT_DISPENSARY_SLUG } from './lib/dispensary/constants';
+import { enrichSessionWithTenant } from './lib/business/middlewareSession';
+import { parseBusinessSlugFromPathname } from './lib/business/slug';
+import { DEFAULT_BUSINESS_SLUG } from './lib/business/constants';
 import {
   hasApplicationAccessMiddleware,
   hasBankAccessMiddleware,
@@ -28,25 +31,57 @@ import {
   hasPayrollReportsAccessMiddleware,
   hasSearchAccessMiddleware,
   hasStockStatisticsAccessMiddleware,
-  hasWeeklyDispensaryActivityEditAllMiddleware,
-  hasWeeklyDispensaryActivityMiddleware,
+  hasWeeklyActivityEditAllMiddleware,
+  hasWeeklyActivityMiddleware,
 } from './middlewares/permissionMiddlewares';
+
+function redirectKeepingQuery(req: NextRequest, target: string): NextResponse {
+  const url = new URL(target, req.url);
+  url.search = req.nextUrl.search;
+  return NextResponse.redirect(url, 308);
+}
+
+/**
+ * A business opened on the host of another kind of business (BUSINESS_TYPE_HOSTS)
+ * moves to its own host, same path. The main host serves every business.
+ */
+async function wrongHostRedirect(req: NextRequest, slug: string): Promise<NextResponse | null> {
+  const current = requestHostOf(req.headers, req.nextUrl.protocol.replace(':', ''));
+  const hostType = businessTypeOfHost(current.host);
+  if (!hostType) return null;
+  const business = await prisma.business.findUnique({ where: { slug }, select: { type: true } });
+  if (!business || business.type === hostType) return null;
+  const targetHost = hostOfBusinessType(business.type);
+  if (!targetHost) return null;
+  const url = new URL(`${current.proto}://${targetHost}${req.nextUrl.pathname}`);
+  url.search = req.nextUrl.search;
+  return NextResponse.redirect(url, 308);
+}
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  const legacyTarget = legacyPathToTenant(pathname, DEFAULT_DISPENSARY_SLUG);
-  if (legacyTarget) {
-    const url = new URL(legacyTarget, req.url);
-    url.search = req.nextUrl.search;
-    return NextResponse.redirect(url, 308);
+  // The `/d/` prefix of business pages was dropped: `/d/<slug>/…` → `/<slug>/…`.
+  const unprefixed = prefixedBusinessPathToCanonical(pathname);
+  if (unprefixed) {
+    return redirectKeepingQuery(req, unprefixed);
   }
 
-  const employeeModuleTarget = oldEmployeeModulePathToCanonical(pathname);
+  const legacyTarget = legacyPathToTenant(pathname, DEFAULT_BUSINESS_SLUG);
+  if (legacyTarget) {
+    return redirectKeepingQuery(req, legacyTarget);
+  }
+
+  const slug = parseBusinessSlugFromPathname(pathname);
+
+  const employeeModuleTarget = slug ? oldEmployeeModulePathToCanonical(pathname) : null;
   if (employeeModuleTarget) {
-    const url = new URL(employeeModuleTarget, req.url);
-    url.search = req.nextUrl.search;
-    return NextResponse.redirect(url, 308);
+    return redirectKeepingQuery(req, employeeModuleTarget);
+  }
+
+  if (slug) {
+    const hostRedirect = await wrongHostRedirect(req, slug);
+    if (hostRedirect) return hostRedirect;
   }
 
   const session = await getRequestAuthSession(req);
@@ -64,7 +99,6 @@ export async function middleware(req: NextRequest) {
       )
     : null;
 
-  const slug = parseDispensarySlugFromPathname(pathname);
   const t = slug ? tenantRoutes(slug) : null;
 
   const middlewares = [];
@@ -73,7 +107,7 @@ export async function middleware(req: NextRequest) {
     if (
       pathname !== routes.auth.noAccess &&
       pathname !== routes.auth.noManagementAccess &&
-      pathname !== routes.auth.noDispensaryAccess
+      pathname !== routes.auth.noBusinessAccess
     ) {
       middlewares.push(hasToBeLoggedOutMiddleware);
     }
@@ -91,9 +125,9 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith(`${t.management.index}`)) {
       middlewares.push(hasManagementAccessMiddleware);
       if (pathname === t.management.people || pathname.startsWith(`${t.management.people}/`)) {
-        middlewares.push(hasWeeklyDispensaryActivityEditAllMiddleware);
+        middlewares.push(hasWeeklyActivityEditAllMiddleware);
         middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
-          assertAppFeatureEnabledMiddleware(request, s, 'weeklyDispensaryActivity'),
+          assertAppFeatureEnabledMiddleware(request, s, 'weeklyActivity'),
         );
       }
     } else if (
@@ -143,9 +177,9 @@ export async function middleware(req: NextRequest) {
         assertAppFeatureEnabledMiddleware(request, s, 'bank'),
       );
     } else if (pathname.startsWith(t.weeklyActivity.index)) {
-      middlewares.push(hasWeeklyDispensaryActivityMiddleware);
+      middlewares.push(hasWeeklyActivityMiddleware);
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
-        assertAppFeatureEnabledMiddleware(request, s, 'weeklyDispensaryActivity'),
+        assertAppFeatureEnabledMiddleware(request, s, 'weeklyActivity'),
       );
     } else if (pathname.startsWith(t.media.index)) {
       middlewares.push(hasMediaAccessMiddleware);
@@ -207,23 +241,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   runtime: 'nodejs',
-  matcher: [
-    '/',
-    '/auth/:path*',
-    '/settings/:path*',
-    '/admin/:path*',
-    '/platform/:path*',
-    '/d/:dispensarySlug/:path*',
-    '/test/:path*',
-    '/inventory/:path*',
-    '/orders/:path*',
-    '/stock/:path*',
-    '/search-items/:path*',
-    '/bank/:path*',
-    '/weekly-activity/:path*',
-    '/agenda/:path*',
-    '/cabinet/:path*',
-    '/employee/:path*',
-    '/management/:path*',
-  ],
+  // Every page: business pages live at `/<slug>/…`. Not the API, Next assets,
+  // public share links nor static files (a dot in the path).
+  matcher: ['/((?!api/|_next/|partage/|.*\\..*).*)'],
 };

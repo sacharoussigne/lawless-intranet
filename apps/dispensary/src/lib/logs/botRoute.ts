@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import {
   getDiscordUserIdFromBotRequest,
-  getDispensaryIdFromBotRequest,
-  isDispensaryBotApiAuthorized,
-} from '@/lib/dispensaryWeeklyActivityApiAuth';
+  getBusinessIdFromBotRequest,
+  isBusinessBotApiAuthorized,
+} from '@/lib/businessWeeklyActivityApiAuth';
 import { serializeError } from './sanitize';
 import { levelFromOutcome, outcomeFromStatus, type LogFeature, type LogOutcome } from './types';
 import { writeAppLog } from './writer';
 
-type BotRequest = Parameters<typeof isDispensaryBotApiAuthorized>[0];
+type BotRequest = Parameters<typeof isBusinessBotApiAuthorized>[0];
 
 /** What the bot got back, without large payloads: errors, flags, ids and list sizes. */
 export function summarizeBotResponse(body: unknown): unknown {
@@ -59,7 +59,7 @@ export function withBotRouteLog<Req extends Request, Ctx = unknown>(
     const startedAt = Date.now();
     // The bot helpers only read headers and the URL, which every Request has.
     const botRequest = request as unknown as BotRequest;
-    const authorized = isDispensaryBotApiAuthorized(botRequest);
+    const authorized = isBusinessBotApiAuthorized(botRequest);
     const url = new URL(request.url);
     // The body is only read from authorized requests (no secrets, no junk from strangers).
     const bodyText =
@@ -90,7 +90,7 @@ export function withBotRouteLog<Req extends Request, Ctx = unknown>(
         typeof reason === 'string' ? ` : ${reason}` : ''
       }`,
       source: 'DISCORD_BOT',
-      dispensaryId: getDispensaryIdFromBotRequest(botRequest),
+      businessId: getBusinessIdFromBotRequest(botRequest),
       discordUserId: getDiscordUserIdFromBotRequest(botRequest),
       httpStatus: response.status,
       durationMs: Date.now() - startedAt,

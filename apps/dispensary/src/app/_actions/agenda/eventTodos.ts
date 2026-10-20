@@ -34,11 +34,11 @@ function mapEventTodoTask(task: AgendaEventTodoTaskRecord): AgendaEventTodoTaskD
 }
 
 export async function listAgendaEventTodoTasks(
-  dispensarySlug: string,
+  businessSlug: string,
   eventId: string,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const tasks = await listAgendaEventTodoTasksApi(eventId, await agendaCookie());
@@ -50,12 +50,12 @@ export async function listAgendaEventTodoTasks(
 }
 
 async function createAgendaEventTodoTaskUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { eventId: string; title: string; description?: string | null },
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = createEventTodoTaskSchema.parse(data);
@@ -76,7 +76,7 @@ async function createAgendaEventTodoTaskUnlogged(
 }
 
 async function updateAgendaEventTodoTaskUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     title?: string;
@@ -86,7 +86,7 @@ async function updateAgendaEventTodoTaskUnlogged(
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateEventTodoTaskSchema.parse(data);
@@ -108,12 +108,12 @@ async function updateAgendaEventTodoTaskUnlogged(
 }
 
 async function deleteAgendaEventTodoTaskUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   id: string,
   meta?: AgendaMutationMeta,
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = deleteEventTodoTaskSchema.parse({ id });

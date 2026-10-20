@@ -2,9 +2,9 @@
 
 import { ActionIcon, Group, Stack, Text } from '@mantine/core';
 import { IconHistory, IconPencil } from '@tabler/icons-react';
-import type { WeeklyActivityFieldVisibility } from '@/lib/dispensaryWeeklyActivity/fieldVisibility';
-import { emptyWeekdayFlags } from '@/lib/dispensaryWeeklyActivity/weekdayFlags';
-import type { WeeklyActivityListItem } from '@/app/(loggedIn)/d/[dispensarySlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
+import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
+import { emptyWeekdayFlags } from '@/lib/businessWeeklyActivity/weekdayFlags';
+import type { WeeklyActivityListItem } from '@/app/(loggedIn)/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   buildCompactCounterStats,
   buildCompactDayCells,
@@ -37,15 +37,7 @@ export function WeeklyActivityCompactRow({
   const chestDays = row?.chestDays ?? emptyWeekdayFlags();
   const presenceDays = row?.presenceDays ?? emptyWeekdayFlags();
   const dayCells = buildCompactDayCells(chestDays, presenceDays);
-  const counterStats = buildCompactCounterStats(
-    row ?? {
-      patientsCount: 0,
-      sherifCount: 0,
-      infusionsCount: 0,
-      poppyMilkCount: 0,
-    },
-    fieldVisibility,
-  );
+  const counterStats = buildCompactCounterStats(row?.counters ?? {}, fieldVisibility);
   const counterLine = formatCompactCounterLine(counterStats);
   const showDayGrid = fieldVisibility.chestDays || fieldVisibility.presenceDays;
 

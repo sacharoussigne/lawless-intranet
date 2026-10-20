@@ -19,47 +19,47 @@ import {
 import { fetchRead } from '@/lib/read/fetchRead';
 
 /** Reads go over GET (lib/read); `getOrCreateWeek` may create the week, so it stays an action. */
-export function createDispensaryBankActions(dispensarySlug: string): BankUiActions {
+export function createBusinessBankActions(businessSlug: string): BankUiActions {
   return {
-    getOrCreateWeek: (date) => toUiResult(getOrCreateWeek(dispensarySlug, date)),
-    getBankWeeks: () => toUiResult(fetchRead(dispensarySlug, 'bankWeeks')),
-    createTransaction: (data) => toUiResult(createTransaction(dispensarySlug, data)),
-    updateTransaction: (data) => toUiResult(updateTransaction(dispensarySlug, data)),
+    getOrCreateWeek: (date) => toUiResult(getOrCreateWeek(businessSlug, date)),
+    getBankWeeks: () => toUiResult(fetchRead(businessSlug, 'bankWeeks')),
+    createTransaction: (data) => toUiResult(createTransaction(businessSlug, data)),
+    updateTransaction: (data) => toUiResult(updateTransaction(businessSlug, data)),
     deleteTransaction: (data) =>
-      toUiResult(deleteTransaction(dispensarySlug, data)) as Promise<
+      toUiResult(deleteTransaction(businessSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
-    importTransactions: (data) => toUiResult(importTransactions(dispensarySlug, data)),
-    getNameSuggestions: () => toUiResult(fetchRead(dispensarySlug, 'bankNameSuggestions')),
+    importTransactions: (data) => toUiResult(importTransactions(businessSlug, data)),
+    getNameSuggestions: () => toUiResult(fetchRead(businessSlug, 'bankNameSuggestions')),
     getDescriptionSuggestions: () =>
-      toUiResult(fetchRead(dispensarySlug, 'bankDescriptionSuggestions')),
-    addNameSuggestion: (data) => toUiResult(addNameSuggestion(dispensarySlug, data)),
+      toUiResult(fetchRead(businessSlug, 'bankDescriptionSuggestions')),
+    addNameSuggestion: (data) => toUiResult(addNameSuggestion(businessSlug, data)),
     addDescriptionSuggestion: (data) =>
-      toUiResult(addDescriptionSuggestion(dispensarySlug, data)),
+      toUiResult(addDescriptionSuggestion(businessSlug, data)),
     deleteNameSuggestion: (data) =>
-      toUiResult(deleteNameSuggestion(dispensarySlug, data)) as Promise<
+      toUiResult(deleteNameSuggestion(businessSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
     deleteDescriptionSuggestion: (data) =>
-      toUiResult(deleteDescriptionSuggestion(dispensarySlug, data)) as Promise<
+      toUiResult(deleteDescriptionSuggestion(businessSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
-    getPlannedTransactions: () => toUiResult(fetchRead(dispensarySlug, 'bankPlannedTransactions')),
-    getPendingOccurrences: () => toUiResult(fetchRead(dispensarySlug, 'bankPendingOccurrences')),
+    getPlannedTransactions: () => toUiResult(fetchRead(businessSlug, 'bankPlannedTransactions')),
+    getPendingOccurrences: () => toUiResult(fetchRead(businessSlug, 'bankPendingOccurrences')),
     createPlannedTransaction: (data) =>
-      toUiResult(createPlannedTransaction(dispensarySlug, data)),
+      toUiResult(createPlannedTransaction(businessSlug, data)),
     updatePlannedTransaction: (data) =>
-      toUiResult(updatePlannedTransaction(dispensarySlug, data)),
+      toUiResult(updatePlannedTransaction(businessSlug, data)),
     deletePlannedTransaction: (data) =>
-      toUiResult(deletePlannedTransaction(dispensarySlug, data)) as Promise<
+      toUiResult(deletePlannedTransaction(businessSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
     confirmPlannedOccurrence: (data) =>
-      toUiResult(confirmPlannedOccurrence(dispensarySlug, data)),
+      toUiResult(confirmPlannedOccurrence(businessSlug, data)),
     skipPlannedOccurrence: (data) =>
-      toUiResult(skipPlannedOccurrence(dispensarySlug, data)) as Promise<
+      toUiResult(skipPlannedOccurrence(businessSlug, data)) as Promise<
         BankActionResult<{ success: true }>
       >,
-    getBankGlobalStats: () => toUiResult(fetchRead(dispensarySlug, 'bankGlobalStats')),
+    getBankGlobalStats: () => toUiResult(fetchRead(businessSlug, 'bankGlobalStats')),
   };
 }

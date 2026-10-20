@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     return errorResponse(request, 'Unauthorized', 401);
   }
 
-  const scopeType = request.headers.get('x-scope-type') ?? 'dispensary';
+  // Without X-Scope-Type: a business (legacy callers only send X-Dispensary-Id).
+  const scopeType = request.headers.get('x-scope-type') ?? 'business';
   const scopeId = request.headers.get('x-scope-id') ?? request.headers.get('x-dispensary-id');
   if (!scopeId) {
     return errorResponse(request, 'Missing X-Scope-Id (or X-Dispensary-Id)', 400);

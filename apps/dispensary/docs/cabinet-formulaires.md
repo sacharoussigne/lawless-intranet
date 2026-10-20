@@ -277,5 +277,5 @@ Dans `/d/{slug}/cabinet/forms`, développez un champ personnalisé : le réglage
 |---------|------|
 | [`src/lib/cabinet/formSchema/types.ts`](../src/lib/cabinet/formSchema/types.ts) | Types `FormField`, `FormCategory`, schémas |
 | [`src/lib/cabinet/formSchema/fieldTypes.ts`](../src/lib/cabinet/formSchema/fieldTypes.ts) | Libellés des types de champs |
-| [`src/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFieldInput.tsx`](../src/app/(loggedIn)/d/[dispensarySlug]/cabinet/components/DynamicFieldInput.tsx) | Rendu et saisie des champs |
+| [`src/app/(loggedIn)/[businessSlug]/cabinet/components/DynamicFieldInput.tsx`](../src/app/(loggedIn)/[businessSlug]/cabinet/components/DynamicFieldInput.tsx) | Rendu et saisie des champs |
 | [`src/app/_components/MarkdownContent/MarkdownContent.tsx`](../src/app/_components/MarkdownContent/MarkdownContent.tsx) | Composant de rendu Markdown |

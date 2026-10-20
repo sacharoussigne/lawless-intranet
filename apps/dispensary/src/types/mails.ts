@@ -1,6 +1,6 @@
 export type Mail = {
   id: string;
-  dispensaryId: string;
+  businessId: string;
   senderId: string;
   name: string;
   receiver: string;
@@ -11,7 +11,7 @@ export type Mail = {
 
 export type MailTemplate = {
   id: string;
-  dispensaryId: string;
+  businessId: string;
   name: string;
   description: string | null;
   content: string;
@@ -60,7 +60,7 @@ export type MailTemplateListItem = {
   defaultMailName: string | null;
   createdAt: Date;
   updatedAt: Date;
-  dispensaryId?: string;
+  businessId?: string;
   userId?: string | null;
 } & MailResourceAccessFields;
 

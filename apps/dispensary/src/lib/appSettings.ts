@@ -1,5 +1,7 @@
 import { unstable_cache } from 'next/cache';
+import type { BusinessType } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { parseWeeklyCounterSettings } from '@/lib/businessWeeklyActivity/counters';
 import {
   APP_SETTINGS_DEFAULTS,
   APP_FEATURE_DISABLED_MESSAGE,
@@ -17,38 +19,36 @@ export {
   appSettingsCacheTag,
   isAppFeatureEnabled,
   normalizeAppSettings,
-  dispensarySiteTitle,
+  businessSiteTitle,
 } from '@/lib/appSettingsShared';
 
-function mapFromDb(row: {
-  dispensaryName: string;
+function mapFromDb(businessType: BusinessType, row: {
+  businessName: string;
   featureStockEnabled: boolean;
   featureBankEnabled: boolean;
   featureOrdersEnabled: boolean;
   featureSearchEnabled: boolean;
   featureMailsEnabled: boolean;
   featurePayrollEnabled: boolean;
-  featureWeeklyDispensaryActivityEnabled: boolean;
+  featureWeeklyActivityEnabled: boolean;
   featureAgendaEnabled: boolean;
   featureCabinetEnabled: boolean;
   featureSalesEnabled: boolean;
   featureMediaEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
-  weeklyActivityPatientsVisible: boolean;
-  weeklyActivitySherifsVisible: boolean;
-  weeklyActivityInfusionsVisible: boolean;
-  weeklyActivityPoppyMilkVisible: boolean;
+  weeklyActivityCounters: unknown;
 }): AppSettingsDTO {
   return {
-    dispensaryName: row.dispensaryName?.trim() || APP_SETTINGS_DEFAULTS.dispensaryName,
+    businessType,
+    businessName: row.businessName?.trim() || APP_SETTINGS_DEFAULTS.businessName,
     featureStockEnabled: row.featureStockEnabled,
     featureBankEnabled: row.featureBankEnabled,
     featureOrdersEnabled: row.featureOrdersEnabled,
     featureSearchEnabled: row.featureSearchEnabled,
     featureMailsEnabled: row.featureMailsEnabled,
     featurePayrollEnabled: row.featurePayrollEnabled,
-    featureWeeklyDispensaryActivityEnabled: row.featureWeeklyDispensaryActivityEnabled,
+    featureWeeklyActivityEnabled: row.featureWeeklyActivityEnabled,
     featureAgendaEnabled:
       row.featureAgendaEnabled ?? APP_SETTINGS_DEFAULTS.featureAgendaEnabled,
     featureCabinetEnabled:
@@ -62,47 +62,44 @@ function mapFromDb(row: {
     weeklyActivityPresenceDaysVisible:
       row.weeklyActivityPresenceDaysVisible ??
       APP_SETTINGS_DEFAULTS.weeklyActivityPresenceDaysVisible,
-    weeklyActivityPatientsVisible:
-      row.weeklyActivityPatientsVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityPatientsVisible,
-    weeklyActivitySherifsVisible:
-      row.weeklyActivitySherifsVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivitySherifsVisible,
-    weeklyActivityInfusionsVisible:
-      row.weeklyActivityInfusionsVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityInfusionsVisible,
-    weeklyActivityPoppyMilkVisible:
-      row.weeklyActivityPoppyMilkVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityPoppyMilkVisible,
+    weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
   };
 }
 
-export async function loadAppSettingsFromDb(dispensaryId: string): Promise<AppSettingsDTO> {
+export async function loadAppSettingsFromDb(businessId: string): Promise<AppSettingsDTO> {
   try {
-    const row = await prisma.appSettings.findUnique({
-      where: { dispensaryId },
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { type: true, settings: true },
     });
-    if (!row) {
-      return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
+    if (!business?.settings) {
+      return normalizeAppSettings({
+        ...APP_SETTINGS_DEFAULTS,
+        businessType: business?.type ?? APP_SETTINGS_DEFAULTS.businessType,
+      });
     }
-    return normalizeAppSettings(mapFromDb(row));
+    return normalizeAppSettings(mapFromDb(business.type, business.settings));
   } catch {
     return normalizeAppSettings(APP_SETTINGS_DEFAULTS);
   }
 }
 
-export function getAppSettings(dispensaryId: string) {
+export function getAppSettings(businessId: string) {
   return unstable_cache(
-    () => loadAppSettingsFromDb(dispensaryId),
-    ['app-settings', dispensaryId, 'v2'],
+    () => loadAppSettingsFromDb(businessId),
+    ['app-settings', businessId, 'v4'],
     {
-      tags: [appSettingsCacheTag(dispensaryId)],
+      tags: [appSettingsCacheTag(businessId)],
       revalidate: 86400,
     },
   )();
 }
 
 export async function getAppFeatureActionBlock(
-  dispensaryId: string,
+  businessId: string,
   feature: AppFeatureKey,
 ): Promise<{ status: 403; error: string } | null> {
-  const settings = await getAppSettings(dispensaryId);
+  const settings = await getAppSettings(businessId);
   if (isAppFeatureEnabled(settings, feature)) {
     return null;
   }
@@ -110,10 +107,10 @@ export async function getAppFeatureActionBlock(
 }
 
 export async function getAppFeaturesActionBlock(
-  dispensaryId: string,
+  businessId: string,
   features: AppFeatureKey[],
 ): Promise<{ status: 403; error: string } | null> {
-  const settings = await getAppSettings(dispensaryId);
+  const settings = await getAppSettings(businessId);
   const hasDisabled = features.some((f) => !isAppFeatureEnabled(settings, f));
   if (!hasDisabled) {
     return null;

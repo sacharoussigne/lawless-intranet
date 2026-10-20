@@ -105,8 +105,8 @@ export function getEmployeeSectionTabs(
             href: t.weeklyActivity.index,
             icon: IconCalendarWeek,
             visible:
-              appSettings.featureWeeklyDispensaryActivityEnabled &&
-              (permissions?.weeklyDispensaryActivity.view ?? false),
+              appSettings.featureWeeklyActivityEnabled &&
+              (permissions?.weeklyActivity.view ?? false),
           },
           {
             id: 'payroll',

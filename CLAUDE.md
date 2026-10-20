@@ -6,7 +6,7 @@ Guide pour travailler sur **lawless-intranet**.
 
 Intranet pour un serveur **RP western (RedM, ~1890)**. Il sert à des organisations en jeu : le **dispensaire de Saint-Denis** (stock, commandes, ventes, banque, courriers, paie, activité hebdo, agenda, cabinet) et le **refuge animalier** (animaux, espèces/races, suivis, liste d'attente, documents, banque).
 
-- **Multi-tenant** : chaque organisation a un slug. Routes `/d/[dispensarySlug]/…` (dispensary) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
+- **Multi-tenant** : chaque organisation a un slug. Routes `/[businessSlug]/…` (dispensary ; les slugs réservés sont dans `lib/business/slug.ts`, l'hôte peut filtrer le type d'entreprise via `BUSINESS_TYPE_HOSTS`, voir `lib/business/hosts.ts`) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
 - **Calendrier RP** : les dates sont stockées en réel et affichées **136 ans plus tôt** (`RP_DISPLAY_YEAR_OFFSET` dans `lib/rpCalendar.ts`). Ne jamais écrire de date RP en base. Côté UI, utiliser `formatRpDate`, `RpDateInput`, etc.
 - **Langue** : l'UI, les messages d'erreur et les docs sont en **français**. Le code (identifiants) et les messages de commit sont en **anglais**.
 
@@ -119,8 +119,9 @@ export async function doThing(slug: string, input: unknown) {
 
 ### Permissions et features
 
-- Il y a deux niveaux. Les **rôles globaux** Better Auth sont dans `packages/auth-permissions`. Les **permissions par tenant** (rôles et membres) sont dans `lib/dispensary/permissions*` et `lib/shelter/permissionsCatalog`, et se vérifient avec `can(perms, resource, action)`.
+- Il y a deux niveaux. Les **rôles globaux** Better Auth sont dans `packages/auth-permissions`. Les **permissions par tenant** (rôles et membres) sont dans `lib/business/permissions*` et `lib/shelter/permissionsCatalog`, et se vérifient avec `can(perms, resource, action)`.
 - **Feature toggles** par tenant (`AppSettings`, `AppFeatureKey` dans `lib/appSettingsShared.ts`). Une nouvelle feature doit être ajoutée au toggle, au middleware et au garde des actions.
+- **Types d'entreprise** (dispensary, `docs/MULTI-BUSINESS.md`) : `Business.type` (`BusinessType`) et le registre `lib/businessTypes` (modules proposés, rôles des membres, matrice de rôles par défaut, compteurs de l'activité hebdo). Les compteurs sont stockés en JSON (`counters`, clé → valeur) et activables par entreprise (`AppSettings.weeklyActivityCounters`) : **ne jamais renommer une clé de compteur**, elle est en base et dans l'historique. Les **personnes** (ID Discord, noms, n° de compte, lien SSO) sont communes à toutes les entreprises (`Person`) ; `BusinessPerson` les rattache à une entreprise avec leur grade. Lire et écrire via `lib/businessDiscordProfile` (`findBusinessProfiles`, `personInBusiness`…). Un module n'est actif que s'il est **proposé par le type** et activé dans les réglages : `normalizeAppSettings` coupe les autres, donc les lectures `feature*Enabled` et `isAppFeatureEnabled` en tiennent compte. Une nouvelle feature s'ajoute à `lib/appFeatures.ts`, puis aux `modules` des types concernés.
 - Côté client, `PermissionsContext` / `usePermissions()` sert à masquer ou afficher l'UI.
 
 ### Data fetching client

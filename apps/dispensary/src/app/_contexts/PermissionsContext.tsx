@@ -1,19 +1,20 @@
 'use client';
 
 import { createContext, useContext, type ReactNode } from 'react';
-import type { Permissions, PermissionsContextType, AccessibleDispensary } from '@/types/permissions';
+import type { Permissions, PermissionsContextType, AccessibleBusiness } from '@/types/permissions';
 import type { AppSettingsDTO } from '@/lib/appSettingsShared';
 import { APP_SETTINGS_DEFAULTS, normalizeAppSettings } from '@/lib/appSettingsShared';
 import { tenantRoutes } from '@/types/routes';
+import { getBusinessTypeDefinition, type BusinessTypeDefinition } from '@/lib/businessTypes';
 
 const PermissionsContext = createContext<PermissionsContextType>({
   permissions: null,
   userRole: null,
   loading: false,
   appSettings: APP_SETTINGS_DEFAULTS,
-  dispensarySlug: null,
-  dispensaryId: null,
-  accessibleDispensaries: [],
+  businessSlug: null,
+  businessId: null,
+  accessibleBusinesses: [],
   agendaModuleAccess: false,
   accessibleAgendaIds: [],
   cabinetModuleAccess: false,
@@ -26,9 +27,9 @@ interface PermissionsProviderProps {
   initialPermissions: Permissions | null;
   initialRole: string | null;
   initialAppSettings: AppSettingsDTO;
-  dispensarySlug?: string | null;
-  dispensaryId?: string | null;
-  accessibleDispensaries?: AccessibleDispensary[];
+  businessSlug?: string | null;
+  businessId?: string | null;
+  accessibleBusinesses?: AccessibleBusiness[];
   agendaModuleAccess?: boolean;
   accessibleAgendaIds?: string[];
   cabinetModuleAccess?: boolean;
@@ -41,9 +42,9 @@ export function PermissionsProvider({
   initialPermissions,
   initialRole,
   initialAppSettings,
-  dispensarySlug = null,
-  dispensaryId = null,
-  accessibleDispensaries = [],
+  businessSlug = null,
+  businessId = null,
+  accessibleBusinesses = [],
   agendaModuleAccess = false,
   accessibleAgendaIds = [],
   cabinetModuleAccess = false,
@@ -57,9 +58,9 @@ export function PermissionsProvider({
         userRole: initialRole,
         loading: false,
         appSettings: normalizeAppSettings(initialAppSettings),
-        dispensarySlug,
-        dispensaryId,
-        accessibleDispensaries,
+        businessSlug,
+        businessId,
+        accessibleBusinesses,
         agendaModuleAccess,
         accessibleAgendaIds,
         cabinetModuleAccess,
@@ -81,17 +82,23 @@ export function usePermissions() {
 }
 
 export function useTenantRoutes() {
-  const { dispensarySlug } = usePermissions();
-  if (!dispensarySlug) {
+  const { businessSlug } = usePermissions();
+  if (!businessSlug) {
     throw new Error('useTenantRoutes requires an active dispensary context');
   }
-  return tenantRoutes(dispensarySlug);
+  return tenantRoutes(businessSlug);
 }
 
-export function useRequiredDispensarySlug(): string {
-  const { dispensarySlug } = usePermissions();
-  if (!dispensarySlug) {
-    throw new Error('useRequiredDispensarySlug requires an active dispensary context');
+export function useRequiredBusinessSlug(): string {
+  const { businessSlug } = usePermissions();
+  if (!businessSlug) {
+    throw new Error('useRequiredBusinessSlug requires an active dispensary context');
   }
-  return dispensarySlug;
+  return businessSlug;
+}
+
+/** What the kind of the current business offers (modules, roles…): see lib/businessTypes. */
+export function useBusinessTypeDefinition(): BusinessTypeDefinition {
+  const { appSettings } = usePermissions();
+  return getBusinessTypeDefinition(appSettings.businessType);
 }

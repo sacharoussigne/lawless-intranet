@@ -46,7 +46,7 @@ export type GetChestsListOptions = {
 };
 
 async function createChestUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     description?: string;
@@ -54,13 +54,13 @@ async function createChestUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createChestSchema.parse(data);
     const chest = await createChestClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -70,15 +70,15 @@ async function createChestUnlogged(
   }
 }
 
-export async function getChests(dispensarySlug: string, onlyEnabled: boolean = false) {
+export async function getChests(businessSlug: string, onlyEnabled: boolean = false) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const chests = (await listChests(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         onlyEnabled: onlyEnabled || undefined,
       },
       await inventoryCookie(),
@@ -91,18 +91,18 @@ export async function getChests(dispensarySlug: string, onlyEnabled: boolean = f
 }
 
 export async function getChestsList(
-  dispensarySlug: string,
+  businessSlug: string,
   onlyEnabled: boolean = false,
   options: GetChestsListOptions = {},
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
 
     const chests = await listChestsLite(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         onlyEnabled: onlyEnabled || undefined,
         effectiveRole,
         bypassAccessFilter: options.bypassAccessFilter || undefined,
@@ -117,7 +117,7 @@ export async function getChestsList(
 }
 
 async function updateChestUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -126,13 +126,13 @@ async function updateChestUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateChestSchema.parse(data);
     const chest = await updateChestClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -143,17 +143,17 @@ async function updateChestUnlogged(
 }
 
 async function deleteChestUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string; targetChestId: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteChestSchema.parse(data);
     await deleteChestClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -164,17 +164,17 @@ async function deleteChestUnlogged(
 }
 
 async function reorderChestsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { items: { id: string; order: number }[] },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = reorderChestsSchema.parse(data);
     await reorderChestsClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 

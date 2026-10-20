@@ -7,7 +7,7 @@ export enum Role {
     DIRECTION = "direction",
 }
 
-export const DISPENSARY_MEMBER_ROLES = [
+export const BUSINESS_MEMBER_ROLES = [
     Role.ADMIN,
     Role.EMPLOYEE,
     Role.INVENTORY_MANAGER,
@@ -15,7 +15,7 @@ export const DISPENSARY_MEMBER_ROLES = [
     Role.DIRECTION,
 ] as const;
 
-export type DispensaryMemberRole = (typeof DISPENSARY_MEMBER_ROLES)[number];
+export type BusinessMemberRole = (typeof BUSINESS_MEMBER_ROLES)[number];
 
 export function parseRoleList(roleNames: string | null | undefined): Role[] {
     if (!roleNames) {

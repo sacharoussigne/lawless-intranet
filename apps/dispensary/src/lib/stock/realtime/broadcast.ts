@@ -1,7 +1,7 @@
 import { after } from 'next/server';
 import { parseRealtimeMutationMeta, REALTIME_DOMAIN, realtimeTopics } from '@lawless-intranet/realtime';
 import { publishRealtime } from '@lawless-intranet/realtime/publish';
-import { resolveDispensaryFromSlug } from '@/lib/dispensary/context';
+import { resolveBusinessFromSlug } from '@/lib/business/context';
 
 /**
  * Tells the dispensary's stock viewers (topic checked in the realtime token)
@@ -9,13 +9,13 @@ import { resolveDispensaryFromSlug } from '@/lib/dispensary/context';
  * chests. A hint only, without any chest or item id: clients refetch through
  * their access-filtered reads. Published after the response, never awaited.
  */
-export function emitStockChange(dispensaryId: string, meta?: { originClientId?: string }): void {
-  after(() => publishStockChange(dispensaryId, meta?.originClientId));
+export function emitStockChange(businessId: string, meta?: { originClientId?: string }): void {
+  after(() => publishStockChange(businessId, meta?.originClientId));
 }
 
-function publishStockChange(dispensaryId: string, originClientId: string | undefined) {
+function publishStockChange(businessId: string, originClientId: string | undefined) {
   return publishRealtime(
-    [realtimeTopics.stock(dispensaryId)],
+    [realtimeTopics.stock(businessId)],
     { domain: REALTIME_DOMAIN.stock, type: 'changed', originClientId, payload: {} },
     { logLabel: 'stock' },
   );
@@ -26,7 +26,7 @@ function publishStockChange(dispensaryId: string, originClientId: string | undef
  * the stock viewers. `meta` is the client's realtime meta (no echo to its author).
  */
 export async function withStockChange<R extends { status: number }>(
-  dispensarySlug: string,
+  businessSlug: string,
   run: () => Promise<R>,
   meta?: unknown,
 ): Promise<R> {
@@ -34,8 +34,8 @@ export async function withStockChange<R extends { status: number }>(
   if (result.status < 400) {
     const origin = parseRealtimeMutationMeta(meta);
     after(async () => {
-      const dispensary = await resolveDispensaryFromSlug(dispensarySlug);
-      if (dispensary) await publishStockChange(dispensary.id, origin?.originClientId);
+      const business = await resolveBusinessFromSlug(businessSlug);
+      if (business) await publishStockChange(business.id, origin?.originClientId);
     });
   }
   return result;

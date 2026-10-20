@@ -11,7 +11,7 @@ export type ChestAccessResult =
   | { all: false; chestIds: string[] };
 
 export async function resolveChestAccess(
-  dispensaryId: string,
+  businessId: string,
   effectiveRole: string | null | undefined,
 ): Promise<ChestAccessResult> {
   if (hasRole(effectiveRole, 'admin')) {
@@ -25,7 +25,7 @@ export async function resolveChestAccess(
 
   const roleSet = new Set<string>(roles);
   const accesses = await listRoleChestAccesses(
-    inventoryScope(dispensaryId),
+    inventoryScope(businessId),
     await inventoryCookie(),
   );
 
@@ -71,13 +71,13 @@ export function chestAccessWhereFilter(
 }
 
 export async function userHasAccessibleChests(
-  dispensaryId: string,
+  businessId: string,
   effectiveRole: string | null | undefined,
 ): Promise<boolean> {
-  const access = await resolveChestAccess(dispensaryId, effectiveRole);
+  const access = await resolveChestAccess(businessId, effectiveRole);
   const chests = await listChestsLite(
     {
-      ...inventoryScope(dispensaryId),
+      ...inventoryScope(businessId),
       onlyEnabled: true,
       bypassAccessFilter: true,
     },

@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 
-import { listDispensariesForPlatform } from '@/app/_actions/dispensaries';
-import { DispensariesPlatformClient } from './DispensariesPlatformClient';
+import { listBusinessesForPlatform } from '@/app/_actions/businesses';
+import { BusinessesPlatformClient } from './BusinessesPlatformClient';
 
-export default async function PlatformDispensariesPage() {
-  const result = await listDispensariesForPlatform();
+export default async function PlatformBusinessesPage() {
+  const result = await listBusinessesForPlatform();
   return (
-    <DispensariesPlatformClient
-      initialDispensaries={result.status === 200 ? result.data ?? [] : []}
+    <BusinessesPlatformClient
+      initialBusinesses={result.status === 200 ? result.data ?? [] : []}
       error={result.status !== 200 ? result.error : undefined}
     />
   );

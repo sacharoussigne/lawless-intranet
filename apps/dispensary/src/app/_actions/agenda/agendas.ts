@@ -2,10 +2,10 @@
 
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
-import { requireDispensaryAdminContext } from '@/lib/dispensary/serverActionContext';
+import { requireBusinessAdminContext } from '@/lib/business/serverActionContext';
 import {
   canManageAgendaAsScopeAdmin,
-  isDispensaryAdminRole,
+  isBusinessAdminRole,
 } from '@/lib/agenda/access';
 import {
   agendaCookie,
@@ -20,7 +20,7 @@ import {
 import {
   getAgendaSessionContext,
   isScopeAdmin,
-  validateDispensaryUserIds,
+  validateBusinessUserIds,
 } from '@/app/_actions/agenda/internals';
 import {
   createAgenda as createAgendaApi,
@@ -34,20 +34,20 @@ import {
 } from '@lawless-intranet/agenda-client/server';
 import { enrichAgendaMembers, enrichRowGroupsWithUsers } from '@/lib/enrichUsers';
 
-export async function listAgendasForAdmin(dispensarySlug: string) {
+export async function listAgendasForAdmin(businessSlug: string) {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
 
     const agendas = await listAllAgendas(
-      agendaScope(auth.ctx.dispensaryId),
+      agendaScope(auth.ctx.businessId),
       await agendaCookie(),
     );
 
     const membersByAgenda = await enrichRowGroupsWithUsers(
-      auth.ctx.dispensaryId,
+      auth.ctx.businessId,
       agendas.map((agenda) => agenda.members ?? []),
     );
     const enriched = agendas.map((agenda, index) => ({
@@ -62,13 +62,13 @@ export async function listAgendasForAdmin(dispensarySlug: string) {
   }
 }
 
-export async function listAccessibleAgendas(dispensarySlug: string) {
+export async function listAccessibleAgendas(businessSlug: string) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const data = (await listAccessibleAgendasApi(
-      agendaScope(ctx.tenant.dispensaryId),
+      agendaScope(ctx.tenant.businessId),
       await agendaCookie(),
     )) as AgendaSummaryDTO[];
 
@@ -78,20 +78,20 @@ export async function listAccessibleAgendas(dispensarySlug: string) {
   }
 }
 
-export async function getAgendaPageBootstrap(dispensarySlug: string) {
+export async function getAgendaPageBootstrap(businessSlug: string) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const { session } = ctx;
 
     const bootstrap = await getAgendaBootstrap(
-      agendaScope(dispensaryId),
+      agendaScope(businessId),
       await agendaCookie(),
     );
 
-    const isAdmin = isDispensaryAdminRole(session.user.role, effectiveRole);
+    const isAdmin = isBusinessAdminRole(session.user.role, effectiveRole);
 
     return {
       status: 200,
@@ -106,17 +106,17 @@ export async function getAgendaPageBootstrap(dispensarySlug: string) {
   }
 }
 
-export async function checkAgendaModuleAccess(dispensarySlug: string) {
+export async function checkAgendaModuleAccess(businessSlug: string) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const access = await getAgendaAccess(
-      agendaScope(ctx.tenant.dispensaryId),
+      agendaScope(ctx.tenant.businessId),
       await agendaCookie(),
     );
 
-    const isAdmin = isDispensaryAdminRole(
+    const isAdmin = isBusinessAdminRole(
       ctx.session.user.role,
       ctx.tenant.effectiveRole,
     );
@@ -131,19 +131,19 @@ export async function checkAgendaModuleAccess(dispensarySlug: string) {
 }
 
 async function createAgendaUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { name: string; description?: string | null; ownerUserId: string },
 ) {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
 
     const validated = createAgendaSchema.parse(data);
 
-    const validOwner = await validateDispensaryUserIds(
-      auth.ctx.dispensaryId,
+    const validOwner = await validateBusinessUserIds(
+      auth.ctx.businessId,
       [validated.ownerUserId],
     );
 
@@ -156,7 +156,7 @@ async function createAgendaUnlogged(
 
     const agenda = await createAgendaApi(
       {
-        ...agendaScope(auth.ctx.dispensaryId),
+        ...agendaScope(auth.ctx.businessId),
         name: validated.name,
         description: validated.description ?? null,
         ownerUserId: validated.ownerUserId,
@@ -171,11 +171,11 @@ async function createAgendaUnlogged(
 }
 
 async function updateAgendaUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { id: string; name: string; description?: string | null },
 ) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const validated = updateAgendaSchema.parse(data);
@@ -197,9 +197,9 @@ async function updateAgendaUnlogged(
   }
 }
 
-async function deleteAgendaUnlogged(dispensarySlug: string, id: string) {
+async function deleteAgendaUnlogged(businessSlug: string, id: string) {
   try {
-    const auth = await requireDispensaryAdminContext(dispensarySlug);
+    const auth = await requireBusinessAdminContext(businessSlug);
     if (!auth.ok) {
       return { status: auth.status, error: auth.error };
     }
@@ -218,9 +218,9 @@ async function deleteAgendaUnlogged(dispensarySlug: string, id: string) {
   }
 }
 
-export async function getAgendaWithMembers(dispensarySlug: string, agendaId: string) {
+export async function getAgendaWithMembers(businessSlug: string, agendaId: string) {
   try {
-    const ctx = await getAgendaSessionContext(dispensarySlug);
+    const ctx = await getAgendaSessionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
 
     const scopeAdmin = canManageAgendaAsScopeAdmin(
@@ -230,7 +230,7 @@ export async function getAgendaWithMembers(dispensarySlug: string, agendaId: str
 
     const agenda = await getAgenda(
       agendaId,
-      agendaScope(ctx.tenant.dispensaryId),
+      agendaScope(ctx.tenant.businessId),
       { ...(await agendaCookie()), scopeAdmin },
     );
 
@@ -238,7 +238,7 @@ export async function getAgendaWithMembers(dispensarySlug: string, agendaId: str
       status: 200,
       data: {
         ...agenda,
-        members: await enrichAgendaMembers(ctx.tenant.dispensaryId, agenda.members ?? []),
+        members: await enrichAgendaMembers(ctx.tenant.businessId, agenda.members ?? []),
       },
     };
   } catch (error) {

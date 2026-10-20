@@ -37,20 +37,20 @@ const reorderCategoryItemsSchema = z.object({
 });
 
 async function createCategoryItemUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     color?: string;
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createCategoryItemSchema.parse(data);
     const categoryItem = await createCategory(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -60,14 +60,14 @@ async function createCategoryItemUnlogged(
   }
 }
 
-export async function getManagementCategoryItems(dispensarySlug: string) {
+export async function getManagementCategoryItems(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const categoryItems = await listCategories(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -78,7 +78,7 @@ export async function getManagementCategoryItems(dispensarySlug: string) {
 }
 
 async function updateCategoryItemUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -86,13 +86,13 @@ async function updateCategoryItemUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateCategoryItemSchema.parse(data);
     const categoryItem = await updateCategory(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -102,15 +102,15 @@ async function updateCategoryItemUnlogged(
   }
 }
 
-async function deleteCategoryItemUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteCategoryItemUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteCategoryItemSchema.parse(data);
     await deleteCategory(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 
@@ -121,17 +121,17 @@ async function deleteCategoryItemUnlogged(dispensarySlug: string, data: { id: st
 }
 
 async function reorderCategoryItemsUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { items: { id: string; order: number }[] },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = reorderCategoryItemsSchema.parse(data);
     await reorderCategories(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 

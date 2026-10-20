@@ -1,13 +1,13 @@
 import { requireTenantServerActionContext, type AuthSession } from '@/lib/serverActionAuth';
-import { applyDispensaryNamesToUsers, findUserIdsByDispensaryName } from '@/lib/people/resolveNames';
+import { applyBusinessNamesToUsers, findUserIdsByBusinessName } from '@/lib/people/resolveNames';
 import {
   requireCabinetRead,
   requireCabinetWrite,
   requireCabinetOwner,
 } from '@/lib/cabinet/access';
 import prisma from '@/lib/prisma';
-import { isPlatformAdmin } from '@/lib/dispensary/platformAdmin';
-import { tenantWhere } from '@/lib/dispensary/tenantWhere';
+import { isPlatformAdmin } from '@/lib/business/platformAdmin';
+import { tenantWhere } from '@/lib/business/tenantWhere';
 import { batchGetUsers, searchUsers } from '@lawless-intranet/auth-client/server';
 import { getCookieHeader } from '@/lib/authUsers';
 
@@ -18,8 +18,8 @@ export type CabinetEligibleUser = {
   image: string | null;
 };
 
-export async function searchEligibleDispensaryUsersForCabinet(
-  dispensaryId: string,
+export async function searchEligibleBusinessUsersForCabinet(
+  businessId: string,
   query: string,
 ): Promise<CabinetEligibleUser[]> {
   const q = query.trim();
@@ -28,13 +28,13 @@ export async function searchEligibleDispensaryUsersForCabinet(
   }
 
   const cookieHeader = await getCookieHeader();
-  const [members, matchingUsers, matchingByDispensaryName] = await Promise.all([
-    prisma.dispensaryMember.findMany({
-      where: { dispensaryId },
+  const [members, matchingUsers, matchingByBusinessName] = await Promise.all([
+    prisma.businessMember.findMany({
+      where: { businessId },
       select: { userId: true },
     }),
     searchUsers(q, cookieHeader),
-    findUserIdsByDispensaryName(prisma, dispensaryId, q),
+    findUserIdsByBusinessName(prisma, businessId, q),
   ]);
 
   const memberIds = new Set(members.map((member) => member.userId));
@@ -48,13 +48,13 @@ export async function searchEligibleDispensaryUsersForCabinet(
     }
   }
   // Members found by their name in the dispensary (fixed name), not only their account name.
-  for (const userId of matchingByDispensaryName) {
+  for (const userId of matchingByBusinessName) {
     if (memberIds.has(userId)) candidateIds.add(userId);
   }
 
-  const profiles = await applyDispensaryNamesToUsers(
+  const profiles = await applyBusinessNamesToUsers(
     prisma,
-    dispensaryId,
+    businessId,
     new Map((await batchGetUsers([...candidateIds], cookieHeader)).map((user) => [user.id, user])),
   );
 
@@ -69,14 +69,14 @@ export async function searchEligibleDispensaryUsersForCabinet(
     .slice(0, 20);
 }
 
-export async function requireCabinetFeatureContext(dispensarySlug: string) {
-  return requireTenantServerActionContext(dispensarySlug, {
+export async function requireCabinetFeatureContext(businessSlug: string) {
+  return requireTenantServerActionContext(businessSlug, {
     feature: 'cabinet',
   });
 }
 
-export async function getCabinetSessionContext(dispensarySlug: string) {
-  const ctx = await requireCabinetFeatureContext(dispensarySlug);
+export async function getCabinetSessionContext(businessSlug: string) {
+  const ctx = await requireCabinetFeatureContext(businessSlug);
   if (!ctx.ok) return ctx;
   return {
     ok: true as const,
@@ -86,13 +86,13 @@ export async function getCabinetSessionContext(dispensarySlug: string) {
 }
 
 export async function guardCabinetRead(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   session: AuthSession,
   effectiveRole: string | null | undefined,
 ) {
   return requireCabinetRead(
-    dispensaryId,
+    businessId,
     cabinetId,
     session.user.id,
     session.user.role,
@@ -101,13 +101,13 @@ export async function guardCabinetRead(
 }
 
 export async function guardCabinetWrite(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   session: AuthSession,
   effectiveRole: string | null | undefined,
 ) {
   return requireCabinetWrite(
-    dispensaryId,
+    businessId,
     cabinetId,
     session.user.id,
     session.user.role,
@@ -116,13 +116,13 @@ export async function guardCabinetWrite(
 }
 
 export async function guardCabinetOwner(
-  dispensaryId: string,
+  businessId: string,
   cabinetId: string,
   session: AuthSession,
   effectiveRole: string | null | undefined,
 ) {
   return requireCabinetOwner(
-    dispensaryId,
+    businessId,
     cabinetId,
     session.user.id,
     session.user.role,
@@ -131,13 +131,13 @@ export async function guardCabinetOwner(
 }
 
 export async function resolveCabinetIdFromPatientId(
-  dispensaryId: string,
+  businessId: string,
   patientId: string,
 ): Promise<string | null> {
   const patient = await prisma.cabinetPatient.findFirst({
     where: {
       id: patientId,
-      cabinet: tenantWhere(dispensaryId),
+      cabinet: tenantWhere(businessId),
     },
     select: { cabinetId: true },
   });
@@ -145,13 +145,13 @@ export async function resolveCabinetIdFromPatientId(
 }
 
 export async function resolveCabinetIdFromCareEpisodeId(
-  dispensaryId: string,
+  businessId: string,
   episodeId: string,
 ): Promise<string | null> {
   const episode = await prisma.careEpisode.findFirst({
     where: {
       id: episodeId,
-      patient: { cabinet: tenantWhere(dispensaryId) },
+      patient: { cabinet: tenantWhere(businessId) },
     },
     select: { patient: { select: { cabinetId: true } } },
   });
@@ -159,21 +159,21 @@ export async function resolveCabinetIdFromCareEpisodeId(
 }
 
 export async function resolveCabinetIdFromConsultationId(
-  dispensaryId: string,
+  businessId: string,
   consultationId: string,
 ): Promise<string | null> {
   const consultation = await prisma.consultation.findFirst({
     where: {
       id: consultationId,
-      careEpisode: { patient: { cabinet: tenantWhere(dispensaryId) } },
+      careEpisode: { patient: { cabinet: tenantWhere(businessId) } },
     },
     select: { careEpisode: { select: { patient: { select: { cabinetId: true } } } } },
   });
   return consultation?.careEpisode.patient.cabinetId ?? null;
 }
 
-export async function validateDispensaryUserIds(
-  dispensaryId: string,
+export async function validateBusinessUserIds(
+  businessId: string,
   userIds: string[],
 ): Promise<boolean> {
   if (userIds.length === 0) return true;
@@ -188,9 +188,9 @@ export async function validateDispensaryUserIds(
 
   if (memberRequiredIds.length === 0) return true;
 
-  const memberCount = await prisma.dispensaryMember.count({
+  const memberCount = await prisma.businessMember.count({
     where: {
-      ...tenantWhere(dispensaryId),
+      ...tenantWhere(businessId),
       userId: { in: memberRequiredIds },
     },
   });

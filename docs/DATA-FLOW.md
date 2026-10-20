@@ -33,7 +33,7 @@ Il n'y a **pas d'API REST par feature**. Chaque app a une seule route GET géné
 | | Dispensaire | Refuge |
 |---|---|---|
 | Registre | `apps/dispensary/src/lib/read/readRoutes.ts` | `apps/shelter/src/lib/read/readRoutes.ts` |
-| Route | `src/app/api/d/[dispensarySlug]/read/[query]/route.ts` | `src/app/api/s/[shelterSlug]/read/[query]/route.ts` |
+| Route | `src/app/api/d/[businessSlug]/read/[query]/route.ts` | `src/app/api/s/[shelterSlug]/read/[query]/route.ts` |
 | Client | `src/lib/read/fetchRead.ts` | `src/lib/read/fetchRead.ts` |
 
 La mécanique est partagée dans `packages/host-kit/src/read.ts` (`createReadRouteHandler`, `createFetchRead`).

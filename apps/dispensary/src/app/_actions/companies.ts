@@ -40,7 +40,7 @@ const deleteCompanySchema = z.object({
 });
 
 async function createCompanyUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     name: string;
     bankAccountNumber?: string | null;
@@ -48,14 +48,14 @@ async function createCompanyUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = createCompanySchema.parse(data);
     const company = await createCompanyClient(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         name: validatedData.name,
         bankAccountNumber: validatedData.bankAccountNumber?.trim() || null,
         companyGroupIds: validatedData.companyGroupIds,
@@ -69,14 +69,14 @@ async function createCompanyUnlogged(
   }
 }
 
-export async function getCompaniesForSelect(dispensarySlug: string) {
+export async function getCompaniesForSelect(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const companies = await listCompaniesForSelect(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -86,14 +86,14 @@ export async function getCompaniesForSelect(dispensarySlug: string) {
   }
 }
 
-export async function getCompanies(dispensarySlug: string) {
+export async function getCompanies(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const companies = await listCompanies(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -104,7 +104,7 @@ export async function getCompanies(dispensarySlug: string) {
 }
 
 async function updateCompanyUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     id: string;
     name: string;
@@ -113,14 +113,14 @@ async function updateCompanyUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = updateCompanySchema.parse(data);
     const company = await updateCompanyClient(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         id: validatedData.id,
         name: validatedData.name,
         bankAccountNumber: validatedData.bankAccountNumber?.trim() || null,
@@ -135,15 +135,15 @@ async function updateCompanyUnlogged(
   }
 }
 
-async function deleteCompanyUnlogged(dispensarySlug: string, data: { id: string }) {
+async function deleteCompanyUnlogged(businessSlug: string, data: { id: string }) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug);
+    const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validatedData = deleteCompanySchema.parse(data);
     await deleteCompanyClient(
-      { ...inventoryScope(dispensaryId), ...validatedData },
+      { ...inventoryScope(businessId), ...validatedData },
       await inventoryCookie(),
     );
 

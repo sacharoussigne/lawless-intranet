@@ -547,6 +547,9 @@ export async function resolveShare(token: string): Promise<LibraryResult<MediaSh
   };
 }
 
+/** Former scope types whose S3 objects keep their prefix (`business` was `dispensary`). */
+const LEGACY_SCOPE_TYPES: Record<string, string[]> = { business: ['dispensary'] };
+
 /** Removes everything of a tenant (host deleted), including orphan objects. */
 export async function purgeScope(
   scope: MediaScopeParams,
@@ -557,5 +560,9 @@ export async function purgeScope(
     prisma.mediaFolder.deleteMany({ where: scopeWhere(scope) }),
   ]);
   await deletePrefix(buildScopePrefix(scope.scopeType, scope.scopeId));
+  // Objects uploaded before the scope type was renamed keep their old prefix.
+  for (const legacyType of LEGACY_SCOPE_TYPES[scope.scopeType] ?? []) {
+    await deletePrefix(buildScopePrefix(legacyType, scope.scopeId));
+  }
   return { files: files.count, folders: folders.count, links: links.count };
 }

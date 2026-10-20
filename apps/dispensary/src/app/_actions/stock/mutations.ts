@@ -15,7 +15,7 @@ import {
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 
 async function updateStockUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { itemId: string; quantity: number }[],
   chestId?: string | null,
   options?: { skipHistory?: boolean },
@@ -23,7 +23,7 @@ async function updateStockUnlogged(
   _meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
@@ -33,7 +33,7 @@ async function updateStockUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const { session } = ctx;
 
     if (data.length === 0) {
@@ -42,7 +42,7 @@ async function updateStockUnlogged(
 
     const results = await updateStockApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         stocks: data,
         chestId,
         skipHistory: options?.skipHistory ?? false,
@@ -59,7 +59,7 @@ async function updateStockUnlogged(
 }
 
 async function craftItemUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     craftedItemId: string;
     recipeId: string;
@@ -72,7 +72,7 @@ async function craftItemUnlogged(
   _meta?: unknown,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
       permission: {
         resource: 'stock',
@@ -82,12 +82,12 @@ async function craftItemUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId, effectiveRole } = ctx.tenant;
+    const { businessId, effectiveRole } = ctx.tenant;
     const { session } = ctx;
 
     const result = await craftItemApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         craftedItemId: data.craftedItemId,
         recipeId: data.recipeId,
         times: data.times,
@@ -107,7 +107,7 @@ async function craftItemUnlogged(
 }
 
 async function overwriteStockForDateUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: {
     date: Date;
     stocks: { itemId: string; quantity: number }[];
@@ -115,15 +115,15 @@ async function overwriteStockForDateUnlogged(
   },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'stock',
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const result = await overwriteStockForDateApi(
       {
-        ...inventoryScope(dispensaryId),
+        ...inventoryScope(businessId),
         date: data.date,
         stocks: data.stocks,
         chestId: data.chestId,

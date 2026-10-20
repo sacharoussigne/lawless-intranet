@@ -21,11 +21,11 @@ const deleteIndividualCustomerByNameSchema = z.object({
 });
 
 export async function searchIndividualCustomers(
-  dispensarySlug: string,
+  businessSlug: string,
   query: string,
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       permission: {
         resource: 'sales',
         action: 'create',
@@ -33,7 +33,7 @@ export async function searchIndividualCustomers(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const trimmed = query.trim();
     if (trimmed.length < 2) {
@@ -41,7 +41,7 @@ export async function searchIndividualCustomers(
     }
 
     const customers = await searchCustomers(
-      { ...inventoryScope(dispensaryId), q: trimmed },
+      { ...inventoryScope(businessId), q: trimmed },
       await inventoryCookie(),
     );
 
@@ -51,17 +51,17 @@ export async function searchIndividualCustomers(
   }
 }
 
-export async function getIndividualCustomers(dispensarySlug: string) {
+export async function getIndividualCustomers(businessSlug: string) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'orders',
       permission: { resource: 'orders', action: 'view' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const customers = await listCustomers(
-      inventoryScope(dispensaryId),
+      inventoryScope(businessId),
       await inventoryCookie(),
     );
 
@@ -72,20 +72,20 @@ export async function getIndividualCustomers(dispensarySlug: string) {
 }
 
 async function createIndividualCustomerUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { name: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'orders',
       permission: { resource: 'orders', action: 'create' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = createIndividualCustomerSchema.parse(data);
     const customer = await createCustomer(
-      { ...inventoryScope(dispensaryId), name: validated.name },
+      { ...inventoryScope(businessId), name: validated.name },
       await inventoryCookie(),
     );
 
@@ -96,20 +96,20 @@ async function createIndividualCustomerUnlogged(
 }
 
 async function deleteIndividualCustomerByNameUnlogged(
-  dispensarySlug: string,
+  businessSlug: string,
   data: { name: string },
 ) {
   try {
-    const ctx = await requireTenantServerActionContext(dispensarySlug, {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
       feature: 'orders',
       permission: { resource: 'orders', action: 'delete' },
     });
     if (!ctx.ok) return ctx.response;
-    const { dispensaryId } = ctx.tenant;
+    const { businessId } = ctx.tenant;
 
     const validated = deleteIndividualCustomerByNameSchema.parse(data);
     await deleteCustomerByName(
-      { ...inventoryScope(dispensaryId), name: validated.name.trim() },
+      { ...inventoryScope(businessId), name: validated.name.trim() },
       await inventoryCookie(),
     );
 

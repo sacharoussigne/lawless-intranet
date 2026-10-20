@@ -40,8 +40,8 @@ function isItemVisible(
   }
   if (id === 'people') {
     return (
-      appSettings.featureWeeklyDispensaryActivityEnabled &&
-      (permissions?.weeklyDispensaryActivity.editAll ?? false)
+      appSettings.featureWeeklyActivityEnabled &&
+      (permissions?.weeklyActivity.editAll ?? false)
     );
   }
   return true;

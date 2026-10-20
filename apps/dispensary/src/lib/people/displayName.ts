@@ -1,6 +1,6 @@
 /**
  * Name of a person in the dispensary. A Discord ID is the key of a person
- * (`DispensaryDiscordProfile`), with or without an intranet account:
+ * (`BusinessDiscordProfile`), with or without an intranet account:
  * 1. the name set by hand (`fixedDisplayName`), which nothing overwrites;
  * 2. the latest name sent by the bot or the activity form (`lastDisplayName`);
  * 3. the caller's fallback (SSO name, activity row name, « Médecin <id> »).
