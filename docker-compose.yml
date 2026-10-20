@@ -22,6 +22,8 @@ services:
         SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3001"
       DATABASE_URL: "${AUTH_DATABASE_URL:?err}"
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?err}"
@@ -51,6 +53,7 @@ services:
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${AUTH_VIRTUAL_HOST:?err}"
     networks:
+      - internal
       - proxy
       - db
 
@@ -67,20 +70,22 @@ services:
         NEXT_PUBLIC_APP_URL: "${DISPENSARY_PUBLIC_URL:?err}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3000"
       DATABASE_URL: "${DISPENSARY_DATABASE_URL:?err}"
-      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       NEXT_PUBLIC_APP_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
-      DOCUMENTS_URL: "${DOCUMENTS_PUBLIC_URL:-http://documents:3002}"
+      DOCUMENTS_URL: "http://documents:3002"
       DOCUMENTS_INTERNAL_SECRET: "${DOCUMENTS_INTERNAL_SECRET:?err}"
-      AGENDA_URL: "${AGENDA_PUBLIC_URL:-http://agenda:3003}"
+      AGENDA_URL: "http://agenda:3003"
       AGENDA_INTERNAL_SECRET: "${AGENDA_INTERNAL_SECRET:?err}"
-      BANK_URL: "${BANK_PUBLIC_URL:-http://bank:3004}"
+      BANK_URL: "http://bank:3004"
       BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
       BANK_BOT_API_SECRET: "${BANK_BOT_API_SECRET:-}"
-      INVENTORY_URL: "${INVENTORY_PUBLIC_URL:-http://inventory:3005}"
+      INVENTORY_URL: "http://inventory:3005"
       INVENTORY_INTERNAL_SECRET: "${INVENTORY_INTERNAL_SECRET:?err}"
       # Media library service (private network, see the media service)
       MEDIA_URL: "http://media:3009"
@@ -103,6 +108,7 @@ services:
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
     networks:
+      - internal
       - proxy
       - db
       - media
@@ -121,9 +127,11 @@ services:
         DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3002"
       DATABASE_URL: "${DOCUMENTS_DATABASE_URL:?err}"
-      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
       DOCUMENTS_INTERNAL_SECRET: "${DOCUMENTS_INTERNAL_SECRET:?err}"
@@ -133,6 +141,7 @@ services:
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${DOCUMENTS_VIRTUAL_HOST:?err}"
     networks:
+      - internal
       - proxy
       - db
 
@@ -149,9 +158,11 @@ services:
         DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3003"
       DATABASE_URL: "${AGENDA_DATABASE_URL:?err}"
-      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       AGENDA_INTERNAL_SECRET: "${AGENDA_INTERNAL_SECRET:?err}"
       # Publishes changes to the realtime server over the private network
@@ -163,6 +174,7 @@ services:
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${AGENDA_VIRTUAL_HOST:?err}"
     networks:
+      - internal
       - proxy
       - db
       - realtime
@@ -180,9 +192,11 @@ services:
         DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3004"
       DATABASE_URL: "${BANK_DATABASE_URL:?err}"
-      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       SHELTER_URL: "${SHELTER_PUBLIC_URL:-}"
       BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
@@ -193,6 +207,7 @@ services:
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${BANK_VIRTUAL_HOST:?err}"
     networks:
+      - internal
       - proxy
       - db
 
@@ -209,9 +224,11 @@ services:
         DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3005"
       DATABASE_URL: "${INVENTORY_DATABASE_URL:?err}"
-      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       DISPENSARY_URL: "${DISPENSARY_PUBLIC_URL:?err}"
       INVENTORY_INTERNAL_SECRET: "${INVENTORY_INTERNAL_SECRET:?err}"
       VIRTUAL_HOST: "${INVENTORY_VIRTUAL_HOST:?err}"
@@ -220,6 +237,7 @@ services:
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${INVENTORY_VIRTUAL_HOST:?err}"
     networks:
+      - internal
       - proxy
       - db
 
@@ -236,13 +254,15 @@ services:
         NEXT_PUBLIC_APP_URL: "${SHELTER_PUBLIC_URL:?err}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3006"
       DATABASE_URL: "${SHELTER_DATABASE_URL:?err}"
-      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       NEXT_PUBLIC_APP_URL: "${SHELTER_PUBLIC_URL:?err}"
       AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
-      BANK_URL: "${BANK_PUBLIC_URL:-http://bank:3004}"
+      BANK_URL: "http://bank:3004"
       BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
       NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
@@ -251,7 +271,7 @@ services:
       LETSENCRYPT_HOST: "${SHELTER_VIRTUAL_HOST:?err}"
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${SHELTER_VIRTUAL_HOST:?err}"
-      DOCUMENTS_URL: "${DOCUMENTS_PUBLIC_URL:?err}"
+      DOCUMENTS_URL: "http://documents:3002"
       DOCUMENTS_INTERNAL_SECRET: "${DOCUMENTS_INTERNAL_SECRET:?err}"
       # Media library service (private network, see the media service)
       MEDIA_URL: "http://media:3009"
@@ -265,6 +285,7 @@ services:
       # Protects the follow-up reminders cron route (api/cron/follow-ups)
       FOLLOW_UP_CRON_SECRET: "${FOLLOW_UP_CRON_SECRET:-}"
     networks:
+      - internal
       - proxy
       - db
       - media
@@ -285,9 +306,11 @@ services:
         NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
     environment:
       NODE_ENV: production
+      # libuv pool (DNS lookups, file reads, zlib, crypto): a slow call no longer stalls the others
+      UV_THREADPOOL_SIZE: "16"
       PORT: "3009"
       DATABASE_URL: "${MEDIA_DATABASE_URL:?err}"
-      AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
+      AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       MEDIA_INTERNAL_SECRET: "${MEDIA_INTERNAL_SECRET:?err}"
       S3_BUCKET: "${MEDIA_S3_BUCKET:?err}"
       S3_REGION: "${MEDIA_S3_REGION:?err}"
@@ -301,6 +324,7 @@ services:
       REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
       TZ: "${TZ:-UTC}"
     networks:
+      - internal
       - db
       - media
       - realtime
@@ -342,6 +366,10 @@ networks:
     external: true
   db:
     external: true
+  # Private network for server-to-server calls (hosts → auth and the services): no public DNS
+  # lookup, nginx round trip nor TLS on every call. No outside access through it.
+  internal:
+    internal: true
   # Private network between services and the realtime internal API (no outside access).
   realtime:
     internal: true
