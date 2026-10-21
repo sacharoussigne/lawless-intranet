@@ -1,0 +1,89 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mantine-spacing-lg);
+  align-items: start;
+
+  @media (min-width: 62em) {
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  }
+}
+
+.main {
+  min-width: 0;
+}
+
+/* Odoo-like chatter: a vertical column next to the order, stuck under the app header. */
+.chatter {
+  min-width: 0;
+  padding: var(--mantine-spacing-lg);
+  border: 1px solid var(--disp-surface-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--disp-table-zebra);
+  box-shadow: var(--disp-shadow-card);
+
+  @media (min-width: 62em) {
+    position: sticky;
+    top: 76px;
+    max-height: calc(100dvh - 92px);
+    overflow-y: auto;
+  }
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+}
+
+.field {
+  min-width: 0;
+}
+
+.fieldValue {
+  margin-top: 2px;
+}
+
+.details {
+  margin-top: var(--mantine-spacing-lg);
+  padding-top: var(--mantine-spacing-md);
+  border-top: 1px dashed var(--disp-surface-border);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--mantine-spacing-sm);
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  font-size: var(--mantine-font-size-lg);
+  color: var(--disp-ink);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1.25;
+  color: var(--disp-ink);
+  overflow-wrap: anywhere;
+}
+
+.titleInput {
+  flex: 1;
+  min-width: min(100%, 16rem);
+  max-width: 32rem;
+}
+
+/* Status bar at the top of the order card, set apart like the details. */
+.statusBar {
+  margin-bottom: var(--mantine-spacing-lg);
+  padding-bottom: var(--mantine-spacing-md);
+  border-bottom: 1px dashed var(--disp-surface-border);
+}
+
+/* Workflow buttons at the bottom of the order card; empty when there is nothing to do. */
+.statusActions:not(:empty) {
+  margin-top: var(--mantine-spacing-lg);
+  padding-top: var(--mantine-spacing-md);
+  border-top: 1px dashed var(--disp-surface-border);
+}

@@ -76,7 +76,13 @@ import {
   getMediaUserName,
 } from '@/app/_actions/media';
 import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
-import { getActiveOrdersForCompanyGroup, getOrderById, getOrdersPage } from '@/app/_actions/orders';
+import {
+  getActiveOrdersForCompanyGroup,
+  getOrderById,
+  getOrdersPage,
+  listOrderResponsibleOptions,
+} from '@/app/_actions/orders';
+import { getOrderChatter } from '@/app/_actions/orderChatter';
 
 /**
  * Reads exposed as GET (`/api/d/<slug>/read/<query>`) for React Query refetches.
@@ -102,6 +108,8 @@ export const readRoutes = {
     getActiveOrdersForCompanyGroup(slug, input),
   orderLetterAssignments: (slug: string, _input?: undefined) =>
     getOrderLetterTemplateAssignments(slug),
+  orderResponsibleOptions: (slug: string, _input?: undefined) => listOrderResponsibleOptions(slug),
+  orderChatter: (slug: string, input: { orderId: string }) => getOrderChatter(slug, input),
   individualCustomers: (slug: string, _input?: undefined) => getIndividualCustomers(slug),
 
   // Agenda and to-dos (agenda-ui, see lib/agenda/agendaUiActions)
@@ -136,7 +144,8 @@ export const readRoutes = {
     getItemsWithDetailedStock(slug, input?.itemIds),
   chestsList: (slug: string, input: { onlyEnabled?: boolean }) =>
     getChestsList(slug, input?.onlyEnabled ?? false),
-  items: (slug: string, input: { companyGroupId?: string | null }) => getItems(slug, input),
+  items: (slug: string, input: { companyGroupId?: string | null; forSale?: boolean }) =>
+    getItems(slug, input),
   sellableItems: (slug: string, _input?: undefined) => getSellableItems(slug),
   lastStockDaysByChest: (slug: string, _input?: undefined) => getLastStockDaysByChest(slug),
   stockChecksSummary: (slug: string, _input?: undefined) => getStockChecksSummary(slug),

@@ -48,7 +48,10 @@ export function tenantRoutes(slug: string) {
       testTemplate: (id: string) => `${employeeBase}/mails/templates/${id}/test`,
     },
     stock: { index: `${employeeBase}/stock` },
-    orders: { index: `${employeeBase}/orders` },
+    orders: {
+      index: `${employeeBase}/orders`,
+      detail: (id: string) => `${employeeBase}/orders/${encodeURIComponent(id)}`,
+    },
     searchItems: { index: `${employeeBase}/search-items` },
     bank: { index: `${employeeBase}/bank` },
     weeklyActivity: { index: `${employeeBase}/weekly-activity` },

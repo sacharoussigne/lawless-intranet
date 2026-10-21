@@ -17,7 +17,6 @@ import type { OrdersPageFilters } from '@/lib/orders/queryKeys';
 import { OrdersTable } from './orders/components/OrdersTable';
 import { EditOrderModal } from './orders/components/EditOrderModal';
 import { DeleteOrderModal } from './orders/components/DeleteOrderModal';
-import { OrderDetailsModal } from './orders/components/OrderDetailsModal';
 import { OrderLetterPreviewModal } from './orders/components/OrderLetterPreviewModal';
 
 function formatDateRangeChip(from: string | null, to: string | null): string {
@@ -50,6 +49,7 @@ export function EmployeeActiveOrdersDashboard({
     type: defaultActiveOrdersPageFilters.type,
     createdAtFrom: defaultActiveOrdersPageFilters.createdAtFrom,
     createdAtTo: defaultActiveOrdersPageFilters.createdAtTo,
+    mine: defaultActiveOrdersPageFilters.mine,
   });
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
@@ -60,11 +60,9 @@ export function EmployeeActiveOrdersDashboard({
   );
 
   const [modalOpened, setModalOpened] = useState(false);
-  const [detailsModalOpened, setDetailsModalOpened] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [letterPreviewModalOpened, setLetterPreviewModalOpened] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
-  const [viewingOrderId, setViewingOrderId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<OrderSummary | null>(null);
   const [orderForLetterPreviewId, setOrderForLetterPreviewId] = useState<string | null>(
     null,
@@ -163,10 +161,6 @@ export function EmployeeActiveOrdersDashboard({
           }))
         }
         onPageChange={(page) => setFilters((current) => ({ ...current, page }))}
-        onView={(order) => {
-          setViewingOrderId(order.id);
-          setDetailsModalOpened(true);
-        }}
         onEdit={(order) => {
           setEditingOrderId(order.id);
           setModalOpened(true);
@@ -189,15 +183,6 @@ export function EmployeeActiveOrdersDashboard({
           setEditingOrderId(null);
         }}
         orderId={editingOrderId}
-      />
-
-      <OrderDetailsModal
-        opened={detailsModalOpened}
-        onClose={() => {
-          setDetailsModalOpened(false);
-          setViewingOrderId(null);
-        }}
-        orderId={viewingOrderId}
       />
 
       <DeleteOrderModal

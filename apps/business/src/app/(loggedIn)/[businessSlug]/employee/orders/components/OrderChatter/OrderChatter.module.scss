@@ -1,0 +1,282 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-xs);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  font-size: var(--mantine-font-size-lg);
+  color: var(--disp-ink);
+}
+
+/* --- Message box: a single frame, lit on focus --- */
+
+.box {
+  border: 1px solid var(--disp-surface-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--disp-surface);
+  box-shadow: var(--disp-shadow-xs);
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+
+  &:focus-within {
+    border-color: var(--disp-sage);
+    box-shadow: 0 0 0 3px var(--disp-sage-soft);
+  }
+}
+
+.boxInput {
+  /* The frame is the box: no border, background or focus ring of its own. */
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-sm) 0 !important;
+  color: var(--disp-ink);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.5;
+
+  &::placeholder {
+    color: var(--disp-ink-muted);
+    opacity: 0.7;
+  }
+}
+
+.boxFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--mantine-spacing-xs);
+  padding: 6px var(--mantine-spacing-xs) var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+/* Nothing to send yet: still the send button, just quieter. */
+.sendIdle {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* --- Feed --- */
+
+.days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+.daySeparator {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-sm);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--disp-ink-muted);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--disp-surface-border);
+  }
+}
+
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.entryBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.entryHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-xs);
+  min-height: 24px;
+}
+
+.entryMeta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.time {
+  flex: none;
+  white-space: nowrap;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--disp-ink-muted);
+  cursor: default;
+}
+
+/* --- Comments --- */
+
+.comment {
+  display: flex;
+  gap: var(--mantine-spacing-sm);
+  align-items: flex-start;
+
+  /* Edit / delete show up on hover or keyboard focus (always on touch screens). */
+  .entryActions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  &:hover .entryActions,
+  &:focus-within .entryActions {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .entryActions {
+      opacity: 1;
+    }
+  }
+}
+
+.edited {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--disp-ink-muted);
+}
+
+.bubble {
+  margin-top: 4px;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border: 1px solid var(--disp-surface-border);
+  border-radius: 2px var(--mantine-radius-md) var(--mantine-radius-md) var(--mantine-radius-md);
+  background: var(--disp-surface);
+  box-shadow: var(--disp-shadow-xs);
+  color: var(--disp-ink);
+  font-size: var(--mantine-font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.editor {
+  margin-top: 4px;
+}
+
+/* --- Tracking entries: a timeline linking their icons --- */
+
+.tracking {
+  position: relative;
+  display: flex;
+  gap: var(--mantine-spacing-sm);
+  align-items: flex-start;
+  color: var(--disp-ink-muted);
+
+  /* Line down to the next entry. */
+  &:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 28px;
+    bottom: calc(-1 * var(--mantine-spacing-sm));
+    left: 15px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--disp-surface-border);
+  }
+}
+
+.trackingIcon {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 24px;
+  color: var(--disp-sage-soft-text);
+
+  svg {
+    padding: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--disp-sage-soft);
+    border: 1px solid var(--disp-sage-soft-border);
+  }
+}
+
+.trackingTitle {
+  min-width: 0;
+  color: var(--disp-ink-muted);
+  overflow-wrap: anywhere;
+
+  b {
+    color: var(--disp-ink);
+  }
+}
+
+.changes {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--mantine-font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.changeLabel {
+  font-weight: 700;
+  color: var(--disp-ink-muted);
+
+  &::after {
+    content: '\00a0: ';
+    font-weight: 400;
+  }
+}
+
+.changeValue {
+  color: var(--disp-ink);
+}
+
+.link {
+  color: var(--disp-sage);
+  font-weight: 700;
+}
+
+/* --- Empty feed --- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-md);
+  border: 1px dashed var(--disp-surface-border);
+  border-radius: var(--mantine-radius-md);
+  color: var(--disp-ink-muted);
+  text-align: center;
+}

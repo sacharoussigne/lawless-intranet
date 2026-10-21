@@ -7,12 +7,12 @@ import {
   Paper,
   Stack,
   Text,
+  SegmentedControl,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconPlus, IconPackage } from '@tabler/icons-react';
 import { EditOrderModal } from './components/EditOrderModal';
 import { DeleteOrderModal } from './components/DeleteOrderModal';
-import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { OrderLetterPreviewModal } from './components/OrderLetterPreviewModal';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { OrdersTable } from './components/OrdersTable';
@@ -21,11 +21,14 @@ import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import {
   usePermissions,
   useRequiredBusinessSlug,
+  useTenantRoutes,
 } from '@/app/_contexts/PermissionsContext';
+import { useRouter } from 'next/navigation';
 import type { OrderSummary, OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import {
   defaultOrdersPageFilters,
+  useDuplicateOrderMutation,
   useOrderLetterAssignments,
   useOrdersPage,
 } from './hooks/useOrdersQueries';
@@ -62,6 +65,9 @@ export default function OrdersPageClient({
 }: OrdersPageClientProps) {
   const { permissions } = usePermissions();
   const businessSlug = useRequiredBusinessSlug();
+  const router = useRouter();
+  const routes = useTenantRoutes();
+  const duplicateOrder = useDuplicateOrderMutation();
   const [filtersReady, setFiltersReady] = useState(false);
   const [filters, setFilters] = useState<Omit<OrdersPageFilters, 'search'>>({
     page: defaultOrdersPageFilters.page,
@@ -70,6 +76,7 @@ export default function OrdersPageClient({
     type: defaultOrdersPageFilters.type,
     createdAtFrom: defaultOrdersPageFilters.createdAtFrom,
     createdAtTo: defaultOrdersPageFilters.createdAtTo,
+    mine: defaultOrdersPageFilters.mine,
   });
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
@@ -79,12 +86,10 @@ export default function OrdersPageClient({
     [filters, debouncedSearch],
   );
   const [modalOpened, setModalOpened] = useState(false);
-  const [detailsModalOpened, setDetailsModalOpened] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [letterPreviewModalOpened, setLetterPreviewModalOpened] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
-  const [viewingOrderId, setViewingOrderId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<OrderSummary | null>(null);
   const [orderForLetterPreviewId, setOrderForLetterPreviewId] = useState<string | null>(
     null,
@@ -101,6 +106,7 @@ export default function OrdersPageClient({
         type: saved.type,
         createdAtFrom: saved.createdAtFrom,
         createdAtTo: saved.createdAtTo,
+        mine: saved.mine,
       }));
       setSearchInput(saved.search);
     }
@@ -116,6 +122,7 @@ export default function OrdersPageClient({
       pageSize: filters.pageSize,
       createdAtFrom: filters.createdAtFrom,
       createdAtTo: filters.createdAtTo,
+      mine: filters.mine,
     });
   }, [
     businessSlug,
@@ -125,6 +132,7 @@ export default function OrdersPageClient({
     filters.pageSize,
     filters.createdAtFrom,
     filters.createdAtTo,
+    filters.mine,
     searchInput,
   ]);
 
@@ -143,6 +151,7 @@ export default function OrdersPageClient({
       filters.type ||
       filters.createdAtFrom ||
       filters.createdAtTo ||
+      filters.mine ||
       searchInput.trim(),
   );
   const isSearchDebouncing = searchInput !== debouncedSearch;
@@ -167,7 +176,14 @@ export default function OrdersPageClient({
 
   useEffect(() => {
     setFilters((current) => ({ ...current, page: 1 }));
-  }, [filters.status, filters.type, filters.createdAtFrom, filters.createdAtTo, debouncedSearch]);
+  }, [
+    filters.status,
+    filters.type,
+    filters.createdAtFrom,
+    filters.createdAtTo,
+    filters.mine,
+    debouncedSearch,
+  ]);
 
   const handleStatusFilterChange = (value: string[]) => {
     setFilters((current) => ({ ...current, status: value }));
@@ -220,6 +236,15 @@ export default function OrdersPageClient({
         </Paper>
       ) : (
         <>
+          <SegmentedControl
+            mb="md"
+            value={filters.mine ? 'mine' : 'all'}
+            onChange={(value) => setFilters((current) => ({ ...current, mine: value === 'mine' }))}
+            data={[
+              { value: 'all', label: 'Toutes les commandes' },
+              { value: 'mine', label: 'Mes commandes' },
+            ]}
+          />
           <ActiveFilters
             filters={[
               {
@@ -273,10 +298,6 @@ export default function OrdersPageClient({
             onNameFilterChange={handleNameFilterChange}
             onCreatedAtRangeChange={handleCreatedAtRangeChange}
             onPageChange={handlePageChange}
-            onView={(order) => {
-              setViewingOrderId(order.id);
-              setDetailsModalOpened(true);
-            }}
             onEdit={(order) => {
               setEditingOrderId(order.id);
               setModalOpened(true);
@@ -284,6 +305,12 @@ export default function OrdersPageClient({
             onDelete={(order) => {
               setOrderToDelete(order);
               setDeleteModalOpened(true);
+            }}
+            onDuplicate={(order) => {
+              duplicateOrder
+                .mutateAsync({ id: order.id })
+                .then((copy) => router.push(routes.orders.detail(copy.id)))
+                .catch(() => undefined);
             }}
             onPreviewLetter={(order) => {
               setOrderForLetterPreviewId(order.id);
@@ -301,15 +328,6 @@ export default function OrdersPageClient({
           setEditingOrderId(null);
         }}
         orderId={editingOrderId}
-      />
-
-      <OrderDetailsModal
-        opened={detailsModalOpened}
-        onClose={() => {
-          setDetailsModalOpened(false);
-          setViewingOrderId(null);
-        }}
-        orderId={viewingOrderId}
       />
 
       <DeleteOrderModal

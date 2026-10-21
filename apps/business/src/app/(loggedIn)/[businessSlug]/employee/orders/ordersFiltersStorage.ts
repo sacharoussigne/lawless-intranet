@@ -14,7 +14,7 @@ const VALID_STATUSES = [
 
 export type PersistedOrdersFilters = Pick<
   OrdersPageFilters,
-  'status' | 'type' | 'search' | 'pageSize' | 'createdAtFrom' | 'createdAtTo'
+  'status' | 'type' | 'search' | 'pageSize' | 'createdAtFrom' | 'createdAtTo' | 'mine'
 >;
 
 function storageKey(businessSlug: string): string {
@@ -66,6 +66,7 @@ function parsePersisted(raw: string): PersistedOrdersFilters | null {
         typeof parsed.createdAtTo === 'string' || parsed.createdAtTo === null
           ? (parsed.createdAtTo ?? null)
           : null,
+      mine: parsed.mine === true,
     };
   } catch {
     return null;

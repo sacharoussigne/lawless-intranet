@@ -10,6 +10,11 @@
   color: var(--disp-ink);
 }
 
+.titleSlot {
+  flex: 1;
+  min-width: min(100%, 18rem);
+}
+
 .description {
   color: var(--disp-ink-muted);
   margin-top: var(--mantine-spacing-xs);

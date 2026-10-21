@@ -8,8 +8,14 @@ import {
   completeOrder,
   createOrder,
   deleteOrder,
+  duplicateOrder,
   updateOrder,
 } from '@/app/_actions/orders';
+import {
+  addOrderComment,
+  deleteOrderComment,
+  updateOrderComment,
+} from '@/app/_actions/orderChatter';
 import { fetchRead } from '@/lib/read/fetchRead';
 import { handleAction } from '@/lib/action';
 import { DEFAULT_STALE_TIME_MS } from '@/lib/react-query/QueryProvider';
@@ -24,7 +30,7 @@ import { useOptionalRealtimeSocket, useRealtimeSocketResync } from '@lawless-int
 import { useOrdersRealtime } from '@/lib/orders/realtime/client/useOrdersRealtime';
 import { stockKeys } from '@/lib/stock/queryKeys';
 import { normalizeItemPrice } from '@/lib/orders/calculateOrderPriceFromItems';
-import type { OrdersPageResult, OrderWithRelations } from '@/types/orders';
+import type { OrderChatter, OrdersPageResult, OrderWithRelations } from '@/types/orders';
 import type { ItemWithRelations } from '@/types/stock';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 
@@ -38,6 +44,7 @@ function filtersMatchSeed(filters: OrdersPageFilters, seed: OrdersPageFilters): 
     filters.search === seed.search &&
     filters.createdAtFrom === seed.createdAtFrom &&
     filters.createdAtTo === seed.createdAtTo &&
+    filters.mine === seed.mine &&
     filters.status.length === seed.status.length &&
     filters.status.every((status, index) => status === seed.status[index])
   );
@@ -54,6 +61,7 @@ async function fetchOrdersPage(businessSlug: string, filters: OrdersPageFilters)
     search: filters.search || undefined,
     createdAtFrom: filters.createdAtFrom,
     createdAtTo: filters.createdAtTo,
+    mine: filters.mine || undefined,
   });
   return handleAction(result) as OrdersPageResult;
 }
@@ -78,11 +86,17 @@ async function fetchOrderLetterAssignments(businessSlug: string) {
   return handleAction(result) as OrderMailTemplateAssignment[];
 }
 
-async function fetchOrderFormItems(
-  businessSlug: string,
-  companyGroupId: string | null,
-) {
-  const result = await fetchRead(businessSlug, 'items', companyGroupId ? { companyGroupId } : {});
+/** Items an order form loads: one company group (null: the whole catalog), or the sellable ones. */
+export type OrderFormItemsSource = { companyGroupId: string | null } | 'sale';
+
+async function fetchOrderFormItems(businessSlug: string, source: OrderFormItemsSource) {
+  const input =
+    source === 'sale'
+      ? { forSale: true }
+      : source.companyGroupId
+        ? { companyGroupId: source.companyGroupId }
+        : {};
+  const result = await fetchRead(businessSlug, 'items', input);
   const itemsData = handleAction(result);
   if (!itemsData) {
     return [];
@@ -121,7 +135,11 @@ export function useOrdersPage(
   });
 }
 
-export function useOrderDetail(orderId: string | null, enabled: boolean) {
+export function useOrderDetail(
+  orderId: string | null,
+  enabled: boolean,
+  initialData?: OrderWithRelations,
+) {
   const businessSlug = useRequiredBusinessSlug();
 
   return useQuery({
@@ -130,7 +148,24 @@ export function useOrderDetail(orderId: string | null, enabled: boolean) {
       if (!orderId) throw new Error('orderId is required');
       return fetchOrderById(businessSlug, orderId);
     },
+    initialData,
+    initialDataUpdatedAt: initialData ? 0 : undefined,
     enabled: Boolean(orderId && enabled),
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
+/** Comments and recorded changes of an order, newest first. */
+export function useOrderChatter(orderId: string, initialData?: OrderChatter) {
+  const businessSlug = useRequiredBusinessSlug();
+
+  return useQuery({
+    queryKey: ordersKeys.chatter(businessSlug, orderId),
+    queryFn: async () =>
+      handleAction(await fetchRead(businessSlug, 'orderChatter', { orderId })) as OrderChatter,
+    initialData,
+    initialDataUpdatedAt: initialData ? 0 : undefined,
+    enabled: Boolean(businessSlug && orderId),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 }
@@ -163,12 +198,30 @@ export function useOrderLetterAssignments(
   });
 }
 
-export function useOrderFormItems(companyGroupId: string | null, enabled: boolean) {
+export function useOrderFormItems(source: OrderFormItemsSource, enabled: boolean) {
   const businessSlug = useRequiredBusinessSlug();
 
   return useQuery({
-    queryKey: ordersKeys.formItems(businessSlug, companyGroupId),
-    queryFn: () => fetchOrderFormItems(businessSlug, companyGroupId),
+    queryKey: ordersKeys.formItems(
+      businessSlug,
+      source === 'sale' ? 'sale' : source.companyGroupId,
+    ),
+    queryFn: () => fetchOrderFormItems(businessSlug, source),
+    enabled: Boolean(businessSlug && enabled),
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
+export type OrderResponsibleOption = { userId: string; name: string; image: string | null };
+
+/** Members of the business that can be made responsible for an order. */
+export function useOrderResponsibleOptions(enabled = true) {
+  const businessSlug = useRequiredBusinessSlug();
+
+  return useQuery({
+    queryKey: ordersKeys.responsibleOptions(businessSlug),
+    queryFn: async () =>
+      handleAction(await fetchRead(businessSlug, 'orderResponsibleOptions')) as OrderResponsibleOption[],
     enabled: Boolean(businessSlug && enabled),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
@@ -270,6 +323,61 @@ export function useUpdateOrderMutation() {
   });
 }
 
+/** Status change from the order page's progress bar (Completed goes through the stock modal). */
+export function useSetOrderStatusMutation() {
+  const mutationMeta = useOrdersMutationMeta();
+  const businessSlug = useRequiredBusinessSlug();
+  const invalidateOrders = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      id: string;
+      status: Exclude<NonNullable<Parameters<typeof updateOrder>[1]['status']>, 'COMPLETED'>;
+    }) => {
+      handleAction(await updateOrder(businessSlug, vars, mutationMeta));
+      return vars;
+    },
+    onSuccess: () => {
+      invalidateOrders();
+      notifications.show({ title: 'Succès', message: 'Statut mis à jour', color: 'moss' });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du changement de statut',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+/** Copies an order into a new draft; resolves to the new order. */
+export function useDuplicateOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
+  const businessSlug = useRequiredBusinessSlug();
+  const invalidateOrders = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: async (vars: { id: string }) =>
+      handleAction(await duplicateOrder(businessSlug, vars, mutationMeta)) as OrderWithRelations,
+    onSuccess: (order) => {
+      invalidateOrders();
+      notifications.show({
+        title: 'Succès',
+        message: `Commande dupliquée : ${order.name}`,
+        color: 'moss',
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la duplication',
+        color: 'danger',
+      });
+    },
+  });
+}
+
 export function useDeleteOrderMutation() {
   const mutationMeta = useOrdersMutationMeta();
   const businessSlug = useRequiredBusinessSlug();
@@ -338,4 +446,52 @@ export function useCompleteOrderMutation() {
       });
     },
   });
+}
+
+function useOrderChatterMutation<V extends { orderId: string }>(
+  run: (businessSlug: string, vars: V, meta: ReturnType<typeof realtimeMutationMeta>) => Promise<unknown>,
+  errorMessage: string,
+) {
+  const mutationMeta = useOrdersMutationMeta();
+  const businessSlug = useRequiredBusinessSlug();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (vars: V) => {
+      handleAction((await run(businessSlug, vars, mutationMeta)) as Parameters<typeof handleAction>[0]);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      void queryClient.invalidateQueries({ queryKey: ordersKeys.chatter(businessSlug, vars.orderId) });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || errorMessage,
+        color: 'danger',
+      });
+    },
+  });
+}
+
+export function useAddOrderCommentMutation() {
+  return useOrderChatterMutation(
+    (slug, vars: { orderId: string; body: string }, meta) => addOrderComment(slug, vars, meta),
+    "Erreur lors de l'ajout du commentaire",
+  );
+}
+
+export function useUpdateOrderCommentMutation() {
+  return useOrderChatterMutation(
+    (slug, vars: { orderId: string; eventId: string; body: string }, meta) =>
+      updateOrderComment(slug, vars, meta),
+    'Erreur lors de la modification du commentaire',
+  );
+}
+
+export function useDeleteOrderCommentMutation() {
+  return useOrderChatterMutation(
+    (slug, vars: { orderId: string; eventId: string }, meta) => deleteOrderComment(slug, vars, meta),
+    'Erreur lors de la suppression du commentaire',
+  );
 }

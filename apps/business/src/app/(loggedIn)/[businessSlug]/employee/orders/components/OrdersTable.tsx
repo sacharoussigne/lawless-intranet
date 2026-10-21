@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import {
   Paper,
   TextInput,
@@ -24,7 +27,15 @@ import type { CSSProperties, ReactNode } from 'react';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconTrash, IconEye, IconFilter, IconMail, IconSearch } from '@tabler/icons-react';
+import {
+  IconCopy,
+  IconEdit,
+  IconTrash,
+  IconEye,
+  IconFilter,
+  IconMail,
+  IconSearch,
+} from '@tabler/icons-react';
 import {
   orderStatusSelectOptions,
   orderTypeFilterOptions,
@@ -51,9 +62,10 @@ interface OrdersTableProps {
   onNameFilterChange: (value: string) => void;
   onCreatedAtRangeChange: (from: string | null, to: string | null) => void;
   onPageChange: (page: number) => void;
-  onView: (order: OrderSummary) => void;
   onEdit: (order: OrderSummary) => void;
   onDelete: (order: OrderSummary) => void;
+  /** New draft from this order (shown with the orders:create permission). */
+  onDuplicate?: (order: OrderSummary) => void;
   onPreviewLetter?: (order: OrderSummary) => void;
   hasLetterTemplateForOrder?: (order: OrderSummary) => boolean;
 }
@@ -187,13 +199,14 @@ function OrdersMobileList({
   onNameFilterChange,
   onCreatedAtRangeChange,
   onPageChange,
-  onView,
   onEdit,
   onDelete,
+  onDuplicate,
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
   const [filtersOpened, setFiltersOpened] = useState(false);
+  const routes = useTenantRoutes();
   const activeFilters =
     (typeFilter ? 1 : 0) +
     (createdAtFrom || createdAtTo ? 1 : 0) +
@@ -232,7 +245,13 @@ function OrdersMobileList({
             <Paper key={order.id} withBorder radius="md" p="sm" style={{ opacity: loading ? 0.6 : 1 }}>
               <Stack gap="xs">
                 <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-                  <Text fw={700} style={{ minWidth: 0 }} lineClamp={2}>
+                  <Text
+                    component={Link}
+                    href={routes.orders.detail(order.id)}
+                    fw={700}
+                    style={{ minWidth: 0 }}
+                    lineClamp={2}
+                  >
                     {order.name}
                   </Text>
                   <OrderStatusBadge status={order.status} />
@@ -254,12 +273,30 @@ function OrdersMobileList({
                   <Text fw={600}>{order.price != null ? `${order.price.toFixed(2)} $` : '-'}</Text>
                 </Group>
                 <Group gap="xs" grow>
-                  <Button size="xs" variant="light" color="slate" leftSection={<IconEye size={14} />} onClick={() => onView(order)}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="slate"
+                    leftSection={<IconEye size={14} />}
+                    component={Link}
+                    href={routes.orders.detail(order.id)}
+                  >
                     Détails
                   </Button>
                   {hasLetterTemplateForOrder?.(order) && onPreviewLetter && (
                     <Button size="xs" variant="light" color="denim" leftSection={<IconMail size={14} />} onClick={() => onPreviewLetter(order)}>
                       Courrier
+                    </Button>
+                  )}
+                  {permissions?.orders.create && onDuplicate && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="slate"
+                      leftSection={<IconCopy size={14} />}
+                      onClick={() => onDuplicate(order)}
+                    >
+                      Dupliquer
                     </Button>
                   )}
                   {permissions?.orders.update && (
@@ -360,12 +397,14 @@ function OrdersDataTable({
   onNameFilterChange,
   onCreatedAtRangeChange,
   onPageChange,
-  onView,
   onEdit,
   onDelete,
+  onDuplicate,
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
+  const routes = useTenantRoutes();
+  const router = useRouter();
   const dateRange: [Date | null, Date | null] = [
     createdAtFrom ? new Date(createdAtFrom) : null,
     createdAtTo ? new Date(createdAtTo) : null,
@@ -376,6 +415,11 @@ function OrdersDataTable({
       <DataTable
         records={orders}
         fetching={loading}
+        // The whole row opens the order; links and buttons inside keep their own action.
+        onRowClick={({ record, event }) => {
+          if ((event.target as HTMLElement).closest('a, button, input')) return;
+          router.push(routes.orders.detail(record.id));
+        }}
         columns={[
           {
             accessor: 'status',
@@ -418,6 +462,11 @@ function OrdersDataTable({
             accessor: 'name',
             title: 'Nom',
             sortable: true,
+            render: (order: OrderSummary) => (
+              <Text component={Link} href={routes.orders.detail(order.id)} size="sm" inherit>
+                {order.name}
+              </Text>
+            ),
             filtering: Boolean(nameFilter.trim()),
             filter: (
               <TextInput
@@ -485,12 +534,25 @@ function OrdersDataTable({
                     <ActionIcon
                       variant="light"
                       color="slate"
-                      onClick={() => onView(order)}
+                      component={Link}
+                      href={routes.orders.detail(order.id)}
                       aria-label="Voir les détails"
                     >
                       <IconEye size={16} />
                     </ActionIcon>
                   </Tooltip>
+                  {permissions?.orders.create && onDuplicate && (
+                    <Tooltip label="Dupliquer" withArrow>
+                      <ActionIcon
+                        variant="light"
+                        color="slate"
+                        onClick={() => onDuplicate(order)}
+                        aria-label="Dupliquer"
+                      >
+                        <IconCopy size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
                   {permissions?.orders.update && (
                     <LockedActionIcon
                       locked={isCompleted}

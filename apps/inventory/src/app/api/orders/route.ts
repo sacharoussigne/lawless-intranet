@@ -60,6 +60,7 @@ export async function GET(request: Request) {
       search: url.searchParams.get('search') ?? undefined,
       createdAtFrom: url.searchParams.get('createdAtFrom'),
       createdAtTo: url.searchParams.get('createdAtTo'),
+      responsibleUserId: url.searchParams.get('responsibleUserId'),
     }),
   );
 }
@@ -71,7 +72,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = parseJsonBody(createOrderSchema, body);
   if (!parsed.ok) return errorResponse(request, parsed.error, 400);
-  return fromDomainResult(request, await createOrder(parsed.data));
+  return fromDomainResult(
+    request,
+    await createOrder({ ...parsed.data, actorUserId: auth.userId }),
+  );
 }
 
 export async function PATCH(request: Request) {
@@ -84,7 +88,10 @@ export async function PATCH(request: Request) {
   if ((body as { status?: string } | null)?.status === 'COMPLETED') {
     return errorResponse(request, 'Utilisez completeOrder pour terminer une commande', 400);
   }
-  return fromDomainResult(request, await updateOrder(parsed.data));
+  return fromDomainResult(
+    request,
+    await updateOrder({ ...parsed.data, actorUserId: auth.userId }),
+  );
 }
 
 export async function DELETE(request: Request) {
