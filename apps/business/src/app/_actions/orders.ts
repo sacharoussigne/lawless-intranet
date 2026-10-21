@@ -8,6 +8,7 @@ import {
   completeOrder as completeOrderApi,
   createOrder as createOrderApi,
   deleteOrder as deleteOrderApi,
+  duplicateOrder as duplicateOrderApi,
   getActiveOrdersForCompanyGroup as getActiveOrdersForCompanyGroupApi,
   getOrderById as getOrderByIdApi,
   listOrdersPage,
@@ -546,6 +547,39 @@ async function deleteOrderUnlogged(
   }
 }
 
+/** New draft with the same customer and items, priced automatically. */
+async function duplicateOrderUnlogged(
+  businessSlug: string,
+  data: { id: string },
+  meta?: unknown,
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
+      feature: 'orders',
+      permission: {
+        resource: 'orders',
+        action: 'create',
+        message:
+          "Permission refusée : vous n'avez pas la permission de créer une commande",
+      },
+    });
+    if (!ctx.ok) return ctx.response;
+    const { businessId } = ctx.tenant;
+    const { id } = deleteOrderSchema.parse(data);
+
+    const order = await duplicateOrderApi(
+      { ...inventoryScope(businessId), id },
+      await inventoryCookie(),
+    );
+
+    emitOrdersChange(businessId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
+
+    return { status: 201, data: order as unknown as OrderWithRelations };
+  } catch (error) {
+    return serviceActionError(error, 'Erreur lors de la duplication de la commande');
+  }
+}
+
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function createOrder(...args: Parameters<typeof createOrderUnlogged>) {
@@ -563,6 +597,12 @@ export async function updateOrder(...args: Parameters<typeof updateOrderUnlogged
 export async function completeOrder(...args: Parameters<typeof completeOrderUnlogged>) {
   return loggedAction({ feature: 'orders', event: 'orders.completeOrder' }, args, () =>
     completeOrderUnlogged(...args),
+  );
+}
+
+export async function duplicateOrder(...args: Parameters<typeof duplicateOrderUnlogged>) {
+  return loggedAction({ feature: 'orders', event: 'orders.duplicateOrder' }, args, () =>
+    duplicateOrderUnlogged(...args),
   );
 }
 

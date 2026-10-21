@@ -12,13 +12,13 @@ import {
   Paper,
   Select,
   Stack,
-  Table,
   Text,
   TextInput,
 } from '@mantine/core';
 import {
   IconAlertTriangle,
   IconCheck,
+  IconCopy,
   IconMail,
   IconPencil,
   IconTrash,
@@ -45,7 +45,13 @@ import {
   type OrderWithRelations,
 } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
-import { CompleteOrderStockModal } from '../components/CompleteOrderStockModal';
+import type { OrderStatus } from '@lawless-intranet/types';
+import {
+  CompleteOrderStockModal,
+  type CompleteOrderPendingPayload,
+} from '../components/CompleteOrderStockModal';
+import { OrderLinesTable } from '../components/OrderLinesTable';
+import { OrderStatusActions, OrderStatusSteps } from '../components/OrderStatusStepper';
 import { OrderItemsTable } from '../components/OrderItemsTable';
 import { OrderLetterPreviewModal } from '../components/OrderLetterPreviewModal';
 import { OrderPriceField } from '../components/OrderPriceField';
@@ -54,7 +60,9 @@ import { OrderChatter } from '../components/OrderChatter/OrderChatter';
 import { useOrderEditForm } from '../hooks/useOrderEditForm';
 import {
   useDeleteOrderMutation,
+  useDuplicateOrderMutation,
   useOrderDetail,
+  useSetOrderStatusMutation,
   useOrderLetterAssignments,
 } from '../hooks/useOrdersQueries';
 import classes from './OrderDetail.module.scss';
@@ -115,6 +123,10 @@ export function OrderDetailPageClient({
   const { data: order = initialOrder } = useOrderDetail(orderId, true, initialOrder);
   const { data: assignments = initialAssignments } = useOrderLetterAssignments(initialAssignments);
   const deleteOrder = useDeleteOrderMutation();
+  const duplicateOrder = useDuplicateOrderMutation();
+  const setStatus = useSetOrderStatusMutation();
+  /** Completion asked from the progress bar (the edit form has its own). */
+  const [stepperComplete, setStepperComplete] = useState<CompleteOrderPendingPayload | null>(null);
   const [editing, setEditing] = useState(false);
   const [completeModalOpened, setCompleteModalOpened] = useState(false);
   const [letterOpened, setLetterOpened] = useState(false);
@@ -142,8 +154,43 @@ export function OrderDetailPageClient({
   const stopEditing = () => {
     setEditing(false);
     setCompleteModalOpened(false);
+    setStepperComplete(null);
     edit.clearPendingComplete();
   };
+
+  const changeStatus = (status: OrderStatus) => {
+    if (status === 'COMPLETED') {
+      // Same stock step as the edit form, with the saved order.
+      setStepperComplete({
+        id: order.id,
+        name: order.name,
+        type: (order.type || 'INCOMING') as OrderTypeEnum,
+        items: order.items.map((line) => ({ itemId: line.itemId, quantity: line.quantity })),
+      });
+      setCompleteModalOpened(true);
+      return;
+    }
+    setStatus.mutate({ id: order.id, status });
+  };
+
+  const duplicate = async () => {
+    try {
+      const copy = await duplicateOrder.mutateAsync({ id: order.id });
+      router.push(routes.orders.detail(copy.id));
+    } catch {
+      // Notified by the mutation hook.
+    }
+  };
+
+  const completePending = stepperComplete ?? edit.pendingComplete;
+  const completeLines = stepperComplete
+    ? order.items.map((line) => ({
+        itemId: line.itemId,
+        quantity: line.quantity,
+        name: line.item.name,
+        isEnabled: line.item.isEnabled ?? true,
+      }))
+    : edit.completeStockLines;
 
   const save = async () => {
     const result = await edit.submit();
@@ -172,7 +219,8 @@ export function OrderDetailPageClient({
             value={form.values.status}
             onChange={(value) => value && form.setFieldValue('status', value as OrderStatusEnum)}
             allowDeselect={false}
-            w={190}
+            size="lg"
+            w={220}
           />
           <Select
             aria-label="Type"
@@ -180,7 +228,8 @@ export function OrderDetailPageClient({
             value={form.values.type}
             onChange={(value) => value && form.setFieldValue('type', value as OrderTypeEnum)}
             allowDeselect={false}
-            w={130}
+            size="lg"
+            w={150}
           />
         </>
       ) : (
@@ -217,6 +266,17 @@ export function OrderDetailPageClient({
           onClick={() => setLetterOpened(true)}
         >
           Lettre
+        </Button>
+      )}
+      {permissions?.orders.create && (
+        <Button
+          variant="light"
+          color="slate"
+          leftSection={<IconCopy size={16} />}
+          loading={duplicateOrder.isPending}
+          onClick={() => void duplicate()}
+        >
+          Dupliquer
         </Button>
       )}
       {canUpdate && (
@@ -265,6 +325,16 @@ export function OrderDetailPageClient({
       <div className={classes.layout}>
         <Stack gap="lg" className={classes.main}>
           <Paper withBorder shadow="sm" p="lg" radius="md">
+            {!isEditing && (
+              <div className={classes.statusBar}>
+                <OrderStatusSteps
+                  status={order.status}
+                  canChange={Boolean(permissions?.orders.update)}
+                  pending={setStatus.isPending}
+                  onChange={changeStatus}
+                />
+              </div>
+            )}
             <div className={classes.fields}>
               <FieldReadout label="Client">
                 <Text size="sm" fw={500}>
@@ -351,6 +421,16 @@ export function OrderDetailPageClient({
                 </div>
               )
             )}
+            {!isEditing && (
+              <div className={classes.statusActions}>
+                <OrderStatusActions
+                  status={order.status}
+                  canChange={Boolean(permissions?.orders.update)}
+                  pending={setStatus.isPending}
+                  onChange={changeStatus}
+                />
+              </div>
+            )}
           </Paper>
 
           <Paper withBorder shadow="sm" p="lg" radius="md">
@@ -365,22 +445,11 @@ export function OrderDetailPageClient({
                 onAddItem={edit.addItem}
               />
             ) : (
-              <Table striped highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Objet</Table.Th>
-                    <Table.Th ta="right">Quantité</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {order.items.map((line) => (
-                    <Table.Tr key={line.id ?? line.itemId}>
-                      <Table.Td>{line.item.name}</Table.Td>
-                      <Table.Td ta="right">{line.quantity}</Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+              <OrderLinesTable
+                lines={order.items}
+                orderPrice={order.price}
+                priceManual={order.priceManual}
+              />
             )}
           </Paper>
         </Stack>
@@ -398,12 +467,13 @@ export function OrderDetailPageClient({
         opened={completeModalOpened}
         onClose={() => {
           setCompleteModalOpened(false);
+          setStepperComplete(null);
           edit.clearPendingComplete();
         }}
         onCompleted={stopEditing}
-        orderType={edit.pendingComplete?.type ?? form.values.type}
-        pending={edit.pendingComplete}
-        lines={edit.completeStockLines}
+        orderType={completePending?.type ?? form.values.type}
+        pending={completePending}
+        lines={completeLines}
       />
       <OrderLetterPreviewModal
         opened={letterOpened}

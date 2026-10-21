@@ -8,6 +8,7 @@ import {
   completeOrder,
   createOrder,
   deleteOrder,
+  duplicateOrder,
   updateOrder,
 } from '@/app/_actions/orders';
 import {
@@ -316,6 +317,61 @@ export function useUpdateOrderMutation() {
       notifications.show({
         title: 'Erreur',
         message: error.message || 'Erreur lors de la modification',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+/** Status change from the order page's progress bar (Completed goes through the stock modal). */
+export function useSetOrderStatusMutation() {
+  const mutationMeta = useOrdersMutationMeta();
+  const businessSlug = useRequiredBusinessSlug();
+  const invalidateOrders = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: async (vars: {
+      id: string;
+      status: Exclude<NonNullable<Parameters<typeof updateOrder>[1]['status']>, 'COMPLETED'>;
+    }) => {
+      handleAction(await updateOrder(businessSlug, vars, mutationMeta));
+      return vars;
+    },
+    onSuccess: () => {
+      invalidateOrders();
+      notifications.show({ title: 'Succès', message: 'Statut mis à jour', color: 'moss' });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors du changement de statut',
+        color: 'danger',
+      });
+    },
+  });
+}
+
+/** Copies an order into a new draft; resolves to the new order. */
+export function useDuplicateOrderMutation() {
+  const mutationMeta = useOrdersMutationMeta();
+  const businessSlug = useRequiredBusinessSlug();
+  const invalidateOrders = useInvalidateOrders();
+
+  return useMutation({
+    mutationFn: async (vars: { id: string }) =>
+      handleAction(await duplicateOrder(businessSlug, vars, mutationMeta)) as OrderWithRelations,
+    onSuccess: (order) => {
+      invalidateOrders();
+      notifications.show({
+        title: 'Succès',
+        message: `Commande dupliquée : ${order.name}`,
+        color: 'moss',
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Erreur',
+        message: error.message || 'Erreur lors de la duplication',
         color: 'danger',
       });
     },

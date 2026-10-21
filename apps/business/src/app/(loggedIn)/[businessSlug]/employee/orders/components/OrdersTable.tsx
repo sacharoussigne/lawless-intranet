@@ -27,7 +27,15 @@ import type { CSSProperties, ReactNode } from 'react';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
 import { DataTable } from 'mantine-datatable';
-import { IconEdit, IconTrash, IconEye, IconFilter, IconMail, IconSearch } from '@tabler/icons-react';
+import {
+  IconCopy,
+  IconEdit,
+  IconTrash,
+  IconEye,
+  IconFilter,
+  IconMail,
+  IconSearch,
+} from '@tabler/icons-react';
 import {
   orderStatusSelectOptions,
   orderTypeFilterOptions,
@@ -56,6 +64,8 @@ interface OrdersTableProps {
   onPageChange: (page: number) => void;
   onEdit: (order: OrderSummary) => void;
   onDelete: (order: OrderSummary) => void;
+  /** New draft from this order (shown with the orders:create permission). */
+  onDuplicate?: (order: OrderSummary) => void;
   onPreviewLetter?: (order: OrderSummary) => void;
   hasLetterTemplateForOrder?: (order: OrderSummary) => boolean;
 }
@@ -191,6 +201,7 @@ function OrdersMobileList({
   onPageChange,
   onEdit,
   onDelete,
+  onDuplicate,
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
@@ -275,6 +286,17 @@ function OrdersMobileList({
                   {hasLetterTemplateForOrder?.(order) && onPreviewLetter && (
                     <Button size="xs" variant="light" color="denim" leftSection={<IconMail size={14} />} onClick={() => onPreviewLetter(order)}>
                       Courrier
+                    </Button>
+                  )}
+                  {permissions?.orders.create && onDuplicate && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="slate"
+                      leftSection={<IconCopy size={14} />}
+                      onClick={() => onDuplicate(order)}
+                    >
+                      Dupliquer
                     </Button>
                   )}
                   {permissions?.orders.update && (
@@ -377,6 +399,7 @@ function OrdersDataTable({
   onPageChange,
   onEdit,
   onDelete,
+  onDuplicate,
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
@@ -518,6 +541,18 @@ function OrdersDataTable({
                       <IconEye size={16} />
                     </ActionIcon>
                   </Tooltip>
+                  {permissions?.orders.create && onDuplicate && (
+                    <Tooltip label="Dupliquer" withArrow>
+                      <ActionIcon
+                        variant="light"
+                        color="slate"
+                        onClick={() => onDuplicate(order)}
+                        aria-label="Dupliquer"
+                      >
+                        <IconCopy size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
                   {permissions?.orders.update && (
                     <LockedActionIcon
                       locked={isCompleted}

@@ -21,11 +21,14 @@ import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import {
   usePermissions,
   useRequiredBusinessSlug,
+  useTenantRoutes,
 } from '@/app/_contexts/PermissionsContext';
+import { useRouter } from 'next/navigation';
 import type { OrderSummary, OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import {
   defaultOrdersPageFilters,
+  useDuplicateOrderMutation,
   useOrderLetterAssignments,
   useOrdersPage,
 } from './hooks/useOrdersQueries';
@@ -62,6 +65,9 @@ export default function OrdersPageClient({
 }: OrdersPageClientProps) {
   const { permissions } = usePermissions();
   const businessSlug = useRequiredBusinessSlug();
+  const router = useRouter();
+  const routes = useTenantRoutes();
+  const duplicateOrder = useDuplicateOrderMutation();
   const [filtersReady, setFiltersReady] = useState(false);
   const [filters, setFilters] = useState<Omit<OrdersPageFilters, 'search'>>({
     page: defaultOrdersPageFilters.page,
@@ -299,6 +305,12 @@ export default function OrdersPageClient({
             onDelete={(order) => {
               setOrderToDelete(order);
               setDeleteModalOpened(true);
+            }}
+            onDuplicate={(order) => {
+              duplicateOrder
+                .mutateAsync({ id: order.id })
+                .then((copy) => router.push(routes.orders.detail(copy.id)))
+                .catch(() => undefined);
             }}
             onPreviewLetter={(order) => {
               setOrderForLetterPreviewId(order.id);

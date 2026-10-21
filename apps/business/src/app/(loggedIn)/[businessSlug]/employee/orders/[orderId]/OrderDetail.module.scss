@@ -73,3 +73,17 @@
   min-width: min(100%, 16rem);
   max-width: 32rem;
 }
+
+/* Status bar at the top of the order card, set apart like the details. */
+.statusBar {
+  margin-bottom: var(--mantine-spacing-lg);
+  padding-bottom: var(--mantine-spacing-md);
+  border-bottom: 1px dashed var(--disp-surface-border);
+}
+
+/* Workflow buttons at the bottom of the order card; empty when there is nothing to do. */
+.statusActions:not(:empty) {
+  margin-top: var(--mantine-spacing-lg);
+  padding-top: var(--mantine-spacing-md);
+  border-top: 1px dashed var(--disp-surface-border);
+}
