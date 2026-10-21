@@ -13,7 +13,6 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { IconPlus, IconPackage } from '@tabler/icons-react';
 import { EditOrderModal } from './components/EditOrderModal';
 import { DeleteOrderModal } from './components/DeleteOrderModal';
-import { OrderDetailsModal } from './components/OrderDetailsModal';
 import { OrderLetterPreviewModal } from './components/OrderLetterPreviewModal';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { OrdersTable } from './components/OrdersTable';
@@ -81,12 +80,10 @@ export default function OrdersPageClient({
     [filters, debouncedSearch],
   );
   const [modalOpened, setModalOpened] = useState(false);
-  const [detailsModalOpened, setDetailsModalOpened] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [letterPreviewModalOpened, setLetterPreviewModalOpened] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
-  const [viewingOrderId, setViewingOrderId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<OrderSummary | null>(null);
   const [orderForLetterPreviewId, setOrderForLetterPreviewId] = useState<string | null>(
     null,
@@ -295,10 +292,6 @@ export default function OrdersPageClient({
             onNameFilterChange={handleNameFilterChange}
             onCreatedAtRangeChange={handleCreatedAtRangeChange}
             onPageChange={handlePageChange}
-            onView={(order) => {
-              setViewingOrderId(order.id);
-              setDetailsModalOpened(true);
-            }}
             onEdit={(order) => {
               setEditingOrderId(order.id);
               setModalOpened(true);
@@ -323,15 +316,6 @@ export default function OrdersPageClient({
           setEditingOrderId(null);
         }}
         orderId={editingOrderId}
-      />
-
-      <OrderDetailsModal
-        opened={detailsModalOpened}
-        onClose={() => {
-          setDetailsModalOpened(false);
-          setViewingOrderId(null);
-        }}
-        orderId={viewingOrderId}
       />
 
       <DeleteOrderModal

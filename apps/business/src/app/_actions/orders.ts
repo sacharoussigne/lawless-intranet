@@ -22,6 +22,7 @@ import { emitStockChange } from '@/lib/stock/realtime/broadcast';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import prisma from '@/lib/prisma';
 import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
+import { loadOrderPeople } from '@/lib/orders/people';
 import type {
   ActiveOrderSummary,
   OrderSummary,
@@ -307,10 +308,18 @@ export async function getOrderById(businessSlug: string, data: { id: string }) {
       { ...inventoryScope(businessId), id },
       await inventoryCookie(),
     );
+    const people = await loadOrderPeople(businessId, [
+      order.createdByUserId,
+      order.responsibleUserId,
+    ]).catch(() => ({}) as Awaited<ReturnType<typeof loadOrderPeople>>);
 
     return {
       status: 200,
-      data: order as unknown as OrderWithRelations,
+      data: {
+        ...order,
+        createdBy: order.createdByUserId ? (people[order.createdByUserId] ?? null) : null,
+        responsible: order.responsibleUserId ? (people[order.responsibleUserId] ?? null) : null,
+      } as unknown as OrderWithRelations,
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération de la commande');

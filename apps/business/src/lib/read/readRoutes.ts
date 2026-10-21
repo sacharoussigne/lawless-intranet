@@ -82,6 +82,7 @@ import {
   getOrdersPage,
   listOrderResponsibleOptions,
 } from '@/app/_actions/orders';
+import { getOrderChatter } from '@/app/_actions/orderChatter';
 
 /**
  * Reads exposed as GET (`/api/d/<slug>/read/<query>`) for React Query refetches.
@@ -108,6 +109,7 @@ export const readRoutes = {
   orderLetterAssignments: (slug: string, _input?: undefined) =>
     getOrderLetterTemplateAssignments(slug),
   orderResponsibleOptions: (slug: string, _input?: undefined) => listOrderResponsibleOptions(slug),
+  orderChatter: (slug: string, input: { orderId: string }) => getOrderChatter(slug, input),
   individualCustomers: (slug: string, _input?: undefined) => getIndividualCustomers(slug),
 
   // Agenda and to-dos (agenda-ui, see lib/agenda/agendaUiActions)

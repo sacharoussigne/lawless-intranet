@@ -37,6 +37,8 @@ export const ordersKeys = {
     [...ordersKeys.all(slug), 'page', filters] as const,
   detail: (slug: string, orderId: string) =>
     [...ordersKeys.all(slug), 'detail', orderId] as const,
+  chatter: (slug: string, orderId: string) =>
+    [...ordersKeys.all(slug), 'chatter', orderId] as const,
   activeByGroup: (slug: string, companyGroupId: string) =>
     [...ordersKeys.all(slug), 'activeByGroup', companyGroupId] as const,
   letterAssignments: (slug: string) =>

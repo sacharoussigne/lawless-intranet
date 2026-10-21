@@ -17,6 +17,7 @@ import { diffOrderSnapshots, resolvePriceMode, type OrderSnapshot } from '@/lib/
 const ORDER_DETAIL_INCLUDE = {
   company: { select: { id: true, name: true, bankAccountNumber: true } },
   individualCustomer: { select: { id: true, name: true } },
+  companyGroup: { select: { id: true, name: true } },
   items: {
     include: {
       item: {

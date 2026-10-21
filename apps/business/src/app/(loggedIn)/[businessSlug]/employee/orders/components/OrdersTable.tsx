@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import {
   Paper,
   TextInput,
@@ -51,7 +54,6 @@ interface OrdersTableProps {
   onNameFilterChange: (value: string) => void;
   onCreatedAtRangeChange: (from: string | null, to: string | null) => void;
   onPageChange: (page: number) => void;
-  onView: (order: OrderSummary) => void;
   onEdit: (order: OrderSummary) => void;
   onDelete: (order: OrderSummary) => void;
   onPreviewLetter?: (order: OrderSummary) => void;
@@ -187,13 +189,13 @@ function OrdersMobileList({
   onNameFilterChange,
   onCreatedAtRangeChange,
   onPageChange,
-  onView,
   onEdit,
   onDelete,
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
   const [filtersOpened, setFiltersOpened] = useState(false);
+  const routes = useTenantRoutes();
   const activeFilters =
     (typeFilter ? 1 : 0) +
     (createdAtFrom || createdAtTo ? 1 : 0) +
@@ -232,7 +234,13 @@ function OrdersMobileList({
             <Paper key={order.id} withBorder radius="md" p="sm" style={{ opacity: loading ? 0.6 : 1 }}>
               <Stack gap="xs">
                 <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-                  <Text fw={700} style={{ minWidth: 0 }} lineClamp={2}>
+                  <Text
+                    component={Link}
+                    href={routes.orders.detail(order.id)}
+                    fw={700}
+                    style={{ minWidth: 0 }}
+                    lineClamp={2}
+                  >
                     {order.name}
                   </Text>
                   <OrderStatusBadge status={order.status} />
@@ -254,7 +262,14 @@ function OrdersMobileList({
                   <Text fw={600}>{order.price != null ? `${order.price.toFixed(2)} $` : '-'}</Text>
                 </Group>
                 <Group gap="xs" grow>
-                  <Button size="xs" variant="light" color="slate" leftSection={<IconEye size={14} />} onClick={() => onView(order)}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="slate"
+                    leftSection={<IconEye size={14} />}
+                    component={Link}
+                    href={routes.orders.detail(order.id)}
+                  >
                     Détails
                   </Button>
                   {hasLetterTemplateForOrder?.(order) && onPreviewLetter && (
@@ -360,12 +375,13 @@ function OrdersDataTable({
   onNameFilterChange,
   onCreatedAtRangeChange,
   onPageChange,
-  onView,
   onEdit,
   onDelete,
   onPreviewLetter,
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
+  const routes = useTenantRoutes();
+  const router = useRouter();
   const dateRange: [Date | null, Date | null] = [
     createdAtFrom ? new Date(createdAtFrom) : null,
     createdAtTo ? new Date(createdAtTo) : null,
@@ -376,6 +392,11 @@ function OrdersDataTable({
       <DataTable
         records={orders}
         fetching={loading}
+        // The whole row opens the order; links and buttons inside keep their own action.
+        onRowClick={({ record, event }) => {
+          if ((event.target as HTMLElement).closest('a, button, input')) return;
+          router.push(routes.orders.detail(record.id));
+        }}
         columns={[
           {
             accessor: 'status',
@@ -418,6 +439,11 @@ function OrdersDataTable({
             accessor: 'name',
             title: 'Nom',
             sortable: true,
+            render: (order: OrderSummary) => (
+              <Text component={Link} href={routes.orders.detail(order.id)} size="sm" inherit>
+                {order.name}
+              </Text>
+            ),
             filtering: Boolean(nameFilter.trim()),
             filter: (
               <TextInput
@@ -485,7 +511,8 @@ function OrdersDataTable({
                     <ActionIcon
                       variant="light"
                       color="slate"
-                      onClick={() => onView(order)}
+                      component={Link}
+                      href={routes.orders.detail(order.id)}
                       aria-label="Voir les détails"
                     >
                       <IconEye size={16} />
