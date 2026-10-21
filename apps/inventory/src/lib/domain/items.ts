@@ -31,12 +31,14 @@ const itemInclude = {
 export async function listItems(
   scopeType: string,
   scopeId: string,
-  options?: { companyGroupId?: string | null },
+  options?: { companyGroupId?: string | null; forSale?: boolean },
 ) {
   const items = await prisma.item.findMany({
     where: {
       ...scopeWhere(scopeType, scopeId),
       ...(options?.companyGroupId ? { companyGroupId: options.companyGroupId } : {}),
+      // What a sale order can contain: enabled items marked "Peut être vendu".
+      ...(options?.forSale ? { canBeSold: true, isEnabled: true } : {}),
     },
     orderBy: [{ category: { order: 'asc' } }, { order: 'asc' }, { name: 'asc' }],
     include: itemInclude,

@@ -132,7 +132,7 @@ const updateOrderSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long').optional(),
   status: z.enum(['DRAFT', 'LETTER_SENT', 'PROCESSING', 'READY', 'CANCELLED']).optional(),
   type: z.enum(['INCOMING', 'OUTGOING']).optional(),
-  details: z.string().max(1000, 'Les détails sont trop longs').optional(),
+  details: z.string().max(1000, 'Les détails sont trop longs').optional().nullable(),
   price: z
     .number()
     .positive('Le prix doit être positif')
@@ -390,7 +390,7 @@ async function updateOrderUnlogged(
     name?: string;
     status?: 'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY' | 'CANCELLED';
     type?: 'INCOMING' | 'OUTGOING';
-    details?: string;
+    details?: string | null;
     price?: number | null;
     priceManual?: boolean;
     responsibleUserId?: string | null;

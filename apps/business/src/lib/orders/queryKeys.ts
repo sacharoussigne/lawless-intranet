@@ -44,6 +44,6 @@ export const ordersKeys = {
   letterAssignments: (slug: string) =>
     [...ordersKeys.all(slug), 'letterAssignments'] as const,
   responsibleOptions: (slug: string) => [...ordersKeys.all(slug), 'responsibleOptions'] as const,
-  formItems: (slug: string, companyGroupId: string | null) =>
+  formItems: (slug: string, companyGroupId: string | null | 'sale') =>
     [...ordersKeys.all(slug), 'formItems', companyGroupId] as const,
 };

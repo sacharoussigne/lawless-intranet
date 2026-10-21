@@ -124,7 +124,7 @@ export async function reorderCategories(
 // --- Items ---
 
 export async function listItems(
-  params: InventoryScopeParams & { companyGroupId?: string | null },
+  params: InventoryScopeParams & { companyGroupId?: string | null; forSale?: boolean },
   options: ClientOptions = {},
 ): Promise<ItemRecord[]> {
   const response = await inventoryFetch(
@@ -132,6 +132,7 @@ export async function listItems(
       scopeType: params.scopeType,
       scopeId: params.scopeId,
       companyGroupId: params.companyGroupId ?? undefined,
+      forSale: params.forSale ? 'true' : undefined,
     })}`,
     { cookieHeader: options.cookieHeader },
   );

@@ -82,7 +82,7 @@ export default function CreateOrderModal({
   const items = itemsProp ?? EMPTY_ITEMS;
   const businessSlug = useRequiredBusinessSlug();
   const createOrderMutation = useCreateOrderMutation();
-  const { data: fetchedItems } = useOrderFormItems(null, opened && items.length === 0);
+  const { data: fetchedItems } = useOrderFormItems({ companyGroupId: null }, opened && items.length === 0);
   const { data: allCompanyGroups = [], isFetching: loadingCompanyGroups } =
     useCompanyGroupsForOrders(opened);
   const [selectedCompanyGroupId, setSelectedCompanyGroupId] = useState<string | null>(null);

@@ -57,3 +57,19 @@
   font-size: var(--mantine-font-size-lg);
   color: var(--disp-ink);
 }
+
+.title {
+  margin: 0;
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1.25;
+  color: var(--disp-ink);
+  overflow-wrap: anywhere;
+}
+
+.titleInput {
+  flex: 1;
+  min-width: min(100%, 16rem);
+  max-width: 32rem;
+}

@@ -2,7 +2,7 @@
 
 import { useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
-import { ActionIcon, Avatar, Button, Group, Loader, Text, Textarea } from '@mantine/core';
+import { ActionIcon, Avatar, Button, Group, Loader, Text } from '@mantine/core';
 import {
   IconArrowsSplit,
   IconCircleCheck,
@@ -14,6 +14,7 @@ import {
 import type { OrderEventRecord } from '@lawless-intranet/types';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { MarkdownContent } from '@/app/_components/MarkdownContent/MarkdownContent';
+import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import {
   describeOrderChange,
@@ -65,13 +66,15 @@ function CommentComposer({ orderId }: { orderId: string }) {
 
   return (
     <div className={classes.composer}>
-      <Textarea
+      <MarkdownTextarea
         placeholder="Écrire un commentaire… (markdown accepté)"
         autosize
+        rows={2}
         minRows={2}
         maxRows={8}
+        resize="none"
         value={body}
-        onChange={(event) => setBody(event.currentTarget.value)}
+        onChange={setBody}
         onKeyDown={(event) => {
           if (isSubmitShortcut(event)) {
             event.preventDefault();
@@ -81,7 +84,7 @@ function CommentComposer({ orderId }: { orderId: string }) {
       />
       <Group justify="space-between" mt="xs">
         <Text size="xs" c="dimmed">
-          Ctrl + Entrée pour envoyer
+          Ctrl + Entrée pour envoyer · Ctrl + B / I
         </Text>
         <Button
           size="xs"
@@ -175,12 +178,14 @@ function CommentEntry({
         </Group>
         {editing ? (
           <div className={classes.editor}>
-            <Textarea
+            <MarkdownTextarea
               autosize
+              rows={2}
               minRows={2}
               maxRows={10}
+              resize="none"
               value={draft}
-              onChange={(e) => setDraft(e.currentTarget.value)}
+              onChange={setDraft}
               onKeyDown={(e) => {
                 if (isSubmitShortcut(e)) {
                   e.preventDefault();

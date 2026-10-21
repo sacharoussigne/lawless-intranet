@@ -31,6 +31,7 @@ export async function GET(request: Request) {
   const companyGroupId = url.searchParams.get('companyGroupId');
   const result = await listItems(scope.data.scopeType, scope.data.scopeId, {
     companyGroupId: companyGroupId || undefined,
+    forSale: url.searchParams.get('forSale') === 'true',
   });
   return fromDomainResult(request, result);
 }

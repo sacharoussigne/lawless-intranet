@@ -85,11 +85,17 @@ async function fetchOrderLetterAssignments(businessSlug: string) {
   return handleAction(result) as OrderMailTemplateAssignment[];
 }
 
-async function fetchOrderFormItems(
-  businessSlug: string,
-  companyGroupId: string | null,
-) {
-  const result = await fetchRead(businessSlug, 'items', companyGroupId ? { companyGroupId } : {});
+/** Items an order form loads: one company group (null: the whole catalog), or the sellable ones. */
+export type OrderFormItemsSource = { companyGroupId: string | null } | 'sale';
+
+async function fetchOrderFormItems(businessSlug: string, source: OrderFormItemsSource) {
+  const input =
+    source === 'sale'
+      ? { forSale: true }
+      : source.companyGroupId
+        ? { companyGroupId: source.companyGroupId }
+        : {};
+  const result = await fetchRead(businessSlug, 'items', input);
   const itemsData = handleAction(result);
   if (!itemsData) {
     return [];
@@ -191,12 +197,15 @@ export function useOrderLetterAssignments(
   });
 }
 
-export function useOrderFormItems(companyGroupId: string | null, enabled: boolean) {
+export function useOrderFormItems(source: OrderFormItemsSource, enabled: boolean) {
   const businessSlug = useRequiredBusinessSlug();
 
   return useQuery({
-    queryKey: ordersKeys.formItems(businessSlug, companyGroupId),
-    queryFn: () => fetchOrderFormItems(businessSlug, companyGroupId),
+    queryKey: ordersKeys.formItems(
+      businessSlug,
+      source === 'sale' ? 'sale' : source.companyGroupId,
+    ),
+    queryFn: () => fetchOrderFormItems(businessSlug, source),
     enabled: Boolean(businessSlug && enabled),
     staleTime: DEFAULT_STALE_TIME_MS,
   });

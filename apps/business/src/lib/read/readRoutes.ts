@@ -144,7 +144,8 @@ export const readRoutes = {
     getItemsWithDetailedStock(slug, input?.itemIds),
   chestsList: (slug: string, input: { onlyEnabled?: boolean }) =>
     getChestsList(slug, input?.onlyEnabled ?? false),
-  items: (slug: string, input: { companyGroupId?: string | null }) => getItems(slug, input),
+  items: (slug: string, input: { companyGroupId?: string | null; forSale?: boolean }) =>
+    getItems(slug, input),
   sellableItems: (slug: string, _input?: undefined) => getSellableItems(slug),
   lastStockDaysByChest: (slug: string, _input?: undefined) => getLastStockDaysByChest(slug),
   stockChecksSummary: (slug: string, _input?: undefined) => getStockChecksSummary(slug),
