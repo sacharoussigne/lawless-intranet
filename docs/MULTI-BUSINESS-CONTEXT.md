@@ -13,8 +13,8 @@ Fiche de reprise du chantier « app business » (dispensaires, general stores, p
 | 4 | Personnes communes (`Person` + `BusinessPerson`) | ✅ |
 | 5 | Routage : URLs `/<slug>/…`, hôte → type (`BUSINESS_TYPE_HOSTS`), page de choix / d'accueil, SSO multi-hôtes | ✅ |
 | 6 | Services en `scopeType: 'business'` | ✅ |
-| 7 | **General store** | ⏭️ à faire |
-| 8 | Prod multi-domaines (`business.`, `dispensaire.`, `gs.aerokusu.fr`), renommage final de l'app | à faire |
+| 7 | General store | ⏸️ **pas fait pour l'instant** (spec gardée ci-dessous) |
+| 8 | Prod multi-domaines, renommage final de l'app | ⏭️ prochaine |
 
 - **Livraison :** les phases 1 à 6 sont dans `dev` (PR #80, squash) et **en prod** sur l'ancien domaine `dispensaire.aerokusu.fr`, sans `BUSINESS_TYPE_HOSTS` (pas de routage par hôte).
 - **Branche :** le chantier continue sur `feat(business)/rename-dispensary-to-business`. Elle est remise à niveau de `dev` (merge) avant chaque reprise.
@@ -27,7 +27,7 @@ Fiche de reprise du chantier « app business » (dispensaires, general stores, p
   - relever des totaux de contrôle avant et après (script `q.cjs` qui lit `DATABASE_URL` sans l'afficher) ;
   - **ne jamais lire de `.env` réel** (règle de l'utilisateur) ;
   - avant un déploiement avec migrations, sauvegarder la prod avec `pnpm db:pull-prod --dump-only --yes` (vers `.db-dumps/<date>/`, en lecture seule).
-- **Plan d'abord pour les gros morceaux :** phase 7 (thème bleu, catalogue de prix) et phase 8.
+- **Plan d'abord pour les gros morceaux :** phase 8 (et la phase 7 si elle est reprise).
 
 ## Pièges connus
 
@@ -58,7 +58,9 @@ Fiche de reprise du chantier « app business » (dispensaires, general stores, p
 | Scope des services | `lib/serviceHost.ts` (`scopeType: 'business'`) |
 | Prod (variables, hôtes, réseau interne) | `docker/.env.example`, `docker-compose.yml`, `docs/DOCKER.md` |
 
-## Phase 7 : ce qui est décidé
+## Phase 7 : ce qui est décidé (en pause)
+
+> **On ne fait pas le general store pour l'instant** (décision du 21/10/2026). La spec reste là pour le jour où on le reprendra. En attendant, il n'y a qu'un type, `DISPENSARY`, et aucun hôte `gs`.
 
 - **Type `GENERAL_STORE` :**
   - ajouter la valeur à l'enum Prisma (migration `ALTER TYPE … ADD VALUE`) et l'entrée dans le registre ;

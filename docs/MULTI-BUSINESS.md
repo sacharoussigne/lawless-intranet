@@ -10,6 +10,8 @@ Pour le refuge, on avait copié `apps/dispensary`, et environ 100 fichiers sont 
 
 ## Décisions
 
+> **21/10/2026 :** on ne fait **pas** le general store pour l'instant (phase 7 en pause). Tout ce qui le concerne reste décrit ici pour pouvoir le reprendre plus tard ; le chantier continue sans lui (phase 8).
+
 | Sujet | Décision |
 |---|---|
 | Périmètre | Dispensaires et general stores, puis saloons et d'autres types. Le **refuge reste à part** et continue de profiter des packages partagés. |
@@ -332,7 +334,7 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
 | 4 | Profils communs | `Person` + `BusinessPerson`, la migration des profils Discord. |
 | 5 | Routage | Résolution par hôte, chemins sans préfixe, slugs réservés, redirections depuis `/d/`, page de choix, page d'accueil, switcher du Header. |
 | 6 | Bascule des services | `scopeType: 'business'` dans inventory, bank, agenda, media (et documents si besoin), topics realtime. |
-| 7 | General store | Le type `GENERAL_STORE` : thème bleu, logo, rôles, compteurs, module catalogue de prix, création depuis `/platform`. |
+| 7 | General store (**pas fait pour l'instant**, spec gardée) | Le type `GENERAL_STORE` : thème bleu, logo, rôles, compteurs, module catalogue de prix, création depuis `/platform`. |
 | 8 | Mise en prod et nettoyage | Déploiement multi-hôtes (`business`, `dispensaire`, `gs`), puis renommage final de l'app (`apps/dispensary` → `apps/business`, Docker, turbo, docs, `CLAUDE.md`) et fin des libellés « dispensaire » codés en dur. |
 
 ### Phase 1 : ce qui a été fait
