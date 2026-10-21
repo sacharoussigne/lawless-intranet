@@ -293,7 +293,7 @@ export default function Header({
                       <>
                         <Menu.Label>Plateforme</Menu.Label>
                         <Menu.Item component={Link} href={routes.platform.businesses}>
-                          Dispensaires
+                          Entreprises
                         </Menu.Item>
                         <Menu.Item component={Link} href={routes.platform.users}>
                           Comptes utilisateurs
@@ -371,7 +371,7 @@ export default function Header({
                     Comptes utilisateurs
                   </Button>
                   <Button component={Link} href={routes.platform.businesses} variant="light">
-                    Dispensaires
+                    Entreprises
                   </Button>
                   <Button component={Link} href={routes.platform.logs} variant="light">
                     Logs

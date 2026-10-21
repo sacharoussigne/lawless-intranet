@@ -1,6 +1,10 @@
 import type { BusinessType } from '@prisma/client';
 import { APP_FEATURE_KEYS, type AppFeatureKey } from '@/lib/appFeatures';
-import { DEFAULT_BUSINESS_TYPE, isModuleAllowedForType } from '@/lib/businessTypes';
+import {
+  DEFAULT_BUSINESS_TYPE,
+  getBusinessTypeDefinition,
+  isModuleAllowedForType,
+} from '@/lib/businessTypes';
 
 export { APP_FEATURE_KEYS, type AppFeatureKey };
 
@@ -80,7 +84,7 @@ export function appSettingsCacheTag(businessId: string): string {
 }
 
 export const APP_FEATURE_DISABLED_MESSAGE =
-  'Cette fonctionnalité est désactivée pour ce dispensaire.';
+  'Cette fonctionnalité est désactivée pour cette entreprise.';
 
 export function isAppFeatureEnabled(
   settings: AppSettingsDTO,
@@ -120,5 +124,5 @@ export function isAppFeatureEnabled(
 export function businessSiteTitle(settings: AppSettingsDTO): string {
   const name =
     settings.businessName.trim() || APP_SETTINGS_DEFAULTS.businessName;
-  return `Dispensaire ${name}`;
+  return `${getBusinessTypeDefinition(settings.businessType).label} ${name}`;
 }

@@ -1,6 +1,6 @@
 # Flux de données : lectures GET, mutations et temps réel
 
-Comment les apps hôtes (`apps/dispensary`, `apps/shelter`) lisent et écrivent leurs données côté client, et comment le temps réel les tient à jour. Les règles courtes sont dans `CLAUDE.md` ; ce document explique le pourquoi et le comment.
+Comment les apps hôtes (`apps/business`, `apps/shelter`) lisent et écrivent leurs données côté client, et comment le temps réel les tient à jour. Les règles courtes sont dans `CLAUDE.md` ; ce document explique le pourquoi et le comment.
 
 ```
                          lectures : GET /api/<d|s>/<slug>/read/<clé>  ──▶ registre ──▶ action de lecture
@@ -32,7 +32,7 @@ Il n'y a **pas d'API REST par feature**. Chaque app a une seule route GET géné
 
 | | Dispensaire | Refuge |
 |---|---|---|
-| Registre | `apps/dispensary/src/lib/read/readRoutes.ts` | `apps/shelter/src/lib/read/readRoutes.ts` |
+| Registre | `apps/business/src/lib/read/readRoutes.ts` | `apps/shelter/src/lib/read/readRoutes.ts` |
 | Route | `src/app/api/d/[businessSlug]/read/[query]/route.ts` | `src/app/api/s/[shelterSlug]/read/[query]/route.ts` |
 | Client | `src/lib/read/fetchRead.ts` | `src/lib/read/fetchRead.ts` |
 
@@ -137,8 +137,8 @@ Règles :
 
 - Le code qui écrit (action d'une app hôte ou route d'un service) appelle une fonction `emit*` / `notify*` **après** l'écriture.
 - Ces fonctions publient dans `after()` (`next/server`) : la réponse part sans attendre le serveur temps réel. On ne les `await` pas. `publishRealtime` ne lève jamais d'exception (timeout de 2 s, erreur loguée).
-- Exemples : `apps/dispensary/src/lib/orders/realtime/broadcast.ts`, `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/media/src/lib/realtime.ts`.
-- **Stock** (`apps/dispensary/src/lib/stock/realtime/`) : un topic `stock:<dispensaryId>` (feature `stock` + `stock:view`) et un seul type de message, sans aucun identifiant de coffre ni d'objet, pour qu'un rôle limité à certains coffres n'apprenne rien sur les autres. Les actions de stock et de catalogue (objets, recettes, coffres, catégories, visibilité, contrôles) sont enveloppées par `withStockChange` ; ventes et commandes appellent `emitStockChange`. Côté client, `StockRealtimeBridge` (layout) invalide toutes les données de stock affichées. Pendant une saisie d'inventaire, la page Stock compare le stock du coffre (relu en direct) à celui du début de la saisie, et liste les objets modifiés entre-temps, avec le choix de reprendre les nouvelles quantités ou de garder sa saisie. Aucun verrou : rien n'est bloqué.
+- Exemples : `apps/business/src/lib/orders/realtime/broadcast.ts`, `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/media/src/lib/realtime.ts`.
+- **Stock** (`apps/business/src/lib/stock/realtime/`) : un topic `stock:<dispensaryId>` (feature `stock` + `stock:view`) et un seul type de message, sans aucun identifiant de coffre ni d'objet, pour qu'un rôle limité à certains coffres n'apprenne rien sur les autres. Les actions de stock et de catalogue (objets, recettes, coffres, catégories, visibilité, contrôles) sont enveloppées par `withStockChange` ; ventes et commandes appellent `emitStockChange`. Côté client, `StockRealtimeBridge` (layout) invalide toutes les données de stock affichées. Pendant une saisie d'inventaire, la page Stock compare le stock du coffre (relu en direct) à celui du début de la saisie, et liste les objets modifiés entre-temps, avec le choix de reprendre les nouvelles quantités ou de garder sa saisie. Aucun verrou : rien n'est bloqué.
 
 ### Ajouter un domaine temps réel
 

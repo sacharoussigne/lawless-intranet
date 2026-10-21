@@ -7,6 +7,7 @@ import { ActionIcon, Text } from '@mantine/core';
 import { IconArrowBackUp, IconChevronLeft } from '@tabler/icons-react';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
 import { businessSiteTitle } from '@/lib/appSettingsShared';
+import { getBusinessTypeDefinition } from '@/lib/businessTypes';
 import { getMobileSectionTitle } from '@/lib/navigation/mobileNav';
 import { routes, tenantRoutes } from '@/types/routes';
 import classes from './Header.module.scss';
@@ -40,7 +41,7 @@ export function MobileHeader({
     ? getMobileSectionTitle(pathname, t, siteTitle)
     : pathname.startsWith(routes.settings.index)
       ? 'Paramètres du compte'
-      : 'Dispensaire';
+      : getBusinessTypeDefinition(appSettings.businessType).label;
 
   return (
     <div className={classes.mobileBar}>

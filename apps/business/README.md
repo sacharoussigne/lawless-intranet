@@ -27,8 +27,8 @@ From the monorepo root:
 
 ```bash
 pnpm install
-cp apps/dispensary/.env.example apps/dispensary/.env   # then fill in the values
-pnpm --filter dispensary db:migrate
+cp apps/business/.env.example apps/business/.env   # then fill in the values
+pnpm --filter business db:migrate
 pnpm dev            # runs all apps; the auth app and the services are required
 ```
 
@@ -37,9 +37,9 @@ Open http://dispensary.localhost:3000. The `*.localhost` hosts are required for 
 Useful scripts:
 
 ```bash
-pnpm --filter dispensary typecheck
-pnpm --filter dispensary lint
-pnpm --filter dispensary test        # Vitest
+pnpm --filter business typecheck
+pnpm --filter business lint
+pnpm --filter business test        # Vitest
 ```
 
 ## Environment variables

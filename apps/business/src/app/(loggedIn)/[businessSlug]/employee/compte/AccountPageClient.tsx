@@ -66,9 +66,9 @@ export function AccountPageClient({ name, email, image }: AccountPageClientProps
           {accessibleBusinesses.length > 1 && (
             <>
               <Divider />
-              <Row icon={IconBuildingHospital} label="Dispensaire">
+              <Row icon={IconBuildingHospital} label="Entreprise">
                 <Select
-                  aria-label="Dispensaire"
+                  aria-label="Entreprise"
                   w={170}
                   data={businessSelectData(accessibleBusinesses)}
                   value={businessSlug ?? null}

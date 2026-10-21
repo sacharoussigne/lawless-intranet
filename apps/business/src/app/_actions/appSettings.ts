@@ -123,7 +123,7 @@ async function updateAppSettingsUnlogged(
         select: { id: true },
       });
       if (taken) {
-        return { status: 409, error: 'Ce slug est déjà utilisé par un autre dispensaire' };
+        return { status: 409, error: 'Ce slug est déjà utilisé par une autre entreprise' };
       }
     }
 
