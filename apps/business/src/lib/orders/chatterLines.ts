@@ -92,3 +92,44 @@ export function describeOrderChange(
     }
   }
 }
+
+/** Time of a chatter entry ("19:54"); the day is given by its group. */
+export function formatOrderTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function dayKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+/** Day separator of the chatter: "Aujourd'hui", "Hier", else the short date. */
+export function chatterDayLabel(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (dayKey(date) === dayKey(now)) return 'Aujourd’hui';
+  if (dayKey(date) === dayKey(yesterday)) return 'Hier';
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Consecutive events of the same day, in the given order (newest first in the chatter). */
+export function groupEventsByDay<T extends { createdAt: string }>(
+  events: T[],
+): { key: string; iso: string; events: T[] }[] {
+  const groups: { key: string; iso: string; events: T[] }[] = [];
+  for (const event of events) {
+    const key = dayKey(new Date(event.createdAt));
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.events.push(event);
+    else groups.push({ key, iso: event.createdAt, events: [event] });
+  }
+  return groups;
+}
+
+/** "Prix : 4.00 $ → 6.00 $" → label "Prix", value "4.00 $ → 6.00 $" (no label when there is no " : "). */
+export function splitChangeLine(line: string): { label: string | null; value: string } {
+  const index = line.indexOf(' : ');
+  return index < 0
+    ? { label: null, value: line }
+    : { label: line.slice(0, index), value: line.slice(index + 3) };
+}
