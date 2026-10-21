@@ -34,8 +34,8 @@ restart: stop start ## Redémarrage des conteneurs
 authbash: ## Accéder au conteneur auth en bash
 	@docker compose exec -u root auth sh
 
-dispensarybash: ## Accéder au conteneur auth en bash
-	@docker compose exec -u root dispensary sh
+businessbash: ## Accéder au conteneur business (ex-dispensary) en bash
+	@docker compose exec -u root business sh
 
 documentsbash: ## Accéder au conteneur auth en bash
 	@docker compose exec -u root documents sh
@@ -63,8 +63,8 @@ remove: ## Suppression des conteneurs
 deploy: network ## Build avec cache puis déploiement
 	@docker compose up -d --build --remove-orphans
 
-service: network ## Déploiement d'un seul service (make service SERVICE=dispensary)
-	@test -n "$(SERVICE)" || (echo "Usage: make service SERVICE=dispensary" && exit 1)
+service: network ## Déploiement d'un seul service (make service SERVICE=business)
+	@test -n "$(SERVICE)" || (echo "Usage: make service SERVICE=business" && exit 1)
 	@docker compose up -d --build --remove-orphans $(SERVICE)
 
 docker-prune: ## Purge le cache de build Docker

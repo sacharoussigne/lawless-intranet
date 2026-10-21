@@ -14,7 +14,7 @@ Fiche de reprise du chantier « app business » (dispensaires, general stores, p
 | 5 | Routage : URLs `/<slug>/…`, hôte → type (`BUSINESS_TYPE_HOSTS`), page de choix / d'accueil, SSO multi-hôtes | ✅ |
 | 6 | Services en `scopeType: 'business'` | ✅ |
 | 7 | General store | ⏸️ **pas fait pour l'instant** (spec gardée ci-dessous) |
-| 8 | Prod multi-domaines, renommage final de l'app | ⏭️ prochaine |
+| 8 | Renommage final (`apps/business`), libellés génériques ; multi-domaines reporté | ✅ |
 
 - **Livraison :** les phases 1 à 6 sont dans `dev` (PR #80, squash) et **en prod** sur l'ancien domaine `dispensaire.aerokusu.fr`, sans `BUSINESS_TYPE_HOSTS` (pas de routage par hôte).
 - **Branche :** le chantier continue sur `feat(business)/rename-dispensary-to-business`. Elle est remise à niveau de `dev` (merge) avant chaque reprise.
@@ -49,7 +49,7 @@ Fiche de reprise du chantier « app business » (dispensaires, general stores, p
 
 | Sujet | Où |
 |---|---|
-| Registre des types (libellés, modules, rôles, matrice, compteurs, signal d'horaires, statistiques de paie) | `apps/dispensary/src/lib/businessTypes/index.ts` |
+| Registre des types (libellés, modules, rôles, matrice, compteurs, signal d'horaires, statistiques de paie) | `apps/business/src/lib/businessTypes/index.ts` (l'app est `apps/business`, ex-`apps/dispensary`) |
 | Modules et réglages (un module coupé si non proposé par le type) | `lib/appFeatures.ts`, `lib/appSettingsShared.ts` (`normalizeAppSettings`) |
 | Compteurs d'activité hebdo | `lib/businessWeeklyActivity/counters.ts`, `fieldVisibility.ts`, `botApiRow.ts` |
 | Personnes (lecture sans Prisma à l'exécution / écritures) | `lib/businessDiscordProfile/queries.ts`, `service.ts` |

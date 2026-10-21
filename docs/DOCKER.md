@@ -1,6 +1,6 @@
 # Déploiement Docker (monorepo)
 
-Une image par app (`auth`, `dispensary`, `shelter`, `documents`, `agenda`, `bank`, `inventory`, `media`, `realtime`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
+Une image par app (`auth`, `business`, `shelter`, `documents`, `agenda`, `bank`, `inventory`, `media`, `realtime`), construite depuis la **racine du monorepo** pour inclure automatiquement les packages workspace (`@lawless-intranet/*`).
 
 Les apps Next.js utilisent le `Dockerfile` racine ; le serveur WebSocket `realtime` (Node pur, sans Prisma) a son propre `docker/realtime.Dockerfile` (voir [Serveur temps réel](#serveur-temps-réel-websocket)).
 
@@ -9,7 +9,7 @@ Les apps Next.js utilisent le `Dockerfile` racine ; le serveur WebSocket `realti
 ```
 docker build (context: .)
     │
-    ├─ turbo prune auth|dispensary|shelter|documents|agenda|bank|inventory|media --docker   → apps + packages nécessaires
+    ├─ turbo prune auth|business|shelter|documents|agenda|bank|inventory|media --docker   → apps + packages nécessaires
     ├─ pnpm install
     ├─ pnpm turbo build --filter=<app>        → next build --webpack + standalone
     └─ entrypoint: prisma migrate deploy + node apps/<app>/server.js
@@ -20,7 +20,7 @@ docker build (context: .)
 - Docker + Docker Compose
 - Réseau `proxy` externe (nginx-proxy / letsencrypt-companion), comme avant
 - Un enregistrement DNS pour `REALTIME_VIRTUAL_HOST` (ex. `realtime.example.com`), couvert par `AUTH_COOKIE_DOMAIN`
-- Huit bases PostgreSQL (auth + dispensary + shelter + documents + agenda + bank + inventory + media)
+- Huit bases PostgreSQL (auth + business + shelter + documents + agenda + bank + inventory + media)
 - Un bucket S3 pour la médiathèque, avec son CORS et un utilisateur IAM (voir [docs/MEDIA.md](MEDIA.md))
 - Discord redirect URI : `https://<AUTH_VIRTUAL_HOST>/api/auth/callback/discord`
 
@@ -35,19 +35,21 @@ docker compose --env-file .env.docker up -d --build
 
 ## Workflow de déploiement (prod)
 
+> **App renommée `business` (ex-`dispensary`)** : le service compose, l'image et le conteneur s'appellent maintenant `business` (`<projet>-business`). Les variables d'env gardent leurs noms `DISPENSARY_*`, donc le `.env.docker` ne change pas. Au premier déploiement après ce renommage, `make deploy` (qui fait `docker compose up -d --build --remove-orphans`) crée `business` et **supprime l'ancien conteneur `dispensary`**. Sans `--remove-orphans`, l'ancien conteneur resterait derrière le même `VIRTUAL_HOST` et nginx-proxy alternerait entre les deux.
+
 Après un `git pull`, **ne pas** utiliser `make rebuild` en routine — cette commande force un rebuild sans cache des 7 apps et remplit rapidement le disque.
 
 | Situation | Commande |
 |-----------|----------|
 | Déploiement normal | `make deploy` |
-| Une seule app modifiée | `make service SERVICE=dispensary` |
+| Une seule app modifiée | `make service SERVICE=business` |
 | Package partagé (`packages/*`) | `make deploy` |
 | Cache Docker suspect / build incohérent | `make rebuild` (dépannage uniquement) |
 | Après builds ratés ou disque plein | `make docker-prune` |
 
 `make deploy` exécute `docker compose up -d --build` : Docker réutilise les couches inchangées (deps, lockfile, etc.) et ne reconstruit que ce qui a changé.
 
-Services disponibles pour `make service SERVICE=…` : `auth`, `dispensary`, `documents`, `agenda`, `bank`, `inventory`, `shelter`, `media`, `realtime`.
+Services disponibles pour `make service SERVICE=…` : `auth`, `business`, `documents`, `agenda`, `bank`, `inventory`, `shelter`, `media`, `realtime`.
 
 ## Maintenance disque
 
@@ -116,11 +118,11 @@ docker build \
   --build-arg APP_PORT=3001 \
   -t lawless-auth .
 
-# Dispensary (port 3000)
+# Business, ex-dispensary (port 3000)
 docker build \
-  --build-arg APP_NAME=dispensary \
+  --build-arg APP_NAME=business \
   --build-arg APP_PORT=3000 \
-  -t lawless-dispensary .
+  -t lawless-business .
 
 # Documents (port 3002)
 docker build \
@@ -158,19 +160,19 @@ docker build \
 | Variable | App | Rôle |
 |----------|-----|------|
 | `AUTH_PUBLIC_URL` | auth + hosts | URL publique IdP — **build + runtime** (`NEXT_PUBLIC_AUTH_URL`) |
-| `DISPENSARY_PUBLIC_URL` | auth + dispensary | URL **principale** de l'app business (toutes les entreprises) — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
-| `DISPENSARY_VIRTUAL_HOST` | dispensary + auth | Hôte(s) nginx-proxy / letsencrypt, liste séparée par des virgules (voir « Plusieurs hôtes ») |
+| `DISPENSARY_PUBLIC_URL` | auth + business | URL **principale** de l'app business (toutes les entreprises) — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
+| `DISPENSARY_VIRTUAL_HOST` | business + auth | Hôte(s) nginx-proxy / letsencrypt, liste séparée par des virgules (voir « Plusieurs hôtes ») |
 | `DISPENSARY_EXTRA_PUBLIC_URLS` | realtime | Autres URLs publiques de l'app business (origines websocket acceptées) |
-| `BUSINESS_TYPE_HOSTS` | dispensary | Hôte de chaque type d'entreprise (`DISPENSARY=dispensaire.example.com,…`), lu au runtime |
+| `BUSINESS_TYPE_HOSTS` | business | Hôte de chaque type d'entreprise (`DISPENSARY=dispensaire.example.com,…`), lu au runtime |
 | `FOLLOW_UP_CRON_SECRET` | shelter | Protège la route cron des relances de suivi |
 | `SHELTER_PUBLIC_URL` | auth + shelter | URL publique refuge — **build + runtime** (`NEXT_PUBLIC_APP_URL`) |
-| `DOCUMENTS_PUBLIC_URL` | documents + dispensary | URL service documents (`DOCUMENTS_URL` côté dispensary) |
-| `AGENDA_PUBLIC_URL` | agenda + dispensary | URL service agenda (`AGENDA_URL` côté dispensary) |
-| `BANK_PUBLIC_URL` | bank + dispensary + shelter | URL service banque (`BANK_URL`) |
-| `INVENTORY_PUBLIC_URL` | inventory + dispensary | URL service inventaire (`INVENTORY_URL` côté dispensary) |
+| `DOCUMENTS_PUBLIC_URL` | documents + business | URL service documents (`DOCUMENTS_URL` côté business) |
+| `AGENDA_PUBLIC_URL` | agenda + business | URL service agenda (`AGENDA_URL` côté business) |
+| `BANK_PUBLIC_URL` | bank + business + shelter | URL service banque (`BANK_URL`) |
+| `INVENTORY_PUBLIC_URL` | inventory + business | URL service inventaire (`INVENTORY_URL` côté business) |
 | `AUTH_COOKIE_DOMAIN` | auth | Domaine cookie SSO (ex. `.example.com`). Cookie name prefix is `lawless-intranet` (not `better-auth`) to avoid collisions with other apps on the same domain. |
 | `AUTH_DATABASE_URL` | auth | DB auth |
-| `DISPENSARY_DATABASE_URL` | dispensary | DB métier |
+| `DISPENSARY_DATABASE_URL` | business | DB métier |
 | `SHELTER_DATABASE_URL` | shelter | DB refuge |
 | `DOCUMENTS_DATABASE_URL` | documents | DB documents/templates |
 | `AGENDA_DATABASE_URL` | agenda | DB agendas/events/todos |
@@ -178,23 +180,23 @@ docker build \
 | `INVENTORY_DATABASE_URL` | inventory | DB stock / commandes / ventes / entreprises |
 | `MEDIA_DATABASE_URL` | media | DB médiathèque (dossiers, fichiers) |
 | `AUTH_INTERNAL_SECRET` | auth + hosts | API interne service-to-service |
-| `AGENDA_INTERNAL_SECRET` | agenda + dispensary | Secret host→agenda pour ops `scopeAdmin` / create |
-| `BANK_INTERNAL_SECRET` | bank + dispensary + shelter | Secret host→bank (purge-scope) |
-| `BANK_BOT_API_SECRET` | bank + dispensary | Secret bot materialize-planned |
-| `INVENTORY_INTERNAL_SECRET` | inventory + dispensary | Secret host→inventory (purge-scope) |
-| `DOCUMENTS_INTERNAL_SECRET` | documents + dispensary | Secret host→documents (toutes les routes API sauf health) |
-| `REALTIME_PUBLIC_URL` | dispensary | URL WebSocket navigateur (`wss://realtime.example.com`), lue **au runtime** (pas de rebuild) |
+| `AGENDA_INTERNAL_SECRET` | agenda + business | Secret host→agenda pour ops `scopeAdmin` / create |
+| `BANK_INTERNAL_SECRET` | bank + business + shelter | Secret host→bank (purge-scope) |
+| `BANK_BOT_API_SECRET` | bank + business | Secret bot materialize-planned |
+| `INVENTORY_INTERNAL_SECRET` | inventory + business | Secret host→inventory (purge-scope) |
+| `DOCUMENTS_INTERNAL_SECRET` | documents + business | Secret host→documents (toutes les routes API sauf health) |
+| `REALTIME_PUBLIC_URL` | business | URL WebSocket navigateur (`wss://realtime.example.com`), lue **au runtime** (pas de rebuild) |
 | `REALTIME_VIRTUAL_HOST` | realtime | Hôte nginx-proxy du WebSocket |
-| `REALTIME_TOKEN_SECRET` | realtime + dispensary | Signature des jetons d'abonnement (dispensary signe, realtime vérifie) |
+| `REALTIME_TOKEN_SECRET` | realtime + business | Signature des jetons d'abonnement (business signe, realtime vérifie) |
 | `REALTIME_INTERNAL_SECRET` | realtime + agenda | Publication service→realtime sur le port interne |
-| `MEDIA_INTERNAL_SECRET` | media + shelter + dispensary | Secret hôte→media (toutes les routes) |
+| `MEDIA_INTERNAL_SECRET` | media + shelter + business | Secret hôte→media (toutes les routes) |
 | `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION` | media | Bucket S3 de la médiathèque |
 | `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY` | media | Clés de l'utilisateur IAM du bucket |
 
 ## Appels entre conteneurs (réseau `internal`)
 
 Les appels de serveur à serveur passent par le réseau Docker privé `internal` :
-- dispensary et shelter vers auth, documents, agenda, bank, inventory ;
+- business et shelter vers auth, documents, agenda, bank, inventory ;
 - les services vers auth, pour lire la session.
 
 On utilise `http://auth:3001`, `http://bank:3004`… plutôt que les URLs publiques. Une page en fait plusieurs, et chacun évite ainsi une résolution DNS publique, l'aller-retour par nginx-proxy et une négociation TLS.
@@ -205,7 +207,7 @@ On utilise `http://auth:3001`, `http://bank:3004`… plutôt que les URLs publiq
 
 ## Plusieurs hôtes (app business)
 
-L'app business (aujourd'hui `apps/dispensary`) sert **un seul conteneur sur plusieurs hôtes** (`docs/MULTI-BUSINESS.md`) :
+L'app business (aujourd'hui `apps/business`) sert **un seul conteneur sur plusieurs hôtes** (`docs/MULTI-BUSINESS.md`) :
 
 | Hôte | Rôle |
 |---|---|
@@ -236,10 +238,10 @@ AUTH_COOKIE_DOMAIN=.example.com
 
 ```
 navigateur ──wss://REALTIME_VIRTUAL_HOST──▶ nginx-proxy ──▶ realtime:3007   (WebSocket, seul port routé)
-agenda, media, dispensary, shelter ──http://realtime:3008/publish (réseau privé « realtime »)──▶ realtime:3008
+agenda, media, business, shelter ──http://realtime:3008/publish (réseau privé « realtime »)──▶ realtime:3008
 ```
 
-- **Port 3007** : WebSocket navigateur. Contrôle de l'`Origin` (`ALLOWED_ORIGINS`), puis authentification par un jeton court signé par l'app hôte, dispensary ou shelter (`REALTIME_TOKEN_SECRET`), qui liste les topics autorisés (`agenda:<id>`, `orders:<id>`, `sales:<id>`, `waitlist:<id>`, `user:<id>`…, voir `packages/realtime/src/topics.ts`).
+- **Port 3007** : WebSocket navigateur. Contrôle de l'`Origin` (`ALLOWED_ORIGINS`), puis authentification par un jeton court signé par l'app hôte, business ou shelter (`REALTIME_TOKEN_SECRET`), qui liste les topics autorisés (`agenda:<id>`, `orders:<id>`, `sales:<id>`, `waitlist:<id>`, `user:<id>`…, voir `packages/realtime/src/topics.ts`).
 - **Port 3008** : API interne (`/publish`, `/revoke`, `/health`), joignable uniquement sur le réseau Docker privé `realtime` (`internal: true`) et protégée par `REALTIME_INTERNAL_SECRET`. nginx ne la route pas et aucun port n'est publié sur l'hôte.
 - Ping toutes les 25 s (sous le `proxy_read_timeout` de 60 s de nginx-proxy) ; nginx-proxy gère l'upgrade WebSocket par défaut.
 - Une seule instance (hub en mémoire). Si le serveur redémarre, les clients se reconnectent et rechargent leurs données.
@@ -249,9 +251,9 @@ make service SERVICE=realtime          # build + (re)déploiement du seul serveu
 docker logs lawless-realtime           # « [realtime] websocket on :3007, internal API on :3008 »
 ```
 
-## Migration bank depuis l’ancien stockage dispensary
+## Migration bank depuis l’ancien stockage business
 
-**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `extract_bank_to_service` :
+**Ordre critique** — à exécuter **une fois**, avant que business n’applique `extract_bank_to_service` :
 
 ```bash
 # 1. Créer la BDD bank et appliquer les migrations (tables vides)
@@ -262,12 +264,12 @@ DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
 BANK_DATABASE_URL="$BANK_DATABASE_URL" \
 pnpm migrate:bank-to-service
 
-# 3. Déployer dispensary (migrate deploy droppe les tables bank locales)
+# 3. Déployer business (migrate deploy droppe les tables bank locales)
 ```
 
-## Migration agenda depuis l’ancien stockage dispensary
+## Migration agenda depuis l’ancien stockage business
 
-**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `remove_agenda_tables` :
+**Ordre critique** — à exécuter **une fois**, avant que business n’applique `remove_agenda_tables` :
 
 ```bash
 # 1. Créer la BDD agenda et appliquer les migrations (tables vides)
@@ -278,12 +280,12 @@ DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
 AGENDA_DATABASE_URL="$AGENDA_DATABASE_URL" \
 pnpm migrate:agenda-to-service
 
-# 3. Déployer dispensary (migrate deploy droppe les tables agenda locales)
+# 3. Déployer business (migrate deploy droppe les tables agenda locales)
 ```
 
-## Migration inventory depuis l’ancien stockage dispensary
+## Migration inventory depuis l’ancien stockage business
 
-**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `remove_inventory_tables` :
+**Ordre critique** — à exécuter **une fois**, avant que business n’applique `remove_inventory_tables` :
 
 ```bash
 # 1. Créer la BDD inventory et appliquer les migrations (tables vides)
@@ -294,12 +296,12 @@ DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
 INVENTORY_DATABASE_URL="$INVENTORY_DATABASE_URL" \
 pnpm migrate:inventory-to-service
 
-# 3. Déployer dispensary (migrate deploy droppe les tables inventaire locales)
+# 3. Déployer business (migrate deploy droppe les tables inventaire locales)
 ```
 
 ## Migration depuis l’ancien déploiement mono-app (users → auth)
 
-**Ordre critique** — à exécuter **une fois**, avant que dispensary n’applique `remove_local_auth_tables` :
+**Ordre critique** — à exécuter **une fois**, avant que business n’applique `remove_local_auth_tables` :
 
 ```bash
 # 1. Créer la BDD auth et appliquer les migrations auth (tables vides)
@@ -310,7 +312,7 @@ SOURCE_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
 AUTH_DATABASE_URL="$AUTH_DATABASE_URL" \
 pnpm migrate:users-to-auth
 
-# 3. Déployer dispensary (migrate deploy supprime user/account locaux)
+# 3. Déployer business (migrate deploy supprime user/account locaux)
 # 4. Mettre à jour Discord : callback sur le domaine auth
 ```
 
@@ -323,8 +325,8 @@ pnpm migrate:users-to-auth -- --reset-auth
 Résumé :
 
 1. Migrations auth sur `AUTH_DATABASE_URL` (schéma vide)
-2. `pnpm migrate:users-to-auth` avec source = ancienne BDD dispensary (encore avec tables `user`)
-3. Déployer **auth**, puis **dispensary**
+2. `pnpm migrate:users-to-auth` avec source = ancienne BDD business (encore avec tables `user`)
+3. Déployer **auth**, puis **business**
 4. Discord redirect URI → domaine auth
 
 ## Notes

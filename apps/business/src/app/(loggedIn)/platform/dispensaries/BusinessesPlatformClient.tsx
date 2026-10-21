@@ -51,7 +51,7 @@ export function BusinessesPlatformClient({
         return;
       }
       notifications.show({
-        title: 'Dispensaire créé',
+        title: 'Entreprise créée',
         message: result.data.name,
         color: 'moss',
       });
@@ -81,7 +81,7 @@ export function BusinessesPlatformClient({
         return;
       }
       notifications.show({
-        title: 'Dispensaire supprimé',
+        title: 'Entreprise supprimée',
         message: result.data.name,
         color: 'moss',
       });
@@ -95,7 +95,7 @@ export function BusinessesPlatformClient({
   return (
     <Container size="xl" py="xl" w="100%">
       <Stack gap="lg">
-        <Title order={2}>Dispensaires (plateforme)</Title>
+        <Title order={2}>Entreprises (plateforme)</Title>
         {error && (
           <Text c="danger" size="sm">
             {error}
@@ -104,7 +104,7 @@ export function BusinessesPlatformClient({
 
         <Card withBorder padding="md">
           <Stack gap="sm">
-            <Text fw={600}>Créer un dispensaire</Text>
+            <Text fw={600}>Créer une entreprise</Text>
             <TextInput label="Nom" value={name} onChange={(e) => setName(e.currentTarget.value)} />
             <TextInput
               label="Slug (URL)"

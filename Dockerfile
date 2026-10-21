@@ -1,8 +1,8 @@
 # Monorepo image — one app per build (auth | dispensary).
 # Build: docker build --build-arg APP_NAME=auth --build-arg APP_PORT=3001 -t lawless-auth .
-#        docker build --build-arg APP_NAME=dispensary --build-arg APP_PORT=3000 -t lawless-dispensary .
+#        docker build --build-arg APP_NAME=business --build-arg APP_PORT=3000 -t lawless-business .
 
-ARG APP_NAME=dispensary
+ARG APP_NAME=business
 ARG APP_PORT=3000
 
 FROM node:22.23.2-alpine3.24 AS base

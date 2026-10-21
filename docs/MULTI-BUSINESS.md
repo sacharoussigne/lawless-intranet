@@ -425,6 +425,19 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
 - **Banque :** le bot `materialize-planned` utilise `business` quand `X-Scope-Type` est absent, ce qui couvre les anciens appels avec seulement `X-Dispensary-Id`.
 - **Déploiement :** les services appliquent leur migration au démarrage (`prisma migrate deploy`). Il faut déployer les services et le dispensaire ensemble.
 
+### Phase 8 : ce qui a été fait (sans multi-domaines)
+
+- **Décision :** pas de multi-domaines en prod pour l'instant. Il n'y a qu'un type, et `business.aerokusu.fr` n'apporterait rien. Le code est prêt (`docs/DOCKER.md` › « Plusieurs hôtes ») ; il suffira de poser les variables et le DNS quand un deuxième type existera.
+- **Renommage de l'app :** `apps/dispensary` devient `apps/business` (package `business`, service, image et conteneur Docker `business`, `make service SERVICE=business`). Au déploiement, `--remove-orphans` supprime l'ancien conteneur `dispensary`.
+- **Gardés volontairement :**
+  - les variables d'env `DISPENSARY_*` (le `.env.docker` de prod ne change pas) ;
+  - le préfixe CSS `--disp-*` ;
+  - l'API des bots (`/api/dispensary/…`) ;
+  - le nom de la base `lawless_dispensary` ;
+  - les tables `dispensary_*`.
+- **Libellés :** les textes de plateforme deviennent génériques (administration « Entreprises », logs, menu, page Compte, erreurs d'accès et de feature, titre du site via le libellé du type). Les textes qui parlent du dispensaire dans ses pages restent tels quels.
+- **`pnpm db:pull-prod` :** la base s'appelle `business` dans le script (`--only dispensary` reste accepté) et lit toujours `PROD_DISPENSARY_DATABASE_URL`.
+
 ## 11. Questions encore ouvertes
 
 - D'éventuels **autres modules propres** au general store.

@@ -397,10 +397,10 @@ export default function SettingsPageClient(props: {
         {props.initialBusinessGrades.length > 0 && (
           <Card withBorder shadow="sm" radius="md" padding="lg">
             <Title order={3} mb="md">
-              Grades par dispensaire
+              Grades par entreprise
             </Title>
             <Text c="dimmed" size="sm" mb="md">
-              Grade affiché dans vos courriers pour chaque dispensaire.
+              Grade affiché dans vos courriers pour chaque entreprise.
             </Text>
             <Stack gap="md">
               {props.initialBusinessGrades.map((grade) => {

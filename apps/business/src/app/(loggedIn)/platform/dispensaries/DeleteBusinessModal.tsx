@@ -50,7 +50,7 @@ export function DeleteBusinessModal({
     <AppModal
       opened={opened}
       onClose={onClose}
-      title="Supprimer le dispensaire"
+      title="Supprimer l’entreprise"
       size="md"
       footer={
         <AppModalFooter>
@@ -74,7 +74,7 @@ export function DeleteBusinessModal({
           title="Action irréversible"
           color="danger"
         >
-          Toutes les données de ce dispensaire seront définitivement effacées :
+          Toutes les données de cette entreprise seront définitivement effacées :
           membres, stock, ventes, commandes, banque, cabinets, agendas et documents.
         </Alert>
         <Text>

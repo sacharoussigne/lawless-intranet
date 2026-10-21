@@ -107,7 +107,7 @@ async function createBusinessUnlogged(data: { name: string; slug?: string }) {
     revalidatePath('/platform/dispensaries');
     return { status: 201, data: business };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la création du dispensaire');
+    return actionErrorParser(error, 'Erreur lors de la création de l’entreprise');
   }
 }
 
@@ -125,7 +125,7 @@ async function deleteBusinessUnlogged(data: { id: string }) {
     });
 
     if (!business) {
-      return { status: 404, error: 'Dispensaire introuvable' };
+      return { status: 404, error: 'Entreprise introuvable' };
     }
 
     try {
@@ -170,7 +170,7 @@ async function deleteBusinessUnlogged(data: { id: string }) {
         await deleteAgendaApi(agenda.id, { scopeAdmin: true }, cookie);
       }
     } catch (error) {
-      return serviceActionError(error, 'Erreur lors de la suppression des agendas du dispensaire');
+      return serviceActionError(error, 'Erreur lors de la suppression des agendas de l’entreprise');
     }
 
     await prisma.$transaction(async (tx) => {
@@ -183,7 +183,7 @@ async function deleteBusinessUnlogged(data: { id: string }) {
     revalidatePath('/platform/dispensaries');
     return { status: 200, data: { id: business.id, name: business.name } };
   } catch (error) {
-    return actionErrorParser(error, 'Erreur lors de la suppression du dispensaire');
+    return actionErrorParser(error, 'Erreur lors de la suppression de l’entreprise');
   }
 }
 

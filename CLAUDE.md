@@ -6,7 +6,7 @@ Guide pour travailler sur **lawless-intranet**.
 
 Intranet pour un serveur **RP western (RedM, ~1890)**. Il sert à des organisations en jeu : le **dispensaire de Saint-Denis** (stock, commandes, ventes, banque, courriers, paie, activité hebdo, agenda, cabinet) et le **refuge animalier** (animaux, espèces/races, suivis, liste d'attente, documents, banque).
 
-- **Multi-tenant** : chaque organisation a un slug. Routes `/[businessSlug]/…` (dispensary ; les slugs réservés sont dans `lib/business/slug.ts`, l'hôte peut filtrer le type d'entreprise via `BUSINESS_TYPE_HOSTS`, voir `lib/business/hosts.ts`) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
+- **Multi-tenant** : chaque organisation a un slug. Routes `/[businessSlug]/…` (business ; les slugs réservés sont dans `lib/business/slug.ts`, l'hôte peut filtrer le type d'entreprise via `BUSINESS_TYPE_HOSTS`, voir `lib/business/hosts.ts`) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
 - **Calendrier RP** : les dates sont stockées en réel et affichées **136 ans plus tôt** (`RP_DISPLAY_YEAR_OFFSET` dans `lib/rpCalendar.ts`). Ne jamais écrire de date RP en base. Côté UI, utiliser `formatRpDate`, `RpDateInput`, etc.
 - **Langue** : l'UI, les messages d'erreur et les docs sont en **français**. Le code (identifiants) et les messages de commit sont en **anglais**.
 
@@ -16,7 +16,7 @@ Toutes les apps sont en Next.js 16 (App Router), React 19, Prisma 7 (`@prisma/ad
 
 | App | Port | Rôle |
 |---|---|---|
-| `apps/dispensary` | 3000 | Front du dispensaire (Mantine) |
+| `apps/business` | 3000 | App business : dispensaires (et autres types d'entreprise), ex-`apps/dispensary` (Mantine). Ses variables d'env gardent leurs noms `DISPENSARY_*` |
 | `apps/auth` | 3001 | Fournisseur d'identité SSO (Better Auth, Discord OAuth) |
 | `apps/documents` | 3002 | API des documents et templates |
 | `apps/agenda` | 3003 | API agenda et todos (publie ses changements vers `realtime`) |
@@ -35,8 +35,8 @@ Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, san
 - `*-client` (`agenda`, `bank`, `documents`, `inventory`, `media`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
 - `service-client` : couche fetch commune des `*-client` (`createServiceFetch` : URL et secret depuis l'env, cookie SSO transmis, parsing JSON, `ServiceClientError`). Chaque `XClientError` en hérite.
 - `service-kit` (services API uniquement) : `./prisma` (`createPrismaClient`), `./http` (`createCors`, `createRouteResponses`, `readSession`), `./internal-secret` (`hasInternalSecret`, comparaison en temps constant), `./scope`.
-- `host-kit` (apps hôtes dispensary / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`), `./theme` (moteur de thèmes : `themesToCss`, `themeInitScript`, `ThemeProvider` / `useAppTheme`, transition View Transitions). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
-- `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/dispensary/src/lib/bank/bankUiActions.ts`.
+- `host-kit` (apps hôtes business / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`), `./theme` (moteur de thèmes : `themesToCss`, `themeInitScript`, `ThemeProvider` / `useAppTheme`, transition View Transitions). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
+- `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/business/src/lib/bank/bankUiActions.ts`.
 - Actions bank : la logique est partagée dans `@lawless-intranet/bank-client/host` (`createBankHostActions`). Chaque hôte ne fournit que `withBank` (`lib/bank/client.ts`) et ré-exporte les actions depuis `_actions/bankAccounts.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
 - `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services) et `topics.ts` (noms des topics).
@@ -46,9 +46,9 @@ SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir 
 
 ## Temps réel
 
-Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et todos, commandes, ventes, activité hebdo, médiathèque et stock (dispensary : quantités, mouvements, crafts, objets, recettes, coffres) ; liste d'attente et médiathèque (refuge). Le détail (lectures GET, mutations, temps réel) est dans `docs/DATA-FLOW.md`.
-- Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`createRealtimeToken` dans `apps/<dispensary|shelter>/src/lib/realtime/token.ts`, servi en GET par `/api/<d|s>/<slug>/realtime-token` et lu par `fetchRealtimeToken`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
-- Le code qui écrit (service ou app hôte) publie après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Les fonctions `emit*` l'appellent dans `after()` (`next/server`) : la requête n'attend pas le serveur temps réel, donc on ne les `await` pas. Exemples : `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/dispensary/src/lib/orders/realtime/broadcast.ts`. En prod, tout publieur rejoint le réseau Docker `realtime` avec `REALTIME_INTERNAL_URL` / `REALTIME_INTERNAL_SECRET`.
+Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et todos, commandes, ventes, activité hebdo, médiathèque et stock (business : quantités, mouvements, crafts, objets, recettes, coffres) ; liste d'attente et médiathèque (refuge). Le détail (lectures GET, mutations, temps réel) est dans `docs/DATA-FLOW.md`.
+- Le navigateur se connecte à `REALTIME_PUBLIC_URL` et s'authentifie avec un jeton court signé par l'app hôte (`createRealtimeToken` dans `apps/<business|shelter>/src/lib/realtime/token.ts`, servi en GET par `/api/<d|s>/<slug>/realtime-token` et lu par `fetchRealtimeToken`). **Le jeton liste les topics autorisés : c'est là que se vérifient les droits.**
+- Le code qui écrit (service ou app hôte) publie après le commit avec `publishRealtime(topics, envelope)` (`@lawless-intranet/realtime/publish`), qui ne lève jamais d'exception. Les fonctions `emit*` l'appellent dans `after()` (`next/server`) : la requête n'attend pas le serveur temps réel, donc on ne les `await` pas. Exemples : `apps/agenda/src/lib/realtime/broadcast.ts`, `apps/business/src/lib/orders/realtime/broadcast.ts`. En prod, tout publieur rejoint le réseau Docker `realtime` avec `REALTIME_INTERNAL_URL` / `REALTIME_INTERNAL_SECRET`.
 - Une mutation transmet le `clientId` du socket (`realtimeMutationMeta(clientId)` côté client, `parseRealtimeMutationMeta(meta)` côté action) : l'auteur ne reçoit pas son propre écho, puisque son `onSuccess` invalide déjà.
 - Les messages ne sont que des indices (« tel agenda a changé ») : côté client, on **invalide des requêtes React Query** (sans `refetchType: 'all'`), jamais de patch d'état à partir du message. Pour une simple invalidation, `coalesceMs` de `useRealtimeSocketEvents` regroupe les rafales. Après une reconnexion, `useRealtimeSocketResync` recharge tout (différé si l'onglet est caché). La boucle de connexion (`packages/realtime/src/connection.ts`) réutilise le jeton tant qu'il est valide et ne réessaie pas sans jeton.
 - « Voit tout » / « voit les siennes » : un topic par tenant plus un topic par utilisateur dans le tenant (ex. `sales:<id>` et `sales:<id>:user:<userId>`), le jeton n'en reçoit qu'un selon la permission.
@@ -59,10 +59,10 @@ Tout le temps réel passe par le serveur WebSocket `apps/realtime` : agenda et t
 ```bash
 pnpm install
 pnpm dev                                  # toutes les apps (turbo), serveur realtime compris (aucune config en dev)
-pnpm --filter dispensary dev              # une seule app
+pnpm --filter business dev              # une seule app
 pnpm --filter <app> typecheck             # tsc --noEmit
 pnpm --filter <app> lint
-pnpm --filter <app> test                  # vitest (dispensary, shelter, documents, media, inventory, agenda-ui, media-ui, inventory-ui, realtime, mail-template-engine) ; inventory : tests d'intégration du craft sur la base locale (ignorés si DATABASE_URL n'est pas sur localhost)
+pnpm --filter <app> test                  # vitest (business, shelter, documents, media, inventory, agenda-ui, media-ui, inventory-ui, realtime, mail-template-engine) ; inventory : tests d'intégration du craft sur la base locale (ignorés si DATABASE_URL n'est pas sur localhost)
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate
@@ -76,7 +76,7 @@ Après une modification de `prisma/schema.prisma`, créer une migration avec `db
 
 **Scripts de migration globaux** (`package.json` racine) : ils tournent sur toutes les apps de `apps/**` qui définissent `db:migrate:deploy`, `db:migrate:status` et `db:generate`. **À maintenir dès que nécessaire** : toute nouvelle app avec Prisma doit définir ces trois scripts (sur le modèle des apps existantes) ; si une app Prisma vit hors de `apps/` ou si ces scripts changent de nom, mettre à jour les scripts racine dans le même commit.
 
-## Façon de développer (apps front : dispensary / shelter)
+## Façon de développer (apps front : business / shelter)
 
 ### Couches
 
@@ -122,12 +122,12 @@ export async function doThing(slug: string, input: unknown) {
 - Il y a deux niveaux. Les **rôles globaux** Better Auth sont dans `packages/auth-permissions`. Les **permissions par tenant** (rôles et membres) sont dans `lib/business/permissions*` et `lib/shelter/permissionsCatalog`, et se vérifient avec `can(perms, resource, action)`.
 - **Feature toggles** par tenant (`AppSettings`, `AppFeatureKey` dans `lib/appSettingsShared.ts`). Une nouvelle feature doit être ajoutée au toggle, au middleware et au garde des actions.
 - **Chantier multi-entreprises** (en cours, branche `feat(business)/rename-dispensary-to-business`) : **lire d'abord `docs/MULTI-BUSINESS-CONTEXT.md`** (état des phases, façon de travailler, pièges, carte du code, phase suivante).
-- **Types d'entreprise** (dispensary, `docs/MULTI-BUSINESS.md`) : `Business.type` (`BusinessType`) et le registre `lib/businessTypes` (modules proposés, rôles des membres, matrice de rôles par défaut, compteurs de l'activité hebdo). Les compteurs sont stockés en JSON (`counters`, clé → valeur) et activables par entreprise (`AppSettings.weeklyActivityCounters`) : **ne jamais renommer une clé de compteur**, elle est en base et dans l'historique. Les **personnes** (ID Discord, noms, n° de compte, lien SSO) sont communes à toutes les entreprises (`Person`) ; `BusinessPerson` les rattache à une entreprise avec leur grade. Lire et écrire via `lib/businessDiscordProfile` (`findBusinessProfiles`, `personInBusiness`…). Un module n'est actif que s'il est **proposé par le type** et activé dans les réglages : `normalizeAppSettings` coupe les autres, donc les lectures `feature*Enabled` et `isAppFeatureEnabled` en tiennent compte. Une nouvelle feature s'ajoute à `lib/appFeatures.ts`, puis aux `modules` des types concernés.
+- **Types d'entreprise** (business, `docs/MULTI-BUSINESS.md`) : `Business.type` (`BusinessType`) et le registre `lib/businessTypes` (modules proposés, rôles des membres, matrice de rôles par défaut, compteurs de l'activité hebdo). Les compteurs sont stockés en JSON (`counters`, clé → valeur) et activables par entreprise (`AppSettings.weeklyActivityCounters`) : **ne jamais renommer une clé de compteur**, elle est en base et dans l'historique. Les **personnes** (ID Discord, noms, n° de compte, lien SSO) sont communes à toutes les entreprises (`Person`) ; `BusinessPerson` les rattache à une entreprise avec leur grade. Lire et écrire via `lib/businessDiscordProfile` (`findBusinessProfiles`, `personInBusiness`…). Un module n'est actif que s'il est **proposé par le type** et activé dans les réglages : `normalizeAppSettings` coupe les autres, donc les lectures `feature*Enabled` et `isAppFeatureEnabled` en tiennent compte. Une nouvelle feature s'ajoute à `lib/appFeatures.ts`, puis aux `modules` des types concernés.
 - Côté client, `PermissionsContext` / `usePermissions()` sert à masquer ou afficher l'UI.
 
 ### Data fetching client
 
-Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/dispensary/docs/react-query.md` et `docs/DATA-FLOW.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
+Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/business/docs/react-query.md` et `docs/DATA-FLOW.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
 - Server actions pour les **mutations** et le chargement SSR des `page.tsx`. Next les exécute **une par une par onglet** (dans la file de la navigation) : ne pas s'en servir pour les relectures client.
 - Relectures côté client (`queryFn`, chargements au clic, recherches au fil de la frappe, actions de lecture injectées dans les `*-ui`) : `fetchRead(slug, '<query>', input)` (`lib/read/fetchRead.ts`), une GET same-origin vers `/api/d/<slug>/read/<query>` (refuge : `/api/s/<slug>/read/<query>`) qui réutilise l'action de lecture inscrite dans le registre fermé `lib/read/readRoutes.ts` (auth et permissions restent dans l'action, `Date` conservées ; helpers partagés dans `@lawless-intranet/host-kit/read`). Même forme de résultat : `queryFn: async () => handleAction(await fetchRead(...))`. Toute nouvelle lecture client passe par le registre. Exceptions : une lecture qui écrit (`getOrCreateWeek`) ou dont l'entrée ne tient pas dans une URL (`generateOrderMailPreview`) reste une action. Le middleware ne couvre pas `/api` : le garde de l'action est la seule protection.
 - `initialData` vient du SSR, et les query keys incluent le slug.
@@ -137,19 +137,19 @@ Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures
 ### UI / design system
 
 - Mantine 8, `mantine-datatable`, `@tabler/icons-react`, modules SCSS, `@dnd-kit` pour les listes triables.
-- Dispensary, thème **« Apothecary »** (crème, encre, `sage` / `leather`) : les règles complètes sont dans `apps/dispensary/.cursor/rules/apothecary-design-system.mdc`. **À lire avant tout changement UI.**
-- Dispensary, **thèmes** : `lib/themes` (« Apothicaire » clair par défaut, « Lampe à huile » sombre), un par utilisateur (`UserUiPreferences.theme` + cookie `disp-theme`). On change de thème avec le bouton du header ou `/settings` › Apparence. Chaque thème génère les variables `--disp-*` et les teintes `--disp-<palette>-soft`, `-soft-strong`, `-soft-border`, `-soft-text`, scopées par `html[data-disp-theme]`. `dispTokens.colors` ne contient que des `var(...)`. **Pour un fond teinté, utiliser `--disp-<palette>-soft*`, pas `--mantine-color-<palette>-0/1`**, qui restent clairs en sombre. Le texte d'accent passe par `light-dark(...)`.
+- Business (dispensaire), thème **« Apothecary »** (crème, encre, `sage` / `leather`) : les règles complètes sont dans `apps/business/.cursor/rules/apothecary-design-system.mdc`. **À lire avant tout changement UI.**
+- Business, **thèmes** : `lib/themes` (« Apothicaire » clair par défaut, « Lampe à huile » sombre), un par utilisateur (`UserUiPreferences.theme` + cookie `disp-theme`). On change de thème avec le bouton du header ou `/settings` › Apparence. Chaque thème génère les variables `--disp-*` et les teintes `--disp-<palette>-soft`, `-soft-strong`, `-soft-border`, `-soft-text`, scopées par `html[data-disp-theme]`. `dispTokens.colors` ne contient que des `var(...)`. **Pour un fond teinté, utiliser `--disp-<palette>-soft*`, pas `--mantine-color-<palette>-0/1`**, qui restent clairs en sombre. Le texte d'accent passe par `light-dark(...)`.
 - Shelter, thème **« refuge 1890 »** (parchemin, primaire `terracotta`) : voir `apps/shelter/src/lib/design-tokens.ts` et `theme.ts`.
 - Shelter, **thèmes** : même moteur, dans `lib/themes` (« Refuge 1890 » par défaut, « Veillée » sombre), avec `UserUiPreferences.theme` et le cookie `shelter-theme`. Le thème clair garde deux jeux de valeurs historiques, les variables SCSS (`--shelter-bg`, `--shelter-surface`…) et les styles Mantine (`--shelter-ui-*`, via `shelterTokens`), pour un rendu identique ; le sombre les fait pointer vers les mêmes valeurs. Teintes : `--shelter-<palette>-soft*`.
 - Pastilles partagées (`apothecaryPillStyle`, `shelterPillStyle`) : `light-dark()` à partir de leur propre palette, donc rien à configurer côté hôte.
 - Règles communes :
   - pas de hex en dur : utiliser les tokens et les variables CSS `--disp-*` / `--shelter-*` (sinon le thème sombre casse) ;
   - pas de couleurs Mantine par défaut (`red`, `blue`, `gray`…) ;
-  - réutiliser `PageHeader`, `AppModal` (dispensary), `ModuleCard`, `DeleteConfirmPopover`, `MarkdownContent`, etc.
+  - réutiliser `PageHeader`, `AppModal` (business), `ModuleCard`, `DeleteConfirmPopover`, `MarkdownContent`, etc.
 - Les liens de navigation doivent être de vrais liens (`<Link>` / `component={Link}`), pour que le clic milieu fonctionne.
 - Pour la dette legacy (couleurs, fetch manuel), migrer **uniquement les fichiers qu'on touche** et ne pas lancer de refactor massif non demandé.
 
-### Qualité (ESLint aligné, voir `apps/dispensary/.cursor/rules/react-quality.mdc`)
+### Qualité (ESLint aligné, voir `apps/business/.cursor/rules/react-quality.mdc`)
 
 - Pas de `setState` synchrone dans un `useEffect` ; dériver l'état pendant le rendu.
 - `import { type Foo }` pour les imports de types ; `===` ; pas de `console.log`.
@@ -158,7 +158,7 @@ Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures
 
 ## Ajouter un service ou découper une feature
 
-Les modules historiques (auth, documents, agenda, bank, inventory) ont été extraits du dispensary vers des services. Le schéma à suivre est le suivant :
+Les modules historiques (auth, documents, agenda, bank, inventory) ont été extraits de l'app business (ex-dispensary) vers des services. Le schéma à suivre est le suivant :
 1. une nouvelle app API, avec sa propre base, scopée par `scopeType` / `scopeId` ;
 2. les types dans `packages/types` ;
 3. un package client `packages/<x>-client`, dont le `config.ts` instancie `createServiceFetch` (`service-client`) ; côté service, `lib/{prisma,cors,auth,internalAuth}.ts` s'appuient sur `service-kit` ;
@@ -170,4 +170,4 @@ Les modules historiques (auth, documents, agenda, bank, inventory) ont été ext
 ## Git
 
 - Branches : on développe sur `dev`, `main` sert à la prod. Branches de feature nommées `feat(<scope>)/<nom>`.
-- Commits **Conventional Commits en anglais**, avec un scope d'app : `feat(shelter): …`, `fix(agenda): …`, `perf(docker): …`, `refactor(dispensary): …`.
+- Commits **Conventional Commits en anglais**, avec un scope d'app : `feat(shelter): …`, `fix(agenda): …`, `perf(docker): …`, `refactor(business): …`.
