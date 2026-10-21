@@ -48,10 +48,10 @@ export async function requireTenantActionContext(
   } catch (e) {
     const message = e instanceof Error ? e.message : '';
     if (message === 'DISPENSARY_NOT_FOUND') {
-      return { ok: false, status: 404, error: 'Dispensaire introuvable' };
+      return { ok: false, status: 404, error: 'Entreprise introuvable' };
     }
     if (message === 'DISPENSARY_ACCESS_DENIED') {
-      return { ok: false, status: 403, error: 'Accès refusé à ce dispensaire' };
+      return { ok: false, status: 403, error: 'Accès refusé à cette entreprise' };
     }
     throw e;
   }

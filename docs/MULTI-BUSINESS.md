@@ -1,6 +1,6 @@
 # Réflexion : une app multi-entreprises (« Business »)
 
-> Document de réflexion : **rien n'est codé**. Il sert à cadrer le chantier avant de démarrer.
+> Document de réflexion et journal des phases. Pour reprendre le chantier (état, façon de travailler, pièges), voir [`MULTI-BUSINESS-CONTEXT.md`](MULTI-BUSINESS-CONTEXT.md).
 
 ## Objectif
 
@@ -9,6 +9,8 @@ Le serveur RP doit pouvoir gérer d'autres commerces que le dispensaire. On comm
 Pour le refuge, on avait copié `apps/dispensary`, et environ 100 fichiers sont aujourd'hui en double. On ne veut pas recommencer. On veut **une seule app de gestion d'entreprise**, **Business**, qui gère plusieurs **types** d'entreprises. À terme, l'« app dispensaire » disparaît.
 
 ## Décisions
+
+> **21/10/2026 :** on ne fait **pas** le general store pour l'instant (phase 7 en pause). Tout ce qui le concerne reste décrit ici pour pouvoir le reprendre plus tard ; le chantier continue sans lui (phase 8).
 
 | Sujet | Décision |
 |---|---|
@@ -332,7 +334,7 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
 | 4 | Profils communs | `Person` + `BusinessPerson`, la migration des profils Discord. |
 | 5 | Routage | Résolution par hôte, chemins sans préfixe, slugs réservés, redirections depuis `/d/`, page de choix, page d'accueil, switcher du Header. |
 | 6 | Bascule des services | `scopeType: 'business'` dans inventory, bank, agenda, media (et documents si besoin), topics realtime. |
-| 7 | General store | Le type `GENERAL_STORE` : thème bleu, logo, rôles, compteurs, module catalogue de prix, création depuis `/platform`. |
+| 7 | General store (**pas fait pour l'instant**, spec gardée) | Le type `GENERAL_STORE` : thème bleu, logo, rôles, compteurs, module catalogue de prix, création depuis `/platform`. |
 | 8 | Mise en prod et nettoyage | Déploiement multi-hôtes (`business`, `dispensaire`, `gs`), puis renommage final de l'app (`apps/dispensary` → `apps/business`, Docker, turbo, docs, `CLAUDE.md`) et fin des libellés « dispensaire » codés en dur. |
 
 ### Phase 1 : ce qui a été fait
@@ -422,6 +424,19 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
 - **Médias :** les clés S3 enregistrées gardent leur préfixe `dispensary/<id>/`, donc les fichiers restent lisibles. `purgeScope` efface aussi l'ancien préfixe.
 - **Banque :** le bot `materialize-planned` utilise `business` quand `X-Scope-Type` est absent, ce qui couvre les anciens appels avec seulement `X-Dispensary-Id`.
 - **Déploiement :** les services appliquent leur migration au démarrage (`prisma migrate deploy`). Il faut déployer les services et le dispensaire ensemble.
+
+### Phase 8 : ce qui a été fait (sans multi-domaines)
+
+- **Décision :** pas de multi-domaines en prod pour l'instant. Il n'y a qu'un type, et `business.aerokusu.fr` n'apporterait rien. Le code est prêt (`docs/DOCKER.md` › « Plusieurs hôtes ») ; il suffira de poser les variables et le DNS quand un deuxième type existera.
+- **Renommage de l'app :** `apps/dispensary` devient `apps/business` (package `business`, service, image et conteneur Docker `business`, `make service SERVICE=business`). Au déploiement, `--remove-orphans` supprime l'ancien conteneur `dispensary`.
+- **Gardés volontairement :**
+  - les variables d'env `DISPENSARY_*` (le `.env.docker` de prod ne change pas) ;
+  - le préfixe CSS `--disp-*` ;
+  - l'API des bots (`/api/dispensary/…`) ;
+  - le nom de la base `lawless_dispensary` ;
+  - les tables `dispensary_*`.
+- **Libellés :** les textes de plateforme deviennent génériques (administration « Entreprises », logs, menu, page Compte, erreurs d'accès et de feature, titre du site via le libellé du type). Les textes qui parlent du dispensaire dans ses pages restent tels quels.
+- **`pnpm db:pull-prod` :** la base s'appelle `business` dans le script (`--only dispensary` reste accepté) et lit toujours `PROD_DISPENSARY_DATABASE_URL`.
 
 ## 11. Questions encore ouvertes
 

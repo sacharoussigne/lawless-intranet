@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-ALL_APPS="auth dispensary shelter documents agenda bank inventory media"
+ALL_APPS="auth business shelter documents agenda bank inventory media"
 PROD_ENV_FILE="${PROD_ENV_FILE:-$ROOT/.env.prod}"
 DUMPS_DIR="$ROOT/.db-dumps"
 KEEP_DUMPS=5
@@ -43,6 +43,9 @@ while [ $# -gt 0 ]; do
     *) warn "Option inconnue : $1"; usage 1 ;;
   esac
 done
+
+# Former name of the business app.
+APPS="$(for app in $APPS; do if [ "$app" = dispensary ]; then echo business; else echo "$app"; fi; done | xargs)"
 
 [ "$DUMP_ONLY" = 1 ] && [ -n "$FROM_DIR" ] && die "--dump-only et --from sont incompatibles"
 for app in $APPS; do
@@ -91,7 +94,9 @@ container_url() {
 }
 
 upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
-prod_url() { env_get "$PROD_ENV_FILE" "PROD_$(upper "$1")_DATABASE_URL"; }
+# The business app keeps its historical env name (PROD_DISPENSARY_DATABASE_URL).
+prod_env_name() { if [ "$1" = business ]; then echo DISPENSARY; else upper "$1"; fi; }
+prod_url() { env_get "$PROD_ENV_FILE" "PROD_$(prod_env_name "$1")_DATABASE_URL"; }
 local_url() { env_get "$ROOT/apps/$1/.env" DATABASE_URL; }
 human_size() { du -h "$1" | cut -f1 | tr -d ' '; }
 
@@ -108,7 +113,7 @@ for app in $APPS; do
   if [ -z "$FROM_DIR" ]; then
     [ -f "$PROD_ENV_FILE" ] || die ".env.prod introuvable : copier .env.prod.example et y mettre les accès de prod"
     purl="$(prod_url "$app")"
-    [ -n "$purl" ] || { warn "$app : pas de PROD_$(upper "$app")_DATABASE_URL dans .env.prod, ignorée"; continue; }
+    [ -n "$purl" ] || { warn "$app : pas de PROD_$(prod_env_name "$app")_DATABASE_URL dans .env.prod, ignorée"; continue; }
     if [ "$(url_part "$purl" host):$(url_part "$purl" port)/$(url_part "$purl" database)" = \
          "$(url_part "$lurl" host):$(url_part "$lurl" port)/$(url_part "$lurl" database)" ]; then
       die "$app : l'URL de prod est identique à l'URL locale, arrêt"

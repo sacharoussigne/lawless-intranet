@@ -139,7 +139,7 @@ function LogDetail({
     ['Événement', log.event],
     ['Résultat', log.outcome ? LOG_OUTCOME_LABELS[log.outcome as LogOutcome] ?? log.outcome : null],
     ['Source', LOG_SOURCE_LABELS[log.source]],
-    ['Dispensaire', businessName ?? log.businessId],
+    ['Entreprise', businessName ?? log.businessId],
     ['Utilisateur', withName(log.userId, actorNames)],
     ['En tant que (admin)', withName(log.impersonatedById, actorNames)],
     ['Discord', withName(log.discordUserId, actorNames)],
@@ -278,7 +278,7 @@ export function LogsPageClient({
             allowDeselect={false}
           />
           <Select
-            label="Dispensaire"
+            label="Entreprise"
             placeholder="Tous"
             data={businesses.map((business) => ({ value: business.id, label: business.name }))}
             value={filters.businessId}
@@ -412,7 +412,7 @@ export function LogsPageClient({
             },
             {
               accessor: 'businessId',
-              title: 'Dispensaire',
+              title: 'Entreprise',
               width: 150,
               render: (log) =>
                 log.businessId ? businessNames.get(log.businessId) ?? log.businessId : '—',

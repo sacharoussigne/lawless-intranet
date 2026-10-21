@@ -57,14 +57,16 @@ services:
       - proxy
       - db
 
-  dispensary:
+  # Business app (apps/business, formerly apps/dispensary): dispensaries and the other kinds
+  # of business. Its env vars keep their historical DISPENSARY_* names.
+  business:
     restart: unless-stopped
-    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-dispensary"
+    container_name: "${COMPOSE_PROJECT_NAME:-lawless}-business"
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        APP_NAME: dispensary
+        APP_NAME: business
         APP_PORT: "3000"
         NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
         NEXT_PUBLIC_APP_URL: "${DISPENSARY_PUBLIC_URL:?err}"

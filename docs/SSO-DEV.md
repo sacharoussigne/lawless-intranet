@@ -53,7 +53,7 @@ On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
 ## Environment
 
 1. Copy `apps/auth/.env.example` to `apps/auth/.env`
-2. Copy `apps/dispensary/.env.example` to `apps/dispensary/.env`
+2. Copy `apps/business/.env.example` to `apps/business/.env`
 3. Copy `apps/shelter/.env.example` to `apps/shelter/.env`
 4. Copy `apps/documents/.env.example` to `apps/documents/.env`
 5. Copy `apps/agenda/.env.example` to `apps/agenda/.env`
@@ -109,7 +109,7 @@ cd apps/auth && pnpm db:migrate
 pnpm migrate:users-to-auth
 
 # 3. Remove local auth tables from dispensary
-cd apps/dispensary && pnpm db:migrate
+cd apps/business && pnpm db:migrate
 ```
 
 ### Agenda split (after agenda service exists)
@@ -122,7 +122,7 @@ cd apps/agenda && pnpm db:migrate
 DISPENSARY_DATABASE_URL=... AGENDA_DATABASE_URL=... pnpm migrate:agenda-to-service
 
 # 3. Deploy dispensary (drops local agenda tables)
-cd apps/dispensary && pnpm db:migrate
+cd apps/business && pnpm db:migrate
 ```
 
 ### Local recovery (dispensary already migrated, backup available)
