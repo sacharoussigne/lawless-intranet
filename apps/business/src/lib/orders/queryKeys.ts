@@ -8,6 +8,8 @@ export type OrdersPageFilters = {
   search: string;
   createdAtFrom: string | null;
   createdAtTo: string | null;
+  /** Only the orders the signed-in user is responsible for. */
+  mine: boolean;
 };
 
 export const DEFAULT_ORDERS_PAGE_SIZE = 10;
@@ -20,6 +22,7 @@ export const defaultOrdersPageFilters: OrdersPageFilters = {
   search: '',
   createdAtFrom: null,
   createdAtTo: null,
+  mine: false,
 };
 
 export const defaultActiveOrdersPageFilters: OrdersPageFilters = {
@@ -38,6 +41,7 @@ export const ordersKeys = {
     [...ordersKeys.all(slug), 'activeByGroup', companyGroupId] as const,
   letterAssignments: (slug: string) =>
     [...ordersKeys.all(slug), 'letterAssignments'] as const,
+  responsibleOptions: (slug: string) => [...ordersKeys.all(slug), 'responsibleOptions'] as const,
   formItems: (slug: string, companyGroupId: string | null) =>
     [...ordersKeys.all(slug), 'formItems', companyGroupId] as const,
 };

@@ -8,7 +8,6 @@ import {
   Select,
   Button,
   Text,
-  NumberInput,
   Divider,
   SimpleGrid,
   Loader,
@@ -32,6 +31,13 @@ import { OrderTypeEnum } from '@/types/enum/orderType';
 import type { OrderItem } from '@/types/orders';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { OrderItemsTable } from './OrderItemsTable';
+import { OrderPriceField } from './OrderPriceField';
+import { OrderResponsibleSelect } from './OrderResponsibleSelect';
+import {
+  initialOrderPriceState,
+  orderPricePayload,
+  type OrderPriceState,
+} from '@/lib/orders/orderPriceMode';
 import {
   CompleteOrderStockModal,
   type CompleteOrderPendingPayload,
@@ -62,7 +68,8 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
   const updateOrderMutation = useUpdateOrderMutation();
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
+  const [priceState, setPriceState] = useState<OrderPriceState>({ manual: false, manualPrice: '' });
+  const [responsibleUserId, setResponsibleUserId] = useState<string | null>(null);
   const [completeModalOpened, setCompleteModalOpened] = useState(false);
   const [pendingComplete, setPendingComplete] = useState<CompleteOrderPendingPayload | null>(
     null,
@@ -74,7 +81,6 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
       status: OrderStatusEnum.DRAFT,
       type: OrderTypeEnum.INCOMING,
       details: '',
-      price: '' as number | '',
     },
     validate: {
       name: (value) => (value.length < 1 ? 'Le nom est requis' : null),
@@ -97,13 +103,13 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
           },
         })),
       );
-      setPriceManuallyEdited(editingOrder.price != null);
+      setPriceState(initialOrderPriceState(editingOrder));
+      setResponsibleUserId(editingOrder.responsibleUserId ?? null);
       form.setValues({
         name: editingOrder.name,
         status: editingOrder.status as OrderStatusEnum,
         type: (editingOrder.type || OrderTypeEnum.INCOMING) as OrderTypeEnum,
         details: editingOrder.details || '',
-        price: editingOrder.price != null ? editingOrder.price : '',
       });
     }
   }, [editingOrder, opened]);
@@ -129,13 +135,6 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
       ),
     [orderItems],
   );
-
-  useEffect(() => {
-    if (priceManuallyEdited) return;
-    // Never clear a loaded/typed price when items have no catalog price (common for purchases).
-    if (suggestedPrice == null) return;
-    form.setFieldValue('price', suggestedPrice);
-  }, [suggestedPrice, priceManuallyEdited]);
 
   const availableItems = useMemo(
     () =>
@@ -213,7 +212,8 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
     setPendingComplete(null);
     form.reset();
     setOrderItems([]);
-    setPriceManuallyEdited(false);
+    setPriceState({ manual: false, manualPrice: '' });
+    setResponsibleUserId(null);
     // Defer parent close so nested Mantine modals unmount sequentially.
     window.setTimeout(() => {
       onClose();
@@ -237,23 +237,8 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
       quantity: oi.quantity,
     }));
 
-    const priceFromForm = (() => {
-      if (values.price === '' || values.price == null) return null;
-      const parsed = Number(values.price);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    })();
-    const priceFromOrder = (() => {
-      if (editingOrder.price == null) return null;
-      const parsed = Number(editingOrder.price);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    })();
-    const priceFromItems = calculateOrderPriceFromItems(
-      orderItems.map((orderItem) => ({
-        quantity: orderItem.quantity,
-        price: orderItem.item.price,
-      })),
-    );
-    const resolvedPrice = priceFromForm ?? priceFromOrder ?? priceFromItems;
+    // The service recomputes an automatic price from the catalog.
+    const pricing = orderPricePayload(priceState);
 
     if (
       values.status === OrderStatusEnum.COMPLETED &&
@@ -264,7 +249,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
         name: values.name,
         type: values.type,
         details: values.details || undefined,
-        price: resolvedPrice,
+        ...pricing,
         items: payloadItems,
       });
       setCompleteModalOpened(true);
@@ -281,7 +266,8 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
         >,
         type: values.type,
         details: values.details || undefined,
-        price: resolvedPrice,
+        ...pricing,
+        responsibleUserId,
         items: payloadItems,
       });
       resetAndClose();
@@ -342,10 +328,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
                     data={orderTypeSelectOptions}
                     required
                     value={form.values.type}
-                    onChange={(value) => {
-                      form.setFieldValue('type', value as OrderTypeEnum);
-                      setPriceManuallyEdited(false);
-                    }}
+                    onChange={(value) => form.setFieldValue('type', value as OrderTypeEnum)}
                     disabled={isCompleted}
                   />
                 </SimpleGrid>
@@ -361,21 +344,19 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
                     }
                     disabled={isCompleted}
                   />
-                  <NumberInput
-                    label="Prix (optionnel)"
-                    placeholder="Prix de la commande"
-                    min={0}
-                    decimalScale={2}
-                    fixedDecimalScale
-                    prefix="$ "
-                    value={form.values.price}
-                    onChange={(value) => {
-                      setPriceManuallyEdited(true);
-                      form.setFieldValue('price', value === '' ? '' : Number(value));
-                    }}
+                  <OrderResponsibleSelect
+                    value={responsibleUserId}
+                    onChange={setResponsibleUserId}
                     disabled={isCompleted}
                   />
                 </SimpleGrid>
+
+                <OrderPriceField
+                  state={priceState}
+                  onChange={setPriceState}
+                  suggestedPrice={suggestedPrice}
+                  frozenPrice={isCompleted ? (editingOrder?.price ?? null) : undefined}
+                />
 
                 <Textarea
                   label="Détails (optionnel)"

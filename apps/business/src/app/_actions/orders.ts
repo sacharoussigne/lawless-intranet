@@ -20,6 +20,8 @@ import {
 import { emitOrdersChange } from '@/lib/orders/realtime/broadcast';
 import { emitStockChange } from '@/lib/stock/realtime/broadcast';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
+import prisma from '@/lib/prisma';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import type {
   ActiveOrderSummary,
   OrderSummary,
@@ -40,6 +42,8 @@ const createOrderSchema = z
       .positive('Le prix doit être positif')
       .optional()
       .nullable(),
+    priceManual: z.boolean().optional(),
+    responsibleUserId: z.string().min(1).optional().nullable(),
     companyId: z.string().uuid("ID d'entreprise invalide").optional(),
     individualCustomerId: z.string().uuid('ID de particulier invalide').optional(),
     companyGroupId: z.string().uuid('ID de groupe invalide').optional().nullable(),
@@ -66,7 +70,9 @@ async function createOrderUnlogged(
     status?: 'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED';
     type?: 'INCOMING' | 'OUTGOING';
     details?: string;
-    price?: number;
+    price?: number | null;
+    priceManual?: boolean;
+    responsibleUserId?: string | null;
     companyId?: string;
     individualCustomerId?: string;
     companyGroupId?: string | null;
@@ -88,6 +94,8 @@ async function createOrderUnlogged(
     const { businessId } = ctx.tenant;
 
     const validatedData = createOrderSchema.parse(data);
+    const responsibleError = await checkResponsible(businessId, validatedData.responsibleUserId);
+    if (responsibleError) return responsibleError;
 
     const order = await createOrderApi(
       {
@@ -97,6 +105,8 @@ async function createOrderUnlogged(
         type: validatedData.type,
         details: validatedData.details,
         price: validatedData.price,
+        priceManual: validatedData.priceManual,
+        responsibleUserId: validatedData.responsibleUserId,
         companyId: validatedData.companyId,
         individualCustomerId: validatedData.individualCustomerId,
         companyGroupId: validatedData.companyGroupId,
@@ -127,6 +137,8 @@ const updateOrderSchema = z.object({
     .positive('Le prix doit être positif')
     .optional()
     .nullable(),
+  priceManual: z.boolean().optional(),
+  responsibleUserId: z.string().min(1).optional().nullable(),
   items: z
     .array(
       z.object({
@@ -149,6 +161,7 @@ const completeOrderSchema = z
       .positive('Le prix doit être positif')
       .optional()
       .nullable(),
+    priceManual: z.boolean().optional(),
     items: z
       .array(
         z.object({
@@ -193,6 +206,8 @@ const getOrdersPageSchema = z.object({
   search: z.string().max(255).optional(),
   createdAtFrom: z.string().optional().nullable(),
   createdAtTo: z.string().optional().nullable(),
+  /** Only the orders the signed-in user is responsible for. */
+  mine: z.boolean().optional(),
 });
 
 const getOrderByIdSchema = z.object({
@@ -202,6 +217,16 @@ const getOrderByIdSchema = z.object({
 const getActiveOrdersForCompanyGroupSchema = z.object({
   companyGroupId: z.string().uuid('ID de groupe invalide'),
 });
+
+/** A responsible must be a member of the business (null clears it). */
+async function checkResponsible(businessId: string, userId: string | null | undefined) {
+  if (!userId) return null;
+  const member = await prisma.businessMember.findFirst({
+    where: { businessId, userId },
+    select: { id: true },
+  });
+  return member ? null : { status: 422, error: "Le responsable n'est pas membre de l'entreprise" };
+}
 
 async function requireOrdersViewContext(businessSlug: string) {
   return requireTenantServerActionContext(businessSlug, {
@@ -225,6 +250,7 @@ export async function getOrdersPage(
     search?: string;
     createdAtFrom?: string | null;
     createdAtTo?: string | null;
+    mine?: boolean;
   } = {},
 ) {
   try {
@@ -232,7 +258,7 @@ export async function getOrdersPage(
     if (!ctx.ok) return ctx.response;
     const { businessId } = ctx.tenant;
 
-    const { page, pageSize, status, type, search, createdAtFrom, createdAtTo } =
+    const { page, pageSize, status, type, search, createdAtFrom, createdAtTo, mine } =
       getOrdersPageSchema.parse(params);
 
     const result = await listOrdersPage(
@@ -245,6 +271,7 @@ export async function getOrdersPage(
         search,
         createdAtFrom,
         createdAtTo,
+        responsibleUserId: mine ? ctx.tenant.userId : null,
       },
       await inventoryCookie(),
     );
@@ -315,6 +342,38 @@ export async function getActiveOrdersForCompanyGroup(
   }
 }
 
+/** Members of the business, to pick an order's responsible. */
+export async function listOrderResponsibleOptions(businessSlug: string) {
+  try {
+    const ctx = await requireOrdersViewContext(businessSlug);
+    if (!ctx.ok) return ctx.response;
+    const { businessId } = ctx.tenant;
+
+    const members = await prisma.businessMember.findMany({
+      where: { businessId },
+      select: { userId: true },
+    });
+    const profiles = await fetchBusinessUserProfiles(
+      businessId,
+      members.map((member) => member.userId),
+    );
+    const options = members
+      .map((member) => {
+        const profile = profiles.get(member.userId);
+        return {
+          userId: member.userId,
+          name: profile?.name ?? member.userId,
+          image: profile?.image ?? null,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+    return { status: 200, data: options };
+  } catch (error) {
+    return serviceActionError(error, 'Erreur lors de la récupération des membres');
+  }
+}
+
 async function updateOrderUnlogged(
   businessSlug: string,
   data: {
@@ -324,6 +383,8 @@ async function updateOrderUnlogged(
     type?: 'INCOMING' | 'OUTGOING';
     details?: string;
     price?: number | null;
+    priceManual?: boolean;
+    responsibleUserId?: string | null;
     items?: { itemId: string; quantity: number }[];
   },
   meta?: unknown,
@@ -349,6 +410,8 @@ async function updateOrderUnlogged(
     }
 
     const validatedData = updateOrderSchema.parse(data);
+    const responsibleError = await checkResponsible(businessId, validatedData.responsibleUserId);
+    if (responsibleError) return responsibleError;
 
     const order = await updateOrderApi(
       {
@@ -359,6 +422,8 @@ async function updateOrderUnlogged(
         type: validatedData.type,
         details: validatedData.details,
         price: validatedData.price,
+        priceManual: validatedData.priceManual,
+        responsibleUserId: validatedData.responsibleUserId,
         items: validatedData.items,
       },
       await inventoryCookie(),
@@ -383,6 +448,7 @@ async function completeOrderUnlogged(
     type?: 'INCOMING' | 'OUTGOING';
     details?: string;
     price?: number | null;
+    priceManual?: boolean;
     items?: { itemId: string; quantity: number }[];
     skipStock: boolean;
     stockLines?: { itemId: string; quantity: number; chestId: string }[];
@@ -414,6 +480,7 @@ async function completeOrderUnlogged(
         type: validatedData.type,
         details: validatedData.details,
         price: validatedData.price,
+        priceManual: validatedData.priceManual,
         items: validatedData.items,
         effectiveRole,
       },

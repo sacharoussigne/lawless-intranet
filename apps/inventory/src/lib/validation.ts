@@ -148,6 +148,8 @@ export const createOrderSchema = scopeFieldsSchema
     type: orderTypeSchema.optional(),
     details: z.string().max(1000).optional().nullable(),
     price: z.number().positive().optional().nullable(),
+    priceManual: z.boolean().optional(),
+    responsibleUserId: z.string().min(1).optional().nullable(),
     companyId: z.string().uuid().optional().nullable(),
     individualCustomerId: z.string().uuid().optional().nullable(),
     companyGroupId: z.string().uuid().optional().nullable(),
@@ -172,7 +174,30 @@ export const updateOrderSchema = scopeFieldsSchema.extend({
   type: orderTypeSchema.optional(),
   details: z.string().max(1000).optional().nullable(),
   price: z.number().positive().optional().nullable(),
+  priceManual: z.boolean().optional(),
+  responsibleUserId: z.string().min(1).optional().nullable(),
   items: z.array(orderItemInputSchema).min(1).optional(),
+});
+
+export const orderCommentBodySchema = z.string().trim().min(1, 'Le commentaire est vide').max(5000);
+
+export const createOrderCommentSchema = scopeFieldsSchema.extend({
+  orderId: idSchema,
+  body: orderCommentBodySchema,
+});
+
+export const updateOrderCommentSchema = createOrderCommentSchema.extend({
+  eventId: idSchema,
+});
+
+export const deleteOrderCommentSchema = scopeFieldsSchema.extend({
+  orderId: idSchema,
+  eventId: idSchema,
+  canDeleteAny: z.boolean().default(false),
+});
+
+export const duplicateOrderSchema = scopeFieldsSchema.extend({
+  id: idSchema,
 });
 
 export const completeOrderSchema = scopeFieldsSchema.extend({
@@ -181,6 +206,7 @@ export const completeOrderSchema = scopeFieldsSchema.extend({
   type: orderTypeSchema.optional(),
   details: z.string().max(1000).optional().nullable(),
   price: z.number().positive().optional().nullable(),
+  priceManual: z.boolean().optional(),
   items: z.array(orderItemInputSchema).min(1).optional(),
   skipStock: z.boolean(),
   stockLines: z

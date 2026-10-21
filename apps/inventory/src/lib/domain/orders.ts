@@ -10,7 +10,9 @@ import {
 } from '@/lib/stock/ensureTodayStock';
 import { resolveChestAccess, hasChestAccess } from '@/lib/chests/access';
 import { stockTransaction } from '@/lib/stock/lock';
-import type { OrderStatus, OrderType } from '@/generated/prisma/client';
+import type { OrderEventChange } from '@lawless-intranet/types';
+import type { OrderStatus, OrderType, Prisma } from '@/generated/prisma/client';
+import { diffOrderSnapshots, resolvePriceMode, type OrderSnapshot } from '@/lib/domain/orderChanges';
 
 const ORDER_DETAIL_INCLUDE = {
   company: { select: { id: true, name: true, bankAccountNumber: true } },
@@ -30,23 +32,67 @@ const ORDER_LIST_INCLUDE = {
   _count: { select: { items: true } },
 } as const;
 
-async function resolveOrderPrice(
-  scopeType: string,
-  scopeId: string,
-  items: { itemId: string; quantity: number }[],
-  clientPrice: number | null | undefined,
-): Promise<number | null> {
-  if (clientPrice !== undefined) return clientPrice;
-  const itemsWithPrices = await prisma.item.findMany({
-    where: { id: { in: items.map((i) => i.itemId) }, ...scopeWhere(scopeType, scopeId) },
-    select: { id: true, price: true },
+type OrderLineInput = { itemId: string; quantity: number };
+
+/** Name and catalog price of the order's items, in this scope. */
+async function loadItemCatalog(scopeType: string, scopeId: string, itemIds: string[]) {
+  const items = await prisma.item.findMany({
+    where: { id: { in: itemIds }, ...scopeWhere(scopeType, scopeId) },
+    select: { id: true, name: true, price: true },
   });
+  return new Map(items.map((item) => [item.id, item]));
+}
+
+function catalogTotal(
+  lines: OrderLineInput[],
+  catalog: Map<string, { price: unknown }>,
+): number | null {
   return calculateOrderPriceFromItems(
-    items.map((orderItem) => {
-      const item = itemsWithPrices.find((i) => i.id === orderItem.itemId);
-      return { quantity: orderItem.quantity, price: item?.price ?? null };
-    }),
+    lines.map((line) => ({ quantity: line.quantity, price: catalog.get(line.itemId)?.price ?? null })),
   );
+}
+
+const ORDER_SNAPSHOT_SELECT = {
+  name: true,
+  status: true,
+  type: true,
+  details: true,
+  price: true,
+  priceManual: true,
+  responsibleUserId: true,
+  items: { select: { itemId: true, quantity: true, item: { select: { name: true } } } },
+} as const;
+
+type OrderSnapshotRow = {
+  name: string;
+  status: OrderStatus;
+  type: OrderType;
+  details: string | null;
+  price: unknown;
+  priceManual: boolean;
+  responsibleUserId: string | null;
+  items: { itemId: string; quantity: number; item?: { name: string } | null }[];
+};
+
+function toSnapshot(order: OrderSnapshotRow): OrderSnapshot {
+  return {
+    name: order.name,
+    status: order.status,
+    type: order.type,
+    details: order.details,
+    price: order.price != null ? Number(order.price) : null,
+    priceManual: order.priceManual,
+    responsibleUserId: order.responsibleUserId,
+    items: order.items.map((line) => ({
+      itemId: line.itemId,
+      name: line.item?.name ?? '—',
+      quantity: line.quantity,
+    })),
+  };
+}
+
+function changesJson(changes: OrderEventChange[]): Prisma.InputJsonValue {
+  return changes as unknown as Prisma.InputJsonValue;
 }
 
 export async function createOrder(input: {
@@ -57,10 +103,14 @@ export async function createOrder(input: {
   type?: OrderType;
   details?: string | null;
   price?: number | null;
+  /** Defaults to true when a price is sent (older callers), false otherwise. */
+  priceManual?: boolean;
+  responsibleUserId?: string | null;
   companyId?: string | null;
   individualCustomerId?: string | null;
   companyGroupId?: string | null;
-  items: { itemId: string; quantity: number }[];
+  items: OrderLineInput[];
+  actorUserId?: string | null;
 }): Promise<DomainResult<unknown>> {
   const where = scopeWhere(input.scopeType, input.scopeId);
   let orderName = input.name;
@@ -89,12 +139,18 @@ export async function createOrder(input: {
 
   if (!orderName) return err('Le nom de la commande est requis', 400);
 
-  const orderPrice = await resolveOrderPrice(
+  const catalog = await loadItemCatalog(
     input.scopeType,
     input.scopeId,
-    input.items,
-    input.price,
+    input.items.map((line) => line.itemId),
   );
+  const pricing = resolvePriceMode({
+    requestedManual: input.priceManual ?? input.price != null,
+    requestedPrice: input.price,
+    currentManual: false,
+    currentPrice: null,
+    catalogTotal: catalogTotal(input.items, catalog),
+  });
 
   const order = await prisma.order.create({
     data: {
@@ -104,7 +160,10 @@ export async function createOrder(input: {
       status: input.status ?? 'DRAFT',
       type: input.type ?? 'INCOMING',
       details: input.details ?? undefined,
-      ...(orderPrice !== null && { price: orderPrice }),
+      price: pricing.price,
+      priceManual: pricing.priceManual,
+      createdByUserId: input.actorUserId ?? null,
+      responsibleUserId: input.responsibleUserId ?? null,
       companyId: input.companyId ?? null,
       individualCustomerId: input.individualCustomerId ?? null,
       companyGroupId: input.companyGroupId ?? null,
@@ -114,6 +173,7 @@ export async function createOrder(input: {
           quantity: item.quantity,
         })),
       },
+      events: { create: { kind: 'CREATED', actorUserId: input.actorUserId ?? null } },
     },
     include: {
       items: { include: { item: { select: { id: true, name: true } } } },
@@ -135,6 +195,7 @@ export async function listOrdersPage(input: {
   search?: string;
   createdAtFrom?: string | null;
   createdAtTo?: string | null;
+  responsibleUserId?: string | null;
 }) {
   const page = input.page ?? 1;
   const pageSize = input.pageSize ?? 10;
@@ -158,6 +219,7 @@ export async function listOrdersPage(input: {
         ? { status: { in: statuses } }
         : {}),
     ...(input.type ? { type: input.type } : {}),
+    ...(input.responsibleUserId ? { responsibleUserId: input.responsibleUserId } : {}),
     ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
     ...(searchTerm
       ? { name: { contains: searchTerm, mode: 'insensitive' as const } }
@@ -256,56 +318,77 @@ export async function updateOrder(input: {
   type?: OrderType;
   details?: string | null;
   price?: number | null;
-  items?: { itemId: string; quantity: number }[];
+  priceManual?: boolean;
+  responsibleUserId?: string | null;
+  items?: OrderLineInput[];
+  actorUserId?: string | null;
 }): Promise<DomainResult<unknown>> {
   const where = scopeWhere(input.scopeType, input.scopeId);
   const oldOrder = await prisma.order.findFirst({
     where: { id: input.id, ...where },
-    select: {
-      status: true,
-      type: true,
-      items: { select: { itemId: true, quantity: true } },
-    },
+    select: ORDER_SNAPSHOT_SELECT,
   });
   if (!oldOrder) return err('Commande non trouvée', 404);
   if (oldOrder.status === 'COMPLETED') {
     return err('Les commandes terminées ne peuvent pas être modifiées', 403);
   }
 
+  const before = toSnapshot(oldOrder);
   const itemsToUse =
     input.items || oldOrder.items.map((item) => ({ itemId: item.itemId, quantity: item.quantity }));
-
-  const updateData: Record<string, unknown> = {
-    name: input.name,
-    status: input.status,
-    type: input.type,
-    details: input.details,
-  };
-
-  if (input.price !== undefined || input.items) {
-    updateData.price = await resolveOrderPrice(
-      input.scopeType,
-      input.scopeId,
-      itemsToUse,
-      input.price,
-    );
-  }
+  const catalog = await loadItemCatalog(
+    input.scopeType,
+    input.scopeId,
+    itemsToUse.map((line) => line.itemId),
+  );
+  // An automatic price is recomputed on every save, so it also follows catalog changes.
+  const pricing = resolvePriceMode({
+    requestedManual: input.priceManual,
+    requestedPrice: input.price,
+    currentManual: before.priceManual,
+    currentPrice: before.price,
+    catalogTotal: catalogTotal(itemsToUse, catalog),
+  });
 
   const order = await prisma.$transaction(async (tx) => {
     if (input.items) {
       await tx.orderItem.deleteMany({ where: { orderId: input.id } });
-      updateData.items = {
-        create: itemsToUse.map((item) => ({
-          itemId: item.itemId,
-          quantity: item.quantity,
-        })),
-      };
     }
-    return tx.order.update({
+    const updated = await tx.order.update({
       where: { id: input.id },
-      data: updateData,
+      data: {
+        name: input.name,
+        status: input.status,
+        type: input.type,
+        details: input.details,
+        responsibleUserId: input.responsibleUserId,
+        price: pricing.price,
+        priceManual: pricing.priceManual,
+        ...(input.items
+          ? {
+              items: {
+                create: itemsToUse.map((item) => ({
+                  itemId: item.itemId,
+                  quantity: item.quantity,
+                })),
+              },
+            }
+          : {}),
+      },
       include: ORDER_DETAIL_INCLUDE,
     });
+    const changes = diffOrderSnapshots(before, toSnapshot(updated));
+    if (changes.length > 0) {
+      await tx.orderEvent.create({
+        data: {
+          orderId: input.id,
+          kind: 'UPDATED',
+          actorUserId: input.actorUserId ?? null,
+          changes: changesJson(changes),
+        },
+      });
+    }
+    return updated;
   });
 
   return ok(serializeOrder(order));
@@ -323,7 +406,8 @@ export async function completeOrder(input: {
   type?: OrderType;
   details?: string | null;
   price?: number | null;
-  items?: { itemId: string; quantity: number }[];
+  priceManual?: boolean;
+  items?: OrderLineInput[];
   skipStock: boolean;
   stockLines?: { itemId: string; quantity: number; chestId: string }[];
   userId?: string | null;
@@ -332,21 +416,13 @@ export async function completeOrder(input: {
   const where = scopeWhere(input.scopeType, input.scopeId);
   const oldOrder = await prisma.order.findFirst({
     where: { id: input.id, ...where },
-    select: {
-      status: true,
-      type: true,
-      items: {
-        select: {
-          itemId: true,
-          quantity: true,
-        },
-      },
-    },
+    select: ORDER_SNAPSHOT_SELECT,
   });
   if (!oldOrder) return err('Commande non trouvée', 404);
   if (oldOrder.status === 'COMPLETED') {
     return err('Les commandes terminées ne peuvent pas être modifiées', 403);
   }
+  const before = toSnapshot(oldOrder);
 
   const itemsToUse =
     input.items ||
@@ -397,21 +473,26 @@ export async function completeOrder(input: {
     }
   }
 
+  const catalog = await loadItemCatalog(
+    input.scopeType,
+    input.scopeId,
+    itemsToUse.map((line) => line.itemId),
+  );
+  const pricing = resolvePriceMode({
+    requestedManual: input.priceManual,
+    requestedPrice: input.price,
+    currentManual: before.priceManual,
+    currentPrice: before.price,
+    catalogTotal: catalogTotal(itemsToUse, catalog),
+  });
   const updateData: Record<string, unknown> = {
     name: input.name,
     type: input.type,
     details: input.details,
     status: 'COMPLETED' as OrderStatus,
+    price: pricing.price,
+    priceManual: pricing.priceManual,
   };
-
-  if (input.price !== undefined || input.items) {
-    updateData.price = await resolveOrderPrice(
-      input.scopeType,
-      input.scopeId,
-      itemsToUse,
-      input.price,
-    );
-  }
 
   const today = getTodayStart();
   const tomorrow = getTomorrowStart();
@@ -507,6 +588,18 @@ export async function completeOrder(input: {
         });
       }
 
+      await tx.orderEvent.create({
+        data: {
+          orderId: input.id,
+          kind: 'COMPLETED',
+          actorUserId: input.userId ?? null,
+          changes: changesJson([
+            ...diffOrderSnapshots(before, toSnapshot(updated)),
+            { field: 'stock', moved: stockLines.length > 0 },
+          ]),
+        },
+      });
+
       return updated;
     });
 
@@ -534,4 +627,195 @@ export async function deleteOrder(input: {
   }
   await prisma.order.delete({ where: { id: input.id } });
   return ok({ success: true });
+}
+
+// --- Chatter ---
+
+function serializeOrderEvent(event: {
+  id: string;
+  orderId: string;
+  kind: string;
+  actorUserId: string | null;
+  body: string | null;
+  changes: unknown;
+  createdAt: Date;
+  editedAt: Date | null;
+}) {
+  return {
+    ...event,
+    changes: (event.changes as OrderEventChange[] | null) ?? null,
+    createdAt: event.createdAt.toISOString(),
+    editedAt: event.editedAt?.toISOString() ?? null,
+  };
+}
+
+async function findScopedOrder(scopeType: string, scopeId: string, orderId: string) {
+  return prisma.order.findFirst({
+    where: { id: orderId, ...scopeWhere(scopeType, scopeId) },
+    select: { id: true },
+  });
+}
+
+/** Chatter of an order, newest first. */
+export async function listOrderEvents(input: {
+  scopeType: string;
+  scopeId: string;
+  orderId: string;
+}): Promise<DomainResult<unknown>> {
+  if (!(await findScopedOrder(input.scopeType, input.scopeId, input.orderId))) {
+    return err('Commande non trouvée', 404);
+  }
+  const events = await prisma.orderEvent.findMany({
+    where: { orderId: input.orderId },
+    orderBy: { createdAt: 'desc' },
+  });
+  return ok(events.map(serializeOrderEvent));
+}
+
+export async function addOrderComment(input: {
+  scopeType: string;
+  scopeId: string;
+  orderId: string;
+  body: string;
+  actorUserId: string;
+}): Promise<DomainResult<unknown>> {
+  if (!(await findScopedOrder(input.scopeType, input.scopeId, input.orderId))) {
+    return err('Commande non trouvée', 404);
+  }
+  const event = await prisma.orderEvent.create({
+    data: {
+      orderId: input.orderId,
+      kind: 'COMMENT',
+      body: input.body,
+      actorUserId: input.actorUserId,
+    },
+  });
+  return ok(serializeOrderEvent(event), 201);
+}
+
+async function findScopedComment(input: {
+  scopeType: string;
+  scopeId: string;
+  orderId: string;
+  eventId: string;
+}) {
+  return prisma.orderEvent.findFirst({
+    where: {
+      id: input.eventId,
+      orderId: input.orderId,
+      kind: 'COMMENT',
+      order: scopeWhere(input.scopeType, input.scopeId),
+    },
+    select: { id: true, actorUserId: true },
+  });
+}
+
+/** Only the author edits a comment. */
+export async function updateOrderComment(input: {
+  scopeType: string;
+  scopeId: string;
+  orderId: string;
+  eventId: string;
+  body: string;
+  actorUserId: string;
+}): Promise<DomainResult<unknown>> {
+  const comment = await findScopedComment(input);
+  if (!comment) return err('Commentaire introuvable', 404);
+  if (comment.actorUserId !== input.actorUserId) {
+    return err('Seul l’auteur peut modifier ce commentaire', 403);
+  }
+  const event = await prisma.orderEvent.update({
+    where: { id: comment.id },
+    data: { body: input.body, editedAt: new Date() },
+  });
+  return ok(serializeOrderEvent(event));
+}
+
+/** The author deletes their comment; `canDeleteAny` (checked by the host) deletes anyone's. */
+export async function deleteOrderComment(input: {
+  scopeType: string;
+  scopeId: string;
+  orderId: string;
+  eventId: string;
+  actorUserId: string;
+  canDeleteAny: boolean;
+}): Promise<DomainResult<{ success: true }>> {
+  const comment = await findScopedComment(input);
+  if (!comment) return err('Commentaire introuvable', 404);
+  if (!input.canDeleteAny && comment.actorUserId !== input.actorUserId) {
+    return err('Seul l’auteur peut supprimer ce commentaire', 403);
+  }
+  await prisma.orderEvent.delete({ where: { id: comment.id } });
+  return ok({ success: true });
+}
+
+/**
+ * New draft with the same customer, group, items and details, priced automatically.
+ * Both orders get a DUPLICATED entry pointing to each other.
+ */
+export async function duplicateOrder(input: {
+  scopeType: string;
+  scopeId: string;
+  id: string;
+  actorUserId?: string | null;
+}): Promise<DomainResult<unknown>> {
+  const source = await prisma.order.findFirst({
+    where: { id: input.id, ...scopeWhere(input.scopeType, input.scopeId) },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      details: true,
+      responsibleUserId: true,
+      companyId: true,
+      individualCustomerId: true,
+      companyGroupId: true,
+      items: { select: { itemId: true, quantity: true } },
+    },
+  });
+  if (!source) return err('Commande non trouvée', 404);
+  if (!source.companyId && !source.individualCustomerId) {
+    return err("Le client de cette commande n'existe plus", 400);
+  }
+  if (source.items.length === 0) return err('Cette commande ne contient aucun article', 400);
+
+  const created = await createOrder({
+    scopeType: input.scopeType,
+    scopeId: input.scopeId,
+    status: 'DRAFT',
+    type: source.type,
+    details: source.details,
+    priceManual: false,
+    responsibleUserId: source.responsibleUserId,
+    companyId: source.companyId,
+    individualCustomerId: source.individualCustomerId,
+    companyGroupId: source.companyGroupId,
+    items: source.items,
+    actorUserId: input.actorUserId,
+  });
+  if (!created.ok) return created;
+  const copy = created.data as { id: string; name: string };
+
+  await prisma.orderEvent.createMany({
+    data: [
+      {
+        orderId: copy.id,
+        kind: 'DUPLICATED',
+        actorUserId: input.actorUserId ?? null,
+        changes: changesJson([
+          { field: 'duplicate', direction: 'from', orderId: source.id, orderName: source.name },
+        ]),
+      },
+      {
+        orderId: source.id,
+        kind: 'DUPLICATED',
+        actorUserId: input.actorUserId ?? null,
+        changes: changesJson([
+          { field: 'duplicate', direction: 'to', orderId: copy.id, orderName: copy.name },
+        ]),
+      },
+    ],
+  });
+
+  return created;
 }

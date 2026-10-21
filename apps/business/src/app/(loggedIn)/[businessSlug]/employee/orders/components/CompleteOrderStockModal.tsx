@@ -32,6 +32,7 @@ export type CompleteOrderPendingPayload = {
   type: OrderTypeEnum;
   details?: string;
   price?: number | null;
+  priceManual?: boolean;
   items: { itemId: string; quantity: number }[];
 };
 
@@ -184,6 +185,7 @@ function CompleteOrderStockBody({
         type: pending.type,
         details: pending.details,
         price: pending.price,
+        priceManual: pending.priceManual,
         items: pending.items,
         skipStock: skipStock || stockLines.length === 0,
         stockLines,

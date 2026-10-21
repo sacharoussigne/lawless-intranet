@@ -38,6 +38,7 @@ function filtersMatchSeed(filters: OrdersPageFilters, seed: OrdersPageFilters): 
     filters.search === seed.search &&
     filters.createdAtFrom === seed.createdAtFrom &&
     filters.createdAtTo === seed.createdAtTo &&
+    filters.mine === seed.mine &&
     filters.status.length === seed.status.length &&
     filters.status.every((status, index) => status === seed.status[index])
   );
@@ -54,6 +55,7 @@ async function fetchOrdersPage(businessSlug: string, filters: OrdersPageFilters)
     search: filters.search || undefined,
     createdAtFrom: filters.createdAtFrom,
     createdAtTo: filters.createdAtTo,
+    mine: filters.mine || undefined,
   });
   return handleAction(result) as OrdersPageResult;
 }
@@ -169,6 +171,21 @@ export function useOrderFormItems(companyGroupId: string | null, enabled: boolea
   return useQuery({
     queryKey: ordersKeys.formItems(businessSlug, companyGroupId),
     queryFn: () => fetchOrderFormItems(businessSlug, companyGroupId),
+    enabled: Boolean(businessSlug && enabled),
+    staleTime: DEFAULT_STALE_TIME_MS,
+  });
+}
+
+export type OrderResponsibleOption = { userId: string; name: string; image: string | null };
+
+/** Members of the business that can be made responsible for an order. */
+export function useOrderResponsibleOptions(enabled = true) {
+  const businessSlug = useRequiredBusinessSlug();
+
+  return useQuery({
+    queryKey: ordersKeys.responsibleOptions(businessSlug),
+    queryFn: async () =>
+      handleAction(await fetchRead(businessSlug, 'orderResponsibleOptions')) as OrderResponsibleOption[],
     enabled: Boolean(businessSlug && enabled),
     staleTime: DEFAULT_STALE_TIME_MS,
   });

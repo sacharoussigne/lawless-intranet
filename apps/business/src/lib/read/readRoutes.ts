@@ -76,7 +76,12 @@ import {
   getMediaUserName,
 } from '@/app/_actions/media';
 import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
-import { getActiveOrdersForCompanyGroup, getOrderById, getOrdersPage } from '@/app/_actions/orders';
+import {
+  getActiveOrdersForCompanyGroup,
+  getOrderById,
+  getOrdersPage,
+  listOrderResponsibleOptions,
+} from '@/app/_actions/orders';
 
 /**
  * Reads exposed as GET (`/api/d/<slug>/read/<query>`) for React Query refetches.
@@ -102,6 +107,7 @@ export const readRoutes = {
     getActiveOrdersForCompanyGroup(slug, input),
   orderLetterAssignments: (slug: string, _input?: undefined) =>
     getOrderLetterTemplateAssignments(slug),
+  orderResponsibleOptions: (slug: string, _input?: undefined) => listOrderResponsibleOptions(slug),
   individualCustomers: (slug: string, _input?: undefined) => getIndividualCustomers(slug),
 
   // Agenda and to-dos (agenda-ui, see lib/agenda/agendaUiActions)

@@ -50,6 +50,7 @@ export function EmployeeActiveOrdersDashboard({
     type: defaultActiveOrdersPageFilters.type,
     createdAtFrom: defaultActiveOrdersPageFilters.createdAtFrom,
     createdAtTo: defaultActiveOrdersPageFilters.createdAtTo,
+    mine: defaultActiveOrdersPageFilters.mine,
   });
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);

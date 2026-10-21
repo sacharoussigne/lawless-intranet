@@ -7,6 +7,7 @@ import {
   Paper,
   Stack,
   Text,
+  SegmentedControl,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconPlus, IconPackage } from '@tabler/icons-react';
@@ -70,6 +71,7 @@ export default function OrdersPageClient({
     type: defaultOrdersPageFilters.type,
     createdAtFrom: defaultOrdersPageFilters.createdAtFrom,
     createdAtTo: defaultOrdersPageFilters.createdAtTo,
+    mine: defaultOrdersPageFilters.mine,
   });
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
@@ -101,6 +103,7 @@ export default function OrdersPageClient({
         type: saved.type,
         createdAtFrom: saved.createdAtFrom,
         createdAtTo: saved.createdAtTo,
+        mine: saved.mine,
       }));
       setSearchInput(saved.search);
     }
@@ -116,6 +119,7 @@ export default function OrdersPageClient({
       pageSize: filters.pageSize,
       createdAtFrom: filters.createdAtFrom,
       createdAtTo: filters.createdAtTo,
+      mine: filters.mine,
     });
   }, [
     businessSlug,
@@ -125,6 +129,7 @@ export default function OrdersPageClient({
     filters.pageSize,
     filters.createdAtFrom,
     filters.createdAtTo,
+    filters.mine,
     searchInput,
   ]);
 
@@ -143,6 +148,7 @@ export default function OrdersPageClient({
       filters.type ||
       filters.createdAtFrom ||
       filters.createdAtTo ||
+      filters.mine ||
       searchInput.trim(),
   );
   const isSearchDebouncing = searchInput !== debouncedSearch;
@@ -167,7 +173,14 @@ export default function OrdersPageClient({
 
   useEffect(() => {
     setFilters((current) => ({ ...current, page: 1 }));
-  }, [filters.status, filters.type, filters.createdAtFrom, filters.createdAtTo, debouncedSearch]);
+  }, [
+    filters.status,
+    filters.type,
+    filters.createdAtFrom,
+    filters.createdAtTo,
+    filters.mine,
+    debouncedSearch,
+  ]);
 
   const handleStatusFilterChange = (value: string[]) => {
     setFilters((current) => ({ ...current, status: value }));
@@ -220,6 +233,15 @@ export default function OrdersPageClient({
         </Paper>
       ) : (
         <>
+          <SegmentedControl
+            mb="md"
+            value={filters.mine ? 'mine' : 'all'}
+            onChange={(value) => setFilters((current) => ({ ...current, mine: value === 'mine' }))}
+            data={[
+              { value: 'all', label: 'Toutes les commandes' },
+              { value: 'mine', label: 'Mes commandes' },
+            ]}
+          />
           <ActiveFilters
             filters={[
               {

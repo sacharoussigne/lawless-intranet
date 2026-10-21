@@ -16,6 +16,7 @@ import {
   Badge,
   Alert,
   SegmentedControl,
+  SimpleGrid,
 } from '@mantine/core';
 import { IconTrash, IconAlertTriangle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -42,6 +43,11 @@ import { calculateOrderWeightFromItems } from '@/lib/orders/calculateOrderWeight
 import type { ItemWithRelations } from '@/types/stock';
 import { OrderTypeEnum } from '@/types/enum/orderType';
 import { orderTypeSelectOptions } from '@/lib/orders/orderSelectOptions';
+import { orderPricePayload, type OrderPriceState } from '@/lib/orders/orderPriceMode';
+import { OrderPriceField } from './OrderPriceField';
+import { OrderResponsibleSelect } from './OrderResponsibleSelect';
+
+const AUTO_PRICE: OrderPriceState = { manual: false, manualPrice: '' };
 
 function orderClientLabel(order: ActiveOrderSummary): string {
   return order.individualCustomer?.name ?? order.company?.name ?? '—';
@@ -83,8 +89,8 @@ export default function CreateOrderModal({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<OrderTypeEnum>(OrderTypeEnum.INCOMING);
   const [orderDetails, setOrderDetails] = useState('');
-  const [orderPrice, setOrderPrice] = useState<number | ''>('');
-  const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
+  const [priceState, setPriceState] = useState<OrderPriceState>(AUTO_PRICE);
+  const [responsibleUserId, setResponsibleUserId] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<CreateOrderLineItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -190,8 +196,7 @@ export default function CreateOrderModal({
     setIndividualCustomerInput('');
     setClientMode('company');
     setOrderItems([]);
-    setOrderPrice('');
-    setPriceManuallyEdited(false);
+    setPriceState(AUTO_PRICE);
   }, [orderType]);
 
   useEffect(() => {
@@ -284,12 +289,6 @@ export default function CreateOrderModal({
     [orderItems, itemsToUse]
   );
 
-  useEffect(() => {
-    if (priceManuallyEdited) return;
-    if (suggestedPrice == null) return;
-    setOrderPrice((prev) => (prev === suggestedPrice ? prev : suggestedPrice));
-  }, [suggestedPrice, priceManuallyEdited]);
-
   // Réinitialiser le formulaire quand la modal se ferme
   useEffect(() => {
     if (!opened) {
@@ -300,8 +299,8 @@ export default function CreateOrderModal({
       setIndividualCustomerInput('');
       setOrderType(OrderTypeEnum.INCOMING);
       setOrderDetails('');
-      setOrderPrice('');
-      setPriceManuallyEdited(false);
+      setPriceState(AUTO_PRICE);
+      setResponsibleUserId(null);
       setOrderItems([]);
     }
   }, [opened]);
@@ -483,7 +482,8 @@ export default function CreateOrderModal({
       await createOrderMutation.mutateAsync({
         type: orderType,
         details: orderDetails || undefined,
-        price: orderPrice !== '' ? Number(orderPrice) : undefined,
+        ...orderPricePayload(priceState),
+        responsibleUserId,
         ...(selectedCompanyGroupId ? { companyGroupId: selectedCompanyGroupId } : {}),
         ...clientPayload,
         items: orderItems.map((oi) => ({
@@ -643,19 +643,14 @@ export default function CreateOrderModal({
               minRows={3}
             />
 
-            <NumberInput
-              label="Prix (optionnel)"
-              placeholder="Prix de la commande"
-              value={orderPrice}
-              onChange={(value) => {
-                setPriceManuallyEdited(true);
-                setOrderPrice(value === '' ? '' : Number(value));
-              }}
-              min={0}
-              decimalScale={2}
-              fixedDecimalScale
-              prefix="$ "
-            />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <OrderPriceField
+                state={priceState}
+                onChange={setPriceState}
+                suggestedPrice={suggestedPrice}
+              />
+              <OrderResponsibleSelect value={responsibleUserId} onChange={setResponsibleUserId} />
+            </SimpleGrid>
 
             {totalWeight != null && (
               <Text size="sm" c="dimmed">
