@@ -1,47 +1,30 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Stack,
   TextInput,
-  Textarea,
   Select,
   Button,
   Text,
-  NumberInput,
   Divider,
   SimpleGrid,
   Loader,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
 import {
   orderStatusSelectOptions,
   orderTypeSelectOptions,
 } from '@/lib/orders/orderSelectOptions';
-import {
-  calculateOrderPriceFromItems,
-  normalizeItemPrice,
-} from '@/lib/orders/calculateOrderPriceFromItems';
-import { calculateOrderWeightFromItems } from '@/lib/orders/calculateOrderWeightFromItems';
-import { getAvailableItemsForOrder } from '@/lib/orders/getAvailableItemsForOrder';
-import { handleApiZodError } from '@/lib/services/zod';
-import { ParsedZodError } from '@/lib/errors/ParsedZodError';
+import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
 import { OrderStatusEnum } from '@/types/enum/orderStatus';
-import { OrderTypeEnum } from '@/types/enum/orderType';
-import type { OrderItem } from '@/types/orders';
+import type { OrderTypeEnum } from '@/types/enum/orderType';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { OrderItemsTable } from './OrderItemsTable';
-import {
-  CompleteOrderStockModal,
-  type CompleteOrderPendingPayload,
-  type CompleteOrderStockLine,
-} from './CompleteOrderStockModal';
-import {
-  useOrderDetail,
-  useOrderFormItems,
-  useUpdateOrderMutation,
-} from '../hooks/useOrdersQueries';
+import { OrderPriceField } from './OrderPriceField';
+import { OrderResponsibleSelect } from './OrderResponsibleSelect';
+import { CompleteOrderStockModal } from './CompleteOrderStockModal';
+import { useOrderDetail } from '../hooks/useOrdersQueries';
+import { useOrderEditForm } from '../hooks/useOrderEditForm';
 
 interface EditOrderModalProps {
   opened: boolean;
@@ -54,264 +37,45 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
     orderId,
     opened && Boolean(orderId),
   );
-  const companyGroupId = editingOrder?.companyGroupId ?? null;
-  const { data: allItems = [], isLoading: loadingItems } = useOrderFormItems(
-    companyGroupId,
-    opened && Boolean(editingOrder),
-  );
-  const updateOrderMutation = useUpdateOrderMutation();
-
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
+  const edit = useOrderEditForm(editingOrder, opened);
+  const { form } = edit;
   const [completeModalOpened, setCompleteModalOpened] = useState(false);
-  const [pendingComplete, setPendingComplete] = useState<CompleteOrderPendingPayload | null>(
-    null,
-  );
 
-  const form = useForm({
-    initialValues: {
-      name: '',
-      status: OrderStatusEnum.DRAFT,
-      type: OrderTypeEnum.INCOMING,
-      details: '',
-      price: '' as number | '',
-    },
-    validate: {
-      name: (value) => (value.length < 1 ? 'Le nom est requis' : null),
-    },
-  });
-
-  useEffect(() => {
-    if (editingOrder) {
-      setOrderItems(
-        editingOrder.items.map((item) => ({
-          id: item.id,
-          itemId: item.itemId,
-          quantity: item.quantity,
-          item: {
-            id: item.item.id,
-            name: item.item.name,
-            price: item.item.price,
-            weight: item.item.weight ?? null,
-            isEnabled: item.item.isEnabled ?? true,
-          },
-        })),
-      );
-      setPriceManuallyEdited(editingOrder.price != null);
-      form.setValues({
-        name: editingOrder.name,
-        status: editingOrder.status as OrderStatusEnum,
-        type: (editingOrder.type || OrderTypeEnum.INCOMING) as OrderTypeEnum,
-        details: editingOrder.details || '',
-        price: editingOrder.price != null ? editingOrder.price : '',
-      });
-    }
-  }, [editingOrder, opened]);
-
-  const suggestedPrice = useMemo(
-    () =>
-      calculateOrderPriceFromItems(
-        orderItems.map((orderItem) => ({
-          quantity: orderItem.quantity,
-          price: orderItem.item.price,
-        })),
-      ),
-    [orderItems],
-  );
-
-  const totalWeight = useMemo(
-    () =>
-      calculateOrderWeightFromItems(
-        orderItems.map((orderItem) => ({
-          quantity: orderItem.quantity,
-          weight: orderItem.item.weight,
-        })),
-      ),
-    [orderItems],
-  );
-
-  useEffect(() => {
-    if (priceManuallyEdited) return;
-    // Never clear a loaded/typed price when items have no catalog price (common for purchases).
-    if (suggestedPrice == null) return;
-    form.setFieldValue('price', suggestedPrice);
-  }, [suggestedPrice, priceManuallyEdited]);
-
-  const availableItems = useMemo(
-    () =>
-      getAvailableItemsForOrder({
-        orderType: form.values.type,
-        allItems,
-        companyGroupId,
-        firstOrderItemId: orderItems[0]?.itemId ?? null,
-      }),
-    [form.values.type, allItems, companyGroupId, orderItems],
-  );
-
-  const availableItemOptions = useMemo(
-    () =>
-      availableItems
-        .filter((item) => !orderItems.some((oi) => oi.itemId === item.id))
-        .map((item) => ({ value: item.id, label: item.name })),
-    [availableItems, orderItems],
-  );
-
-  const completeStockLines = useMemo<CompleteOrderStockLine[]>(
-    () =>
-      orderItems.map((oi) => {
-        const catalogItem = allItems.find((item) => item.id === oi.itemId);
-        return {
-          itemId: oi.itemId,
-          quantity: oi.quantity,
-          name: oi.item.name,
-          isEnabled: catalogItem?.isEnabled ?? oi.item.isEnabled ?? true,
-        };
-      }),
-    [orderItems, allItems],
-  );
-
-  const handleRemoveItem = (itemId: string) => {
-    setOrderItems(orderItems.filter((oi) => oi.itemId !== itemId));
-  };
-
-  const handleQuantityChange = (itemId: string, quantity: number | string) => {
-    const numQuantity =
-      typeof quantity === 'number'
-        ? quantity
-        : quantity === ''
-          ? 1
-          : Number(quantity) || 1;
-    setOrderItems(
-      orderItems.map((oi) =>
-        oi.itemId === itemId ? { ...oi, quantity: numQuantity } : oi,
-      ),
-    );
-  };
-
-  const handleAddItem = (itemId: string) => {
-    const itemToAdd = allItems.find((item) => item.id === itemId);
-    if (itemToAdd && !orderItems.some((oi) => oi.itemId === itemId)) {
-      setOrderItems([
-        ...orderItems,
-        {
-          itemId: itemToAdd.id,
-          quantity: 1,
-          item: {
-            id: itemToAdd.id,
-            name: itemToAdd.name,
-            price: normalizeItemPrice(itemToAdd.price),
-            weight: itemToAdd.weight ?? null,
-            isEnabled: itemToAdd.isEnabled ?? true,
-          },
-        },
-      ]);
-    }
-  };
-
-  const resetAndClose = () => {
+  const close = () => {
     setCompleteModalOpened(false);
-    setPendingComplete(null);
-    form.reset();
-    setOrderItems([]);
-    setPriceManuallyEdited(false);
+    edit.clearPendingComplete();
     // Defer parent close so nested Mantine modals unmount sequentially.
     window.setTimeout(() => {
       onClose();
     }, 0);
   };
 
-  const handleSubmit = async (values: typeof form.values) => {
-    if (!editingOrder) return;
-
-    if (orderItems.length === 0) {
-      notifications.show({
-        title: 'Erreur',
-        message: 'La commande doit contenir au moins un article',
-        color: 'danger',
-      });
-      return;
-    }
-
-    const payloadItems = orderItems.map((oi) => ({
-      itemId: oi.itemId,
-      quantity: oi.quantity,
-    }));
-
-    const priceFromForm = (() => {
-      if (values.price === '' || values.price == null) return null;
-      const parsed = Number(values.price);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    })();
-    const priceFromOrder = (() => {
-      if (editingOrder.price == null) return null;
-      const parsed = Number(editingOrder.price);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    })();
-    const priceFromItems = calculateOrderPriceFromItems(
-      orderItems.map((orderItem) => ({
-        quantity: orderItem.quantity,
-        price: orderItem.item.price,
-      })),
-    );
-    const resolvedPrice = priceFromForm ?? priceFromOrder ?? priceFromItems;
-
-    if (
-      values.status === OrderStatusEnum.COMPLETED &&
-      editingOrder.status !== OrderStatusEnum.COMPLETED
-    ) {
-      setPendingComplete({
-        id: editingOrder.id,
-        name: values.name,
-        type: values.type,
-        details: values.details || undefined,
-        price: resolvedPrice,
-        items: payloadItems,
-      });
-      setCompleteModalOpened(true);
-      return;
-    }
-
-    try {
-      await updateOrderMutation.mutateAsync({
-        id: editingOrder.id,
-        name: values.name,
-        status: values.status as Exclude<
-          OrderStatusEnum,
-          typeof OrderStatusEnum.COMPLETED
-        >,
-        type: values.type,
-        details: values.details || undefined,
-        price: resolvedPrice,
-        items: payloadItems,
-      });
-      resetAndClose();
-    } catch (error: unknown) {
-      if (error instanceof ParsedZodError) {
-        handleApiZodError(error.error, form);
-      }
-    }
+  const handleSubmit = async () => {
+    const result = await edit.submit();
+    if (result === 'completing') setCompleteModalOpened(true);
+    if (result === 'saved') close();
   };
 
   const isCompleted = editingOrder?.status === OrderStatusEnum.COMPLETED;
-  const isLoading = loadingOrder || loadingItems;
+  const isLoading = loadingOrder || edit.loadingItems;
 
   return (
     <>
       <AppModal
         opened={opened && !completeModalOpened}
-        onClose={resetAndClose}
+        onClose={close}
         title="Modifier la commande"
         size="xl"
         footer={
           <AppModalFooter>
-            <Button variant="subtle" color="slate" onClick={resetAndClose}>
+            <Button variant="subtle" color="slate" onClick={close}>
               Annuler
             </Button>
             <Button
               type="submit"
               form="edit-order-form"
               disabled={isCompleted || isLoading}
-              loading={updateOrderMutation.isPending}
+              loading={edit.saving}
             >
               Enregistrer
             </Button>
@@ -323,7 +87,13 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
             <Loader />
           </Stack>
         ) : (
-          <form id="edit-order-form" onSubmit={form.onSubmit(handleSubmit)}>
+          <form
+            id="edit-order-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSubmit();
+            }}
+          >
             <Stack gap="md">
               <Stack gap="sm">
                 <Text fw={600} size="xs" c="dimmed" tt="uppercase">
@@ -342,10 +112,8 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
                     data={orderTypeSelectOptions}
                     required
                     value={form.values.type}
-                    onChange={(value) => {
-                      form.setFieldValue('type', value as OrderTypeEnum);
-                      setPriceManuallyEdited(false);
-                    }}
+                    onChange={(value) => value && form.setFieldValue('type', value as OrderTypeEnum)}
+                    allowDeselect={false}
                     disabled={isCompleted}
                   />
                 </SimpleGrid>
@@ -359,37 +127,38 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
                     onChange={(value) =>
                       value && form.setFieldValue('status', value as OrderStatusEnum)
                     }
+                    allowDeselect={false}
                     disabled={isCompleted}
                   />
-                  <NumberInput
-                    label="Prix (optionnel)"
-                    placeholder="Prix de la commande"
-                    min={0}
-                    decimalScale={2}
-                    fixedDecimalScale
-                    prefix="$ "
-                    value={form.values.price}
-                    onChange={(value) => {
-                      setPriceManuallyEdited(true);
-                      form.setFieldValue('price', value === '' ? '' : Number(value));
-                    }}
+                  <OrderResponsibleSelect
+                    value={edit.responsibleUserId}
+                    onChange={edit.setResponsibleUserId}
                     disabled={isCompleted}
                   />
                 </SimpleGrid>
 
-                <Textarea
+                <OrderPriceField
+                  state={edit.priceState}
+                  onChange={edit.setPriceState}
+                  suggestedPrice={edit.suggestedPrice}
+                  frozenPrice={isCompleted ? (editingOrder?.price ?? null) : undefined}
+                />
+
+                <MarkdownTextarea
                   label="Détails (optionnel)"
-                  placeholder="Détails de la commande"
-                  minRows={3}
-                  {...form.getInputProps('details')}
+                  placeholder="Détails de la commande (markdown accepté)"
+                  rows={3}
+                  value={form.values.details}
+                  onChange={(value) => form.setFieldValue('details', value)}
+                  error={form.errors.details}
                   disabled={isCompleted}
                 />
 
-                {totalWeight != null && (
+                {edit.totalWeight != null && (
                   <Text size="sm" c="dimmed">
                     Poids total :{' '}
                     <Text span fw={500} c="inherit">
-                      {totalWeight.toFixed(2)} kg
+                      {edit.totalWeight.toFixed(2)} kg
                     </Text>
                   </Text>
                 )}
@@ -402,13 +171,13 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
                   Objets de la commande
                 </Text>
                 <OrderItemsTable
-                  orderItems={orderItems}
+                  orderItems={edit.orderItems}
                   disabled={isCompleted}
-                  loadingItems={loadingItems}
-                  availableItemOptions={availableItemOptions}
-                  onQuantityChange={handleQuantityChange}
-                  onRemoveItem={handleRemoveItem}
-                  onAddItem={handleAddItem}
+                  loadingItems={edit.loadingItems}
+                  availableItemOptions={edit.availableItemOptions}
+                  onQuantityChange={edit.changeQuantity}
+                  onRemoveItem={edit.removeItem}
+                  onAddItem={edit.addItem}
                 />
               </Stack>
             </Stack>
@@ -420,12 +189,12 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
         opened={completeModalOpened}
         onClose={() => {
           setCompleteModalOpened(false);
-          setPendingComplete(null);
+          edit.clearPendingComplete();
         }}
-        onCompleted={resetAndClose}
-        orderType={pendingComplete?.type ?? form.values.type}
-        pending={pendingComplete}
-        lines={completeStockLines}
+        onCompleted={close}
+        orderType={edit.pendingComplete?.type ?? form.values.type}
+        pending={edit.pendingComplete}
+        lines={edit.completeStockLines}
       />
     </>
   );

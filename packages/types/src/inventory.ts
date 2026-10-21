@@ -179,6 +179,10 @@ export type OrderRecord = {
   type: OrderType;
   details: string | null;
   price: number | null;
+  /** True when the price was typed by hand; otherwise it follows the items' catalog prices. */
+  priceManual: boolean;
+  createdByUserId: string | null;
+  responsibleUserId: string | null;
   companyId: string | null;
   companyGroupId: string | null;
   individualCustomerId: string | null;
@@ -190,6 +194,38 @@ export type OrderRecord = {
   items?: OrderItemRecord[];
   itemCount?: number;
   _count?: { items: number };
+};
+
+export type OrderEventKind = 'COMMENT' | 'CREATED' | 'UPDATED' | 'COMPLETED' | 'DUPLICATED';
+
+export type OrderEventItemLine = { itemId: string; name: string; quantity: number };
+
+/** One change recorded in the chatter. Names are copied at write time; user ids are resolved by the host. */
+export type OrderEventChange =
+  | { field: 'status'; from: OrderStatus; to: OrderStatus }
+  | { field: 'type'; from: OrderType; to: OrderType }
+  | { field: 'name'; from: string; to: string }
+  | { field: 'details'; from: string | null; to: string | null }
+  | { field: 'price'; from: number | null; to: number | null; manual: boolean }
+  | { field: 'responsible'; from: string | null; to: string | null }
+  | {
+      field: 'items';
+      added: OrderEventItemLine[];
+      removed: OrderEventItemLine[];
+      changed: { itemId: string; name: string; from: number; to: number }[];
+    }
+  | { field: 'stock'; moved: boolean }
+  | { field: 'duplicate'; direction: 'from' | 'to'; orderId: string; orderName: string };
+
+export type OrderEventRecord = {
+  id: string;
+  orderId: string;
+  kind: OrderEventKind;
+  actorUserId: string | null;
+  body: string | null;
+  changes: OrderEventChange[] | null;
+  createdAt: string;
+  editedAt: string | null;
 };
 
 export type OrdersPageRecord = {

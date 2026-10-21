@@ -47,6 +47,15 @@ enum OrderType {
   OUTGOING
 }
 
+/// Entry of an order's chatter: a comment, or a change recorded automatically.
+enum OrderEventKind {
+  COMMENT
+  CREATED
+  UPDATED
+  COMPLETED
+  DUPLICATED
+}
+
 model CategoryItem {
   id            String   @id @default(uuid())
   scopeType     String
@@ -383,6 +392,11 @@ model Order {
   type                 OrderType            @default(INCOMING)
   details              String?
   price                Decimal?             @db.Decimal(10, 2)
+  /// True when the price was typed by hand; otherwise it follows the items' catalog prices.
+  priceManual          Boolean              @default(false)
+  /// SSO user ids (no foreign key: users live in the auth app).
+  createdByUserId      String?
+  responsibleUserId    String?
   companyId            String?
   company              Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyGroupId       String?
@@ -392,6 +406,7 @@ model Order {
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   items                OrderItem[]
+  events               OrderEvent[]
 
   @@index([companyId])
   @@index([companyGroupId])
@@ -400,7 +415,25 @@ model Order {
   @@index([type])
   @@index([scopeType, scopeId])
   @@index([scopeType, scopeId, createdAt(sort: Desc)])
+  @@index([scopeType, scopeId, responsibleUserId])
   @@map("order")
+}
+
+model OrderEvent {
+  id          String         @id @default(uuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind        OrderEventKind
+  actorUserId String?
+  /// Markdown text of a COMMENT.
+  body        String?        @db.Text
+  /// Recorded changes (OrderEventChange[]), labels resolved at write time.
+  changes     Json?
+  createdAt   DateTime       @default(now())
+  editedAt    DateTime?
+
+  @@index([orderId, createdAt])
+  @@map("order_event")
 }
 
 model OrderItem {

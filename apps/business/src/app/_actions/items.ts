@@ -86,7 +86,7 @@ async function createItemUnlogged(
 
 export async function getItems(
   businessSlug: string,
-  options?: { companyGroupId?: string | null },
+  options?: { companyGroupId?: string | null; forSale?: boolean },
 ) {
   try {
     const ctx = await requireTenantServerActionContext(businessSlug);
@@ -97,6 +97,7 @@ export async function getItems(
       {
         ...inventoryScope(businessId),
         ...(options?.companyGroupId ? { companyGroupId: options.companyGroupId } : {}),
+        forSale: options?.forSale === true,
       },
       await inventoryCookie(),
     );

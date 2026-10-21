@@ -1,4 +1,4 @@
-import type { OrderRecord } from '@lawless-intranet/types';
+import type { OrderEventRecord, OrderRecord } from '@lawless-intranet/types';
 
 export interface OrderItem {
   id?: string;
@@ -29,6 +29,10 @@ export interface OrderWithRelations
     name: string;
   } | null;
   items: OrderItem[];
+  companyGroup?: { id: string; name: string } | null;
+  /** Filled by the order detail read. */
+  createdBy?: OrderPerson | null;
+  responsible?: OrderPerson | null;
 }
 
 export interface OrderSummary extends Omit<OrderWithRelations, 'items'> {
@@ -69,4 +73,17 @@ export function getOrderClientDisplayName(
   order: Pick<OrderWithRelations, 'company' | 'individualCustomer'>
 ): string {
   return order.individualCustomer?.name ?? order.company?.name ?? '—';
+}
+
+/** Someone shown on an order (author, responsible, chatter): SSO profile with the business name. */
+export interface OrderPerson {
+  userId: string;
+  name: string;
+  image: string | null;
+}
+
+export interface OrderChatter {
+  events: OrderEventRecord[];
+  /** People named in the events (authors, responsibles), by user id. */
+  people: Record<string, OrderPerson>;
 }

@@ -13,6 +13,7 @@ import type {
   InventoryScopeParams,
   ItemRecord,
   OrderMailAssignmentRecord,
+  OrderEventRecord,
   OrderRecord,
   OrderStatus,
   OrderType,
@@ -123,7 +124,7 @@ export async function reorderCategories(
 // --- Items ---
 
 export async function listItems(
-  params: InventoryScopeParams & { companyGroupId?: string | null },
+  params: InventoryScopeParams & { companyGroupId?: string | null; forSale?: boolean },
   options: ClientOptions = {},
 ): Promise<ItemRecord[]> {
   const response = await inventoryFetch(
@@ -131,6 +132,7 @@ export async function listItems(
       scopeType: params.scopeType,
       scopeId: params.scopeId,
       companyGroupId: params.companyGroupId ?? undefined,
+      forSale: params.forSale ? 'true' : undefined,
     })}`,
     { cookieHeader: options.cookieHeader },
   );
@@ -639,6 +641,7 @@ export async function listOrdersPage(
     search?: string;
     createdAtFrom?: string | null;
     createdAtTo?: string | null;
+    responsibleUserId?: string | null;
   },
   options: ClientOptions = {},
 ): Promise<OrdersPageRecord> {
@@ -653,6 +656,7 @@ export async function listOrdersPage(
       search: params.search,
       createdAtFrom: params.createdAtFrom,
       createdAtTo: params.createdAtTo,
+      responsibleUserId: params.responsibleUserId,
     })}`,
     { cookieHeader: options.cookieHeader },
   );
@@ -666,6 +670,8 @@ export async function createOrder(
     type?: OrderType;
     details?: string | null;
     price?: number | null;
+    priceManual?: boolean;
+    responsibleUserId?: string | null;
     companyId?: string | null;
     individualCustomerId?: string | null;
     companyGroupId?: string | null;
@@ -689,6 +695,8 @@ export async function updateOrder(
     type?: OrderType;
     details?: string | null;
     price?: number | null;
+    priceManual?: boolean;
+    responsibleUserId?: string | null;
     items?: OrderItemInput[];
   },
   options: ClientOptions = {},
@@ -720,6 +728,7 @@ export async function completeOrder(
     type?: OrderType;
     details?: string | null;
     price?: number | null;
+    priceManual?: boolean;
     items?: OrderItemInput[];
     skipStock: boolean;
     stockLines?: { itemId: string; quantity: number; chestId: string }[];
@@ -732,6 +741,75 @@ export async function completeOrder(
     method: 'POST',
     cookieHeader: options.cookieHeader,
     body: JSON.stringify({ id, ...rest }),
+  });
+  return parseJsonResponse(response);
+}
+
+/** New draft copied from an order (same customer and items, automatic price). */
+export async function duplicateOrder(
+  input: InventoryScopeParams & { id: string },
+  options: ClientOptions = {},
+): Promise<OrderRecord> {
+  const { id, ...scope } = input;
+  const response = await inventoryFetch(`/api/orders/${id}/duplicate`, {
+    method: 'POST',
+    cookieHeader: options.cookieHeader,
+    body: JSON.stringify(scope),
+  });
+  return parseJsonResponse(response);
+}
+
+// --- Order chatter ---
+
+export async function listOrderEvents(
+  params: InventoryScopeParams & { orderId: string },
+  options: ClientOptions = {},
+): Promise<OrderEventRecord[]> {
+  const response = await inventoryFetch(
+    `/api/orders/${params.orderId}/events${toQuery({
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+    })}`,
+    { cookieHeader: options.cookieHeader },
+  );
+  return parseJsonResponse(response);
+}
+
+export async function addOrderComment(
+  input: InventoryScopeParams & { orderId: string; body: string },
+  options: ClientOptions = {},
+): Promise<OrderEventRecord> {
+  const { orderId, ...rest } = input;
+  const response = await inventoryFetch(`/api/orders/${orderId}/events`, {
+    method: 'POST',
+    cookieHeader: options.cookieHeader,
+    body: JSON.stringify(rest),
+  });
+  return parseJsonResponse(response);
+}
+
+export async function updateOrderComment(
+  input: InventoryScopeParams & { orderId: string; eventId: string; body: string },
+  options: ClientOptions = {},
+): Promise<OrderEventRecord> {
+  const { orderId, eventId, ...rest } = input;
+  const response = await inventoryFetch(`/api/orders/${orderId}/events/${eventId}`, {
+    method: 'PATCH',
+    cookieHeader: options.cookieHeader,
+    body: JSON.stringify(rest),
+  });
+  return parseJsonResponse(response);
+}
+
+export async function deleteOrderComment(
+  input: InventoryScopeParams & { orderId: string; eventId: string; canDeleteAny: boolean },
+  options: ClientOptions = {},
+): Promise<SuccessResponse> {
+  const { orderId, eventId, ...rest } = input;
+  const response = await inventoryFetch(`/api/orders/${orderId}/events/${eventId}`, {
+    method: 'DELETE',
+    cookieHeader: options.cookieHeader,
+    body: JSON.stringify(rest),
   });
   return parseJsonResponse(response);
 }

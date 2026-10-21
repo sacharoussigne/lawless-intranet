@@ -1,6 +1,5 @@
 import { OrderTypeEnum } from '@/types/enum/orderType';
 import type { ItemWithRelations } from '@/types/stock';
-import { normalizeItemPrice } from './calculateOrderPriceFromItems';
 
 export function getAvailableItemsForOrder(params: {
   orderType: OrderTypeEnum;
@@ -10,14 +9,9 @@ export function getAvailableItemsForOrder(params: {
 }): ItemWithRelations[] {
   const { orderType, allItems, companyGroupId, firstOrderItemId } = params;
 
+  // A sale only offers enabled items marked "Peut être vendu".
   if (orderType === OrderTypeEnum.OUTGOING) {
-    return allItems.filter((item) => {
-      const hasCanBeSold = item.canBeSold === true;
-      const price = normalizeItemPrice(item.price);
-      const hasPrice = price != null && price > 0;
-      const isNotCraftableWithPrice = !item.isCraftable && hasPrice;
-      return hasCanBeSold || isNotCraftableWithPrice;
-    });
+    return allItems.filter((item) => item.canBeSold === true && item.isEnabled !== false);
   }
 
   let groupId = companyGroupId;

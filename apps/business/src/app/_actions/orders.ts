@@ -8,6 +8,7 @@ import {
   completeOrder as completeOrderApi,
   createOrder as createOrderApi,
   deleteOrder as deleteOrderApi,
+  duplicateOrder as duplicateOrderApi,
   getActiveOrdersForCompanyGroup as getActiveOrdersForCompanyGroupApi,
   getOrderById as getOrderByIdApi,
   listOrdersPage,
@@ -20,6 +21,9 @@ import {
 import { emitOrdersChange } from '@/lib/orders/realtime/broadcast';
 import { emitStockChange } from '@/lib/stock/realtime/broadcast';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
+import prisma from '@/lib/prisma';
+import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
+import { loadOrderPeople } from '@/lib/orders/people';
 import type {
   ActiveOrderSummary,
   OrderSummary,
@@ -40,6 +44,8 @@ const createOrderSchema = z
       .positive('Le prix doit être positif')
       .optional()
       .nullable(),
+    priceManual: z.boolean().optional(),
+    responsibleUserId: z.string().min(1).optional().nullable(),
     companyId: z.string().uuid("ID d'entreprise invalide").optional(),
     individualCustomerId: z.string().uuid('ID de particulier invalide').optional(),
     companyGroupId: z.string().uuid('ID de groupe invalide').optional().nullable(),
@@ -66,7 +72,9 @@ async function createOrderUnlogged(
     status?: 'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED';
     type?: 'INCOMING' | 'OUTGOING';
     details?: string;
-    price?: number;
+    price?: number | null;
+    priceManual?: boolean;
+    responsibleUserId?: string | null;
     companyId?: string;
     individualCustomerId?: string;
     companyGroupId?: string | null;
@@ -88,6 +96,8 @@ async function createOrderUnlogged(
     const { businessId } = ctx.tenant;
 
     const validatedData = createOrderSchema.parse(data);
+    const responsibleError = await checkResponsible(businessId, validatedData.responsibleUserId);
+    if (responsibleError) return responsibleError;
 
     const order = await createOrderApi(
       {
@@ -97,6 +107,8 @@ async function createOrderUnlogged(
         type: validatedData.type,
         details: validatedData.details,
         price: validatedData.price,
+        priceManual: validatedData.priceManual,
+        responsibleUserId: validatedData.responsibleUserId,
         companyId: validatedData.companyId,
         individualCustomerId: validatedData.individualCustomerId,
         companyGroupId: validatedData.companyGroupId,
@@ -121,12 +133,14 @@ const updateOrderSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long').optional(),
   status: z.enum(['DRAFT', 'LETTER_SENT', 'PROCESSING', 'READY', 'CANCELLED']).optional(),
   type: z.enum(['INCOMING', 'OUTGOING']).optional(),
-  details: z.string().max(1000, 'Les détails sont trop longs').optional(),
+  details: z.string().max(1000, 'Les détails sont trop longs').optional().nullable(),
   price: z
     .number()
     .positive('Le prix doit être positif')
     .optional()
     .nullable(),
+  priceManual: z.boolean().optional(),
+  responsibleUserId: z.string().min(1).optional().nullable(),
   items: z
     .array(
       z.object({
@@ -149,6 +163,7 @@ const completeOrderSchema = z
       .positive('Le prix doit être positif')
       .optional()
       .nullable(),
+    priceManual: z.boolean().optional(),
     items: z
       .array(
         z.object({
@@ -193,6 +208,8 @@ const getOrdersPageSchema = z.object({
   search: z.string().max(255).optional(),
   createdAtFrom: z.string().optional().nullable(),
   createdAtTo: z.string().optional().nullable(),
+  /** Only the orders the signed-in user is responsible for. */
+  mine: z.boolean().optional(),
 });
 
 const getOrderByIdSchema = z.object({
@@ -202,6 +219,16 @@ const getOrderByIdSchema = z.object({
 const getActiveOrdersForCompanyGroupSchema = z.object({
   companyGroupId: z.string().uuid('ID de groupe invalide'),
 });
+
+/** A responsible must be a member of the business (null clears it). */
+async function checkResponsible(businessId: string, userId: string | null | undefined) {
+  if (!userId) return null;
+  const member = await prisma.businessMember.findFirst({
+    where: { businessId, userId },
+    select: { id: true },
+  });
+  return member ? null : { status: 422, error: "Le responsable n'est pas membre de l'entreprise" };
+}
 
 async function requireOrdersViewContext(businessSlug: string) {
   return requireTenantServerActionContext(businessSlug, {
@@ -225,6 +252,7 @@ export async function getOrdersPage(
     search?: string;
     createdAtFrom?: string | null;
     createdAtTo?: string | null;
+    mine?: boolean;
   } = {},
 ) {
   try {
@@ -232,7 +260,7 @@ export async function getOrdersPage(
     if (!ctx.ok) return ctx.response;
     const { businessId } = ctx.tenant;
 
-    const { page, pageSize, status, type, search, createdAtFrom, createdAtTo } =
+    const { page, pageSize, status, type, search, createdAtFrom, createdAtTo, mine } =
       getOrdersPageSchema.parse(params);
 
     const result = await listOrdersPage(
@@ -245,6 +273,7 @@ export async function getOrdersPage(
         search,
         createdAtFrom,
         createdAtTo,
+        responsibleUserId: mine ? ctx.tenant.userId : null,
       },
       await inventoryCookie(),
     );
@@ -280,10 +309,18 @@ export async function getOrderById(businessSlug: string, data: { id: string }) {
       { ...inventoryScope(businessId), id },
       await inventoryCookie(),
     );
+    const people = await loadOrderPeople(businessId, [
+      order.createdByUserId,
+      order.responsibleUserId,
+    ]).catch(() => ({}) as Awaited<ReturnType<typeof loadOrderPeople>>);
 
     return {
       status: 200,
-      data: order as unknown as OrderWithRelations,
+      data: {
+        ...order,
+        createdBy: order.createdByUserId ? (people[order.createdByUserId] ?? null) : null,
+        responsible: order.responsibleUserId ? (people[order.responsibleUserId] ?? null) : null,
+      } as unknown as OrderWithRelations,
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération de la commande');
@@ -315,6 +352,38 @@ export async function getActiveOrdersForCompanyGroup(
   }
 }
 
+/** Members of the business, to pick an order's responsible. */
+export async function listOrderResponsibleOptions(businessSlug: string) {
+  try {
+    const ctx = await requireOrdersViewContext(businessSlug);
+    if (!ctx.ok) return ctx.response;
+    const { businessId } = ctx.tenant;
+
+    const members = await prisma.businessMember.findMany({
+      where: { businessId },
+      select: { userId: true },
+    });
+    const profiles = await fetchBusinessUserProfiles(
+      businessId,
+      members.map((member) => member.userId),
+    );
+    const options = members
+      .map((member) => {
+        const profile = profiles.get(member.userId);
+        return {
+          userId: member.userId,
+          name: profile?.name ?? member.userId,
+          image: profile?.image ?? null,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+    return { status: 200, data: options };
+  } catch (error) {
+    return serviceActionError(error, 'Erreur lors de la récupération des membres');
+  }
+}
+
 async function updateOrderUnlogged(
   businessSlug: string,
   data: {
@@ -322,8 +391,10 @@ async function updateOrderUnlogged(
     name?: string;
     status?: 'DRAFT' | 'LETTER_SENT' | 'PROCESSING' | 'READY' | 'CANCELLED';
     type?: 'INCOMING' | 'OUTGOING';
-    details?: string;
+    details?: string | null;
     price?: number | null;
+    priceManual?: boolean;
+    responsibleUserId?: string | null;
     items?: { itemId: string; quantity: number }[];
   },
   meta?: unknown,
@@ -349,6 +420,8 @@ async function updateOrderUnlogged(
     }
 
     const validatedData = updateOrderSchema.parse(data);
+    const responsibleError = await checkResponsible(businessId, validatedData.responsibleUserId);
+    if (responsibleError) return responsibleError;
 
     const order = await updateOrderApi(
       {
@@ -359,6 +432,8 @@ async function updateOrderUnlogged(
         type: validatedData.type,
         details: validatedData.details,
         price: validatedData.price,
+        priceManual: validatedData.priceManual,
+        responsibleUserId: validatedData.responsibleUserId,
         items: validatedData.items,
       },
       await inventoryCookie(),
@@ -383,6 +458,7 @@ async function completeOrderUnlogged(
     type?: 'INCOMING' | 'OUTGOING';
     details?: string;
     price?: number | null;
+    priceManual?: boolean;
     items?: { itemId: string; quantity: number }[];
     skipStock: boolean;
     stockLines?: { itemId: string; quantity: number; chestId: string }[];
@@ -414,6 +490,7 @@ async function completeOrderUnlogged(
         type: validatedData.type,
         details: validatedData.details,
         price: validatedData.price,
+        priceManual: validatedData.priceManual,
         items: validatedData.items,
         effectiveRole,
       },
@@ -470,6 +547,39 @@ async function deleteOrderUnlogged(
   }
 }
 
+/** New draft with the same customer and items, priced automatically. */
+async function duplicateOrderUnlogged(
+  businessSlug: string,
+  data: { id: string },
+  meta?: unknown,
+) {
+  try {
+    const ctx = await requireTenantServerActionContext(businessSlug, {
+      feature: 'orders',
+      permission: {
+        resource: 'orders',
+        action: 'create',
+        message:
+          "Permission refusée : vous n'avez pas la permission de créer une commande",
+      },
+    });
+    if (!ctx.ok) return ctx.response;
+    const { businessId } = ctx.tenant;
+    const { id } = deleteOrderSchema.parse(data);
+
+    const order = await duplicateOrderApi(
+      { ...inventoryScope(businessId), id },
+      await inventoryCookie(),
+    );
+
+    emitOrdersChange(businessId, { orderId: order.id }, parseRealtimeMutationMeta(meta));
+
+    return { status: 201, data: order as unknown as OrderWithRelations };
+  } catch (error) {
+    return serviceActionError(error, 'Erreur lors de la duplication de la commande');
+  }
+}
+
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function createOrder(...args: Parameters<typeof createOrderUnlogged>) {
@@ -487,6 +597,12 @@ export async function updateOrder(...args: Parameters<typeof updateOrderUnlogged
 export async function completeOrder(...args: Parameters<typeof completeOrderUnlogged>) {
   return loggedAction({ feature: 'orders', event: 'orders.completeOrder' }, args, () =>
     completeOrderUnlogged(...args),
+  );
+}
+
+export async function duplicateOrder(...args: Parameters<typeof duplicateOrderUnlogged>) {
+  return loggedAction({ feature: 'orders', event: 'orders.duplicateOrder' }, args, () =>
+    duplicateOrderUnlogged(...args),
   );
 }
 

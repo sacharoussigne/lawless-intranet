@@ -6,6 +6,8 @@ import classes from './PageHeader.module.scss';
 
 export type PageHeaderProps = {
   title: string;
+  /** Replaces the title heading (e.g. an edit mode with inputs); it renders its own heading. */
+  titleContent?: ReactNode;
   description?: string;
   backHref?: string;
   backLabel?: string;
@@ -16,6 +18,7 @@ export type PageHeaderProps = {
 
 export function PageHeader({
   title,
+  titleContent,
   description,
   backHref,
   backLabel = 'Retour',
@@ -32,8 +35,8 @@ export function PageHeader({
       )}
 
       <Group justify="space-between" align="flex-start" wrap="wrap" gap="md" mt={backHref ? 'sm' : 0}>
-        <div>
-          <h1 className={classes.title}>{title}</h1>
+        <div className={titleContent ? classes.titleSlot : undefined}>
+          {titleContent ?? <h1 className={classes.title}>{title}</h1>}
           {description && <Text className={classes.description}>{description}</Text>}
         </div>
         {actions && <div>{actions}</div>}

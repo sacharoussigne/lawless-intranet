@@ -26,10 +26,11 @@ describe('getAvailableItemsForOrder', () => {
     expect(result.map((item) => item.id)).toEqual(['1']);
   });
 
-  it('allows sellable outgoing items', () => {
+  it('only offers enabled sellable items for a sale', () => {
     const items: ItemWithRelations[] = [
       { ...baseItem, id: '1', name: 'A', isCraftable: true, companyGroupId: 'g1', canBeSold: true, price: null },
       { ...baseItem, id: '2', name: 'B', isCraftable: false, companyGroupId: 'g1', canBeSold: false, price: 5 },
+      { ...baseItem, id: '3', name: 'C', isCraftable: false, companyGroupId: 'g1', canBeSold: true, isEnabled: false, price: 5 },
     ];
 
     const result = getAvailableItemsForOrder({
@@ -37,6 +38,6 @@ describe('getAvailableItemsForOrder', () => {
       allItems: items,
     });
 
-    expect(result.map((item) => item.id)).toEqual(['1', '2']);
+    expect(result.map((item) => item.id)).toEqual(['1']);
   });
 });
