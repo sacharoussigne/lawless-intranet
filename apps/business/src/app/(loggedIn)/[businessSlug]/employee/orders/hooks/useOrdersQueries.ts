@@ -71,16 +71,6 @@ async function fetchOrderById(businessSlug: string, orderId: string) {
   return handleAction(result) as OrderWithRelations;
 }
 
-async function fetchActiveOrdersForGroup(
-  businessSlug: string,
-  companyGroupId: string,
-) {
-  const result = await fetchRead(businessSlug, 'activeOrdersForCompanyGroup', {
-    companyGroupId,
-  });
-  return handleAction(result);
-}
-
 async function fetchOrderLetterAssignments(businessSlug: string) {
   const result = await fetchRead(businessSlug, 'orderLetterAssignments');
   return handleAction(result) as OrderMailTemplateAssignment[];
@@ -166,20 +156,6 @@ export function useOrderChatter(orderId: string, initialData?: OrderChatter) {
     initialData,
     initialDataUpdatedAt: initialData ? 0 : undefined,
     enabled: Boolean(businessSlug && orderId),
-    staleTime: DEFAULT_STALE_TIME_MS,
-  });
-}
-
-export function useActiveOrdersForGroup(companyGroupId: string | null) {
-  const businessSlug = useRequiredBusinessSlug();
-
-  return useQuery({
-    queryKey: ordersKeys.activeByGroup(businessSlug, companyGroupId ?? ''),
-    queryFn: () => {
-      if (!companyGroupId) throw new Error('companyGroupId is required');
-      return fetchActiveOrdersForGroup(businessSlug, companyGroupId);
-    },
-    enabled: Boolean(companyGroupId),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 }

@@ -72,6 +72,8 @@ export function InputBlockEditor({
       <Grid gutter="sm">
         <Grid.Col span={6}>
           <Select
+            // Inside the pill popover: a portaled list would count as a click outside and close it.
+            comboboxProps={{ withinPortal: false }}
             label="Type"
             data={INPUT_TYPES}
             value={input.type}
@@ -138,6 +140,8 @@ export function InputBlockEditor({
         <Grid gutter="sm">
           <Grid.Col span={6}>
             <Select
+              // Inside the pill popover: a portaled list would count as a click outside and close it.
+              comboboxProps={{ withinPortal: false }}
               label="Dépend de"
               data={[
                 { value: '', label: 'Aucun' },
@@ -153,6 +157,8 @@ export function InputBlockEditor({
           {input.dependsOn && (
             <Grid.Col span={6}>
               <Select
+                // Inside the pill popover: a portaled list would count as a click outside and close it.
+                comboboxProps={{ withinPortal: false }}
                 label="Disposition"
                 data={[
                   { value: 'inline', label: 'Inline (à côté)' },

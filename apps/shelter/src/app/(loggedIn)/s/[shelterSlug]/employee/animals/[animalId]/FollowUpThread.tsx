@@ -2,28 +2,24 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
-  ActionIcon,
   Badge,
   Button,
   Group,
   Menu,
   Modal,
-  SegmentedControl,
   Select,
   Stack,
   Text,
   Textarea,
-  Tooltip,
   UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconChevronDown, IconSend, IconTemplate } from '@tabler/icons-react';
+import { IconCheck, IconChevronDown } from '@tabler/icons-react';
 import {
   addAnimalFollowUpMessage,
   closeAnimalFollowUp,
   updateAnimalFollowUpStatus,
 } from '@/app/_actions/followUps';
-import { RpDateInput } from '@/app/_components/RpDateInput/RpDateInput';
 import {
   FOLLOW_UP_CLOSE_OPTIONS,
   FOLLOW_UP_OPEN_STATUSES,
@@ -37,6 +33,7 @@ import { formatRpDate } from '@/lib/rpCalendar';
 import type { AnimalFollowUpMessageSide, AnimalFollowUpStatus } from '@/generated/prisma/client';
 import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
 import { actionErrorMessage, parseIsoDateOnly, toIsoDateOnly } from '../types';
+import { FollowUpComposer } from './FollowUpComposer';
 import { FollowUpTemplateMessageModal } from './FollowUpTemplateMessageModal';
 import classes from './FollowUps.module.scss';
 import type { FollowUpDTO } from './followUpTypes';
@@ -284,63 +281,18 @@ export function FollowUpThread({
       ) : null}
 
       {canUpdate && !closed ? (
-        <div className={classes.threadComposer}>
-          <SegmentedControl
-            value={side}
-            onChange={(v) => setSide(v as AnimalFollowUpMessageSide)}
-            data={[
-              { value: 'shelter', label: 'Refuge' },
-              { value: 'recipient', label: 'Destinataire' },
-            ]}
-            color="terracotta"
-          />
-          <Textarea
-            placeholder={
-              side === 'shelter'
-                ? 'Copie de la lettre envoyée par le refuge…'
-                : 'Copie de la lettre reçue du destinataire…'
-            }
-            minRows={3}
-            resize="vertical"
-            value={body}
-            onChange={(e) => setBody(e.currentTarget.value)}
-            disabled={pending}
-          />
-          <div className={classes.composerRow}>
-            <RpDateInput
-              className={classes.composerDate}
-              label="Date de la lettre"
-              size="sm"
-              value={letterDate}
-              onChange={setLetterDate}
-              disabled={pending}
-            />
-            <Group gap="sm" className={classes.composerActions} wrap="nowrap">
-              {canUseTemplates ? (
-                <Tooltip label="Écrire depuis un modèle">
-                  <ActionIcon
-                    variant="light"
-                    color="terracotta"
-                    size="lg"
-                    aria-label="Écrire depuis un modèle"
-                    disabled={pending}
-                    onClick={() => setTemplateModalOpen(true)}
-                  >
-                    <IconTemplate size={18} stroke={1.6} />
-                  </ActionIcon>
-                </Tooltip>
-              ) : null}
-              <Button
-                color="terracotta"
-                leftSection={<IconSend size={16} />}
-                loading={pending}
-                onClick={handleSend}
-              >
-                Ajouter
-              </Button>
-            </Group>
-          </div>
-        </div>
+        <FollowUpComposer
+          body={body}
+          onBodyChange={setBody}
+          side={side}
+          onSideChange={setSide}
+          letterDate={letterDate}
+          onLetterDateChange={setLetterDate}
+          pending={pending}
+          canUseTemplates={canUseTemplates}
+          onOpenTemplates={() => setTemplateModalOpen(true)}
+          onSubmit={handleSend}
+        />
       ) : null}
 
       {templateModalOpen && canUseTemplates ? (

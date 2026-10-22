@@ -46,29 +46,6 @@ export interface OrdersPageResult {
   pageSize: number;
 }
 
-export interface ActiveOrderSummary {
-  id: string;
-  name: string;
-  status: string;
-  companyGroupId?: string | null;
-  company: {
-    id: string;
-    name: string;
-  } | null;
-  individualCustomer?: {
-    id: string;
-    name: string;
-  } | null;
-  items: Array<{
-    itemId: string;
-    quantity: number;
-    item: {
-      id: string;
-      name: string;
-    };
-  }>;
-}
-
 export function getOrderClientDisplayName(
   order: Pick<OrderWithRelations, 'company' | 'individualCustomer'>
 ): string {

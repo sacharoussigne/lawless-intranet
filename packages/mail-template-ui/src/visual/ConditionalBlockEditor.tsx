@@ -64,6 +64,8 @@ export function ConditionalBlockEditor({
         <>
           <Group align="flex-end" wrap="nowrap">
             <Select
+              // Inside the pill popover: a portaled list would count as a click outside and close it.
+              comboboxProps={{ withinPortal: false }}
               style={{ flex: 1 }}
               label="Variable testée"
               data={variableOptions}
@@ -121,6 +123,8 @@ export function ConditionalBlockEditor({
       ) : !isEqualsMode(segment) ? (
         <>
           <Select
+            // Inside the pill popover: a portaled list would count as a click outside and close it.
+            comboboxProps={{ withinPortal: false }}
             label="Variable testée"
             data={variableOptions}
             value={segment.var}

@@ -62,7 +62,7 @@ pnpm dev                                  # toutes les apps (turbo), serveur rea
 pnpm --filter business dev              # une seule app
 pnpm --filter <app> typecheck             # tsc --noEmit
 pnpm --filter <app> lint
-pnpm --filter <app> test                  # vitest (business, shelter, documents, media, inventory, agenda-ui, media-ui, inventory-ui, realtime, mail-template-engine) ; inventory : tests d'intégration du craft sur la base locale (ignorés si DATABASE_URL n'est pas sur localhost)
+pnpm --filter <app> test                  # vitest (business, shelter, documents, media, inventory, agenda-ui, media-ui, inventory-ui, mail-template-ui, realtime, mail-template-engine) ; inventory : tests d'intégration du craft sur la base locale (ignorés si DATABASE_URL n'est pas sur localhost)
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate

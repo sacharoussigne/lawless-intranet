@@ -77,7 +77,6 @@ import {
 } from '@/app/_actions/media';
 import { getOrderLetterTemplateAssignments } from '@/app/_actions/orderLetterTemplateAssignments';
 import {
-  getActiveOrdersForCompanyGroup,
   getOrderById,
   getOrdersPage,
   listOrderResponsibleOptions,
@@ -104,8 +103,6 @@ export const readRoutes = {
   weeklySales: (slug: string, input: { weekDate?: Date }) => listWeeklySales(slug, input?.weekDate),
   ordersPage: (slug: string, input: Parameters<typeof getOrdersPage>[1]) => getOrdersPage(slug, input),
   order: (slug: string, input: { id: string }) => getOrderById(slug, input),
-  activeOrdersForCompanyGroup: (slug: string, input: { companyGroupId: string }) =>
-    getActiveOrdersForCompanyGroup(slug, input),
   orderLetterAssignments: (slug: string, _input?: undefined) =>
     getOrderLetterTemplateAssignments(slug),
   orderResponsibleOptions: (slug: string, _input?: undefined) => listOrderResponsibleOptions(slug),

@@ -9,6 +9,7 @@ export type {
   TemplateSegment,
   UserGender,
 } from './types';
+export type { TemplateDocumentEntry } from './document';
 
 export {
   extractFormSections,
@@ -22,6 +23,7 @@ export {
   escapeAttributeValue,
   parseSelectOptions,
   parseTemplateDocument,
+  parseTemplateDocumentEntries,
   serializeConditional,
   serializeInput,
   serializeSegment,

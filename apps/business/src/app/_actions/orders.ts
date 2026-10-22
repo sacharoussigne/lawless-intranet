@@ -9,7 +9,6 @@ import {
   createOrder as createOrderApi,
   deleteOrder as deleteOrderApi,
   duplicateOrder as duplicateOrderApi,
-  getActiveOrdersForCompanyGroup as getActiveOrdersForCompanyGroupApi,
   getOrderById as getOrderByIdApi,
   listOrdersPage,
   updateOrder as updateOrderApi,
@@ -25,7 +24,6 @@ import prisma from '@/lib/prisma';
 import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import { loadOrderPeople } from '@/lib/orders/people';
 import type {
-  ActiveOrderSummary,
   OrderSummary,
   OrdersPageResult,
   OrderWithRelations,
@@ -216,10 +214,6 @@ const getOrderByIdSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
 
-const getActiveOrdersForCompanyGroupSchema = z.object({
-  companyGroupId: z.string().uuid('ID de groupe invalide'),
-});
-
 /** A responsible must be a member of the business (null clears it). */
 async function checkResponsible(businessId: string, userId: string | null | undefined) {
   if (!userId) return null;
@@ -324,31 +318,6 @@ export async function getOrderById(businessSlug: string, data: { id: string }) {
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération de la commande');
-  }
-}
-
-export async function getActiveOrdersForCompanyGroup(
-  businessSlug: string,
-  data: { companyGroupId: string },
-) {
-  try {
-    const ctx = await requireOrdersViewContext(businessSlug);
-    if (!ctx.ok) return ctx.response;
-    const { businessId } = ctx.tenant;
-
-    const { companyGroupId } = getActiveOrdersForCompanyGroupSchema.parse(data);
-
-    const orders = await getActiveOrdersForCompanyGroupApi(
-      { ...inventoryScope(businessId), companyGroupId },
-      await inventoryCookie(),
-    );
-
-    return {
-      status: 200,
-      data: orders as unknown as ActiveOrderSummary[],
-    };
-  } catch (error) {
-    return serviceActionError(error, 'Erreur lors de la récupération des commandes actives');
   }
 }
 

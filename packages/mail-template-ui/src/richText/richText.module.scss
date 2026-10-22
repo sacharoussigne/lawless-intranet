@@ -1,0 +1,95 @@
+.editor {
+  :global(.ProseMirror) {
+    min-height: 12rem;
+    max-height: 32rem;
+    overflow-y: auto;
+    padding: calc(var(--mantine-spacing-sm) - 0.125rem) var(--mantine-spacing-sm);
+    border: 1px solid var(--input-bd, var(--mantine-color-default-border));
+    border-radius: var(--mantine-radius-default);
+    background: var(--input-bg, var(--mantine-color-default));
+    color: var(--mantine-color-text);
+    font-size: var(--mantine-font-size-sm);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    outline: none;
+
+    &:focus {
+      border-color: var(--mantine-primary-color-filled);
+    }
+
+    p {
+      margin: 0;
+    }
+
+    p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder);
+      float: left;
+      height: 0;
+      pointer-events: none;
+      color: var(--mantine-color-placeholder);
+    }
+  }
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0 0.1rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  font-size: 0.85em;
+  line-height: 1.5;
+  vertical-align: baseline;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.variablePill {
+  composes: pill;
+  background: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
+}
+
+.tokenPill {
+  composes: pill;
+  border: 1px solid var(--mantine-primary-color-light-color);
+  background: var(--mantine-color-body);
+  color: var(--mantine-primary-color-light-color);
+
+  &:hover {
+    background: var(--mantine-primary-color-light-hover);
+  }
+}
+
+.pill:global(.ProseMirror-selectednode),
+:global(.ProseMirror-selectednode) .pill {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 1px;
+}
+
+.suggestions {
+  position: fixed;
+  z-index: 1000;
+  width: 20rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.suggestionItem {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-sm);
+  text-align: left;
+  color: var(--mantine-color-text);
+
+  &[data-active] {
+    background: var(--mantine-primary-color-light);
+    color: var(--mantine-primary-color-light-color);
+  }
+}
