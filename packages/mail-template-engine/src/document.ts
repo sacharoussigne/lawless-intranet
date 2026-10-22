@@ -150,13 +150,34 @@ function collectDocumentTokens(content: string): DocumentToken[] {
   return tokens.sort((a, b) => a.start - b.start);
 }
 
+/** A segment with the exact source text it was read from. */
+export interface TemplateDocumentEntry {
+  segment: TemplateSegment;
+  raw: string;
+}
+
 export function parseTemplateDocument(content: string): {
   document: TemplateDocument;
   warnings: ParseWarning[];
 } {
+  const { entries, warnings } = parseTemplateDocumentEntries(content);
+  return { document: { segments: entries.map((entry) => entry.segment) }, warnings };
+}
+
+/**
+ * Same as `parseTemplateDocument`, keeping each segment's source text, so an editor can write
+ * untouched segments back verbatim (serializing may normalize attribute quoting and order).
+ */
+export function parseTemplateDocumentEntries(content: string): {
+  entries: TemplateDocumentEntry[];
+  warnings: ParseWarning[];
+} {
   const tokens = collectDocumentTokens(content);
   const warnings: ParseWarning[] = [];
-  const segments: TemplateSegment[] = [];
+  const entries: TemplateDocumentEntry[] = [];
+  const push = (segment: TemplateSegment, start: number, end: number) => {
+    entries.push({ segment, raw: content.slice(start, end) });
+  };
   let cursor = 0;
 
   for (const token of tokens) {
@@ -170,36 +191,36 @@ export function parseTemplateDocument(content: string): {
     }
 
     if (token.start > cursor) {
-      segments.push({ kind: 'text', value: content.slice(cursor, token.start) });
+      push({ kind: 'text', value: content.slice(cursor, token.start) }, cursor, token.start);
     }
 
     switch (token.kind) {
       case 'input':
-        segments.push({ kind: 'input', input: token.input });
+        push({ kind: 'input', input: token.input }, token.start, token.end);
         break;
       case 'category':
-        segments.push({ kind: 'category', title: token.title });
+        push({ kind: 'category', title: token.title }, token.start, token.end);
         break;
       case 'conditional':
         if (token.eq !== undefined) {
-          segments.push({
+          push({
             kind: 'conditional',
             var: token.var,
             eq: token.eq,
             then: token.then ?? '',
             else: token.else ?? '',
-          });
+          }, token.start, token.end);
         } else {
-          segments.push({
+          push({
             kind: 'conditional',
             var: token.var,
             empty: token.empty ?? '',
             filled: token.filled ?? '',
-          });
+          }, token.start, token.end);
         }
         break;
       case 'js':
-        segments.push({ kind: 'js', code: token.code });
+        push({ kind: 'js', code: token.code }, token.start, token.end);
         break;
     }
 
@@ -207,14 +228,10 @@ export function parseTemplateDocument(content: string): {
   }
 
   if (cursor < content.length) {
-    segments.push({ kind: 'text', value: content.slice(cursor) });
+    push({ kind: 'text', value: content.slice(cursor) }, cursor, content.length);
   }
 
-  if (segments.length === 0 && content.length > 0) {
-    segments.push({ kind: 'text', value: content });
-  }
-
-  return { document: { segments }, warnings };
+  return { entries, warnings };
 }
 
 export function escapeAttributeValue(value: string): string {

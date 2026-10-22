@@ -5,10 +5,19 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@lawless-intranet/mail-template-engine": "workspace:*"
+    "@lawless-intranet/mail-template-engine": "workspace:*",
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-document": "3.31.4",
+    "@tiptap/extension-paragraph": "3.31.4",
+    "@tiptap/extension-text": "3.31.4",
+    "@tiptap/extensions": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/react": "3.31.4",
+    "@tiptap/suggestion": "3.31.4"
   },
   "peerDependencies": {
     "@mantine/core": "^8.0.0",
@@ -29,6 +38,7 @@
     "@types/react-dom": "^19",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

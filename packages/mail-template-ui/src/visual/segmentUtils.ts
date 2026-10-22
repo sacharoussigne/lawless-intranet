@@ -9,6 +9,16 @@ export const BUILTIN_VARIABLES = [
   'gender',
 ] as const;
 
+/** What each built-in variable holds when the letter is generated. */
+export const BUILTIN_VARIABLE_DESCRIPTIONS: Record<(typeof BUILTIN_VARIABLES)[number], string> = {
+  name: 'Commandes : nom du client (entreprise ou particulier)',
+  items: 'Commandes : liste des articles avec leurs quantités',
+  price: 'Commandes : prix total de la commande',
+  username: 'Nom de l’auteur du courrier',
+  description: 'Description (fonction) de l’auteur du courrier',
+  gender: 'Genre de l’auteur : male ou female',
+};
+
 export function createDefaultSegment(kind: TemplateSegment['kind']): TemplateSegment {
   switch (kind) {
     case 'text':
@@ -34,61 +44,4 @@ export function createDefaultSegment(kind: TemplateSegment['kind']): TemplateSeg
     case 'js':
       return { kind: 'js', code: '(() => "")()' };
   }
-}
-
-export function segmentLabel(segment: TemplateSegment): string {
-  switch (segment.kind) {
-    case 'text':
-      return 'Texte';
-    case 'input':
-      return `Input (${segment.input.type})`;
-    case 'category':
-      return 'Catégorie';
-    case 'conditional':
-      return 'Conditionnel';
-    case 'js':
-      return 'JavaScript';
-  }
-}
-
-export function updateSegmentAtIndex(
-  segments: TemplateSegment[],
-  index: number,
-  segment: TemplateSegment,
-): TemplateSegment[] {
-  return segments.map((current, currentIndex) =>
-    currentIndex === index ? segment : current,
-  );
-}
-
-export function removeSegmentAtIndex(
-  segments: TemplateSegment[],
-  index: number,
-): TemplateSegment[] {
-  return segments.filter((_, currentIndex) => currentIndex !== index);
-}
-
-export function moveSegment(
-  segments: TemplateSegment[],
-  index: number,
-  direction: 'up' | 'down',
-): TemplateSegment[] {
-  const targetIndex = direction === 'up' ? index - 1 : index + 1;
-  if (targetIndex < 0 || targetIndex >= segments.length) {
-    return segments;
-  }
-
-  const next = [...segments];
-  [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-  return next;
-}
-
-export function insertSegmentAt(
-  segments: TemplateSegment[],
-  index: number,
-  segment: TemplateSegment,
-): TemplateSegment[] {
-  const next = [...segments];
-  next.splice(index, 0, segment);
-  return next;
 }
