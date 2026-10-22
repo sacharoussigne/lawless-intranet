@@ -14,20 +14,17 @@ import {
   ActionIcon,
   Text,
   Badge,
-  Alert,
   SegmentedControl,
   SimpleGrid,
 } from '@mantine/core';
-import { IconTrash, IconAlertTriangle } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
-  useActiveOrdersForGroup,
   useCreateOrderMutation,
   useOrderFormItems,
 } from '../hooks/useOrdersQueries';
 import { useCompanyGroupsForOrders } from '@/app/(loggedIn)/[businessSlug]/management/companygroups/hooks/useCompanyGroupsQueries';
 import { getAvailableItemsForOrder } from '@/lib/orders/getAvailableItemsForOrder';
-import type { ActiveOrderSummary } from '@/types/orders';
 import {
   createIndividualCustomer,
   deleteIndividualCustomerByName,
@@ -49,10 +46,6 @@ import { OrderResponsibleSelect } from './OrderResponsibleSelect';
 
 const AUTO_PRICE: OrderPriceState = { manual: false, manualPrice: '' };
 
-function orderClientLabel(order: ActiveOrderSummary): string {
-  return order.individualCustomer?.name ?? order.company?.name ?? '—';
-}
-
 type ClientMode = 'company' | 'individual';
 
 interface CreateOrderModalProps {
@@ -70,7 +63,6 @@ interface CreateOrderLineItem {
 }
 
 const EMPTY_ITEMS: ItemWithRelations[] = [];
-const EMPTY_ACTIVE_ORDERS: ActiveOrderSummary[] = [];
 
 export default function CreateOrderModal({
   opened,
@@ -94,8 +86,6 @@ export default function CreateOrderModal({
   const [orderItems, setOrderItems] = useState<CreateOrderLineItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const { data: existingOrders } = useActiveOrdersForGroup(selectedCompanyGroupId);
-  const activeOrders = existingOrders ?? EMPTY_ACTIVE_ORDERS;
   const [clientMode, setClientMode] = useState<ClientMode>('company');
   const [individualCustomers, setIndividualCustomers] = useState<
     Array<{ id: string; name: string }>
@@ -505,19 +495,6 @@ export default function CreateOrderModal({
   const orderItemIds = getOrderItemIds();
   const canAddMoreItems = availableItems.some((item) => !orderItemIds.has(item.id));
 
-  // Vérifier si des items de la commande en cours sont déjà dans une commande existante
-  const conflictingOrders = useMemo(() => {
-    if (orderItems.length === 0 || activeOrders.length === 0) {
-      return [];
-    }
-
-    const currentItemIds = new Set(orderItems.map((oi) => oi.itemId));
-
-    return activeOrders.filter((order) => {
-      return order.items.some((orderItem) => currentItemIds.has(orderItem.itemId));
-    });
-  }, [orderItems, activeOrders]);
-
   return (
     <Modal
       opened={opened}
@@ -607,34 +584,6 @@ export default function CreateOrderModal({
 
         {canShowItems && (
           <>
-            {conflictingOrders.length > 0 && (
-              <Alert
-                icon={<IconAlertTriangle size={16} />}
-                title="Commande en cours"
-                color="amber"
-              >
-                <Text size="sm">
-                  Une ou plusieurs commandes en cours pour ce groupe d'entreprises contiennent déjà certains articles que vous souhaitez commander :
-                </Text>
-                <Stack gap="xs" mt="xs">
-                  {conflictingOrders.map((order) => {
-                    const conflictingItems = order.items.filter((orderItem) =>
-                      orderItems.some((oi) => oi.itemId === orderItem.itemId)
-                    );
-                    return (
-                      <Text key={order.id} size="sm" fw={500}>
-                        • {order.name} ({orderClientLabel(order)}) :{' '}
-                        {conflictingItems.map((item) => item.item.name).join(', ')}
-                      </Text>
-                    );
-                  })}
-                </Stack>
-                <Text size="sm" mt="xs" c="dimmed">
-                  Vérifiez si vous souhaitez vraiment créer une nouvelle commande ou si vous devriez plutôt modifier la commande existante.
-                </Text>
-              </Alert>
-            )}
-
             <Textarea
               label="Détails (optionnel)"
               placeholder="Détails de la commande"
