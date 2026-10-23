@@ -36,6 +36,7 @@ Si `X-Discord-User-Id` est absent alors qu’il est requis : **400** (sauf `GET 
 - Après migration : dispensaire par défaut = UUID fixe `00000000-0000-4000-8000-000000000001` (slug intranet `saint-denis`).
 - Super-admin : liste dans l’intranet `/platform/dispensaries`, ou table `dispensary` en base.
 - Le bot peut stocker **un `dispensaryId` par serveur Discord** (guild) si plusieurs dispensaires RP partagent la même instance.
+- Le bot peut lister les entreprises disponibles avec [`GET /api/dispensary/bot/businesses`](#get-apidispensarybotbusinesses).
 
 ## Format des réponses
 
@@ -86,6 +87,36 @@ WHERE "periodEnd" = "periodStart" + interval '7 days';
 ```
 
 ---
+
+## `GET /api/dispensary/bot/businesses`
+
+Liste des entreprises auxquelles un serveur Discord peut être lié (menu du `/config` du bot).
+
+- **Authentification** : `Authorization: Bearer` seulement. Pas de `X-Dispensary-Id` ni de `X-Discord-User-Id`.
+- Seules les entreprises avec l’**activité hebdomadaire activée** sont renvoyées (les autres refuseraient toutes les routes du bot).
+- Triées par nom affiché. `name` = nom défini dans les réglages de l’entreprise, sinon son nom en base.
+
+```json
+{
+  "status": 200,
+  "data": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "slug": "saint-denis",
+      "type": "DISPENSARY",
+      "typeLabel": "Dispensaire",
+      "name": "Saint-Denis"
+    }
+  ]
+}
+```
+
+Le bot affiche `[typeLabel] name`, par ex. `[Dispensaire] Saint-Denis`, et enregistre `id` comme `dispensaryId` du serveur.
+
+| HTTP | Cas |
+|------|-----|
+| **200** | Liste (éventuellement vide) |
+| **401** | Secret invalide |
 
 ## `GET /api/dispensary/weekly-activity`
 
@@ -429,6 +460,7 @@ curl -sS -X DELETE \
 
 ## Fichiers de référence (code)
 
+- Liste des entreprises : `src/app/api/dispensary/bot/businesses/route.ts`, `src/lib/business/botBusinessList.ts`, `src/lib/business/botBusinessListItem.ts`
 - Routes : `src/app/api/dispensary/weekly-activity/route.ts`, `src/app/api/dispensary/weekly-activity/recap/route.ts`, `src/app/api/dispensary/weekly-activity/[id]/route.ts`, `src/app/api/dispensary/weekly-activity/bot/caisse/route.ts`, `src/app/api/dispensary/weekly-activity/bot/presence/route.ts`
 - Validation : `src/lib/businessWeeklyActivity/schemas.ts` (dont schémas corps `bot/caisse` et `bot/presence`), `src/lib/businessWeeklyActivity/weekdayFlags.ts`, `src/lib/businessWeeklyActivity/botDayEdit.ts`
 - Sérialisation : `src/lib/businessWeeklyActivity/apiRow.ts`, `src/lib/businessWeeklyActivity/loadSerializedRow.ts`
