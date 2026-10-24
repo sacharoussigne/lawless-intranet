@@ -1,11 +1,9 @@
 'use server';
 
 import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
-import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { tenantWhere } from '@/lib/business/tenantWhere';
-import { mergeResolvedDisplayNames } from '@/lib/businessWeeklyActivity/resolveDisplayName';
 import {
   PAYROLL_CAISSE_SALE_USD,
   PAYROLL_CAISSE_USD,
@@ -14,20 +12,16 @@ import {
   PAYROLL_REPORT_TYPE_EMPLOYES,
   isPayrollReportType,
 } from '@/lib/payroll/constants';
-import { mergeHtmlAndWeeklyActivity, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
-import { weeklyCounterDefinitions } from '@/lib/businessWeeklyActivity/counters';
-import { attachDiscordProfilesToActivities } from '@/lib/businessDiscordProfile/attachProfiles';
 import { type ParsedPayrollTable, parsePayrollHtmlTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
-import { weekRangeFromIsoDate } from '@/lib/payroll/week';
 import { recalculatePayrollResult } from '@/lib/payroll/recalculatePayrollResult';
+import { createPayrollReport, EMPTY_PARSED_PAYROLL_TABLE } from '@/lib/payroll/createReport';
 import type {
   SerializedPayrollReportDetail,
   SerializedPayrollReportListItem,
 } from '@/lib/payroll/apiRow';
 import { extractPayrollListSummary } from '@/lib/payroll/listSummary';
 import { actionErrorParser } from '@/lib/action';
-import { reportServerError } from '@/lib/logs/errorReporter';
 import { withLoggedAction } from '@/lib/logs/writer';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
 import { findBusinessProfiles } from '@/lib/businessDiscordProfile/queries';
@@ -39,18 +33,6 @@ import {
 const MAX_CAISSE_PRICE_USD = 1_000_000;
 const MAX_HTML_CHARS = 600_000;
 const PAYROLL_LIST_LIMIT = 100;
-
-const emptyGlobalStats = () => ({
-  total_employees: 0,
-  total_caisses: 0,
-  total_sherifs: 0,
-  total_palefreniers: 0,
-  total_benefit_usd: 0,
-  total_patients_soignes: 0,
-  total_offered_item_count: 0,
-  total_employee_payout_usd: 0,
-  total_offered_retail_value_usd: 0,
-});
 
 const payrollViewGuardOptions = {
   feature: 'payroll' as const,
@@ -230,115 +212,27 @@ async function createPayrollReportFromFormUnlogged(businessSlug: string, formDat
     return { status: 400, error: `Le HTML est trop long (max ${MAX_HTML_CHARS} caractères)` };
   }
 
-  const emptyParsed: ParsedPayrollTable = {
-    employees: [],
-    global_stats: { total_employees: 0, total_caisses: 0, total_sherifs: 0, total_palefreniers: 0 },
-  };
-
   let parsed: ParsedPayrollTable;
   try {
-    parsed = tableHtml.trim() ? parsePayrollHtmlTable(tableHtml) : emptyParsed;
+    parsed = tableHtml.trim() ? parsePayrollHtmlTable(tableHtml) : EMPTY_PARSED_PAYROLL_TABLE;
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Échec du parse HTML';
     return { status: 400, error: msg };
   }
 
-  let activitiesWithNames: WaRow[] = [];
-  let waImportStart: Date | undefined;
-  let waImportEnd: Date | undefined;
-
-  if (importWeeklyActivity) {
-    const range = weekRangeFromIsoDate(waWeekStartStr ?? weekStartStr);
-    waImportStart = range.weekStart;
-    waImportEnd = range.weekEnd;
-    const rawActivities = await prisma.businessWeeklyActivity.findMany({
-      where: {
-        periodStart: waImportStart,
-        periodEnd: waImportEnd,
-        ...tenantWhere(businessId),
-      },
-    });
-    activitiesWithNames = (await attachDiscordProfilesToActivities(
-      prisma,
-      (await mergeResolvedDisplayNames(prisma, businessId, rawActivities)) as WaRow[],
-    )) as WaRow[];
-  }
-
-  const employeesMerged = mergeHtmlAndWeeklyActivity(
+  const created = await createPayrollReport({
+    businessId,
+    businessType: ctx.tenant.business.type,
+    weekStartStr,
+    reportType,
     parsed,
-    activitiesWithNames,
-    weeklyCounterDefinitions(ctx.tenant.business.type),
-  );
-
-  // No HTML and nothing imported: the report starts empty, people are added on its page.
-
-  const { weekStart, weekEnd } = weekRangeFromIsoDate(weekStartStr);
-
-  const existing = await prisma.payrollWeeklyReport.findUnique({
-    where: {
-      businessId_weekStart_reportType: {
-        businessId,
-        weekStart,
-        reportType,
-      },
-    },
+    importWeeklyActivity,
+    waWeekStartStr,
+    prices: { caissePriceUsd, caisseSalePriceUsd, patientCarePriceUsd, offeredItemPriceUsd },
+    createdById: ctx.session.user.id,
   });
-  if (existing) {
-    return { status: 409, error: 'Un rapport de ce type existe déjà pour cette semaine.' };
-  }
-
-  const reportId = randomUUID();
-
-  try {
-    const result = recalculatePayrollResult(
-      payrollReportResultSchema.parse({
-        employees: employeesMerged,
-        global_stats: emptyGlobalStats(),
-        caisse_price_usd: caissePriceUsd,
-        caisse_sale_price_usd: caisseSalePriceUsd,
-        patient_care_price_usd: patientCarePriceUsd,
-        offered_item_price_usd: offeredItemPriceUsd,
-        ...(importWeeklyActivity && waImportStart && waImportEnd
-          ? {
-              weekly_activity_import: {
-                weekStart: waImportStart.toISOString(),
-                weekEnd: waImportEnd.toISOString(),
-              },
-            }
-          : {}),
-      }),
-    );
-
-    await prisma.payrollWeeklyReport.create({
-      data: {
-        id: reportId,
-        businessId,
-        weekStart,
-        weekEnd,
-        reportType,
-        createdById: ctx.session.user.id,
-        resultJson: result as object,
-        errorMessage: null,
-      },
-    });
-
-    return { status: 200, data: { id: reportId } };
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Unknown error';
-    reportServerError({ error: e, status: 500, message: msg, feature: 'payroll', businessId });
-    await prisma.payrollWeeklyReport.create({
-      data: {
-        id: reportId,
-        businessId,
-        weekStart,
-        weekEnd,
-        reportType,
-        createdById: ctx.session.user.id,
-        errorMessage: msg,
-      },
-    });
-    return { status: 500, error: msg };
-  }
+  if (created.status === 200) return { status: 200, data: { id: created.data.id } };
+  return { status: created.status, error: created.error };
 }
 
 async function updatePayrollReportResultJsonUnlogged(
