@@ -65,3 +65,15 @@ export function requestHostOf(headers: Headers, fallbackProto = 'http'): { host:
   const proto = headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || fallbackProto;
   return { host: host ?? null, proto };
 }
+
+/**
+ * Absolute origin to link to a business of this type from outside the app (e.g. the Discord bot):
+ * the host of its type when configured, else `NEXT_PUBLIC_APP_URL`, with the protocol of the latter.
+ */
+export function publicBusinessOrigin(type: BusinessType): string {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+  const host = hostOfBusinessType(type);
+  if (!host) return appUrl;
+  const proto = appUrl.startsWith('https://') ? 'https' : 'http';
+  return `${proto}://${host}`;
+}

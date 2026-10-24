@@ -8,7 +8,7 @@ Journal **à l'échelle de l'application** (pas d'un dispensaire), lu par les ad
 |---|---|---|---|
 | **Chaque modification** (création, modification, suppression, action métier) de **toutes** les features, quel que soit le résultat | `ACTION` | `INFO` réussi ou rien à faire, `WARN` refusé ou invalide, `ERROR` échec | `loggedAction` sur chaque mutation exportée de `src/app/_actions/**` ; `withLoggedAction` (libellés français, cas « déjà fait ») pour l'activité hebdo et la paie |
 | Erreur serveur (500, exception inattendue), **lectures comprises** | `ERROR` | `ERROR` | automatique : `actionErrorParser` / `serviceActionError` (`src/lib/action.ts`, `src/lib/serviceAction.ts`) |
-| **Chaque requête** du bot Discord | `BOT_REQUEST` | `INFO` 2xx, `WARN` 4xx, `ERROR` 5xx | `withBotRouteLog` sur les routes `src/app/api/dispensary/weekly-activity/**` et `api/dispensary/bank/bot/**` |
+| **Chaque requête** du bot Discord | `BOT_REQUEST` | `INFO` 2xx, `WARN` 4xx, `ERROR` 5xx | `withBotRouteLog` sur les routes `src/app/api/dispensary/weekly-activity/**`, `api/dispensary/bank/bot/**` et `api/dispensary/bot/**` (entreprises, rapport de paie) |
 
 Les **lectures** (`get…`, `list…`, `search…`), rappelées en permanence par React Query et le temps réel, ne sont loguées qu'en cas d'erreur serveur. Une page qui recharge ses données ne crée donc aucune ligne.
 

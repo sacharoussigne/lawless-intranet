@@ -7,7 +7,7 @@ import {
 } from '@/lib/businessWeeklyActivityApiAuth';
 
 export async function resolveBotBusinessContext(request: NextRequest): Promise<
-  | { ok: true; businessId: string; businessType: BusinessType }
+  | { ok: true; businessId: string; businessSlug: string; businessType: BusinessType }
   | { ok: false; status: number; error: string }
 > {
   const businessId = getBusinessIdFromBotRequest(request);
@@ -17,7 +17,7 @@ export async function resolveBotBusinessContext(request: NextRequest): Promise<
 
   const exists = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, type: true },
+    select: { id: true, slug: true, type: true },
   });
   if (!exists) {
     return { ok: false, status: 404, error: 'Dispensaire introuvable' };
@@ -28,5 +28,5 @@ export async function resolveBotBusinessContext(request: NextRequest): Promise<
     return { ok: false, status: feature.status, error: feature.error };
   }
 
-  return { ok: true, businessId, businessType: exists.type };
+  return { ok: true, businessId, businessSlug: exists.slug, businessType: exists.type };
 }

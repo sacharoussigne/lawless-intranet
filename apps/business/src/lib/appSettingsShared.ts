@@ -5,6 +5,7 @@ import {
   getBusinessTypeDefinition,
   isModuleAllowedForType,
 } from '@/lib/businessTypes';
+import { PAYROLL_PATIENT_CARE_USD } from '@/lib/payroll/constants';
 
 export { APP_FEATURE_KEYS, type AppFeatureKey };
 
@@ -27,6 +28,8 @@ export type AppSettingsDTO = {
   weeklyActivityPresenceDaysVisible: boolean;
   /** Weekly activity counters of the business type: key → enabled (a missing key is enabled). */
   weeklyActivityCounters: Record<string, boolean>;
+  /** Paid per patient cared for (payroll), for every salary type. Edited in the Salaires tab. */
+  payrollPatientCareUsd: number;
 };
 
 export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
@@ -46,6 +49,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   weeklyActivityChestDaysVisible: true,
   weeklyActivityPresenceDaysVisible: true,
   weeklyActivityCounters: {},
+  payrollPatientCareUsd: PAYROLL_PATIENT_CARE_USD,
 };
 
 /** Settings flag behind each module. */

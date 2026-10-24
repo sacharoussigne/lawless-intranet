@@ -3,18 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Container, Tabs } from '@mantine/core';
-import { IconAdjustments, IconLock, IconUsers } from '@tabler/icons-react';
+import { IconAdjustments, IconCoin, IconLock, IconUsers } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import type { BusinessSettingsAdminDTO } from '@/app/_actions/appSettings';
+import type { PayrollSalaryTypeDTO } from '@/lib/payroll/salaryTypes';
 import { AppSettingsGeneralPanel } from './AppSettingsGeneralPanel';
 import { BusinessMembersPanel, type BusinessMemberRow } from './BusinessMembersPanel';
 import {
   BusinessPermissionsPanel,
   type RolePermissionsMatrixData,
 } from './BusinessPermissionsPanel';
-
-const validTabs = ['general', 'members', 'permissions'] as const;
-export type BusinessSettingsTab = (typeof validTabs)[number];
+import { SalaryTypesPanel } from './SalaryTypesPanel';
+import { isBusinessSettingsTab, type BusinessSettingsTab } from './settingsTabs';
 
 type BusinessSettingsPageClientProps = {
   businessSlug: string;
@@ -24,6 +24,8 @@ type BusinessSettingsPageClientProps = {
   initialPermissions: RolePermissionsMatrixData;
   membersError?: string;
   permissionsError?: string;
+  initialSalaryTypes: PayrollSalaryTypeDTO[];
+  salaryTypesError?: string;
 };
 
 export default function BusinessSettingsPageClient({
@@ -34,30 +36,34 @@ export default function BusinessSettingsPageClient({
   initialPermissions,
   membersError,
   permissionsError,
+  initialSalaryTypes,
+  salaryTypesError,
 }: BusinessSettingsPageClientProps) {
+  // The Salaires tab only exists with the payroll module.
+  const payrollEnabled = initialSettings.featurePayrollEnabled;
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
   const tabFromUrl = searchParams.get('tab');
   const resolvedTab: BusinessSettingsTab =
-    tabFromUrl && validTabs.includes(tabFromUrl as BusinessSettingsTab)
-      ? (tabFromUrl as BusinessSettingsTab)
+    tabFromUrl && isBusinessSettingsTab(tabFromUrl)
+      ? tabFromUrl
       : initialTab;
   const [activeTab, setActiveTab] = useState<BusinessSettingsTab>(resolvedTab);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && validTabs.includes(tab as BusinessSettingsTab)) {
-      setActiveTab(tab as BusinessSettingsTab);
+    if (tab && isBusinessSettingsTab(tab)) {
+      setActiveTab(tab);
     } else if (!tab) {
       setActiveTab('general');
     }
   }, [searchParams]);
 
   const handleTabChange = (value: string | null) => {
-    if (!value || !validTabs.includes(value as BusinessSettingsTab)) return;
-    const tab = value as BusinessSettingsTab;
+    if (!value || !isBusinessSettingsTab(value)) return;
+    const tab = value;
     setActiveTab(tab);
     if (tab === 'general') {
       router.push(pathname, { scroll: false });
@@ -72,7 +78,7 @@ export default function BusinessSettingsPageClient({
     <Container size="xl" py="xl" w="100%">
       <PageHeader
         title="Paramètres du dispensaire"
-        description="Identité, modules employés, permissions et gestion de l’équipe."
+        description="Identité, modules employés, permissions, gestion de l’équipe et salaires."
       />
 
       <Tabs value={activeTab} onChange={handleTabChange}>
@@ -86,6 +92,11 @@ export default function BusinessSettingsPageClient({
           <Tabs.Tab value="permissions" leftSection={<IconLock size={16} />}>
             Permissions
           </Tabs.Tab>
+          {payrollEnabled && (
+            <Tabs.Tab value="salaries" leftSection={<IconCoin size={16} />}>
+              Salaires
+            </Tabs.Tab>
+          )}
         </Tabs.List>
 
         <Tabs.Panel value="general" pt="xl">
@@ -110,6 +121,17 @@ export default function BusinessSettingsPageClient({
             />
           )}
         </Tabs.Panel>
+
+        {payrollEnabled && (
+          <Tabs.Panel value="salaries" pt="xl">
+            <SalaryTypesPanel
+              businessSlug={businessSlug}
+              initialSalaryTypes={initialSalaryTypes}
+              initialPatientCareUsd={initialSettings.payrollPatientCareUsd}
+              error={salaryTypesError}
+            />
+          </Tabs.Panel>
+        )}
       </Tabs>
     </Container>
   );

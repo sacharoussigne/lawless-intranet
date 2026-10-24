@@ -29,6 +29,7 @@ model Business {
   businessWeeklyActivities BusinessWeeklyActivity[]
   people                   BusinessPerson[]
   cabinets                 Cabinet[]
+  payrollSalaryTypes       PayrollSalaryType[]
 
   @@index([createdById])
   @@map("dispensary")
@@ -146,6 +147,8 @@ model AppSettings {
   weeklyActivityPresenceDaysVisible Boolean  @default(true)
   /// Weekly activity counters of the business type: key → enabled (a missing key is enabled).
   weeklyActivityCounters            Json     @default("{}")
+  /// Paid per patient cared for (payroll), for every salary type.
+  payrollPatientCareUsd             Decimal  @default(0.3) @db.Decimal(10, 2)
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
 
@@ -262,14 +265,37 @@ model BusinessPerson {
   personId    String
   person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
   /// Grade in this business (payroll).
-  role        String?
-  createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  role         String?
+  /// Salary type in this business (payroll); none = the business default.
+  salaryTypeId String?
+  salaryType   PayrollSalaryType? @relation(fields: [salaryTypeId], references: [id], onDelete: SetNull)
+  createdById  String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   @@unique([businessId, personId])
   @@index([personId])
+  @@index([salaryTypeId])
   @@map("business_person")
+}
+
+/// Salary type of a business (payroll): what a person is paid per caisse.
+model PayrollSalaryType {
+  id            String           @id @default(uuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  label         String
+  caisseUnitUsd Decimal          @db.Decimal(10, 2)
+  /// Used for people without a salary type and as the report's caisse price.
+  isDefault     Boolean          @default(false)
+  sortOrder     Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  people        BusinessPerson[]
+
+  @@unique([businessId, label])
+  @@index([businessId])
+  @@map("payroll_salary_type")
 }
 
 enum CabinetAccessLevel {
