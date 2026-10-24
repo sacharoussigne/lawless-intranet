@@ -9,6 +9,8 @@ type WaRow = BusinessWeeklyActivity & {
   resolvedDisplayName: string;
   discordProfileRole?: string | null;
   discordProfileAccountNumber?: number | null;
+  /** Caisse unit of the person's salary type; null = the report's caisse price. */
+  discordProfileCaisseUnitUsd?: number | null;
   user?: { name: string } | null;
 };
 
@@ -21,6 +23,13 @@ function roleFromSources(wa: WaRow | undefined, htmlRole: string): string {
 function idFromSources(wa: WaRow | undefined, htmlId: number | null): number | null {
   if (wa?.discordProfileAccountNumber != null) return wa.discordProfileAccountNumber;
   return htmlId;
+}
+
+/** The person's salary type becomes the employee's caisse override. */
+function caisseOverrideOf(wa: WaRow | undefined): { caisse_unit_override_usd?: number } {
+  return wa?.discordProfileCaisseUnitUsd != null
+    ? { caisse_unit_override_usd: wa.discordProfileCaisseUnitUsd }
+    : {};
 }
 
 function emptyDay() {
@@ -178,6 +187,7 @@ export function mergeHtmlAndWeeklyActivity(
       name: (wa && cleanText(wa.resolvedDisplayName)) || cleanText(row.name ?? ''),
       role: roleFromSources(wa, row.role ?? ''),
       id: idFromSources(wa, row.id),
+      ...caisseOverrideOf(wa),
       salary_supplement_usd: 0,
       schedule,
       stats: {
@@ -203,6 +213,7 @@ export function mergeHtmlAndWeeklyActivity(
       name: label,
       role: roleFromSources(wa, ''),
       id: idFromSources(wa, null),
+      ...caisseOverrideOf(wa),
       salary_supplement_usd: 0,
       schedule,
       stats: {
