@@ -5,7 +5,10 @@ import type { Prisma, PrismaClient } from '@prisma/client';
  * business knows it through `BusinessPerson`, which holds its grade there.
  * The "profile" of a Discord ID in a business is both, flattened.
  */
-export type ProfileDb = Pick<PrismaClient, 'person' | 'businessPerson'>;
+export type ProfileDb = Pick<PrismaClient, 'person' | 'businessPerson' | 'payrollSalaryType'>;
+
+/** Salary type of a person in a business (payroll). */
+export type ProfileSalaryType = { id: string; label: string; caisseUnitUsd: number };
 
 export type DiscordProfileSnapshot = {
   discordUserId: string;
@@ -14,6 +17,8 @@ export type DiscordProfileSnapshot = {
   role: string | null;
   accountNumber: number | null;
   userId: string | null;
+  /** Salary type in this business; null = the business default. */
+  salaryType: ProfileSalaryType | null;
   /** Last change of the person or of its grade here. */
   updatedAt: Date;
 };
@@ -33,10 +38,19 @@ export const personSelect = {
   updatedAt: true,
 } as const;
 
+export const salaryTypeSelect = { id: true, label: true, caisseUnitUsd: true } as const;
+
+export function salaryTypeOf(
+  row: Prisma.PayrollSalaryTypeGetPayload<{ select: typeof salaryTypeSelect }> | null,
+): ProfileSalaryType | null {
+  return row ? { id: row.id, label: row.label, caisseUnitUsd: Number(row.caisseUnitUsd) } : null;
+}
+
 export function snapshotOf(
   person: Prisma.PersonGetPayload<{ select: typeof personSelect }>,
   role: string | null,
   linkUpdatedAt?: Date,
+  salaryType: ProfileSalaryType | null = null,
 ): DiscordProfileSnapshot {
   return {
     updatedAt:
@@ -47,6 +61,7 @@ export function snapshotOf(
     role,
     accountNumber: person.accountNumber,
     userId: person.userId,
+    salaryType,
   };
 }
 
@@ -58,9 +73,16 @@ export async function findBusinessProfiles(
 ): Promise<DiscordProfileSnapshot[]> {
   const links = await client.businessPerson.findMany({
     where: { businessId, person: personWhere },
-    select: { role: true, updatedAt: true, person: { select: personSelect } },
+    select: {
+      role: true,
+      updatedAt: true,
+      person: { select: personSelect },
+      salaryType: { select: salaryTypeSelect },
+    },
   });
-  return links.map((link) => snapshotOf(link.person, link.role, link.updatedAt));
+  return links.map((link) =>
+    snapshotOf(link.person, link.role, link.updatedAt, salaryTypeOf(link.salaryType)),
+  );
 }
 
 /** Profile of a Discord ID in a business, null when the business does not know it. */

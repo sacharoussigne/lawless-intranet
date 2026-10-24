@@ -6,7 +6,7 @@ import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { PAYROLL_EMPLOYEE_ROLES, toPayrollEmployeeRole } from '@/lib/businessDiscordProfile/constants';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { handleApiZodError } from '@/lib/services/zod';
-import type { BusinessPerson, MemberWithoutProfile } from '@/lib/people/types';
+import type { BusinessPerson, MemberWithoutProfile, SalaryTypeOption } from '@/lib/people/types';
 import { useCreatePersonMutation, useUpdatePersonMutation } from '../hooks/usePeopleQueries';
 
 type PersonModalProps = {
@@ -14,10 +14,12 @@ type PersonModalProps = {
   /** `null`: add a person. */
   person: BusinessPerson | null;
   membersWithoutProfile: MemberWithoutProfile[];
+  /** `null`: payroll module off, no salary field. */
+  salaryTypes: SalaryTypeOption[] | null;
   onClose: () => void;
 };
 
-export function PersonModal({ opened, person, membersWithoutProfile, onClose }: PersonModalProps) {
+export function PersonModal({ opened, person, membersWithoutProfile, salaryTypes, onClose }: PersonModalProps) {
   return (
     <AppModal
       opened={opened}
@@ -30,6 +32,7 @@ export function PersonModal({ opened, person, membersWithoutProfile, onClose }: 
           key={person?.discordUserId ?? 'new'}
           person={person}
           membersWithoutProfile={membersWithoutProfile}
+          salaryTypes={salaryTypes}
           onClose={onClose}
         />
       )}
@@ -42,6 +45,8 @@ type FormValues = {
   displayName: string;
   accountNumber: number | string;
   role: string | null;
+  /** `null`: the business default. */
+  salaryTypeId: string | null;
 };
 
 function toAccountNumber(value: number | string): number | null {
@@ -49,15 +54,22 @@ function toAccountNumber(value: number | string): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function salaryTypeLabel(salaryType: SalaryTypeOption): string {
+  return `${salaryType.label} · ${salaryType.caisseUnitUsd.toFixed(2)} $ par caisse`;
+}
+
 function PersonForm({
   person,
   membersWithoutProfile,
+  salaryTypes,
   onClose,
 }: {
   person: BusinessPerson | null;
   membersWithoutProfile: MemberWithoutProfile[];
+  salaryTypes: SalaryTypeOption[] | null;
   onClose: () => void;
 }) {
+  const defaultSalaryType = salaryTypes?.find((s) => s.isDefault);
   const createMutation = useCreatePersonMutation();
   const updateMutation = useUpdatePersonMutation();
   const isPending = createMutation.isPending || updateMutation.isPending;
@@ -68,6 +80,7 @@ function PersonForm({
       displayName: person ? (person.fixedDisplayName ?? person.displayName) : '',
       accountNumber: person?.accountNumber ?? '',
       role: person?.role ?? null,
+      salaryTypeId: person?.salaryType?.id ?? null,
     },
     validate: {
       discordUserId: (value) =>
@@ -93,6 +106,8 @@ function PersonForm({
         accountNumber: values.accountNumber === '' ? null : toAccountNumber(values.accountNumber),
         // Unchanged grade not sent: an old grade outside the payroll list is kept.
         role: values.role === (person?.role ?? null) ? undefined : toPayrollEmployeeRole(values.role),
+        // Not sent without the payroll module, so the salary type is kept.
+        salaryTypeId: salaryTypes ? values.salaryTypeId : undefined,
       };
       if (person) {
         const name = values.displayName.trim();
@@ -182,6 +197,23 @@ function PersonForm({
           searchable
           {...form.getInputProps('role')}
         />
+        {salaryTypes && (
+          <Select
+            label="Salaire"
+            description={
+              salaryTypes.length === 0
+                ? 'Aucun type de salaire : à créer dans Paramètres › Salaires.'
+                : 'Montant reversé par caisse dans les rapports de paie.'
+            }
+            placeholder={
+              defaultSalaryType ? `Par défaut (${salaryTypeLabel(defaultSalaryType)})` : 'Par défaut'
+            }
+            data={salaryTypes.map((s) => ({ value: s.id, label: salaryTypeLabel(s) }))}
+            disabled={salaryTypes.length === 0}
+            clearable
+            {...form.getInputProps('salaryTypeId')}
+          />
+        )}
         {person?.account && (
           <Text size="xs" c="dimmed">
             Compte intranet lié : {person.account.name}

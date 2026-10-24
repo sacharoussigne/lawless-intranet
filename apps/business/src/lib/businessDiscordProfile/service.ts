@@ -3,9 +3,12 @@ import { pickProfileDisplayName } from '@/lib/people/displayName';
 import {
   findBusinessProfile,
   personSelect,
+  salaryTypeOf,
+  salaryTypeSelect,
   snapshotOf,
   type DiscordProfileSnapshot,
   type ProfileDb,
+  type ProfileSalaryType,
 } from '@/lib/businessDiscordProfile/queries';
 
 export {
@@ -41,6 +44,21 @@ function toConflict(error: unknown): unknown {
 function trimDisplayName(name: string): string {
   const trimmed = name.trim();
   return trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
+}
+
+/** Salary type of this business, or null to use the default; refuses another business's type. */
+async function salaryTypeOfBusiness(
+  client: ProfileDb,
+  businessId: string,
+  salaryTypeId: string | null,
+): Promise<ProfileSalaryType | null> {
+  if (!salaryTypeId) return null;
+  const row = await client.payrollSalaryType.findFirst({
+    where: { id: salaryTypeId, businessId },
+    select: salaryTypeSelect,
+  });
+  if (!row) throw new DiscordProfileNotFoundError('Type de salaire introuvable');
+  return salaryTypeOf(row);
 }
 
 function normalizeOptionalText(value: string | null | undefined): string | null {
@@ -142,6 +160,8 @@ export async function createDiscordProfile(
     displayName: string;
     role?: string | null;
     accountNumber?: number | null;
+    /** `null` or absent: the business default salary type. */
+    salaryTypeId?: string | null;
     userId: string | null;
     createdById: string;
     /** Latest name sent by the bot for this Discord id, if any. */
@@ -155,6 +175,7 @@ export async function createDiscordProfile(
 
   const name = trimDisplayName(input.displayName);
   const role = normalizeOptionalText(input.role);
+  const salaryType = await salaryTypeOfBusiness(client, input.businessId, input.salaryTypeId ?? null);
   try {
     const person = await client.person.upsert({
       where: { discordUserId: input.discordUserId },
@@ -179,10 +200,11 @@ export async function createDiscordProfile(
         businessId: input.businessId,
         personId: person.id,
         role,
+        salaryTypeId: salaryType?.id ?? null,
         createdById: input.createdById,
       },
     });
-    return snapshotOf(person, role);
+    return snapshotOf(person, role, undefined, salaryType);
   } catch (error) {
     throw toConflict(error);
   }
@@ -197,17 +219,19 @@ export async function updateDiscordProfileFields(
     fixedDisplayName?: string | null;
     role?: string | null;
     accountNumber?: number | null;
+    /** `null` goes back to the business default salary type. */
+    salaryTypeId?: string | null;
   },
 ): Promise<DiscordProfileSnapshot> {
   const link = await client.businessPerson.findFirst({
     where: { businessId: input.businessId, person: { discordUserId: input.discordUserId } },
-    select: { id: true, personId: true, role: true },
+    select: { id: true, personId: true, role: true, salaryType: { select: salaryTypeSelect } },
   });
   if (!link) {
     throw new DiscordProfileNotFoundError('Profil introuvable pour cette personne');
   }
 
-  // The name and the account number belong to the person, the grade to this business.
+  // The name and the account number belong to the person, the grade and the salary to this business.
   const personData: { fixedDisplayName?: string | null; accountNumber?: number | null } = {};
   if (input.fixedDisplayName !== undefined) {
     personData.fixedDisplayName = normalizeOptionalText(input.fixedDisplayName);
@@ -217,18 +241,28 @@ export async function updateDiscordProfileFields(
     personData.accountNumber = input.accountNumber;
   }
 
+  let salaryType = salaryTypeOf(link.salaryType);
+  if (input.salaryTypeId !== undefined) {
+    salaryType = await salaryTypeOfBusiness(client, input.businessId, input.salaryTypeId);
+  }
+
   try {
     let role = link.role;
     if (input.role !== undefined) {
       role = normalizeOptionalText(input.role);
-      await client.businessPerson.update({ where: { id: link.id }, data: { role } });
+    }
+    if (input.role !== undefined || input.salaryTypeId !== undefined) {
+      await client.businessPerson.update({
+        where: { id: link.id },
+        data: { role, salaryTypeId: salaryType?.id ?? null },
+      });
     }
     const person = await client.person.update({
       where: { id: link.personId },
       data: personData,
       select: personSelect,
     });
-    return snapshotOf(person, role);
+    return snapshotOf(person, role, undefined, salaryType);
   } catch (error) {
     throw toConflict(error);
   }
