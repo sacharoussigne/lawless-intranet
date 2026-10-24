@@ -37,6 +37,7 @@ Si `X-Discord-User-Id` est absent alors qu’il est requis : **400** (sauf `GET 
 - Super-admin : liste dans l’intranet `/platform/dispensaries`, ou table `dispensary` en base.
 - Le bot peut stocker **un `dispensaryId` par serveur Discord** (guild) si plusieurs dispensaires RP partagent la même instance.
 - Le bot peut lister les entreprises disponibles avec [`GET /api/dispensary/bot/businesses`](#get-apidispensarybotbusinesses).
+- Le bot peut créer le rapport de paie de la semaine : voir [API rapport de paie](./api-dispensary-payroll-bot.md).
 
 ## Format des réponses
 
