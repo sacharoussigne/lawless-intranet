@@ -10,12 +10,14 @@ type ActivityWithResolvedName = {
 export type ActivityWithDiscordProfile = ActivityWithResolvedName & {
   discordProfileRole: string | null;
   discordProfileAccountNumber: number | null;
+  /** Caisse unit of the person's salary type, null = the business default. */
+  discordProfileCaisseUnitUsd: number | null;
 };
 
 export async function attachDiscordProfilesToActivities<T extends ActivityWithResolvedName>(
   client: ProfileDb,
   rows: T[],
-): Promise<(T & { discordProfileRole: string | null; discordProfileAccountNumber: number | null })[]> {
+): Promise<(T & Omit<ActivityWithDiscordProfile, keyof ActivityWithResolvedName>)[]> {
   if (rows.length === 0) return [];
 
   const businessIds = new Set(rows.map((r) => r.businessId));
@@ -37,6 +39,7 @@ export async function attachDiscordProfilesToActivities<T extends ActivityWithRe
       resolvedDisplayName: pickProfileDisplayName(profile, row.resolvedDisplayName),
       discordProfileRole: profile?.role ?? null,
       discordProfileAccountNumber: profile?.accountNumber ?? null,
+      discordProfileCaisseUnitUsd: profile?.salaryType?.caisseUnitUsd ?? null,
     };
   });
 }

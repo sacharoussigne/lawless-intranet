@@ -15,7 +15,7 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
-import { effectiveCaisseUnitUsd } from '@/lib/payroll/recalculatePayrollResult';
+import { employeePayoutUsd } from '@/lib/payroll/recalculatePayrollResult';
 import { BANDAGE_EXPORT_DEPOSIT_MOTIF } from './payrollDetailUtils';
 import { CopyableCell } from './CopyableCell';
 
@@ -70,11 +70,7 @@ export function PayrollVirementsSection({ draft, wireDescription }: PayrollVirem
         </Table.Thead>
         <Table.Tbody onMouseLeave={() => setHoveredVirementRow(null)}>
           {draft.employees.map((emp, rowIdx) => {
-            const caisses = emp.stats.nombre_caisses ?? 0;
-            const patients = emp.stats.patients_soignes ?? 0;
-            const unitUsd = effectiveCaisseUnitUsd(emp, draft.caisse_price_usd);
-            const supplement = emp.salary_supplement_usd ?? 0;
-            const pay = caisses * unitUsd + patients * draft.patient_care_price_usd + supplement;
+            const pay = employeePayoutUsd(emp, draft);
             const payStr = `${pay.toFixed(2)} $`;
             const payCopyValue = pay.toFixed(2);
             const idDisplay = emp.id != null ? String(emp.id) : '—';

@@ -9,12 +9,11 @@ import { jsonBotError } from '@/lib/businessWeeklyActivity/botRouteHandlers';
 import { withBotRouteLog } from '@/lib/logs/botRoute';
 import {
   PAYROLL_CAISSE_SALE_USD,
-  PAYROLL_CAISSE_USD,
   PAYROLL_OFFERED_ITEM_USD,
-  PAYROLL_PATIENT_CARE_USD,
   PAYROLL_REPORT_TYPE_EMPLOYES,
 } from '@/lib/payroll/constants';
 import { createPayrollReport, EMPTY_PARSED_PAYROLL_TABLE } from '@/lib/payroll/createReport';
+import { resolvePayrollDefaultRates } from '@/lib/payroll/salaryTypes';
 import { accountIdOfDiscord } from '@/lib/people/accountLinks';
 import { tenantRoutes } from '@/types/routes';
 
@@ -76,6 +75,7 @@ async function handlePost(request: Request) {
   const date = parsed.data.date ?? dayjs().tz(PARIS_TZ).format('YYYY-MM-DD');
   // No account linked (or auth service down): the author stays identifiable by its Discord id.
   const createdById = (await accountIdOfDiscord(discordUserId)) ?? `discord:${discordUserId}`;
+  const rates = await resolvePayrollDefaultRates(businessCtx.businessId);
 
   const created = await createPayrollReport({
     businessId: businessCtx.businessId,
@@ -85,9 +85,9 @@ async function handlePost(request: Request) {
     parsed: EMPTY_PARSED_PAYROLL_TABLE,
     importWeeklyActivity: true,
     prices: {
-      caissePriceUsd: PAYROLL_CAISSE_USD,
+      caissePriceUsd: rates.caisseUnitUsd,
       caisseSalePriceUsd: PAYROLL_CAISSE_SALE_USD,
-      patientCarePriceUsd: PAYROLL_PATIENT_CARE_USD,
+      patientCarePriceUsd: rates.patientCareUsd,
       offeredItemPriceUsd: PAYROLL_OFFERED_ITEM_USD,
     },
     createdById,

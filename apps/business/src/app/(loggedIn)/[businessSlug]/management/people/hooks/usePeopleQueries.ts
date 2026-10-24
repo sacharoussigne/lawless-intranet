@@ -51,6 +51,8 @@ export type PersonFormValues = {
   displayName: string;
   accountNumber: number | null;
   role?: PayrollEmployeeRole | null;
+  /** `null`: the business default salary type; absent: unchanged. */
+  salaryTypeId?: string | null;
 };
 
 export function useCreatePersonMutation() {

@@ -202,6 +202,7 @@ async function updateAppSettingsUnlogged(
       weeklyActivityChestDaysVisible: row.weeklyActivityChestDaysVisible ?? true,
       weeklyActivityPresenceDaysVisible: row.weeklyActivityPresenceDaysVisible ?? true,
       weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
+      payrollPatientCareUsd: Number(row.payrollPatientCareUsd),
     };
 
     return { status: 200, data };

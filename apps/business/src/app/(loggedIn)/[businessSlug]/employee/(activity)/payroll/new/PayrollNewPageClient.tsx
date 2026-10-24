@@ -35,9 +35,7 @@ import {
 } from '../hooks/usePayrollQueries';
 import {
   PAYROLL_CAISSE_SALE_USD,
-  PAYROLL_CAISSE_USD,
   PAYROLL_OFFERED_ITEM_USD,
-  PAYROLL_PATIENT_CARE_USD,
   PAYROLL_REPORT_TYPE_EMPLOYES,
   PAYROLL_REPORT_TYPES,
 } from '@/lib/payroll/constants';
@@ -70,16 +68,23 @@ function SectionHeader({
   );
 }
 
-export default function PayrollNewPageClient() {
+export default function PayrollNewPageClient({
+  defaultCaissePriceUsd,
+  defaultPatientCarePriceUsd,
+}: {
+  /** Default salary type of the business (Paramètres › Salaires). */
+  defaultCaissePriceUsd: number;
+  defaultPatientCarePriceUsd: number;
+}) {
   const routes = useTenantRoutes();
   const createMutation = useCreatePayrollReportMutation();
   const [weekDate, setWeekDate] = useState<string | null>(format(new Date(), 'yyyy-MM-dd'));
   const [importWeeklyActivity, setImportWeeklyActivity] = useState(false);
   const [waWeekDate, setWaWeekDate] = useState<string | null>(format(new Date(), 'yyyy-MM-dd'));
   const [caisseSalePriceUsd, setCaisseSalePriceUsd] = useState<number>(PAYROLL_CAISSE_SALE_USD);
-  const [caissePriceUsd, setCaissePriceUsd] = useState<number>(PAYROLL_CAISSE_USD);
+  const [caissePriceUsd, setCaissePriceUsd] = useState<number>(defaultCaissePriceUsd);
   const [patientCarePriceUsd, setPatientCarePriceUsd] =
-    useState<number>(PAYROLL_PATIENT_CARE_USD);
+    useState<number>(defaultPatientCarePriceUsd);
   const [offeredItemPriceUsd, setOfferedItemPriceUsd] =
     useState<number>(PAYROLL_OFFERED_ITEM_USD);
   const [tableHtml, setTableHtml] = useState('');

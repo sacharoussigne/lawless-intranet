@@ -149,6 +149,17 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
               render: (person) => person.role ?? '—',
             },
             {
+              accessor: 'salaryType',
+              title: 'Salaire',
+              hidden: data.salaryTypes == null,
+              render: (person) =>
+                person.salaryType?.label ?? (
+                  <Text span size="sm" c="dimmed">
+                    Par défaut
+                  </Text>
+                ),
+            },
+            {
               accessor: 'actions',
               title: '',
               textAlign: 'right',
@@ -188,6 +199,7 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
         opened={modal != null}
         person={modal?.person ?? null}
         membersWithoutProfile={data.membersWithoutProfile}
+        salaryTypes={data.salaryTypes}
         onClose={() => setModal(null)}
       />
     </Container>

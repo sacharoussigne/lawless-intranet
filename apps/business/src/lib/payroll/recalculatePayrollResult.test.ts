@@ -6,7 +6,7 @@ import {
   PAYROLL_PATIENT_CARE_USD,
 } from './constants';
 import type { PayrollReportResult } from './schema';
-import { effectiveCaisseUnitUsd, recalculatePayrollResult } from './recalculatePayrollResult';
+import { effectiveCaisseUnitUsd, estimatePayoutUsd, recalculatePayrollResult } from './recalculatePayrollResult';
 
 const emptyDay = { caisse: null as string | null, presence: null as string | null };
 
@@ -285,5 +285,13 @@ describe('recalculatePayrollResult', () => {
     const out = recalculatePayrollResult(data);
     expect(out.global_stats.total_employee_payout_usd).toBeCloseTo(-5, 5);
     expect(out.global_stats.total_benefit_usd).toBeCloseTo(0, 5);
+  });
+});
+
+describe('estimatePayoutUsd', () => {
+  it('adds caisses, patients and the supplement', () => {
+    expect(
+      estimatePayoutUsd({ caisses: 4, caisseUnitUsd: 5, patients: 10, patientCareUsd: 0.3, supplementUsd: -2 }),
+    ).toBeCloseTo(4 * 5 + 10 * 0.3 - 2);
   });
 });

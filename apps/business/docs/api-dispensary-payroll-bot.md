@@ -9,7 +9,7 @@ Même base d’URL et même authentification que l’[API de l’activité hebdo
 - **Accès** : le bot ne propose la commande qu’au rôle Direction du serveur (réglé dans `/config`). L’intranet ne vérifie pas de permission par utilisateur : le secret du bot suffit, comme pour le récap d’équipe.
 - Il faut l’**activité hebdomadaire** et la **paie** activées pour l’entreprise, sinon **403**.
 - La semaine est celle (lundi → dimanche, Europe/Paris) qui contient `date`, aujourd’hui par défaut.
-- Le rapport est de type **« Employés »**, avec les prix par défaut (caisse 6,5 $, vente 7,5 $, patient 0,3 $, objet offert 0,4 $) ; ils se modifient ensuite sur la page du rapport.
+- Le rapport est de type **« Employés »**. Prix : caisse = salaire par défaut de l'entreprise (Paramètres › Salaires, sinon 6,5 $), patient = tarif patient de l'entreprise (0,3 $ par défaut), vente 7,5 $, objet offert 0,4 $. Chaque personne avec un type de salaire reçoit son tarif par caisse en « reversé par caisse ». Tout se modifie ensuite sur la page du rapport.
 - Il n’y a qu’un rapport par semaine et par type : si celui de la semaine existe déjà, la route renvoie **ce rapport** (`alreadyExists: true`) au lieu d’en créer un second.
 - Auteur du rapport : le compte intranet lié au Discord de l’appelant, sinon `discord:<id>` (affiché « Utilisateur »).
 

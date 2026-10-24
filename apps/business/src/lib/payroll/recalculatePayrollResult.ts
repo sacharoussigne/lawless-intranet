@@ -7,6 +7,35 @@ export function effectiveCaisseUnitUsd(
   return emp.caisse_unit_override_usd ?? reportCaisseUsd;
 }
 
+/** Pay of one person: caisses × caisse unit + patients × patient rate + supplement. */
+export function estimatePayoutUsd(input: {
+  caisses: number;
+  caisseUnitUsd: number;
+  patients: number;
+  patientCareUsd: number;
+  supplementUsd?: number;
+}): number {
+  return (
+    input.caisses * input.caisseUnitUsd +
+    input.patients * input.patientCareUsd +
+    (input.supplementUsd ?? 0)
+  );
+}
+
+/** Pay of a report employee, with its caisse override and supplement. */
+export function employeePayoutUsd(
+  emp: PayrollReportResult['employees'][number],
+  report: Pick<PayrollReportResult, 'caisse_price_usd' | 'patient_care_price_usd'>,
+): number {
+  return estimatePayoutUsd({
+    caisses: emp.stats.nombre_caisses ?? 0,
+    caisseUnitUsd: effectiveCaisseUnitUsd(emp, report.caisse_price_usd),
+    patients: emp.stats.patients_soignes ?? 0,
+    patientCareUsd: report.patient_care_price_usd,
+    supplementUsd: emp.salary_supplement_usd ?? 0,
+  });
+}
+
 const SCHEDULE_DAYS = [
   'lundi',
   'mardi',
@@ -40,13 +69,10 @@ export function recalculatePayrollResult(data: PayrollReportResult): PayrollRepo
     };
   });
 
-  const total_employee_payout_usd = employees.reduce((sum, e) => {
-    const ca = e.stats.nombre_caisses ?? 0;
-    const p = e.stats.patients_soignes ?? 0;
-    const unit = effectiveCaisseUnitUsd(e, data.caisse_price_usd);
-    const supplement = e.salary_supplement_usd ?? 0;
-    return sum + ca * unit + p * data.patient_care_price_usd + supplement;
-  }, 0);
+  const total_employee_payout_usd = employees.reduce(
+    (sum, e) => sum + employeePayoutUsd(e, data),
+    0,
+  );
 
   const total_offered_item_count = employees.reduce(
     (sum, e) =>

@@ -17,6 +17,7 @@ function row(
     resolvedDisplayName: string;
     discordProfileRole?: string | null;
     discordProfileAccountNumber?: number | null;
+    discordProfileCaisseUnitUsd?: number | null;
     user?: { name: string } | null;
   },
 ): Parameters<typeof mergeHtmlAndWeeklyActivity>[1][number] {
@@ -178,6 +179,19 @@ describe('mergeHtmlAndWeeklyActivity', () => {
     const out = mergeHtmlAndWeeklyActivity(parsed, wa, DISPENSARY_COUNTERS);
     expect(out[0].role).toBe('Infirmier');
     expect(out[0].id).toBe(42);
+  });
+  it('sets the caisse override from the salary type of the person only', () => {
+    const parsed: ParsedPayrollTable = {
+      employees: [],
+      global_stats: { total_employees: 0, total_caisses: 0, total_sherifs: 0, total_palefreniers: 0 },
+    };
+    const wa = [
+      row({ id: 'w1', resolvedDisplayName: 'Alice', discordUserId: '1', discordProfileCaisseUnitUsd: 5 }),
+      row({ id: 'w2', resolvedDisplayName: 'Bob', discordUserId: '2', discordProfileCaisseUnitUsd: null }),
+    ];
+    const out = mergeHtmlAndWeeklyActivity(parsed, wa, DISPENSARY_COUNTERS);
+    expect(out.find((e) => e.name === 'Alice')?.caisse_unit_override_usd).toBe(5);
+    expect(out.find((e) => e.name === 'Bob')).not.toHaveProperty('caisse_unit_override_usd');
   });
 });
 

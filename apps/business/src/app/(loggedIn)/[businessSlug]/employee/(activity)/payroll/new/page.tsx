@@ -5,6 +5,7 @@ import { getEffectiveRoleForBusiness, requireBusinessFromSlug } from '@/lib/busi
 import { resolveEffectivePermissionsForBusiness } from '@/lib/business/permissionsResolve';
 import type { AuthSession } from '@/types/session';
 import { routes } from '@/types/routes';
+import { resolvePayrollDefaultRates } from '@/lib/payroll/salaryTypes';
 import PayrollNewPageClient from './PayrollNewPageClient';
 
 export default async function PayrollNewPage({ params }: { params: Promise<{ businessSlug: string }> }) {
@@ -25,6 +26,12 @@ export default async function PayrollNewPage({ params }: { params: Promise<{ bus
     redirect(routes.auth.noManagementAccess);
   }
 
-  return <PayrollNewPageClient />;
+  const rates = await resolvePayrollDefaultRates(business.id);
+  return (
+    <PayrollNewPageClient
+      defaultCaissePriceUsd={rates.caisseUnitUsd}
+      defaultPatientCarePriceUsd={rates.patientCareUsd}
+    />
+  );
 }
 

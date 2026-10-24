@@ -11,6 +11,8 @@ import {
   getLatestDiscordDisplayName,
 } from '@/lib/businessWeeklyActivity/resolveDisplayName';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
+import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
+import { listPayrollSalaryTypes } from '@/lib/payroll/salaryTypes';
 import {
   createDiscordProfile,
   DiscordProfileConflictError,
@@ -44,12 +46,15 @@ const accountNumberSchema = z
   .max(999999, 'N° de compte invalide')
   .nullable()
   .optional();
+/** `null`: the business default salary type. */
+const salaryTypeIdSchema = z.string().min(1).nullable().optional();
 
 const createPersonSchema = z.object({
   discordUserId: discordUserIdSchema,
   displayName: displayNameSchema,
   accountNumber: accountNumberSchema,
   role: roleSchema,
+  salaryTypeId: salaryTypeIdSchema,
 });
 
 const updatePersonSchema = z.object({
@@ -58,6 +63,7 @@ const updatePersonSchema = z.object({
   fixedDisplayName: displayNameSchema.nullable().optional(),
   accountNumber: accountNumberSchema,
   role: roleSchema,
+  salaryTypeId: salaryTypeIdSchema,
 });
 
 function toPerson(
@@ -71,6 +77,7 @@ function toPerson(
     lastDisplayName: profile.lastDisplayName,
     role: profile.role,
     accountNumber: profile.accountNumber,
+    salaryType: profile.salaryType ? { id: profile.salaryType.id, label: profile.salaryType.label } : null,
     account: profile.userId ? { id: profile.userId, name: accountName ?? 'Compte intranet' } : null,
     updatedAt: profile.updatedAt,
   };
@@ -91,10 +98,19 @@ export async function listBusinessPeople(businessSlug: string) {
     if (!ctx.ok) return ctx.response;
     const { businessId } = ctx.tenant;
 
-    const [initialProfiles, members] = await Promise.all([
+    const [initialProfiles, members, settings] = await Promise.all([
       findBusinessProfiles(prisma, businessId),
       prisma.businessMember.findMany({ where: { businessId }, select: { userId: true } }),
+      getAppSettings(businessId),
     ]);
+    const salaryTypes = isAppFeatureEnabled(settings, 'payroll')
+      ? (await listPayrollSalaryTypes(businessId)).map(({ id, label, caisseUnitUsd, isDefault }) => ({
+          id,
+          label,
+          caisseUnitUsd,
+          isDefault,
+        }))
+      : null;
 
     // Accounts created (or unlinked) since the people were added; best effort, cached.
     const links = await reconcileAccountLinks(
@@ -129,7 +145,7 @@ export async function listBusinessPeople(businessSlug: string) {
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 
-    const data: BusinessPeopleList = { people, membersWithoutProfile };
+    const data: BusinessPeopleList = { people, membersWithoutProfile, salaryTypes };
     return { status: 200 as const, data };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors du chargement des personnes');
@@ -153,12 +169,16 @@ async function createBusinessPersonUnlogged(businessSlug: string, input: unknown
       displayName: data.displayName,
       role: data.role,
       accountNumber: data.accountNumber,
+      salaryTypeId: data.salaryTypeId,
       userId,
       createdById: ctx.session.user.id,
     });
 
     return { status: 200 as const, data: await loadPerson(businessId, data.discordUserId) };
   } catch (error) {
+    if (error instanceof DiscordProfileNotFoundError) {
+      return { status: 404 as const, error: error.message };
+    }
     if (error instanceof DiscordProfileConflictError) {
       return { status: 409 as const, error: error.message };
     }
@@ -179,6 +199,7 @@ async function updateBusinessPersonUnlogged(businessSlug: string, input: unknown
       fixedDisplayName: data.fixedDisplayName,
       role: data.role,
       accountNumber: data.accountNumber,
+      salaryTypeId: data.salaryTypeId,
     });
 
     return { status: 200 as const, data: await loadPerson(businessId, data.discordUserId) };

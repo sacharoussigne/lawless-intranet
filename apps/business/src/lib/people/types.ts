@@ -7,6 +7,8 @@ export type BusinessPerson = {
   lastDisplayName: string;
   role: string | null;
   accountNumber: number | null;
+  /** Salary type in this business (payroll); null = the business default. */
+  salaryType: { id: string; label: string } | null;
   /** Intranet account holding this Discord ID, if any. */
   account: { id: string; name: string } | null;
   updatedAt: Date;
@@ -19,7 +21,12 @@ export type MemberWithoutProfile = {
   discordUserId: string;
 };
 
+/** Salary type offered in Gestion › Personnes. */
+export type SalaryTypeOption = { id: string; label: string; caisseUnitUsd: number; isDefault: boolean };
+
 export type BusinessPeopleList = {
   people: BusinessPerson[];
   membersWithoutProfile: MemberWithoutProfile[];
+  /** `null` when the payroll module is off: no salary to pick. */
+  salaryTypes: SalaryTypeOption[] | null;
 };
