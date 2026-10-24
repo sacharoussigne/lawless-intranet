@@ -183,7 +183,20 @@ Les lignes renvoyées sont celles dont la période **chevauche** cette semaine (
 | Champ | Type | Description |
 |-------|------|-------------|
 | `periodStart`, `periodEnd` | string ISO | Bornes canoniques de la semaine (Paris) pour la requête |
-| `rows` | array | Même forme d’objets que le `GET` liste (tri par `resolvedDisplayName`, locale `fr`) |
+| `rows` | array | Même forme d’objets que le `GET` liste (tri par `resolvedDisplayName`, locale `fr`), plus `salary` (ci-dessous) |
+
+**`rows[].salary` — salaire estimé** (`null` si le module paie est désactivé) :
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `typeLabel` | string \| null | Type de salaire de la personne, sinon celui par défaut (`null` : aucun configuré) |
+| `caisseUnitUsd` | number | Reversé par caisse (type de la personne, sinon celui par défaut, sinon 6,5 $) |
+| `patientCareUsd` | number | Tarif patient de l’entreprise |
+| `caisses` | number | Jours de caisse de la semaine (`chestTotal`) |
+| `patients` | number | Patients soignés (compteurs payés, hors soins shérif) |
+| `estimatedUsd` | number | `caisses × caisseUnitUsd + patients × patientCareUsd` |
+
+Les types de salaire et le tarif patient se règlent dans **Paramètres › Salaires** ; le salaire de chacun dans **Gestion › Personnes**. Sans `X-Discord-User-Id`, le salaire de toute l’équipe est renvoyé : le bot ne l’affiche qu’à la Direction.
 
 **Erreurs :** **400** — `date` manquant ou format invalide ; **401** — secret invalide.
 

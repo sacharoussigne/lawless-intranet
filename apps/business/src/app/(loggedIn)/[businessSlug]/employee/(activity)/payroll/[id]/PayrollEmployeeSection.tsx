@@ -20,7 +20,7 @@ import { IconRefresh, IconTrash, IconUserPlus } from '@tabler/icons-react';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
-import { effectiveCaisseUnitUsd } from '@/lib/payroll/recalculatePayrollResult';
+import { effectiveCaisseUnitUsd, employeePayoutUsd } from '@/lib/payroll/recalculatePayrollResult';
 import { PAYROLL_MAX_USD } from '@/lib/payroll/constants';
 import {
   CAISSE_OPTIONS,
@@ -93,11 +93,9 @@ export function PayrollEmployeeSection({
       <Accordion variant="contained" radius="md" value={openedKey} onChange={onOpenedKeyChange}>
         {draft.employees.map((emp, i) => {
           const itemKey = employeeKeys[i] ?? `emp-index-${i}`;
-          const caisses = emp.stats.nombre_caisses ?? 0;
-          const patients = emp.stats.patients_soignes ?? 0;
           const unitUsd = effectiveCaisseUnitUsd(emp, draft.caisse_price_usd);
           const supplement = emp.salary_supplement_usd ?? 0;
-          const pay = caisses * unitUsd + patients * draft.patient_care_price_usd + supplement;
+          const pay = employeePayoutUsd(emp, draft);
           return (
             <Accordion.Item key={itemKey} value={itemKey}>
               <Accordion.Control>

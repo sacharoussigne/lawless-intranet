@@ -7,6 +7,7 @@ import { listSerializedWeeklyActivities } from '@/lib/businessWeeklyActivity/lis
 import { getBankWeekBounds } from '@/lib/bankWeek';
 import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
 import dayjs from '@/lib/dayjs';
+import { attachBotSalaryEstimates } from '@/lib/payroll/botSalaryEstimate';
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
@@ -54,12 +55,22 @@ async function handleGet(request: NextRequest) {
     a.resolvedDisplayName.localeCompare(b.resolvedDisplayName, 'fr', { sensitivity: 'base' }),
   );
 
+  // Estimated pay of each row (null without the payroll module); the bot shows the team's to the Direction only.
+  const withSalary = await attachBotSalaryEstimates(
+    businessCtx.businessId,
+    businessCtx.businessType,
+    sorted,
+  );
+
   return NextResponse.json({
     status: 200,
     data: {
       periodStart: periodStart.toISOString(),
       periodEnd: periodEnd.toISOString(),
-      rows: sorted.map((row) => toBotApiRow(row, businessCtx.businessType)),
+      rows: withSalary.map(({ salary, ...row }) => ({
+        ...toBotApiRow(row, businessCtx.businessType),
+        salary,
+      })),
     },
   });
 }
