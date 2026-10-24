@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { businessOrigin, businessTypeOfHost, requestHostOf } from '@/lib/business/hosts';
+import { businessOrigin, businessTypeOfHost, publicBusinessOrigin, requestHostOf } from '@/lib/business/hosts';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -28,5 +28,13 @@ describe('business hosts', () => {
   it('read the host behind the proxy', () => {
     const headers = new Headers({ host: 'app:3000', 'x-forwarded-host': 'gs.aerokusu.fr', 'x-forwarded-proto': 'https' });
     expect(requestHostOf(headers)).toEqual({ host: 'gs.aerokusu.fr', proto: 'https' });
+  });
+
+  it('give an absolute origin for links from outside the app', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://business.aerokusu.fr/');
+    vi.stubEnv('BUSINESS_TYPE_HOSTS', 'DISPENSARY=dispensaire.aerokusu.fr');
+    expect(publicBusinessOrigin('DISPENSARY')).toBe('https://dispensaire.aerokusu.fr');
+    vi.stubEnv('BUSINESS_TYPE_HOSTS', '');
+    expect(publicBusinessOrigin('DISPENSARY')).toBe('https://business.aerokusu.fr');
   });
 });
