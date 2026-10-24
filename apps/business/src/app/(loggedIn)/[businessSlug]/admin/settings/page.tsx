@@ -5,10 +5,8 @@ import { getBusinessRolePermissionsMatrix } from '@/app/_actions/businessPermiss
 import { listPayrollSalaryTypesForAdmin } from '@/app/_actions/payrollSalaryTypes';
 import { routes } from '@/types/routes';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
-import BusinessSettingsPageClient, {
-  isBusinessSettingsTab,
-  type BusinessSettingsTab,
-} from './BusinessSettingsPageClient';
+import BusinessSettingsPageClient from './BusinessSettingsPageClient';
+import { isBusinessSettingsTab, type BusinessSettingsTab } from './settingsTabs';
 import type { BusinessMemberRow } from './BusinessMembersPanel';
 import type { RolePermissionsMatrixData } from './BusinessPermissionsPanel';
 import {

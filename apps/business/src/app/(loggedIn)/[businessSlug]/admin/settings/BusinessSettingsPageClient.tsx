@@ -14,13 +14,7 @@ import {
   type RolePermissionsMatrixData,
 } from './BusinessPermissionsPanel';
 import { SalaryTypesPanel } from './SalaryTypesPanel';
-
-const validTabs = ['general', 'members', 'permissions', 'salaries'] as const;
-export type BusinessSettingsTab = (typeof validTabs)[number];
-
-export function isBusinessSettingsTab(tab: string): tab is BusinessSettingsTab {
-  return validTabs.includes(tab as BusinessSettingsTab);
-}
+import { isBusinessSettingsTab, type BusinessSettingsTab } from './settingsTabs';
 
 type BusinessSettingsPageClientProps = {
   businessSlug: string;
@@ -53,23 +47,23 @@ export default function BusinessSettingsPageClient({
 
   const tabFromUrl = searchParams.get('tab');
   const resolvedTab: BusinessSettingsTab =
-    tabFromUrl && validTabs.includes(tabFromUrl as BusinessSettingsTab)
-      ? (tabFromUrl as BusinessSettingsTab)
+    tabFromUrl && isBusinessSettingsTab(tabFromUrl)
+      ? tabFromUrl
       : initialTab;
   const [activeTab, setActiveTab] = useState<BusinessSettingsTab>(resolvedTab);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && validTabs.includes(tab as BusinessSettingsTab)) {
-      setActiveTab(tab as BusinessSettingsTab);
+    if (tab && isBusinessSettingsTab(tab)) {
+      setActiveTab(tab);
     } else if (!tab) {
       setActiveTab('general');
     }
   }, [searchParams]);
 
   const handleTabChange = (value: string | null) => {
-    if (!value || !validTabs.includes(value as BusinessSettingsTab)) return;
-    const tab = value as BusinessSettingsTab;
+    if (!value || !isBusinessSettingsTab(value)) return;
+    const tab = value;
     setActiveTab(tab);
     if (tab === 'general') {
       router.push(pathname, { scroll: false });
