@@ -33,6 +33,7 @@ Même base d’URL et même authentification que l’[API de l’activité hebdo
 |-------|------|-------------|
 | `id` | string | ID du rapport |
 | `url` | string | Lien absolu vers la page du rapport (hôte du type d’entreprise via `BUSINESS_TYPE_HOSTS`, sinon `NEXT_PUBLIC_APP_URL`) |
+| `letterUrl` | string | Même page avec la lettre à la mairie ouverte (`?lettre`) ; la lettre se rédige dans Paramètres › Salaires |
 | `reportType` | string | `"Employés"` |
 | `weekStart`, `weekEnd` | ISO 8601 | Lundi 00:00 → dimanche 23:59:59 (Europe/Paris) |
 | `alreadyExists` | boolean | `true` si le rapport existait déjà (rien n’a été créé) |
@@ -43,6 +44,7 @@ Même base d’URL et même authentification que l’[API de l’activité hebdo
   "data": {
     "id": "6f0c…",
     "url": "https://dispensaire.example.com/saint-denis/employee/payroll/6f0c…",
+    "letterUrl": "https://dispensaire.example.com/saint-denis/employee/payroll/6f0c…?lettre",
     "reportType": "Employés",
     "weekStart": "2026-10-18T22:00:00.000Z",
     "weekEnd": "2026-10-25T22:59:59.999Z",

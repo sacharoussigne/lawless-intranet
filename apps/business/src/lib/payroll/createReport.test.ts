@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   findActivities: vi.fn(),
   findReport: vi.fn(),
   createReport: vi.fn(),
+  loadStaff: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -19,6 +20,7 @@ vi.mock('@/lib/businessDiscordProfile/attachProfiles', () => ({
   attachDiscordProfilesToActivities: async (_db: unknown, rows: unknown[]) => rows,
 }));
 vi.mock('@/lib/logs/errorReporter', () => ({ reportServerError: vi.fn() }));
+vi.mock('@/lib/staff/service', () => ({ loadStaffOfPeriod: mocks.loadStaff }));
 
 const { createPayrollReport, EMPTY_PARSED_PAYROLL_TABLE, PAYROLL_REPORT_EXISTS_MESSAGE } = await import(
   '@/lib/payroll/createReport'
@@ -42,6 +44,7 @@ beforeEach(() => {
   mocks.findActivities.mockResolvedValue([]);
   mocks.findReport.mockResolvedValue(null);
   mocks.createReport.mockResolvedValue({});
+  mocks.loadStaff.mockResolvedValue([]);
 });
 
 describe('createPayrollReport', () => {
@@ -70,6 +73,24 @@ describe('createPayrollReport', () => {
 
     expect(result).toMatchObject({ status: 409, error: PAYROLL_REPORT_EXISTS_MESSAGE, existingId: 'existing' });
     expect(mocks.createReport).not.toHaveBeenCalled();
+  });
+
+  it('lists employed people without activity that week', async () => {
+    mocks.loadStaff.mockResolvedValue([
+      { discordUserId: '1', displayName: 'Ada', role: 'Médecin', accountNumber: 12, caisseUnitUsd: null },
+    ]);
+    await createPayrollReport(input);
+
+    const monday = weekRangeFromIsoDate('2026-10-19');
+    expect(mocks.loadStaff).toHaveBeenCalledWith(expect.anything(), 'b1', monday.weekStart, monday.weekEnd);
+    expect(mocks.createReport.mock.calls[0]?.[0]?.data.resultJson.employees).toEqual([
+      expect.objectContaining({ name: 'Ada', role: 'Médecin', id: 12 }),
+    ]);
+  });
+
+  it('does not add the staff to other report types', async () => {
+    await createPayrollReport({ ...input, reportType: 'Préparateurs de caisse' });
+    expect(mocks.loadStaff).not.toHaveBeenCalled();
   });
 
   it('does not read the activity when the import is off', async () => {

@@ -6,12 +6,14 @@ import { mergeResolvedDisplayNames } from '@/lib/businessWeeklyActivity/resolveD
 import { weeklyCounterDefinitions } from '@/lib/businessWeeklyActivity/counters';
 import { attachDiscordProfilesToActivities } from '@/lib/businessDiscordProfile/attachProfiles';
 import { reportServerError } from '@/lib/logs/errorReporter';
-import { type PayrollReportType } from '@/lib/payroll/constants';
+import { PAYROLL_REPORT_TYPE_EMPLOYES, type PayrollReportType } from '@/lib/payroll/constants';
 import { mergeHtmlAndWeeklyActivity, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
 import { type ParsedPayrollTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { recalculatePayrollResult } from '@/lib/payroll/recalculatePayrollResult';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import { weekRangeFromIsoDate } from '@/lib/payroll/week';
+import { appendIdleStaff, withStaffRoles } from '@/lib/payroll/staffOfWeek';
+import { loadStaffOfPeriod, type StaffMemberOfPeriod } from '@/lib/staff/service';
 
 export const EMPTY_PARSED_PAYROLL_TABLE: ParsedPayrollTable = {
   employees: [],
@@ -69,6 +71,8 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
   let activitiesWithNames: WaRow[] = [];
   let waImportStart: Date | undefined;
   let waImportEnd: Date | undefined;
+  /** Staff register of the imported week: « Employés » reports list every employed person. */
+  let staff: StaffMemberOfPeriod[] = [];
 
   if (importWeeklyActivity) {
     const range = weekRangeFromIsoDate(input.waWeekStartStr ?? input.weekStartStr);
@@ -85,12 +89,16 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
       prisma,
       (await mergeResolvedDisplayNames(prisma, businessId, rawActivities)) as WaRow[],
     )) as WaRow[];
+    if (reportType === PAYROLL_REPORT_TYPE_EMPLOYES) {
+      staff = await loadStaffOfPeriod(prisma, businessId, waImportStart, waImportEnd);
+      activitiesWithNames = withStaffRoles(activitiesWithNames, staff);
+    }
   }
 
-  const employeesMerged = mergeHtmlAndWeeklyActivity(
-    input.parsed,
+  const employeesMerged = appendIdleStaff(
+    mergeHtmlAndWeeklyActivity(input.parsed, activitiesWithNames, weeklyCounterDefinitions(input.businessType)),
     activitiesWithNames,
-    weeklyCounterDefinitions(input.businessType),
+    staff,
   );
 
   // No HTML and nothing imported: the report starts empty, people are added on its page.

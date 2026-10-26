@@ -26,6 +26,8 @@ import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
 import { getManagementCategoryItems } from '@/app/_actions/categoryItems';
 import { getRoleChestAccesses } from '@/app/_actions/chestAccess';
 import { listBusinessPeople } from '@/app/_actions/businessPeople';
+import { listStaffHistory } from '@/app/_actions/staffRegister';
+import { generatePayrollLetter, getPayrollLetterTemplate } from '@/app/_actions/payrollLetter';
 import { getCompanies, getCompaniesForSelect } from '@/app/_actions/companies';
 import {
   getCompanyGroups,
@@ -188,6 +190,8 @@ export const readRoutes = {
   payrollImportableWeeks: (slug: string, _input?: undefined) =>
     listPayrollImportableActivityWeeks(slug),
   payrollPeople: (slug: string, _input?: undefined) => listPayrollPeople(slug),
+  payrollLetterTemplate: (slug: string, _input?: undefined) => getPayrollLetterTemplate(slug),
+  payrollLetter: (slug: string, input: { reportId: string }) => generatePayrollLetter(slug, input),
 
   // Bank (bank-ui, see lib/bank/bankUiActions; getOrCreateWeek writes, it stays an action)
   bankWeeks: (slug: string, _input?: undefined) => getBankWeeks(slug),
@@ -201,6 +205,7 @@ export const readRoutes = {
   managementCategoryItems: (slug: string, _input?: undefined) => getManagementCategoryItems(slug),
   chests: (slug: string, _input?: undefined) => getChests(slug),
   businessPeople: (slug: string, _input?: undefined) => listBusinessPeople(slug),
+  staffHistory: (slug: string, input: { discordUserId: string }) => listStaffHistory(slug, input),
   roleChestAccesses: (slug: string, _input?: undefined) => getRoleChestAccesses(slug),
   chestStockCheckForm: (slug: string, input: { chestId: string }) =>
     getChestStockCheckForm(slug, input?.chestId),

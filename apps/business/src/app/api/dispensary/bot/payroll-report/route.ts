@@ -106,6 +106,8 @@ async function handlePost(request: Request) {
     data: {
       id,
       url,
+      /** Same page with the city hall letter open. */
+      letterUrl: `${url}?lettre`,
       reportType: PAYROLL_REPORT_TYPE_EMPLOYES,
       weekStart: weekStart.toISOString(),
       weekEnd: weekEnd.toISOString(),

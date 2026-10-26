@@ -9,17 +9,20 @@ import {
   CopyButton,
   Group,
   Paper,
+  SegmentedControl,
   Text,
   TextInput,
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
 import { DataTable } from 'mantine-datatable';
-import { IconCheck, IconCopy, IconEdit, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconEdit, IconHistory, IconPlus, IconSearch } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
 import type { BusinessPeopleList, BusinessPerson } from '@/lib/people/types';
+import { EmploymentStatusBadge } from './components/EmploymentStatusBadge';
 import { PersonModal } from './components/PersonModal';
+import { StaffHistoryModal } from './components/StaffHistoryModal';
 import { usePeople } from './hooks/usePeopleQueries';
 
 const PAGE_SIZE = 25;
@@ -29,6 +32,14 @@ function normalize(value: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{M}/gu, '');
+}
+
+type StaffFilter = 'staff' | 'left' | 'all';
+
+function matchesStaffFilter(person: BusinessPerson, filter: StaffFilter): boolean {
+  if (filter === 'staff') return person.employment.active;
+  if (filter === 'left') return !person.employment.active;
+  return true;
 }
 
 function matchesSearch(person: BusinessPerson, query: string): boolean {
@@ -48,11 +59,16 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<{ person: BusinessPerson | null } | null>(null);
+  const [staffFilter, setStaffFilter] = useState<StaffFilter>('all');
+  const [historyId, setHistoryId] = useState<string | null>(null);
+  // From the query data, so the modal follows the status after a hiring or a leaving.
+  const historyPerson = data.people.find((p) => p.discordUserId === historyId) ?? null;
+  const staffCount = data.people.filter((p) => p.employment.active).length;
 
   const query = normalize(search.trim());
   const filtered = useMemo(
-    () => data.people.filter((person) => matchesSearch(person, query)),
-    [data.people, query],
+    () => data.people.filter((person) => matchesStaffFilter(person, staffFilter) && matchesSearch(person, query)),
+    [data.people, query, staffFilter],
   );
   const records = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -69,8 +85,21 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
       />
 
       <Paper shadow="sm" p="md" withBorder>
+        <Group mb="md" align="flex-end" wrap="wrap">
+          <SegmentedControl
+            value={staffFilter}
+            onChange={(value) => {
+              setStaffFilter(value as StaffFilter);
+              setPage(1);
+            }}
+            data={[
+              { value: 'all', label: 'Tout le monde' },
+              { value: 'staff', label: `Effectif actuel (${staffCount})` },
+              { value: 'left', label: 'Hors effectif' },
+            ]}
+          />
         <TextInput
-          mb="md"
+          style={{ flex: 1, minWidth: 220 }}
           leftSection={<IconSearch size={16} />}
           placeholder="Rechercher un nom, un Discord ID, un n° de compte…"
           value={search}
@@ -79,6 +108,7 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
             setPage(1);
           }}
         />
+        </Group>
         <DataTable
           records={records}
           idAccessor="discordUserId"
@@ -149,6 +179,11 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
               render: (person) => person.role ?? '—',
             },
             {
+              accessor: 'employment',
+              title: 'Effectif',
+              render: (person) => <EmploymentStatusBadge status={person.employment} />,
+            },
+            {
               accessor: 'salaryType',
               title: 'Salaire',
               hidden: data.salaryTypes == null,
@@ -164,14 +199,26 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
               title: '',
               textAlign: 'right',
               render: (person) => (
-                <ActionIcon
-                  variant="light"
-                  color="slate"
-                  onClick={() => setModal({ person })}
-                  aria-label={`Modifier ${person.displayName}`}
-                >
-                  <IconEdit size={16} />
-                </ActionIcon>
+                <Group gap={6} justify="flex-end" wrap="nowrap">
+                  <Tooltip label="Parcours (embauches, grades, départs)" withArrow openDelay={100}>
+                    <ActionIcon
+                      variant="light"
+                      color="sage"
+                      onClick={() => setHistoryId(person.discordUserId)}
+                      aria-label={`Parcours de ${person.displayName}`}
+                    >
+                      <IconHistory size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                  <ActionIcon
+                    variant="light"
+                    color="slate"
+                    onClick={() => setModal({ person })}
+                    aria-label={`Modifier ${person.displayName}`}
+                  >
+                    <IconEdit size={16} />
+                  </ActionIcon>
+                </Group>
               ),
             },
           ]}
@@ -202,6 +249,8 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
         salaryTypes={data.salaryTypes}
         onClose={() => setModal(null)}
       />
+
+      <StaffHistoryModal person={historyPerson} onClose={() => setHistoryId(null)} />
     </Container>
   );
 }

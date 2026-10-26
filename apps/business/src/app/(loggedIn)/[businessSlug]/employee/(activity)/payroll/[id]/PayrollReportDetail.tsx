@@ -7,7 +7,9 @@ import { modals } from '@mantine/modals';
 import Link from 'next/link';
 import { format, subYears } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { IconArrowLeft, IconCheck, IconEdit, IconTrash, IconX } from '@tabler/icons-react';
+import { IconArrowLeft, IconCheck, IconEdit, IconMail, IconTrash, IconX } from '@tabler/icons-react';
+import { useSearchParams } from 'next/navigation';
+import { PAYROLL_REPORT_TYPE_EMPLOYES } from '@/lib/payroll/constants';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import {
   useDeletePayrollReportMutation,
@@ -16,6 +18,7 @@ import {
 } from '../hooks/usePayrollQueries';
 import { AddPayrollEmployeeModal } from './AddPayrollEmployeeModal';
 import { PayrollEmployeeSection } from './PayrollEmployeeSection';
+import { PayrollLetterModal } from './PayrollLetterModal';
 import { PayrollTotalsPaper } from './PayrollTotalsPaper';
 import { PayrollVirementsSection } from './PayrollVirementsSection';
 import {
@@ -64,6 +67,10 @@ export default function PayrollReportDetail({
   } = usePayrollReportDraft(report);
   const [openedEmployeeKey, setOpenedEmployeeKey] = useState<string | null>(null);
   const [addEmployeeOpened, setAddEmployeeOpened] = useState(false);
+  // `?lettre` (link sent by the Discord bot) opens the city hall letter.
+  const searchParams = useSearchParams();
+  const hasLetter = report.reportType === PAYROLL_REPORT_TYPE_EMPLOYES && !report.errorMessage;
+  const [letterOpened, setLetterOpened] = useState(() => hasLetter && searchParams.has('lettre'));
 
   const handleSave = () => {
     if (!draft || updateMutation.isPending) return;
@@ -125,6 +132,11 @@ export default function PayrollReportDetail({
           )}
         </div>
         <Group gap="sm" justify="flex-end" wrap="wrap">
+          {hasLetter && (
+            <Button leftSection={<IconMail size={18} />} onClick={() => setLetterOpened(true)} variant="light" color="leather">
+              Lettre à la mairie
+            </Button>
+          )}
           {canEdit && !isEditing && !isDirty && (
             <Button leftSection={<IconEdit size={18} />} onClick={() => setIsEditing(true)} variant="light">
               Modifier
@@ -160,6 +172,15 @@ export default function PayrollReportDetail({
           )}
         </Group>
       </Group>
+
+      {hasLetter && (
+        <PayrollLetterModal
+          reportId={reportId}
+          opened={letterOpened}
+          hasUnsavedChanges={isDirty}
+          onClose={() => setLetterOpened(false)}
+        />
+      )}
 
       {report.errorMessage && (
         <Alert color="danger" title="Échec d&apos;analyse" mb="lg">
