@@ -1,0 +1,39 @@
+.chart {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.level {
+  position: relative;
+}
+
+/* Vertical link from one level to the next. */
+.connector {
+  width: 2px;
+  height: 1.5rem;
+  margin: 0 auto;
+  background: var(--disp-surface-border);
+}
+
+.levelTitle {
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  text-align: center;
+}
+
+.card {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 120ms ease;
+
+  &:hover {
+    border-color: var(--disp-sage);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--disp-sage);
+    outline-offset: 2px;
+  }
+}

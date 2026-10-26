@@ -16,3 +16,5 @@ export {
   TemplatePreviewWithForm,
   useTemplatePreviewActions,
 } from './TemplatePreviewPanel';
+export type { TemplateVariableDescriptions } from './richText/mentionSuggestion';
+export { BUILTIN_VARIABLE_DESCRIPTIONS } from './visual/segmentUtils';

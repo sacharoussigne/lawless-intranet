@@ -259,24 +259,79 @@ model Person {
 
 /// A person known by a business (Gestion › Personnes, weekly activity, payroll).
 model BusinessPerson {
-  id          String   @id @default(uuid())
-  businessId  String
-  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  personId    String
-  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  id           String               @id @default(uuid())
+  businessId   String
+  business     Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  personId     String
+  person       Person               @relation(fields: [personId], references: [id], onDelete: Cascade)
   /// Grade in this business (payroll).
   role         String?
   /// Salary type in this business (payroll); none = the business default.
   salaryTypeId String?
-  salaryType   PayrollSalaryType? @relation(fields: [salaryTypeId], references: [id], onDelete: SetNull)
+  salaryType   PayrollSalaryType?   @relation(fields: [salaryTypeId], references: [id], onDelete: SetNull)
   createdById  String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  employments  BusinessEmployment[]
 
   @@unique([businessId, personId])
   @@index([personId])
   @@index([salaryTypeId])
   @@map("business_person")
+}
+
+enum EmploymentEndReason {
+  RESIGNED
+  DISMISSED
+  OTHER
+}
+
+enum EmploymentEventType {
+  HIRED
+  ROLE_CHANGED
+  LEFT
+}
+
+/// A stay of a person in a business (staff register): from hiring to leaving.
+/// A person can come and go several times; at most one stay is open (checked by the actions).
+model BusinessEmployment {
+  id               String                    @id @default(uuid())
+  businessPersonId String
+  businessPerson   BusinessPerson            @relation(fields: [businessPersonId], references: [id], onDelete: Cascade)
+  /// Latest grade of the stay (the open stay mirrors `BusinessPerson.role`).
+  role             String?
+  startedAt        DateTime
+  /// `null`: still employed.
+  endedAt          DateTime?
+  endReason        EmploymentEndReason?
+  createdById      String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  events           BusinessEmploymentEvent[]
+
+  @@index([businessPersonId, startedAt])
+  @@map("business_employment")
+}
+
+/// What happened during a stay (hiring, grade change, leaving): the person's history.
+model BusinessEmploymentEvent {
+  id           String               @id @default(uuid())
+  employmentId String
+  employment   BusinessEmployment   @relation(fields: [employmentId], references: [id], onDelete: Cascade)
+  type         EmploymentEventType
+  /// Grade before the event (grade change, leaving).
+  fromRole     String?
+  /// Grade after the event (hiring, grade change).
+  toRole       String?
+  /// Leaving only.
+  endReason    EmploymentEndReason?
+  note         String?
+  occurredAt   DateTime
+  createdById  String?
+  createdAt    DateTime             @default(now())
+
+  @@index([employmentId, occurredAt])
+  @@map("business_employment_event")
 }
 
 /// Salary type of a business (payroll): what a person is paid per caisse.

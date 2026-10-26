@@ -27,6 +27,7 @@ export const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
   "weekly_activity:view": "Consulter l’activité hebdomadaire",
   "weekly_activity:edit_own": "Modifier uniquement ses propres lignes d’activité",
   "weekly_activity:edit_all": "Modifier toutes les lignes d’activité",
+  "weekly_activity:mark_chest_own": "Marquer sa caisse du jour (bouton Caisse)",
   "sales:create": "Enregistrer une vente",
   "sales:cancel": "Annuler une vente",
   "sales:view": "Consulter ses ventes",

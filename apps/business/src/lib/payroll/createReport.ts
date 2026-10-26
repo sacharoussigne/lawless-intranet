@@ -12,6 +12,8 @@ import { type ParsedPayrollTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { recalculatePayrollResult } from '@/lib/payroll/recalculatePayrollResult';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import { weekRangeFromIsoDate } from '@/lib/payroll/week';
+import { appendIdleStaff, staffForReportType, withStaffRoles } from '@/lib/payroll/staffOfWeek';
+import { loadStaffOfPeriod, type StaffMemberOfPeriod } from '@/lib/staff/service';
 
 export const EMPTY_PARSED_PAYROLL_TABLE: ParsedPayrollTable = {
   employees: [],
@@ -69,6 +71,8 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
   let activitiesWithNames: WaRow[] = [];
   let waImportStart: Date | undefined;
   let waImportEnd: Date | undefined;
+  /** Staff register of the imported week: a report lists every employed person it pays. */
+  let staff: StaffMemberOfPeriod[] = [];
 
   if (importWeeklyActivity) {
     const range = weekRangeFromIsoDate(input.waWeekStartStr ?? input.weekStartStr);
@@ -85,12 +89,17 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
       prisma,
       (await mergeResolvedDisplayNames(prisma, businessId, rawActivities)) as WaRow[],
     )) as WaRow[];
+    // The grade held that week decides the report: préparateurs de caisses apart, everyone else as employees.
+    const weekStaff = await loadStaffOfPeriod(prisma, businessId, waImportStart, waImportEnd);
+    const split = staffForReportType(reportType, withStaffRoles(activitiesWithNames, weekStaff), weekStaff);
+    activitiesWithNames = split.activities;
+    staff = split.staff;
   }
 
-  const employeesMerged = mergeHtmlAndWeeklyActivity(
-    input.parsed,
+  const employeesMerged = appendIdleStaff(
+    mergeHtmlAndWeeklyActivity(input.parsed, activitiesWithNames, weeklyCounterDefinitions(input.businessType)),
     activitiesWithNames,
-    weeklyCounterDefinitions(input.businessType),
+    staff,
   );
 
   // No HTML and nothing imported: the report starts empty, people are added on its page.
