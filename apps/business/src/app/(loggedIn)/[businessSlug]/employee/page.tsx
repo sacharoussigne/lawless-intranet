@@ -55,6 +55,7 @@ export default async function EmployeePage({
   const canEditAll = can(effectivePermissions, 'weekly_activity', 'edit_all');
   const canEdit =
     canEditAll || can(effectivePermissions, 'weekly_activity', 'edit_own');
+  const canMarkChest = canEdit || can(effectivePermissions, 'weekly_activity', 'mark_chest_own');
 
   const salesFeatureEnabled = isAppFeatureEnabled(appSettings, 'sales');
   const canCreateSale = salesFeatureEnabled && (permissions?.sales.create ?? false);
@@ -150,6 +151,7 @@ export default async function EmployeePage({
               ? {
                 canEdit,
                 canEditAll,
+                canMarkChest,
                 sessionUserId: userId,
                 viewerDiscordId,
                 defaultDisplayName,

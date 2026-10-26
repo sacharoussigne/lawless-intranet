@@ -1,6 +1,8 @@
 import type { PayrollReportResult } from '@/lib/payroll/schema';
 import { payrollNameKey, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
 import type { StaffMemberOfPeriod } from '@/lib/staff/service';
+import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
+import { PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE, type PayrollReportType } from '@/lib/payroll/constants';
 
 type PayrollEmployee = PayrollReportResult['employees'][number];
 
@@ -57,4 +59,21 @@ export function appendIdleStaff(
     (member) => !withActivity.has(member.discordUserId) && !names.has(payrollNameKey(member.displayName)),
   );
   return [...employees, ...idle.map(emptyEmployee)];
+}
+
+/**
+ * Who a report pays, by the grade held that week (after withStaffRoles): the
+ * « Préparateurs de caisse » report only the préparateurs de caisses, the
+ * « Employés » report everyone else.
+ */
+export function staffForReportType<T extends Pick<WaRow, 'discordProfileRole'>>(
+  reportType: PayrollReportType,
+  activities: T[],
+  staff: StaffMemberOfPeriod[],
+): { activities: T[]; staff: StaffMemberOfPeriod[] } {
+  const wantsPreparers = reportType === PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE;
+  return {
+    activities: activities.filter((row) => isCashPreparerGrade(row.discordProfileRole) === wantsPreparers),
+    staff: staff.filter((member) => isCashPreparerGrade(member.role) === wantsPreparers),
+  };
 }

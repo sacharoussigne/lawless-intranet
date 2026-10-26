@@ -141,6 +141,8 @@ export type PermissionsObject = {
     view: boolean;
     editOwn: boolean;
     editAll: boolean;
+    /** Caisse button: given by `mark_chest_own`, or by any edit right. */
+    markChestOwn: boolean;
   };
   stockStatistics: {
     view: boolean;
@@ -200,6 +202,10 @@ export function toPermissionsObject(
       view: has("weekly_activity", "view"),
       editOwn: has("weekly_activity", "edit_own"),
       editAll: has("weekly_activity", "edit_all"),
+      markChestOwn:
+        has("weekly_activity", "mark_chest_own") ||
+        has("weekly_activity", "edit_own") ||
+        has("weekly_activity", "edit_all"),
     },
     stockStatistics: {
       view: has("stock_statistics", "view"),

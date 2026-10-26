@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Button, NumberInput, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { IconUserPlus } from '@tabler/icons-react';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
-import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
+import { isCashPreparerGrade, PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
 import { payrollNameKey } from '@/lib/payroll/mergeWeeklyActivity';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
 import { usePayrollPeople } from '../hooks/usePayrollQueries';
@@ -15,6 +15,8 @@ type AddPayrollEmployeeModalProps = {
   opened: boolean;
   onClose: () => void;
   employees: PayrollReportResult['employees'];
+  /** « Préparateurs de caisse » report: only offer the préparateurs; otherwise everyone else. */
+  forCashPreparers?: boolean;
   onAdd: (identity: { name: string; role: string; id: number | null }) => void;
 };
 
@@ -29,6 +31,7 @@ export function AddPayrollEmployeeModal({
   opened,
   onClose,
   employees,
+  forCashPreparers = false,
   onAdd,
 }: AddPayrollEmployeeModalProps) {
   const { data: people = [], isLoading } = usePayrollPeople(opened);
@@ -42,7 +45,9 @@ export function AddPayrollEmployeeModal({
   const personOptions = useMemo(() => {
     const names = new Set(employees.map((e) => payrollNameKey(e.name)));
     const accounts = new Set(employees.map((e) => e.id).filter((id): id is number => id != null));
-    return people.map((p) => {
+    return people
+      .filter((p) => isCashPreparerGrade(p.role) === forCashPreparers)
+      .map((p) => {
       const inReport =
         names.has(payrollNameKey(p.name)) ||
         (p.accountNumber != null && accounts.has(p.accountNumber));
@@ -52,7 +57,7 @@ export function AddPayrollEmployeeModal({
         disabled: inReport,
       };
     });
-  }, [people, employees]);
+  }, [people, employees, forCashPreparers]);
 
   const reset = () => {
     setMode('registered');

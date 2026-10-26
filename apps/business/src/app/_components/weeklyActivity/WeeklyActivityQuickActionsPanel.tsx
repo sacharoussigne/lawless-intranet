@@ -20,6 +20,8 @@ type WeeklyActivityQuickActionsPanelProps = {
   weekBounds: WeeklyActivityWeekBounds;
   hasDiscord: boolean;
   canEdit: boolean;
+  /** Only the Caisse button when the viewer cannot edit their activity (préparateur de caisses). */
+  canMarkChest?: boolean;
 };
 
 export function WeeklyActivityQuickActionsPanel({
@@ -28,14 +30,16 @@ export function WeeklyActivityQuickActionsPanel({
   weekBounds,
   hasDiscord,
   canEdit,
+  canMarkChest = canEdit,
 }: WeeklyActivityQuickActionsPanelProps) {
   const chestMutation = useMarkOwnWeeklyChestTodayMutation();
   const presenceMutation = useMarkOwnWeeklyPresenceTodayMutation();
   const incrementMutation = useIncrementOwnWeeklyCounterMutation();
 
-  if (!canEdit) {
+  if (!canEdit && !canMarkChest) {
     return null;
   }
+  const chestOnly = !canEdit;
 
   const todayKey = parisWeekdayKey(new Date());
   const chestDone = row?.chestDays[todayKey] ?? false;
@@ -45,7 +49,7 @@ export function WeeklyActivityQuickActionsPanel({
     chestMutation.isPending || presenceMutation.isPending || incrementMutation.isPending;
 
   // Counters of the business type that are not turned off (lib/businessTypes).
-  const visibleCounters = fieldVisibility.counters;
+  const visibleCounters = chestOnly ? [] : fieldVisibility.counters;
 
   return (
     <Paper withBorder shadow="sm" radius="md" p={{ base: 'md', sm: 'lg' }}>
@@ -76,7 +80,7 @@ export function WeeklyActivityQuickActionsPanel({
                 <span className={classes.phoneLabel}>{chestDone ? 'Caisse faite' : 'Caisse'}</span>
               </Button>
             )}
-            {fieldVisibility.presenceDays && (
+            {fieldVisibility.presenceDays && !chestOnly && (
               <Button
                 color="sage"
                 variant={presenceDone ? 'light' : 'filled'}

@@ -43,6 +43,8 @@ type EmployeeWeeklyDashboardProps = {
   businessSlug: string;
   canEdit: boolean;
   canEditAll: boolean;
+  /** Caisse button (préparateur de caisses), also given by any edit right. */
+  canMarkChest: boolean;
   sessionUserId: string;
   viewerDiscordId: string | null;
   defaultDisplayName: string;
@@ -55,6 +57,7 @@ export function EmployeeWeeklyDashboard({
   businessSlug,
   canEdit,
   canEditAll,
+  canMarkChest,
   sessionUserId,
   viewerDiscordId,
   defaultDisplayName,
@@ -144,6 +147,7 @@ export function EmployeeWeeklyDashboard({
             weekBounds={queryWeekBounds}
             hasDiscord={viewerDiscordId !== null}
             canEdit={canEdit}
+            canMarkChest={canMarkChest}
           />
           <WeeklyActivityCompactPanel
             displayName={ownRow?.resolvedDisplayName ?? defaultDisplayName}

@@ -8,7 +8,7 @@ export const applicationPermissionCatalog = {
   application: ["access", "management"],
   mails: ["access"],
   payroll_reports: ["view", "create"],
-  weekly_activity: ["view", "edit_own", "edit_all"],
+  weekly_activity: ["view", "edit_own", "edit_all", "mark_chest_own"],
   sales: ["create", "cancel", "view", "view_all"],
   stock_statistics: ["view"],
   media: ["access"],
@@ -84,7 +84,7 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
     stock: ["view"],
     application: ["access"],
     mails: ["access"],
-    weekly_activity: ["view", "edit_own"],
+    weekly_activity: ["view", "edit_own", "mark_chest_own"],
     sales: ["create", "cancel", "view"],
   },
   inventory_manager: {
@@ -108,10 +108,15 @@ export const DEFAULT_ROLE_MATRIX: RoleMatrix = {
     bank: ["access"],
     application: ["access"],
     payroll_reports: ["view", "create"],
-    weekly_activity: ["view", "edit_all"],
+    weekly_activity: ["view", "edit_all", "mark_chest_own"],
     stock_statistics: ["view"],
     sales: ["create", "cancel", "view", "view_all"],
     media: ["access"],
+  },
+  /** Préparateur de caisses: only marks their caisse and sees their own weekly history. */
+  cash_preparer: {
+    application: ["access"],
+    weekly_activity: ["view", "mark_chest_own"],
   },
 };
 

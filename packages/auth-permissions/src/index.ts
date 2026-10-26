@@ -38,7 +38,7 @@ const admin = ac.newRole({
   application: ["access", "management"],
   mails: ["access"],
   payroll_reports: ["view", "create"],
-  weekly_activity: ["view", "edit_own", "edit_all"],
+  weekly_activity: ["view", "edit_own", "edit_all", "mark_chest_own"],
   stock_statistics: ["view"],
   sales: ["create", "cancel", "view", "view_all"],
   media: ["access"],
@@ -52,7 +52,7 @@ const employee = ac.newRole({
   application: ["access"],
   mails: ["access"],
   payroll_reports: [],
-  weekly_activity: ["view", "edit_own"],
+  weekly_activity: ["view", "edit_own", "mark_chest_own"],
   stock_statistics: [],
   sales: ["create", "cancel", "view"],
   media: [],
@@ -97,10 +97,25 @@ const direction = ac.newRole({
   application: ["access"],
   mails: [],
   payroll_reports: ["view", "create"],
-  weekly_activity: ["view", "edit_all"],
+  weekly_activity: ["view", "edit_all", "mark_chest_own"],
   stock_statistics: ["view"],
   sales: ["create", "cancel", "view", "view_all"],
   media: ["access"],
+});
+
+const cash_preparer = ac.newRole({
+  ...userAc.statements,
+  stock: [],
+  orders: [],
+  search: [],
+  bank: [],
+  application: ["access"],
+  mails: [],
+  payroll_reports: [],
+  weekly_activity: ["view", "mark_chest_own"],
+  stock_statistics: [],
+  sales: [],
+  media: [],
 });
 
 const rolesMap = {
@@ -110,6 +125,7 @@ const rolesMap = {
   inventory_manager,
   inventory_viewer,
   direction,
+  cash_preparer,
 } as const;
 
 /** Resolves against DEFAULT_ROLE_MATRIX (code defaults). Prefer `can(effectivePermissions, …)` in tenant context. */

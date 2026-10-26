@@ -37,6 +37,7 @@ type EmployeeWeeklyOverviewProps = {
   activity?: {
     canEdit: boolean;
     canEditAll: boolean;
+    canMarkChest: boolean;
     sessionUserId: string;
     viewerDiscordId: string | null;
     defaultDisplayName: string;
@@ -121,6 +122,7 @@ export function EmployeeWeeklyOverview({
             businessSlug={businessSlug}
             canEdit={activity.canEdit}
             canEditAll={activity.canEditAll}
+            canMarkChest={activity.canMarkChest}
             sessionUserId={activity.sessionUserId}
             viewerDiscordId={activity.viewerDiscordId}
             defaultDisplayName={activity.defaultDisplayName}

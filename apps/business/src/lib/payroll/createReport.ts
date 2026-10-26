@@ -6,13 +6,13 @@ import { mergeResolvedDisplayNames } from '@/lib/businessWeeklyActivity/resolveD
 import { weeklyCounterDefinitions } from '@/lib/businessWeeklyActivity/counters';
 import { attachDiscordProfilesToActivities } from '@/lib/businessDiscordProfile/attachProfiles';
 import { reportServerError } from '@/lib/logs/errorReporter';
-import { PAYROLL_REPORT_TYPE_EMPLOYES, type PayrollReportType } from '@/lib/payroll/constants';
+import { type PayrollReportType } from '@/lib/payroll/constants';
 import { mergeHtmlAndWeeklyActivity, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
 import { type ParsedPayrollTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { recalculatePayrollResult } from '@/lib/payroll/recalculatePayrollResult';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import { weekRangeFromIsoDate } from '@/lib/payroll/week';
-import { appendIdleStaff, withStaffRoles } from '@/lib/payroll/staffOfWeek';
+import { appendIdleStaff, staffForReportType, withStaffRoles } from '@/lib/payroll/staffOfWeek';
 import { loadStaffOfPeriod, type StaffMemberOfPeriod } from '@/lib/staff/service';
 
 export const EMPTY_PARSED_PAYROLL_TABLE: ParsedPayrollTable = {
@@ -71,7 +71,7 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
   let activitiesWithNames: WaRow[] = [];
   let waImportStart: Date | undefined;
   let waImportEnd: Date | undefined;
-  /** Staff register of the imported week: « Employés » reports list every employed person. */
+  /** Staff register of the imported week: a report lists every employed person it pays. */
   let staff: StaffMemberOfPeriod[] = [];
 
   if (importWeeklyActivity) {
@@ -89,10 +89,11 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
       prisma,
       (await mergeResolvedDisplayNames(prisma, businessId, rawActivities)) as WaRow[],
     )) as WaRow[];
-    if (reportType === PAYROLL_REPORT_TYPE_EMPLOYES) {
-      staff = await loadStaffOfPeriod(prisma, businessId, waImportStart, waImportEnd);
-      activitiesWithNames = withStaffRoles(activitiesWithNames, staff);
-    }
+    // The grade held that week decides the report: préparateurs de caisses apart, everyone else as employees.
+    const weekStaff = await loadStaffOfPeriod(prisma, businessId, waImportStart, waImportEnd);
+    const split = staffForReportType(reportType, withStaffRoles(activitiesWithNames, weekStaff), weekStaff);
+    activitiesWithNames = split.activities;
+    staff = split.staff;
   }
 
   const employeesMerged = appendIdleStaff(

@@ -5,6 +5,11 @@ export const ORG_CHART_LEVELS = [
   { key: 'doctors', label: 'Médecins', roles: ['Médecin'] },
   { key: 'nurses', label: 'Infirmiers', roles: ['Infirmier', 'Infirmière'] },
   { key: 'apprentices', label: 'Apprentis', roles: ['Apprenti', 'Apprentie'] },
+  {
+    key: 'cashPreparers',
+    label: 'Préparateurs de caisses',
+    roles: ['Préparateur de caisses', 'Préparatrice de caisses'],
+  },
 ] as const;
 
 export type OrgChartLevel<T> = { key: string; label: string; people: T[] };

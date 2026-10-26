@@ -26,6 +26,9 @@ interface UserModalProps {
   onSuccess: () => void;
 }
 
+/** Global account roles (Better Auth); business-only roles such as cash_preparer are not offered. */
+type GlobalRole = Exclude<Role, Role.CASH_PREPARER>;
+
 const roleOptions = [
   { value: 'user', label: rolesAsString(Role.USER) },
   { value: 'admin', label: rolesAsString(Role.ADMIN) },
@@ -100,7 +103,7 @@ export function UserModal({
         const result = await updateUser({
           id: editingUser.id,
           name: values.name,
-          roles: values.roles,
+          roles: values.roles as GlobalRole[],
         });
         handleAction(result);
         notifications.show({
@@ -113,7 +116,7 @@ export function UserModal({
           name: values.name,
           email: values.email,
           password: values.password,
-          roles: values.roles,
+          roles: values.roles as GlobalRole[],
         });
         handleAction(result);
         notifications.show({

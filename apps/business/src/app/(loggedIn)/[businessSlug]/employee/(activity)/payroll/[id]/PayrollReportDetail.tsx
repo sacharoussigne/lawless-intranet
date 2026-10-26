@@ -9,7 +9,7 @@ import { format, subYears } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { IconArrowLeft, IconCheck, IconEdit, IconMail, IconTrash, IconX } from '@tabler/icons-react';
 import { useSearchParams } from 'next/navigation';
-import { PAYROLL_REPORT_TYPE_EMPLOYES } from '@/lib/payroll/constants';
+import { PAYROLL_REPORT_TYPE_EMPLOYES, PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE } from '@/lib/payroll/constants';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import {
   useDeletePayrollReportMutation,
@@ -221,6 +221,7 @@ export default function PayrollReportDetail({
               opened={addEmployeeOpened}
               onClose={() => setAddEmployeeOpened(false)}
               employees={draft.employees}
+              forCashPreparers={report.reportType === PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE}
               onAdd={(identity) => setOpenedEmployeeKey(addEmployee(identity))}
             />
           )}

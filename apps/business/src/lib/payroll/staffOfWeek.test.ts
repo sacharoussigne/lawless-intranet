@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendIdleStaff, withStaffRoles } from './staffOfWeek';
+import { appendIdleStaff, staffForReportType, withStaffRoles } from './staffOfWeek';
 import type { WaRow } from './mergeWeeklyActivity';
 import type { StaffMemberOfPeriod } from '@/lib/staff/service';
 
@@ -32,5 +32,25 @@ describe('appendIdleStaff', () => {
   it('does not duplicate a person already listed under the same name', () => {
     const [ada] = appendIdleStaff([], [], [member('1', 'Ada', 'Médecin')]);
     expect(appendIdleStaff([ada], [], [member('1', 'Ada', 'Médecin')])).toHaveLength(1);
+  });
+});
+
+describe('staffForReportType', () => {
+  const rows = [
+    { discordUserId: '1', discordProfileRole: 'Médecin' },
+    { discordUserId: '2', discordProfileRole: 'Préparatrice de caisses' },
+  ] as WaRow[];
+  const staff = [member('1', 'Ada', 'Médecin'), member('3', 'Cléo', 'Préparateur de caisses')];
+
+  it('keeps everyone but the préparateurs for the employees', () => {
+    const out = staffForReportType('Employés', rows, staff);
+    expect(out.activities.map((row) => row.discordUserId)).toEqual(['1']);
+    expect(out.staff.map((m) => m.discordUserId)).toEqual(['1']);
+  });
+
+  it('keeps only the préparateurs for their report', () => {
+    const out = staffForReportType('Préparateurs de caisse', rows, staff);
+    expect(out.activities.map((row) => row.discordUserId)).toEqual(['2']);
+    expect(out.staff.map((m) => m.discordUserId)).toEqual(['3']);
   });
 });

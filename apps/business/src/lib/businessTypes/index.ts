@@ -64,6 +64,7 @@ export const businessTypes = {
       Role.INVENTORY_MANAGER,
       Role.INVENTORY_VIEWER,
       Role.DIRECTION,
+      Role.CASH_PREPARER,
     ],
     defaultRoleMatrix: DEFAULT_ROLE_MATRIX,
     weeklyCounters: [

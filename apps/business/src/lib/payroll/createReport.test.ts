@@ -88,9 +88,29 @@ describe('createPayrollReport', () => {
     ]);
   });
 
-  it('does not add the staff to other report types', async () => {
+  it('keeps the préparateurs de caisses out of the employees report', async () => {
+    mocks.findActivities.mockResolvedValue([
+      { discordUserId: '2', resolvedDisplayName: 'Béa', discordProfileRole: 'Préparatrice de caisses', chestDays: {}, presenceDays: {}, counters: {} },
+    ]);
+    mocks.loadStaff.mockResolvedValue([
+      { discordUserId: '1', displayName: 'Ada', role: 'Médecin', accountNumber: 12, caisseUnitUsd: null },
+      { discordUserId: '3', displayName: 'Cléo', role: 'Préparateur de caisses', accountNumber: 13, caisseUnitUsd: null },
+    ]);
+    await createPayrollReport(input);
+    expect(
+      mocks.createReport.mock.calls[0]?.[0]?.data.resultJson.employees.map((e: { name: string }) => e.name),
+    ).toEqual(['Ada']);
+  });
+
+  it('only imports the préparateurs de caisses into their report', async () => {
+    mocks.loadStaff.mockResolvedValue([
+      { discordUserId: '1', displayName: 'Ada', role: 'Médecin', accountNumber: 12, caisseUnitUsd: null },
+      { discordUserId: '3', displayName: 'Cléo', role: 'Préparateur de caisses', accountNumber: 13, caisseUnitUsd: null },
+    ]);
     await createPayrollReport({ ...input, reportType: 'Préparateurs de caisse' });
-    expect(mocks.loadStaff).not.toHaveBeenCalled();
+    expect(mocks.createReport.mock.calls[0]?.[0]?.data.resultJson.employees).toEqual([
+      expect.objectContaining({ name: 'Cléo', role: 'Préparateur de caisses' }),
+    ]);
   });
 
   it('does not read the activity when the import is off', async () => {

@@ -1,4 +1,4 @@
-import { isPayrollEmployeeRole } from '@/lib/businessDiscordProfile/constants';
+import { isCashPreparerGrade, isPayrollEmployeeRole } from '@/lib/businessDiscordProfile/constants';
 import { PAYROLL_DAYS } from '@/lib/payroll/parsePayrollHtmlTable';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
 import { formatRpDate } from '@/lib/rpCalendar';
@@ -32,12 +32,24 @@ type PayrollEmployee = PayrollReportResult['employees'][number];
 export type LetterGender = 'male' | 'female';
 
 /** Feminine grades: the fallback when the person's account gives no gender. */
-const FEMININE_ROLES = new Set(['Apprentie', 'Infirmière', 'Directrice', 'Co-Directrice']);
+const FEMININE_ROLES = new Set([
+  'Apprentie',
+  'Infirmière',
+  'Directrice',
+  'Co-Directrice',
+  'Préparatrice de caisses',
+]);
 
-/** The letter lists the employees: lines with a payroll grade (the staff, see appendIdleStaff). */
+/**
+ * The letter lists the employees: lines with a payroll grade (the staff, see appendIdleStaff),
+ * except the préparateurs de caisses, who are not care staff.
+ */
 export function letterEmployees(employees: PayrollEmployee[]): PayrollEmployee[] {
   return employees
-    .filter((employee) => isPayrollEmployeeRole(employee.role.trim()))
+    .filter(
+      (employee) =>
+        isPayrollEmployeeRole(employee.role.trim()) && !isCashPreparerGrade(employee.role),
+    )
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
 

@@ -119,6 +119,25 @@ async function requireWeeklyActivityEdit(businessSlug: string) {
   return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
 }
 
+/** Caisse button: `mark_chest_own` (préparateur de caisses) or any edit right. */
+async function requireWeeklyChestMark(businessSlug: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, {
+    feature: 'weeklyActivity',
+  });
+  if (!ctx.ok) {
+    return { ok: false as const, response: ctx.response };
+  }
+  const perms = ctx.tenant.effectivePermissions;
+  const allowed =
+    can(perms, 'weekly_activity', 'mark_chest_own') ||
+    can(perms, 'weekly_activity', 'edit_all') ||
+    can(perms, 'weekly_activity', 'edit_own');
+  if (!allowed) {
+    return { ok: false as const, response: { status: 403 as const, error: 'Permission refusée' } };
+  }
+  return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
+}
+
 export async function listBusinessWeeklyActivities(
   businessSlug: string,
   options?: { periodStart: Date; periodEnd: Date },
@@ -743,7 +762,7 @@ async function markOwnWeeklyChestTodayUnlogged(
   meta?: WeeklyActivityMutationMeta,
 ) {
   try {
-    const gate = await requireWeeklyActivityEdit(businessSlug);
+    const gate = await requireWeeklyChestMark(businessSlug);
     if (!gate.ok) {
       return gate.response;
     }
