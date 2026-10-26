@@ -14,6 +14,7 @@ import { editorDocToTemplate, templateToEditorDoc } from './convert';
 import {
   createTemplateMention,
   templateSuggestionItems,
+  type TemplateVariableDescriptions,
   type TemplateSuggestionItem,
   type TemplateSuggestionRenderer,
 } from './mentionSuggestion';
@@ -29,6 +30,8 @@ type OpenSuggestion = Pick<
 interface TemplateRichEditorProps {
   value: string;
   onChange: (value: string) => void;
+  /** Variables offered by `@`; the built-in ones (orders, author) by default. */
+  variables?: TemplateVariableDescriptions;
 }
 
 function SuggestionLabel({ item }: { item: TemplateSuggestionItem }) {
@@ -45,12 +48,14 @@ function SuggestionLabel({ item }: { item: TemplateSuggestionItem }) {
 }
 
 /** Letter text with variables, fields and conditions as pills; `@` inserts them. */
-export function TemplateRichEditor({ value, onChange }: TemplateRichEditorProps) {
+export function TemplateRichEditor({ value, onChange, variables }: TemplateRichEditorProps) {
   const [suggestion, setSuggestion] = useState<OpenSuggestion | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const lastEmittedRef = useRef(value);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const variablesRef = useRef(variables);
+  variablesRef.current = variables;
 
   // The suggestion plugin calls the latest handlers through this ref.
   const rendererRef = useRef<TemplateSuggestionRenderer | null>(null);
@@ -103,7 +108,10 @@ export function TemplateRichEditor({ value, onChange }: TemplateRichEditorProps)
       }),
       TemplateVariableNode,
       TemplateTokenNode,
-      createTemplateMention(() => rendererRef.current as TemplateSuggestionRenderer),
+      createTemplateMention(
+        () => rendererRef.current as TemplateSuggestionRenderer,
+        () => variablesRef.current,
+      ),
     ],
     [],
   );
@@ -151,7 +159,7 @@ export function TemplateRichEditor({ value, onChange }: TemplateRichEditorProps)
     item.run(editor, { from, to });
   };
 
-  const menuItems = editor ? templateSuggestionItems(editor, '') : [];
+  const menuItems = editor ? templateSuggestionItems(editor, '', variables) : [];
   const rect = suggestion?.clientRect?.() ?? null;
 
   return (
