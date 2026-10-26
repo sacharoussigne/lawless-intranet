@@ -110,9 +110,16 @@ export function PayrollTotalsPaper({
                   )}
                 </div>
                 <div>
-                  <Text size="sm" c="dimmed" mb={6}>
-                    Reversé employé / caisse
+                  <Text size="sm" c="dimmed" mb={draft.caisse_price_mode ? 0 : 6}>
+                    Reversé par caisse
                   </Text>
+                  {draft.caisse_price_mode && (
+                    <Text size="xs" c="dimmed" mb={6}>
+                      {draft.caisse_price_mode === 'custom'
+                        ? 'Personnalisé : appliqué à tout le monde à la création'
+                        : 'Pour les personnes sans type de salaire'}
+                    </Text>
+                  )}
                   {canEdit && isEditing ? (
                     <NumberInput
                       size="sm"

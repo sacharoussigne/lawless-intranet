@@ -5,6 +5,7 @@ import { loadDiscordProfilesByIds, type ProfileSalaryType } from '@/lib/business
 import { weeklyCounterDefinitions, weeklyCounterValue, type WeeklyCounters } from '@/lib/businessWeeklyActivity/counters';
 import { estimatePayoutUsd } from '@/lib/payroll/recalculatePayrollResult';
 import { resolvePayrollDefaultRates, type PayrollDefaultRates } from '@/lib/payroll/salaryTypes';
+import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
 
 /** Estimated pay of a weekly activity row, shown by the Discord bot. */
 export type BotSalaryEstimate = {
@@ -19,20 +20,29 @@ export type BotSalaryEstimate = {
 
 type RowForEstimate = { discordUserId: string; chestTotal: number; counters: WeeklyCounters };
 
-/** Caisses × caisse unit + patients (counters paid as `patients_soignes`, not the sheriff ones) × patient rate. */
+/**
+ * Caisses × caisse unit + patients (counters paid as `patients_soignes`, not the sheriff ones) × patient rate.
+ * Without a salary type, a préparateur de caisses (by `grade`) gets the préparateurs' default.
+ */
 export function estimateRowSalary(
   row: Pick<RowForEstimate, 'chestTotal' | 'counters'>,
   salaryType: ProfileSalaryType | null,
   defaults: PayrollDefaultRates,
   counterDefinitions: readonly WeeklyCounterDefinition[],
+  grade: string | null = null,
 ): BotSalaryEstimate {
-  const caisseUnitUsd = salaryType?.caisseUnitUsd ?? defaults.caisseUnitUsd;
+  const preparer = isCashPreparerGrade(grade);
+  const caisseUnitUsd =
+    salaryType?.caisseUnitUsd ??
+    (preparer ? defaults.cashPreparerCaisseUnitUsd : defaults.caisseUnitUsd);
   const patients = counterDefinitions
     .filter((c) => c.payrollStat === 'patients_soignes')
     .reduce((sum, c) => sum + weeklyCounterValue(row.counters, c.key), 0);
   const caisses = row.chestTotal;
   return {
-    typeLabel: salaryType?.label ?? defaults.defaultSalaryTypeLabel,
+    typeLabel:
+      salaryType?.label ??
+      (preparer ? defaults.cashPreparerSalaryTypeLabel : defaults.defaultSalaryTypeLabel),
     caisseUnitUsd,
     patientCareUsd: defaults.patientCareUsd,
     caisses,
@@ -62,13 +72,17 @@ export async function attachBotSalaryEstimates<T extends RowForEstimate>(
     loadDiscordProfilesByIds(prisma, businessId, rows.map((r) => r.discordUserId)),
   ]);
   const counterDefinitions = weeklyCounterDefinitions(businessType);
-  return rows.map((row) => ({
-    ...row,
-    salary: estimateRowSalary(
-      row,
-      profiles.get(row.discordUserId)?.salaryType ?? null,
-      defaults,
-      counterDefinitions,
-    ),
-  }));
+  return rows.map((row) => {
+    const profile = profiles.get(row.discordUserId);
+    return {
+      ...row,
+      salary: estimateRowSalary(
+        row,
+        profile?.salaryType ?? null,
+        defaults,
+        counterDefinitions,
+        profile?.role ?? null,
+      ),
+    };
+  });
 }

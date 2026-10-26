@@ -52,9 +52,16 @@ export type CreatePayrollReportInput = {
   /** Week to import the activity from, `YYYY-MM-DD` (Paris); defaults to the report's week. */
   waWeekStartStr?: string | null;
   prices: PayrollReportPrices;
+  /**
+   * `default`: people keep their salary type, the report's caisse price pays the others.
+   * `custom`: the report's caisse price pays everyone (salary types left out).
+   */
+  caissePriceMode?: PayrollCaissePriceMode;
   /** Author: an account id, or `discord:<id>` when the bot user has no account. */
   createdById: string;
 };
+
+export type PayrollCaissePriceMode = 'default' | 'custom';
 
 export type CreatePayrollReportResult =
   | { status: 200; data: { id: string; weekStart: Date; weekEnd: Date } }
@@ -96,11 +103,17 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
     staff = split.staff;
   }
 
-  const employeesMerged = appendIdleStaff(
+  const caissePriceMode = input.caissePriceMode ?? 'default';
+  const merged = appendIdleStaff(
     mergeHtmlAndWeeklyActivity(input.parsed, activitiesWithNames, weeklyCounterDefinitions(input.businessType)),
     activitiesWithNames,
     staff,
   );
+  // Custom price: everyone is paid the report's caisse price, whatever their salary type.
+  const employeesMerged =
+    caissePriceMode === 'custom'
+      ? merged.map(({ caisse_unit_override_usd: _override, ...employee }) => employee)
+      : merged;
 
   // No HTML and nothing imported: the report starts empty, people are added on its page.
 
@@ -131,6 +144,7 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
         caisse_sale_price_usd: prices.caisseSalePriceUsd,
         patient_care_price_usd: prices.patientCarePriceUsd,
         offered_item_price_usd: prices.offeredItemPriceUsd,
+        caisse_price_mode: caissePriceMode,
         ...(importWeeklyActivity && waImportStart && waImportEnd
           ? {
               weekly_activity_import: {

@@ -52,6 +52,11 @@ const payrollReportResultInnerSchema = z.object({
   caisse_sale_price_usd: z.number().positive().max(1_000_000).default(PAYROLL_CAISSE_SALE_USD),
   patient_care_price_usd: z.number().positive().max(1_000_000).default(PAYROLL_PATIENT_CARE_USD),
   offered_item_price_usd: z.number().positive().max(1_000_000).default(PAYROLL_OFFERED_ITEM_USD),
+  /**
+   * How `caisse_price_usd` was chosen: `default` (people keep their salary type, it only pays
+   * people without one) or `custom` (applied to everyone at creation). Missing on older reports.
+   */
+  caisse_price_mode: z.enum(['default', 'custom']).optional(),
   weekly_activity_import: weeklyActivityImportSchema.nullable().optional(),
   employees: z.array(employeeSchema),
   global_stats: z.object({

@@ -113,6 +113,22 @@ describe('createPayrollReport', () => {
     ]);
   });
 
+  it('keeps each person salary type by default, and pays everyone the report price when custom', async () => {
+    mocks.loadStaff.mockResolvedValue([
+      { discordUserId: '1', displayName: 'Ada', role: 'Médecin', accountNumber: 12, caisseUnitUsd: 9 },
+    ]);
+    await createPayrollReport(input);
+    const byDefault = mocks.createReport.mock.calls[0]?.[0]?.data.resultJson;
+    expect(byDefault.caisse_price_mode).toBe('default');
+    expect(byDefault.employees[0].caisse_unit_override_usd).toBe(9);
+
+    mocks.createReport.mockClear();
+    await createPayrollReport({ ...input, caissePriceMode: 'custom' });
+    const custom = mocks.createReport.mock.calls[0]?.[0]?.data.resultJson;
+    expect(custom.caisse_price_mode).toBe('custom');
+    expect(custom.employees[0]).not.toHaveProperty('caisse_unit_override_usd');
+  });
+
   it('does not read the activity when the import is off', async () => {
     await createPayrollReport({ ...input, importWeeklyActivity: false });
     expect(mocks.findActivities).not.toHaveBeenCalled();
