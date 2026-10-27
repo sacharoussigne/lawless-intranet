@@ -13,7 +13,8 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconSearch } from '@tabler/icons-react';
+import { IconEye, IconSearch } from '@tabler/icons-react';
+import { useViewAs } from '@/app/_components/ViewAsBanner/useViewAs';
 import {
   listCatalogPermissionEntries,
   parsePermissionKey,
@@ -47,6 +48,7 @@ export function BusinessPermissionsPanel({
     [appSettings.businessType],
   );
   const { memberRoles } = useBusinessTypeDefinition();
+  const viewAs = useViewAs(businessSlug);
   const [byRole, setByRole] = useState<Record<string, Set<string>>>(() => {
     const next: Record<string, Set<string>> = {};
     for (const role of memberRoles) {
@@ -183,6 +185,15 @@ export function BusinessPermissionsPanel({
             onClick={handleReset}
           >
             Réinitialiser tous les rôles
+          </Button>
+          <Button
+            variant="light"
+            color="leather"
+            leftSection={<IconEye size={16} />}
+            loading={viewAs.pending}
+            onClick={() => viewAs.start([selectedRole])}
+          >
+            Voir en tant que {rolesAsString(selectedRole)}
           </Button>
           <Button color="sage" loading={saving} onClick={handleSave}>
             Enregistrer ce rôle

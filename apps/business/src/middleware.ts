@@ -94,6 +94,7 @@ export async function middleware(req: NextRequest) {
             email: session.user.email,
             role: session.user.role ?? null,
           },
+          viewAs: session.viewAs ?? null,
         },
         pathname,
       )

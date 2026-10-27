@@ -1,0 +1,18 @@
+// « Voir en tant que » banner: stays on top of the header while scrolling.
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 190;
+  background: var(--disp-leather-soft-strong);
+  border-bottom: 1px solid var(--disp-leather-soft-border);
+  color: var(--disp-leather-soft-text);
+}
+
+.inner {
+  padding: 8px 16px;
+}
+
+.select {
+  min-width: 220px;
+  max-width: 420px;
+}
