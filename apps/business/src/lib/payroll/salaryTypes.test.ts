@@ -1,44 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  findDefault: vi.fn(),
-  getAppSettings: vi.fn(),
-}));
+vi.mock('@/lib/prisma', () => ({ default: {} }));
+vi.mock('@/lib/appSettings', () => ({ getAppSettings: vi.fn() }));
 
-vi.mock('@/lib/prisma', () => ({
-  default: { payrollSalaryType: { findFirst: mocks.findDefault } },
-}));
-vi.mock('@/lib/appSettings', () => ({ getAppSettings: mocks.getAppSettings }));
+const { defaultCaisseUnitForReport } = await import('@/lib/payroll/salaryTypes');
 
-const { resolvePayrollDefaultRates } = await import('@/lib/payroll/salaryTypes');
+describe('defaultCaisseUnitForReport', () => {
+  const rates = { caisseUnitUsd: 6.5, cashPreparerCaisseUnitUsd: 4 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mocks.getAppSettings.mockResolvedValue({ payrollPatientCareUsd: 0.25 });
-});
-
-describe('resolvePayrollDefaultRates', () => {
-  it('uses the default salary type and the patient rate of the business', async () => {
-    // Prisma returns a Decimal for the caisse unit.
-    mocks.findDefault.mockResolvedValue({ label: 'Employé', caisseUnitUsd: { toString: () => '7', valueOf: () => 7 } });
-
-    await expect(resolvePayrollDefaultRates('b1')).resolves.toEqual({
-      caisseUnitUsd: 7,
-      patientCareUsd: 0.25,
-      defaultSalaryTypeLabel: 'Employé',
-    });
-    expect(mocks.findDefault).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { businessId: 'b1', isDefault: true } }),
-    );
-  });
-
-  it('falls back to 6.5 $ per caisse without a default salary type', async () => {
-    mocks.findDefault.mockResolvedValue(null);
-
-    await expect(resolvePayrollDefaultRates('b1')).resolves.toEqual({
-      caisseUnitUsd: 6.5,
-      patientCareUsd: 0.25,
-      defaultSalaryTypeLabel: null,
-    });
+  it('takes the default of the kind of report', () => {
+    expect(defaultCaisseUnitForReport(rates, 'Employés')).toBe(6.5);
+    expect(defaultCaisseUnitForReport(rates, 'Préparateurs de caisse')).toBe(4);
   });
 });

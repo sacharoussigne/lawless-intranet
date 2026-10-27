@@ -336,17 +336,19 @@ model BusinessEmploymentEvent {
 
 /// Salary type of a business (payroll): what a person is paid per caisse.
 model PayrollSalaryType {
-  id            String           @id @default(uuid())
-  businessId    String
-  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  label         String
-  caisseUnitUsd Decimal          @db.Decimal(10, 2)
+  id                    String           @id @default(uuid())
+  businessId            String
+  business              Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  label                 String
+  caisseUnitUsd         Decimal          @db.Decimal(10, 2)
   /// Used for people without a salary type and as the report's caisse price.
-  isDefault     Boolean          @default(false)
-  sortOrder     Int              @default(0)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  people        BusinessPerson[]
+  isDefault             Boolean          @default(false)
+  /// Same, in the « Préparateurs de caisse » report (none: the default above).
+  isCashPreparerDefault Boolean          @default(false)
+  sortOrder             Int              @default(0)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  people                BusinessPerson[]
 
   @@unique([businessId, label])
   @@index([businessId])

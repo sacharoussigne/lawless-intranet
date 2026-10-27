@@ -21,6 +21,7 @@ const salaryTypeSchema = z.object({
   label: z.string().trim().min(1, 'Le libellé est requis').max(60, 'Le libellé est trop long'),
   caisseUnitUsd: usdSchema,
   isDefault: z.boolean(),
+  isCashPreparerDefault: z.boolean().default(false),
 });
 
 const updateSalaryTypeSchema = salaryTypeSchema.extend({ id: z.string().min(1) });
@@ -60,6 +61,14 @@ async function createPayrollSalaryTypeUnlogged(businessSlug: string, input: unkn
       ...(isDefault
         ? [prisma.payrollSalaryType.updateMany({ where: tenantWhere(businessId), data: { isDefault: false } })]
         : []),
+      ...(parsed.data.isCashPreparerDefault
+        ? [
+            prisma.payrollSalaryType.updateMany({
+              where: tenantWhere(businessId),
+              data: { isCashPreparerDefault: false },
+            }),
+          ]
+        : []),
       prisma.payrollSalaryType.create({
         data: { businessId, ...parsed.data, isDefault, sortOrder: count },
       }),
@@ -97,6 +106,15 @@ async function updatePayrollSalaryTypeUnlogged(businessSlug: string, input: unkn
             prisma.payrollSalaryType.updateMany({
               where: { ...tenantWhere(businessId), id: { not: id } },
               data: { isDefault: false },
+            }),
+          ]
+        : []),
+      // At most one default for the préparateurs; unticking it leaves them on the default above.
+      ...(data.isCashPreparerDefault
+        ? [
+            prisma.payrollSalaryType.updateMany({
+              where: { ...tenantWhere(businessId), id: { not: id } },
+              data: { isCashPreparerDefault: false },
             }),
           ]
         : []),
