@@ -10,6 +10,7 @@ import {
   Group,
   NumberInput,
   Paper,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -37,8 +38,14 @@ import {
   PAYROLL_CAISSE_SALE_USD,
   PAYROLL_OFFERED_ITEM_USD,
   PAYROLL_REPORT_TYPE_EMPLOYES,
+  PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE,
   PAYROLL_REPORT_TYPES,
 } from '@/lib/payroll/constants';
+
+type CaissePriceMode = 'default' | 'custom';
+
+/** Default caisse pay of a kind of report (Réglages › Salaires). */
+export type PayrollReportDefaultPay = { caisseUnitUsd: number; salaryTypeLabel: string | null };
 
 
 const MAX_CAISSE_PRICE_USD = 1_000_000;
@@ -69,11 +76,14 @@ function SectionHeader({
 }
 
 export default function PayrollNewPageClient({
-  defaultCaissePriceUsd,
+  employeesDefaultPay,
+  cashPreparersDefaultPay,
   defaultPatientCarePriceUsd,
 }: {
-  /** Default salary type of the business (Paramètres › Salaires). */
-  defaultCaissePriceUsd: number;
+  /** Default salary type of the « Employés » report (Paramètres › Salaires). */
+  employeesDefaultPay: PayrollReportDefaultPay;
+  /** Default salary type of the « Préparateurs de caisse » report. */
+  cashPreparersDefaultPay: PayrollReportDefaultPay;
   defaultPatientCarePriceUsd: number;
 }) {
   const routes = useTenantRoutes();
@@ -82,13 +92,21 @@ export default function PayrollNewPageClient({
   const [importWeeklyActivity, setImportWeeklyActivity] = useState(false);
   const [waWeekDate, setWaWeekDate] = useState<string | null>(format(new Date(), 'yyyy-MM-dd'));
   const [caisseSalePriceUsd, setCaisseSalePriceUsd] = useState<number>(PAYROLL_CAISSE_SALE_USD);
-  const [caissePriceUsd, setCaissePriceUsd] = useState<number>(defaultCaissePriceUsd);
+  const [caissePriceMode, setCaissePriceMode] = useState<CaissePriceMode>('default');
+  const [customCaissePriceUsd, setCustomCaissePriceUsd] = useState<number>(
+    employeesDefaultPay.caisseUnitUsd,
+  );
   const [patientCarePriceUsd, setPatientCarePriceUsd] =
     useState<number>(defaultPatientCarePriceUsd);
   const [offeredItemPriceUsd, setOfferedItemPriceUsd] =
     useState<number>(PAYROLL_OFFERED_ITEM_USD);
   const [tableHtml, setTableHtml] = useState('');
   const [reportType, setReportType] = useState<string>(PAYROLL_REPORT_TYPE_EMPLOYES);
+  const defaultPay =
+    reportType === PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE ? cashPreparersDefaultPay : employeesDefaultPay;
+  /** Caisse price of the report: the default of its kind, or the custom one. */
+  const caissePriceUsd =
+    caissePriceMode === 'custom' ? customCaissePriceUsd : defaultPay.caisseUnitUsd;
 
   const { data: importableWeeks = [] } = usePayrollImportableActivityWeeks(importWeeklyActivity);
   const knownWaWeeks = useMemo(
@@ -164,7 +182,8 @@ export default function PayrollNewPageClient({
     const fd = new FormData();
     fd.set('weekStart', weekStart);
     fd.set('tableHtml', tableHtml);
-    fd.set('caissePriceUsd', String(caissePriceUsd));
+    fd.set('caissePriceMode', caissePriceMode);
+    if (caissePriceMode === 'custom') fd.set('caissePriceUsd', String(customCaissePriceUsd));
     fd.set('caisseSalePriceUsd', String(caisseSalePriceUsd));
     fd.set('patientCarePriceUsd', String(patientCarePriceUsd));
     fd.set('offeredItemPriceUsd', String(offeredItemPriceUsd));
@@ -285,22 +304,44 @@ export default function PayrollNewPageClient({
                   if (Number.isFinite(n) && n > 0) setCaisseSalePriceUsd(n);
                 }}
               />
-              <NumberInput
-                label="Montant reversé à l&apos;employé"
-                description="Montant unitaire par caisse pour les virements."
-                min={0.01}
-                max={MAX_CAISSE_PRICE_USD}
-                step={0.5}
-                decimalScale={2}
-                suffix=" $"
-                size="md"
-                value={caissePriceUsd}
-                onChange={(v) => {
-                  if (v === '' || v === undefined) return;
-                  const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
-                  if (Number.isFinite(n) && n > 0) setCaissePriceUsd(n);
-                }}
-              />
+              <Stack gap={6}>
+                <Text size="md" fw={500}>
+                  Montant reversé par caisse
+                </Text>
+                <SegmentedControl
+                  value={caissePriceMode}
+                  onChange={(value) => setCaissePriceMode(value as CaissePriceMode)}
+                  data={[
+                    { value: 'default', label: 'Salaire par défaut' },
+                    { value: 'custom', label: 'Personnalisé' },
+                  ]}
+                />
+                {caissePriceMode === 'default' ? (
+                  <Text size="sm" c="dimmed">
+                    {defaultPay.salaryTypeLabel ?? 'Défaut'}&nbsp;:{' '}
+                    <Text span fw={600} c="var(--disp-ink)">
+                      {defaultPay.caisseUnitUsd.toFixed(2)} $
+                    </Text>{' '}
+                    par caisse pour les personnes sans type de salaire ; les autres gardent le leur.
+                  </Text>
+                ) : (
+                  <NumberInput
+                    description="Appliqué à tout le monde dans ce rapport, quel que soit son type de salaire."
+                    min={0.01}
+                    max={MAX_CAISSE_PRICE_USD}
+                    step={0.5}
+                    decimalScale={2}
+                    suffix=" $"
+                    size="md"
+                    value={customCaissePriceUsd}
+                    onChange={(v) => {
+                      if (v === '' || v === undefined) return;
+                      const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+                      if (Number.isFinite(n) && n > 0) setCustomCaissePriceUsd(n);
+                    }}
+                  />
+                )}
+              </Stack>
               <NumberInput
                 label="Bonus par patient soigné (virement)"
                 description="Ajouté au virement, par patient, hors objets offerts."

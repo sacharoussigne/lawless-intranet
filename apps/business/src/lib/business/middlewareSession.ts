@@ -29,6 +29,7 @@ export async function enrichSessionWithTenant(
 
   const sessionLike = {
     user: session.user,
+    viewAs: session.viewAs,
   } as Parameters<typeof getEffectiveRoleForBusiness>[0];
 
   const effectiveRole = await getEffectiveRoleForBusiness(sessionLike, business.id);
@@ -56,7 +57,7 @@ export async function assertTenantAccessInMiddleware(
     return false;
   }
   return userCanAccessBusiness(
-    { user: session.user } as Parameters<typeof userCanAccessBusiness>[0],
+    { user: session.user, viewAs: session.viewAs } as Parameters<typeof userCanAccessBusiness>[0],
     session.tenant.businessId,
   );
 }

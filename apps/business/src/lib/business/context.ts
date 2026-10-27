@@ -3,13 +3,20 @@ import { cache } from 'react';
 import prisma from '@/lib/prisma';
 type SessionLike = {
   user: { id: string; role?: string | null };
+  /** « Voir en tant que » (lib/business/viewAs): roles used in that business. */
+  viewAs?: { businessId: string; roles: string } | null;
 } | null;
+
+function viewAsRoles(session: SessionLike, businessId: string): string | null {
+  return session?.viewAs?.businessId === businessId ? session.viewAs.roles : null;
+}
 import { isPlatformAdmin } from '@/lib/business/platformAdmin';
 import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { rewritePathWithBusinessSlug } from '@/lib/business/slug';
 import { routes } from '@/types/routes';
 import { resolveEffectivePermissionsForBusiness } from '@/lib/business/permissionsResolve';
+import { ensureEmployeeMembership, ensureEmployeeMemberships } from '@/lib/staff/access';
 
 export type BusinessContext = {
   id: string;
@@ -46,6 +53,10 @@ export async function getEffectiveRoleForBusiness(
   if (!session?.user?.id) {
     return null;
   }
+  const viewed = viewAsRoles(session, businessId);
+  if (viewed) {
+    return viewed;
+  }
   if (isPlatformAdmin(session.user.role)) {
     return Role.ADMIN;
   }
@@ -59,7 +70,7 @@ export async function userCanAccessBusiness(
   if (!session?.user?.id) {
     return false;
   }
-  if (isPlatformAdmin(session.user.role)) {
+  if (viewAsRoles(session, businessId) || isPlatformAdmin(session.user.role)) {
     return true;
   }
   const member = await prisma.businessMember.findUnique({
@@ -68,7 +79,8 @@ export async function userCanAccessBusiness(
     },
     select: { id: true },
   });
-  return member != null;
+  // Employed in the register but not a member yet (account created after the hiring).
+  return member != null || (await ensureEmployeeMembership(businessId, session.user.id)) != null;
 }
 
 /** One query for both `userCanAccessBusiness` and `getEffectiveRoleForBusiness` (every action runs it). */
@@ -79,6 +91,10 @@ async function resolveBusinessMembership(
   if (!session?.user?.id) {
     return { allowed: false, role: null };
   }
+  const viewed = viewAsRoles(session, businessId);
+  if (viewed) {
+    return { allowed: true, role: viewed };
+  }
   if (isPlatformAdmin(session.user.role)) {
     return { allowed: true, role: Role.ADMIN };
   }
@@ -88,7 +104,9 @@ async function resolveBusinessMembership(
     },
     select: { role: true },
   });
-  return { allowed: member != null, role: member?.role ?? null };
+  if (member) return { allowed: true, role: member.role };
+  const role = await ensureEmployeeMembership(businessId, session.user.id);
+  return { allowed: role != null, role };
 }
 
 export async function requireBusinessFromSlug(slug: string): Promise<BusinessContext> {
@@ -132,10 +150,18 @@ export async function listAccessibleBusinesses(session: SessionLike) {
     settings: { select: { businessName: true } },
   } as const;
 
+  if (!isPlatformAdmin(session.user.role)) {
+    await ensureEmployeeMemberships(session.user.id);
+  }
   const rows = isPlatformAdmin(session.user.role)
     ? await prisma.business.findMany({ orderBy: { name: 'asc' }, select })
     : await prisma.business.findMany({
-        where: { members: { some: { userId: session.user.id } } },
+        where: {
+          OR: [
+            { members: { some: { userId: session.user.id } } },
+            ...(session.viewAs ? [{ id: session.viewAs.businessId }] : []),
+          ],
+        },
         orderBy: { name: 'asc' },
         select,
       });

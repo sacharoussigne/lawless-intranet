@@ -12,6 +12,8 @@ import { type ParsedPayrollTable } from '@/lib/payroll/parsePayrollHtmlTable';
 import { recalculatePayrollResult } from '@/lib/payroll/recalculatePayrollResult';
 import { payrollReportResultSchema } from '@/lib/payroll/schema';
 import { weekRangeFromIsoDate } from '@/lib/payroll/week';
+import { appendIdleStaff, staffForReportType, withStaffRoles } from '@/lib/payroll/staffOfWeek';
+import { loadStaffOfPeriod, type StaffMemberOfPeriod } from '@/lib/staff/service';
 
 export const EMPTY_PARSED_PAYROLL_TABLE: ParsedPayrollTable = {
   employees: [],
@@ -50,9 +52,16 @@ export type CreatePayrollReportInput = {
   /** Week to import the activity from, `YYYY-MM-DD` (Paris); defaults to the report's week. */
   waWeekStartStr?: string | null;
   prices: PayrollReportPrices;
+  /**
+   * `default`: people keep their salary type, the report's caisse price pays the others.
+   * `custom`: the report's caisse price pays everyone (salary types left out).
+   */
+  caissePriceMode?: PayrollCaissePriceMode;
   /** Author: an account id, or `discord:<id>` when the bot user has no account. */
   createdById: string;
 };
+
+export type PayrollCaissePriceMode = 'default' | 'custom';
 
 export type CreatePayrollReportResult =
   | { status: 200; data: { id: string; weekStart: Date; weekEnd: Date } }
@@ -69,6 +78,8 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
   let activitiesWithNames: WaRow[] = [];
   let waImportStart: Date | undefined;
   let waImportEnd: Date | undefined;
+  /** Staff register of the imported week: a report lists every employed person it pays. */
+  let staff: StaffMemberOfPeriod[] = [];
 
   if (importWeeklyActivity) {
     const range = weekRangeFromIsoDate(input.waWeekStartStr ?? input.weekStartStr);
@@ -85,13 +96,24 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
       prisma,
       (await mergeResolvedDisplayNames(prisma, businessId, rawActivities)) as WaRow[],
     )) as WaRow[];
+    // The grade held that week decides the report: préparateurs de caisses apart, everyone else as employees.
+    const weekStaff = await loadStaffOfPeriod(prisma, businessId, waImportStart, waImportEnd);
+    const split = staffForReportType(reportType, withStaffRoles(activitiesWithNames, weekStaff), weekStaff);
+    activitiesWithNames = split.activities;
+    staff = split.staff;
   }
 
-  const employeesMerged = mergeHtmlAndWeeklyActivity(
-    input.parsed,
+  const caissePriceMode = input.caissePriceMode ?? 'default';
+  const merged = appendIdleStaff(
+    mergeHtmlAndWeeklyActivity(input.parsed, activitiesWithNames, weeklyCounterDefinitions(input.businessType)),
     activitiesWithNames,
-    weeklyCounterDefinitions(input.businessType),
+    staff,
   );
+  // Custom price: everyone is paid the report's caisse price, whatever their salary type.
+  const employeesMerged =
+    caissePriceMode === 'custom'
+      ? merged.map(({ caisse_unit_override_usd: _override, ...employee }) => employee)
+      : merged;
 
   // No HTML and nothing imported: the report starts empty, people are added on its page.
 
@@ -122,6 +144,7 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
         caisse_sale_price_usd: prices.caisseSalePriceUsd,
         patient_care_price_usd: prices.patientCarePriceUsd,
         offered_item_price_usd: prices.offeredItemPriceUsd,
+        caisse_price_mode: caissePriceMode,
         ...(importWeeklyActivity && waImportStart && waImportEnd
           ? {
               weekly_activity_import: {

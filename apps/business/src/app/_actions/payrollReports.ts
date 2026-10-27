@@ -1,5 +1,6 @@
 'use server';
 
+import { defaultCaisseUnitForReport, resolvePayrollDefaultRates } from '@/lib/payroll/salaryTypes';
 import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import prisma from '@/lib/prisma';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
@@ -136,9 +137,10 @@ async function createPayrollReportFromFormUnlogged(businessSlug: string, formDat
   const weekStartStr = typeof weekRef === 'string' ? weekRef : null;
   const htmlRaw = formData.get('tableHtml');
   const tableHtml = typeof htmlRaw === 'string' ? htmlRaw : '';
+  const caissePriceMode = formData.get('caissePriceMode') === 'custom' ? 'custom' : 'default';
   const caisseRaw = formData.get('caissePriceUsd');
   let caissePriceUsd = PAYROLL_CAISSE_USD;
-  if (caisseRaw != null && String(caisseRaw).trim() !== '') {
+  if (caissePriceMode === 'custom' && caisseRaw != null && String(caisseRaw).trim() !== '') {
     const n = Number(String(caisseRaw).trim().replace(',', '.'));
     if (!Number.isFinite(n) || n <= 0 || n > MAX_CAISSE_PRICE_USD) {
       return {
@@ -220,6 +222,11 @@ async function createPayrollReportFromFormUnlogged(businessSlug: string, formDat
     return { status: 400, error: msg };
   }
 
+  if (caissePriceMode === 'default') {
+    // « Salaire par défaut »: the default salary type of this kind of report, decided here.
+    caissePriceUsd = defaultCaisseUnitForReport(await resolvePayrollDefaultRates(businessId), reportType);
+  }
+
   const created = await createPayrollReport({
     businessId,
     businessType: ctx.tenant.business.type,
@@ -229,6 +236,7 @@ async function createPayrollReportFromFormUnlogged(businessSlug: string, formDat
     importWeeklyActivity,
     waWeekStartStr,
     prices: { caissePriceUsd, caisseSalePriceUsd, patientCarePriceUsd, offeredItemPriceUsd },
+    caissePriceMode,
     createdById: ctx.session.user.id,
   });
   if (created.status === 200) return { status: 200, data: { id: created.data.id } };

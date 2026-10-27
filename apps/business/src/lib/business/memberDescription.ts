@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma';
+import { employmentOfAccounts } from '@/lib/staff/access';
 
+/** Title of a member in the letters: set by hand, otherwise the RP grade while employed. */
 export async function getMemberDescription(
   businessId: string,
   userId: string,
@@ -13,6 +15,8 @@ export async function getMemberDescription(
     },
     select: { description: true },
   });
+  if (member?.description) return member.description;
 
-  return member?.description ?? null;
+  const employment = (await employmentOfAccounts(businessId, [userId])).get(userId);
+  return employment?.employed ? (employment.grade ?? null) : null;
 }

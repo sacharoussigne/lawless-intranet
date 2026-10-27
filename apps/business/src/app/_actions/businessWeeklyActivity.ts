@@ -65,6 +65,7 @@ import {
   weeklyCounterValue,
 } from '@/lib/businessWeeklyActivity/counters';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
+import { isWeekLocked, PAST_WEEK_LOCKED_MESSAGE } from '@/lib/businessWeeklyActivity/weekLock';
 import { tenantWhere } from '@/lib/business/tenantWhere';
 import {
   assertIntranetWeekdayFlagsEditAllowed,
@@ -111,6 +112,25 @@ async function requireWeeklyActivityEdit(businessSlug: string) {
   }
   const perms = ctx.tenant.effectivePermissions;
   const allowed =
+    can(perms, 'weekly_activity', 'edit_all') ||
+    can(perms, 'weekly_activity', 'edit_own');
+  if (!allowed) {
+    return { ok: false as const, response: { status: 403 as const, error: 'Permission refusée' } };
+  }
+  return { ok: true as const, session: ctx.session, tenant: ctx.tenant };
+}
+
+/** Caisse button: `mark_chest_own` (préparateur de caisses) or any edit right. */
+async function requireWeeklyChestMark(businessSlug: string) {
+  const ctx = await requireTenantServerActionContext(businessSlug, {
+    feature: 'weeklyActivity',
+  });
+  if (!ctx.ok) {
+    return { ok: false as const, response: ctx.response };
+  }
+  const perms = ctx.tenant.effectivePermissions;
+  const allowed =
+    can(perms, 'weekly_activity', 'mark_chest_own') ||
     can(perms, 'weekly_activity', 'edit_all') ||
     can(perms, 'weekly_activity', 'edit_own');
   if (!allowed) {
@@ -485,6 +505,9 @@ async function createBusinessWeeklyActivityUnlogged(
       return { status: 400 as const, error: parsed.error.issues[0]?.message ?? 'Données invalides' };
     }
     const mutationMeta = parseMutationMeta(meta);
+    if (isWeekLocked(parsed.data.periodStart, gate.tenant.effectiveRole)) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
+    }
 
     const { session, tenant } = gate;
     const { businessId } = tenant;
@@ -615,6 +638,16 @@ async function updateBusinessWeeklyActivityUnlogged(
     if (!allowed) {
       return { status: 403 as const, error: 'Permission refusée' };
     }
+    if (isWeekLocked(existing.periodStart, gate.tenant.effectiveRole)) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
+    }
+
+    if (
+      parsedBody.data.periodStart &&
+      isWeekLocked(parsedBody.data.periodStart, gate.tenant.effectiveRole)
+    ) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
+    }
 
     const settings = await getAppSettings(businessId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
@@ -694,6 +727,9 @@ async function deleteBusinessWeeklyActivityUnlogged(
     if (!allowed) {
       return { status: 403 as const, error: 'Permission refusée' };
     }
+    if (isWeekLocked(existing.periodStart, gate.tenant.effectiveRole)) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
+    }
 
     const actorDiscordUserId = await getDiscordAccountIdForUser(prisma, gate.session.user.id);
 
@@ -743,7 +779,7 @@ async function markOwnWeeklyChestTodayUnlogged(
   meta?: WeeklyActivityMutationMeta,
 ) {
   try {
-    const gate = await requireWeeklyActivityEdit(businessSlug);
+    const gate = await requireWeeklyChestMark(businessSlug);
     if (!gate.ok) {
       return gate.response;
     }

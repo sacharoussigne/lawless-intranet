@@ -6,6 +6,8 @@ import { actionErrorParser } from '@/lib/action';
 import { loggedAction } from '@/lib/logs/writer';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { accountIdOfDiscord, reconcileAccountLinks } from '@/lib/people/accountLinks';
+import { syncPersonAccess } from '@/lib/staff/access';
+import { parseRoleList } from '@/types/enum/roles';
 import {
   getDiscordAccountIdsForUsers,
   getLatestDiscordDisplayName,
@@ -26,6 +28,14 @@ import { pickProfileDisplayName } from '@/lib/people/displayName';
 import { discordUserIdSchema } from '@/lib/people/discordId';
 import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
 import type { BusinessPerson, BusinessPeopleList } from '@/lib/people/types';
+import {
+  hirePerson,
+  loadEmploymentStatuses,
+  recordRoleChangeIfEmployed,
+  StaffRegisterError,
+} from '@/lib/staff/service';
+import { employmentStatusOf } from '@/lib/staff/periods';
+import type { EmploymentStatus } from '@/lib/staff/types';
 
 const peopleGuard = {
   feature: 'weeklyActivity' as const,
@@ -66,9 +76,13 @@ const updatePersonSchema = z.object({
   salaryTypeId: salaryTypeIdSchema,
 });
 
+const NEVER_EMPLOYED: EmploymentStatus = employmentStatusOf([]);
+
 function toPerson(
   profile: DiscordProfileSnapshot,
   accountName: string | null,
+  employment: EmploymentStatus,
+  memberRole: string | null,
 ): BusinessPerson {
   return {
     discordUserId: profile.discordUserId,
@@ -79,6 +93,8 @@ function toPerson(
     accountNumber: profile.accountNumber,
     salaryType: profile.salaryType ? { id: profile.salaryType.id, label: profile.salaryType.label } : null,
     account: profile.userId ? { id: profile.userId, name: accountName ?? 'Compte intranet' } : null,
+    intranetRoles: profile.userId ? parseRoleList(memberRole) : null,
+    employment,
     updatedAt: profile.updatedAt,
   };
 }
@@ -86,10 +102,23 @@ function toPerson(
 async function loadPerson(businessId: string, discordUserId: string): Promise<BusinessPerson> {
   const profile = await findBusinessProfile(prisma, businessId, discordUserId);
   if (!profile) throw new DiscordProfileNotFoundError('Profil introuvable pour cette personne');
-  const account = profile.userId
-    ? (await fetchUserProfiles([profile.userId])).get(profile.userId)
-    : undefined;
-  return toPerson(profile, account?.name ?? null);
+  const userId = profile.userId;
+  const [account, statuses, member] = await Promise.all([
+    userId ? fetchUserProfiles([userId]).then((users) => users.get(userId)) : undefined,
+    loadEmploymentStatuses(prisma, businessId),
+    userId
+      ? prisma.businessMember.findUnique({
+          where: { businessId_userId: { businessId, userId } },
+          select: { role: true },
+        })
+      : null,
+  ]);
+  return toPerson(
+    profile,
+    account?.name ?? null,
+    statuses.get(discordUserId) ?? NEVER_EMPLOYED,
+    member?.role ?? null,
+  );
 }
 
 export async function listBusinessPeople(businessSlug: string) {
@@ -98,10 +127,11 @@ export async function listBusinessPeople(businessSlug: string) {
     if (!ctx.ok) return ctx.response;
     const { businessId } = ctx.tenant;
 
-    const [initialProfiles, members, settings] = await Promise.all([
+    const [initialProfiles, members, settings, statuses] = await Promise.all([
       findBusinessProfiles(prisma, businessId),
-      prisma.businessMember.findMany({ where: { businessId }, select: { userId: true } }),
+      prisma.businessMember.findMany({ where: { businessId }, select: { userId: true, role: true } }),
       getAppSettings(businessId),
+      loadEmploymentStatuses(prisma, businessId),
     ]);
     const salaryTypes = isAppFeatureEnabled(settings, 'payroll')
       ? (await listPayrollSalaryTypes(businessId)).map(({ id, label, caisseUnitUsd, isDefault }) => ({
@@ -124,6 +154,7 @@ export async function listBusinessPeople(businessSlug: string) {
     });
 
     const memberIds = members.map((m) => m.userId);
+    const roleByUser = new Map(members.map((m) => [m.userId, m.role]));
     const accountIds = profiles.map((p) => p.userId).filter((id): id is string => Boolean(id));
     const [accounts, memberDiscordIds] = await Promise.all([
       fetchUserProfiles([...new Set([...accountIds, ...memberIds])]),
@@ -131,7 +162,14 @@ export async function listBusinessPeople(businessSlug: string) {
     ]);
 
     const people = profiles
-      .map((profile) => toPerson(profile, profile.userId ? accounts.get(profile.userId)?.name ?? null : null))
+      .map((profile) =>
+        toPerson(
+          profile,
+          profile.userId ? accounts.get(profile.userId)?.name ?? null : null,
+          statuses.get(profile.discordUserId) ?? NEVER_EMPLOYED,
+          profile.userId ? (roleByUser.get(profile.userId) ?? null) : null,
+        ),
+      )
       .sort((a, b) => a.displayName.localeCompare(b.displayName, 'fr'));
 
     // Members with Discord but no profile yet: offered in the « Ajouter » modal.
@@ -162,17 +200,31 @@ async function createBusinessPersonUnlogged(businessSlug: string, input: unknown
     // No answer from the auth service: the account is linked later, on the next list.
     const userId = (await accountIdOfDiscord(data.discordUserId)) ?? null;
 
-    await createDiscordProfile(prisma, {
-      lastKnownName: await getLatestDiscordDisplayName(prisma, businessId, data.discordUserId),
-      businessId,
-      discordUserId: data.discordUserId,
-      displayName: data.displayName,
-      role: data.role,
-      accountNumber: data.accountNumber,
-      salaryTypeId: data.salaryTypeId,
-      userId,
-      createdById: ctx.session.user.id,
+    const lastKnownName = await getLatestDiscordDisplayName(prisma, businessId, data.discordUserId);
+    await prisma.$transaction(async (tx) => {
+      await createDiscordProfile(tx, {
+        lastKnownName,
+        businessId,
+        discordUserId: data.discordUserId,
+        displayName: data.displayName,
+        role: data.role,
+        accountNumber: data.accountNumber,
+        salaryTypeId: data.salaryTypeId,
+        userId,
+        createdById: ctx.session.user.id,
+      });
+      // A person added with a grade joins the staff today (register: Gestion › Personnes).
+      if (data.role) {
+        await hirePerson(tx, {
+          businessId,
+          discordUserId: data.discordUserId,
+          role: data.role,
+          startedAt: new Date(),
+          createdById: ctx.session.user.id,
+        });
+      }
     });
+    if (data.role) await syncPersonAccess(prisma, businessId, data.discordUserId);
 
     return { status: 200 as const, data: await loadPerson(businessId, data.discordUserId) };
   } catch (error) {
@@ -181,6 +233,9 @@ async function createBusinessPersonUnlogged(businessSlug: string, input: unknown
     }
     if (error instanceof DiscordProfileConflictError) {
       return { status: 409 as const, error: error.message };
+    }
+    if (error instanceof StaffRegisterError) {
+      return { status: error.status, error: error.message };
     }
     return actionErrorParser(error, 'Erreur lors de l’ajout de la personne');
   }
@@ -193,14 +248,27 @@ async function updateBusinessPersonUnlogged(businessSlug: string, input: unknown
     const { businessId } = ctx.tenant;
     const data = updatePersonSchema.parse(input);
 
-    await updateDiscordProfileFields(prisma, {
-      businessId,
-      discordUserId: data.discordUserId,
-      fixedDisplayName: data.fixedDisplayName,
-      role: data.role,
-      accountNumber: data.accountNumber,
-      salaryTypeId: data.salaryTypeId,
+    await prisma.$transaction(async (tx) => {
+      // Before the profile: a grade change of an employed person goes to the history.
+      if (data.role !== undefined) {
+        await recordRoleChangeIfEmployed(tx, {
+          businessId,
+          discordUserId: data.discordUserId,
+          role: data.role,
+          createdById: ctx.session.user.id,
+        });
+      }
+      await updateDiscordProfileFields(tx, {
+        businessId,
+        discordUserId: data.discordUserId,
+        fixedDisplayName: data.fixedDisplayName,
+        role: data.role,
+        accountNumber: data.accountNumber,
+        salaryTypeId: data.salaryTypeId,
+      });
     });
+    // The grade gives the intranet roles of an employed person.
+    if (data.role !== undefined) await syncPersonAccess(prisma, businessId, data.discordUserId);
 
     return { status: 200 as const, data: await loadPerson(businessId, data.discordUserId) };
   } catch (error) {
@@ -209,6 +277,9 @@ async function updateBusinessPersonUnlogged(businessSlug: string, input: unknown
     }
     if (error instanceof DiscordProfileConflictError) {
       return { status: 409 as const, error: error.message };
+    }
+    if (error instanceof StaffRegisterError) {
+      return { status: error.status, error: error.message };
     }
     return actionErrorParser(error, 'Erreur lors de la modification de la personne');
   }

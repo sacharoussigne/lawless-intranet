@@ -29,7 +29,14 @@ export default async function PayrollNewPage({ params }: { params: Promise<{ bus
   const rates = await resolvePayrollDefaultRates(business.id);
   return (
     <PayrollNewPageClient
-      defaultCaissePriceUsd={rates.caisseUnitUsd}
+      employeesDefaultPay={{
+        caisseUnitUsd: rates.caisseUnitUsd,
+        salaryTypeLabel: rates.defaultSalaryTypeLabel,
+      }}
+      cashPreparersDefaultPay={{
+        caisseUnitUsd: rates.cashPreparerCaisseUnitUsd,
+        salaryTypeLabel: rates.cashPreparerSalaryTypeLabel,
+      }}
       defaultPatientCarePriceUsd={rates.patientCareUsd}
     />
   );

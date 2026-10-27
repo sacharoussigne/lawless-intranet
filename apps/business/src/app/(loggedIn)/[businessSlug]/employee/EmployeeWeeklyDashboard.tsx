@@ -43,25 +43,33 @@ type EmployeeWeeklyDashboardProps = {
   businessSlug: string;
   canEdit: boolean;
   canEditAll: boolean;
+  /** Caisse button (préparateur de caisses), also given by any edit right. */
+  canMarkChest: boolean;
   sessionUserId: string;
   viewerDiscordId: string | null;
   defaultDisplayName: string;
   initialWeekBounds: WeeklyActivityWeekBounds;
   initialRows: WeeklyActivityListItem[];
   periodWeekDateValue: Date;
+  /** Past week without `canEditPastWeeks`: the team list stays visible, nothing is editable. */
+  readOnly?: boolean;
 };
 
 export function EmployeeWeeklyDashboard({
   businessSlug,
-  canEdit,
+  canEdit: canEditRight,
   canEditAll,
+  canMarkChest: canMarkChestRight,
   sessionUserId,
   viewerDiscordId,
   defaultDisplayName,
   initialWeekBounds,
   initialRows,
   periodWeekDateValue,
+  readOnly = false,
 }: EmployeeWeeklyDashboardProps) {
+  const canEdit = canEditRight && !readOnly;
+  const canMarkChest = canMarkChestRight && !readOnly;
   const { appSettings } = usePermissions();
   const queryClient = useQueryClient();
   const fieldVisibility = useMemo(
@@ -137,13 +145,15 @@ export function EmployeeWeeklyDashboard({
   return (
     <>
       <Stack gap="lg">
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+        {/* The quick actions panel renders nothing without a right: the activity takes the full width. */}
+        <SimpleGrid cols={{ base: 1, md: canEdit || canMarkChest ? 2 : 1 }} spacing="lg">
           <WeeklyActivityQuickActionsPanel
             row={ownRow}
             fieldVisibility={fieldVisibility}
             weekBounds={queryWeekBounds}
             hasDiscord={viewerDiscordId !== null}
             canEdit={canEdit}
+            canMarkChest={canMarkChest}
           />
           <WeeklyActivityCompactPanel
             displayName={ownRow?.resolvedDisplayName ?? defaultDisplayName}

@@ -1,3 +1,5 @@
+import type { EmploymentStatus } from '@/lib/staff/types';
+
 /** A person of the dispensary, keyed by Discord ID, with or without an intranet account. */
 export type BusinessPerson = {
   discordUserId: string;
@@ -11,6 +13,10 @@ export type BusinessPerson = {
   salaryType: { id: string; label: string } | null;
   /** Intranet account holding this Discord ID, if any. */
   account: { id: string; name: string } | null;
+  /** Intranet roles of that account here (grade + manual); null without an account, empty without access. */
+  intranetRoles: string[] | null;
+  /** Staff register: employed or not, since when. */
+  employment: EmploymentStatus;
   updatedAt: Date;
 };
 

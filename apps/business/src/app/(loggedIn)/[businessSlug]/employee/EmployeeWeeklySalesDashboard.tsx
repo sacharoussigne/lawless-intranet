@@ -76,6 +76,8 @@ type EmployeeWeeklySalesDashboardProps = {
   initialSummary: WeeklySalesSummary;
   periodWeekDateValue: Date;
   pageSize?: number;
+  /** Past week without `canEditPastWeeks`: no deposit nor cancel (lib/businessWeeklyActivity/weekLock). */
+  readOnly?: boolean;
   detailVisible?: boolean;
   onDetailVisibleChange?: (visible: boolean) => void;
 };
@@ -90,6 +92,7 @@ export function EmployeeWeeklySalesDashboard({
   initialSummary,
   periodWeekDateValue,
   pageSize = DEFAULT_PAGE_SIZE,
+  readOnly = false,
   detailVisible = true,
   onDetailVisibleChange,
 }: EmployeeWeeklySalesDashboardProps) {
@@ -387,10 +390,12 @@ export function EmployeeWeeklySalesDashboard({
   const renderSaleActions = (sale: SaleListItem, wrap = false) => {
     const isCompleted = sale.status === SaleStatus.COMPLETED;
     const canDepositSale =
+      !readOnly &&
       isCompleted &&
       !sale.depositedInCashRegister &&
       (sale.userId === sessionUserId || canDepositOthers);
     const canCancelSale =
+      !readOnly &&
       canCancel &&
       isCompleted &&
       !sale.depositedInCashRegister &&

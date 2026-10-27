@@ -1,5 +1,6 @@
 import { requireSession, errorResponse } from '@/lib/auth';
 import { corsPreflightResponse } from '@/lib/cors';
+import { requireInternalSecret } from '@/lib/internalAuth';
 import { parseJsonBody, parseScopeQuery } from '@/lib/request';
 import { fromDomainResult } from '@/lib/http';
 import {
@@ -13,11 +14,13 @@ import {
 import { createSaleSchema, saleActionSchema } from '@/lib/validation';
 import { parseISO } from 'date-fns';
 
+/** Host-only: the rights in the request (canViewAll, canEditPastWeeks...) come from the intranet. */
 export async function OPTIONS(request: Request) {
   return corsPreflightResponse(request);
 }
 
 export async function GET(request: Request) {
+  if (!requireInternalSecret(request)) return errorResponse(request, 'Forbidden', 403);
   const auth = await requireSession(request);
   if (auth instanceof Response) return auth;
 
@@ -45,6 +48,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!requireInternalSecret(request)) return errorResponse(request, 'Forbidden', 403);
   const auth = await requireSession(request);
   if (auth instanceof Response) return auth;
 
@@ -61,12 +65,14 @@ export async function POST(request: Request) {
         ...parsed.data,
         userId: auth.userId,
         canViewAll: parsed.data.canViewAll,
+        canEditPastWeeks: parsed.data.canEditPastWeeks,
       });
     } else if (action === 'deposit') {
       result = await depositSale({
         ...parsed.data,
         userId: auth.userId,
         canDepositOthers: parsed.data.canDepositOthers,
+        canEditPastWeeks: parsed.data.canEditPastWeeks,
       });
     } else {
       result = await deleteSale({

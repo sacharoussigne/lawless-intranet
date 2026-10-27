@@ -6,4 +6,6 @@ export const payrollKeys = {
   importableActivityWeeks: (slug: string) =>
     [...payrollKeys.all(slug), 'importableActivityWeeks'] as const,
   people: (slug: string) => [...payrollKeys.all(slug), 'people'] as const,
+  letterTemplate: (slug: string) => [...payrollKeys.all(slug), 'letterTemplate'] as const,
+  letter: (slug: string, reportId: string) => [...payrollKeys.all(slug), 'letter', reportId] as const,
 };

@@ -97,9 +97,19 @@ function normalize(value: string): string {
   return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 }
 
-/** Variables (built-in + form fields of the document) then insertable elements, filtered by the query. */
-export function templateSuggestionItems(editor: Editor, query: string): TemplateSuggestionItem[] {
-  const descriptions = new Map<string, string>(Object.entries(BUILTIN_VARIABLE_DESCRIPTIONS));
+/** Variable name → what it holds when the letter is generated (shown in the `@` list). */
+export type TemplateVariableDescriptions = Readonly<Record<string, string>>;
+
+/**
+ * Variables (those of the template's use, the built-in ones by default, then the
+ * form fields of the document) and insertable elements, filtered by the query.
+ */
+export function templateSuggestionItems(
+  editor: Editor,
+  query: string,
+  variables: TemplateVariableDescriptions = BUILTIN_VARIABLE_DESCRIPTIONS,
+): TemplateSuggestionItem[] {
+  const descriptions = new Map<string, string>(Object.entries(variables));
   for (const input of collectInputs(editor.getJSON())) {
     if (!descriptions.has(input.name)) {
       descriptions.set(input.name, `Champ du formulaire « ${input.label || input.name} »`);
@@ -123,7 +133,10 @@ export function templateSuggestionItems(editor: Editor, query: string): Template
 }
 
 /** `@` opens the template suggestion list. */
-export function createTemplateMention(getRenderer: () => TemplateSuggestionRenderer) {
+export function createTemplateMention(
+  getRenderer: () => TemplateSuggestionRenderer,
+  getVariables: () => TemplateVariableDescriptions | undefined = () => undefined,
+) {
   return Extension.create({
     name: 'templateMention',
 
@@ -133,7 +146,7 @@ export function createTemplateMention(getRenderer: () => TemplateSuggestionRende
           editor: this.editor,
           pluginKey: new PluginKey('templateMention'),
           char: '@',
-          items: ({ editor, query }) => templateSuggestionItems(editor, query),
+          items: ({ editor, query }) => templateSuggestionItems(editor, query, getVariables()),
           command: ({ editor, range, props }) => props.run(editor, range),
           render: () => ({
             onStart: (props) => getRenderer().onOpen(props),

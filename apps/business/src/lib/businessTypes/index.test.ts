@@ -7,11 +7,13 @@ import {
   normalizeAppSettings,
 } from '@/lib/appSettingsShared';
 import { BUSINESS_MEMBER_ROLES, Role } from '@/types/enum/roles';
+import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
 import {
   businessTypes,
   isMemberRoleAllowedForType,
   isModuleAllowedForType,
   isResourceAllowedForType,
+  rolesOfGrade,
   type BusinessType,
 } from '@/lib/businessTypes';
 
@@ -41,9 +43,24 @@ describe('business types registry', () => {
     for (const role of def.memberRoles) {
       expect(BUSINESS_MEMBER_ROLES).toContain(role);
     }
+    for (const roles of Object.values(def.gradeRoles)) {
+      for (const role of roles) expect(def.memberRoles).toContain(role);
+    }
     for (const row of flattenRoleMatrix(def.defaultRoleMatrix)) {
       expect(isResourceAllowedForType(type, row.resource)).toBe(true);
     }
+  });
+});
+
+describe('rolesOfGrade', () => {
+  it('maps every payroll grade, and falls back on employee', () => {
+    for (const grade of PAYROLL_EMPLOYEE_ROLES) {
+      expect(businessTypes.DISPENSARY.gradeRoles).toHaveProperty([grade]);
+    }
+    expect(rolesOfGrade('DISPENSARY', 'Directrice')).toEqual([Role.DIRECTION, Role.EMPLOYEE]);
+    expect(rolesOfGrade('DISPENSARY', 'Préparateur de caisses')).toEqual([Role.CASH_PREPARER]);
+    expect(rolesOfGrade('DISPENSARY', null)).toEqual([Role.EMPLOYEE]);
+    expect(rolesOfGrade('DISPENSARY', 'Barman')).toEqual([Role.EMPLOYEE]);
   });
 });
 

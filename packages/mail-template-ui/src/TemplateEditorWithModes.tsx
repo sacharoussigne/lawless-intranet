@@ -15,6 +15,7 @@ import { parseTemplateDocument } from '@lawless-intranet/mail-template-engine';
 import { TemplateEditor } from './TemplateEditor';
 import { DetectedParameters } from './DetectedParameters';
 import { TemplateRichEditor } from './richText/TemplateRichEditor';
+import type { TemplateVariableDescriptions } from './richText/mentionSuggestion';
 
 type EditorMode = 'visual' | 'inline';
 
@@ -25,6 +26,8 @@ interface TemplateEditorWithModesProps {
   placeholder?: string;
   required?: boolean;
   showParametersPanel?: boolean;
+  /** Variables offered by `@` in the visual editor; the built-in ones by default. */
+  variables?: TemplateVariableDescriptions;
 }
 
 export function TemplateEditorWithModes({
@@ -34,6 +37,7 @@ export function TemplateEditorWithModes({
   placeholder,
   required,
   showParametersPanel = true,
+  variables,
 }: TemplateEditorWithModesProps) {
   const [mode, setMode] = useState<EditorMode>('visual');
   const warnings = useMemo(
@@ -70,7 +74,7 @@ export function TemplateEditorWithModes({
             {warnings.join(' ')}
           </Alert>
         )}
-        <TemplateRichEditor value={value} onChange={onChange} />
+        <TemplateRichEditor value={value} onChange={onChange} variables={variables} />
       </Stack>
     );
 

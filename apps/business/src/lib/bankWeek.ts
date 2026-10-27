@@ -17,7 +17,11 @@ export function getBankWeekBounds(date: Date) {
  */
 export function addParisWeeks(date: Date | string | number, deltaWeeks: number): Date {
   const { start: monday } = getBankWeekBounds(new Date(date));
-  return dayjs(monday).tz(TZ).add(deltaWeeks, 'week').toDate();
+  // Adds calendar days on the Paris date: adding to the instant shifts by an hour across a
+  // DST change, which lands back in the same week (the arrows got stuck).
+  const parisDay = dayjs(monday).tz(TZ).format('YYYY-MM-DD');
+  const targetDay = dayjs(parisDay).add(deltaWeeks * 7, 'day').format('YYYY-MM-DD');
+  return dayjs.tz(targetDay, TZ).toDate();
 }
 
 export function getCurrentParisWeekStart(): Date {

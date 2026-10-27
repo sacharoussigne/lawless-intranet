@@ -11,6 +11,7 @@ import {
   getCurrentParisWeekStart,
 } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
+import { isCurrentBankWeek } from '@/lib/businessWeeklyActivity/weekLock';
 import { tenantRoutes } from '@/types/routes';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import type { WeeklyActivityWeekBounds } from '@/lib/businessWeeklyActivity/queryKeys';
@@ -34,9 +35,14 @@ type EmployeeWeeklyOverviewProps = {
   businessSlug: string;
   showActivity: boolean;
   showSales: boolean;
+  /** Admin or direction: past weeks stay editable (lib/businessWeeklyActivity/weekLock). */
+  canEditPastWeeks: boolean;
+  /** `weekly_activity:page`: link to the « Activité hebdo » page. */
+  canOpenWeeklyPage: boolean;
   activity?: {
     canEdit: boolean;
     canEditAll: boolean;
+    canMarkChest: boolean;
     sessionUserId: string;
     viewerDiscordId: string | null;
     defaultDisplayName: string;
@@ -56,6 +62,8 @@ export function EmployeeWeeklyOverview({
   businessSlug,
   showActivity,
   showSales,
+  canEditPastWeeks,
+  canOpenWeeklyPage,
   activity,
   sales,
 }: EmployeeWeeklyOverviewProps) {
@@ -86,6 +94,7 @@ export function EmployeeWeeklyOverview({
     [periodWeekDateValue],
   );
 
+  const weekLocked = !canEditPastWeeks && !isCurrentBankWeek(periodWeekDateValue);
   const weeklyActivityHref = tenantRoutes(businessSlug).weeklyActivity.index;
   const preferenceReady = salesDetailVisible != null;
 
@@ -109,18 +118,28 @@ export function EmployeeWeeklyOverview({
         }
       />
 
+      {weekLocked && (
+        <Text size="sm" c="dimmed">
+          Semaine passée : lecture seule.
+        </Text>
+      )}
+
       {showActivity && activity && (
         <Stack gap="md">
           <Group justify="space-between" align="center" wrap="wrap">
             <Text className="disp-display-title">Activité hebdo</Text>
-            <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed" visibleFrom="sm">
-              Détail complet
-            </Anchor>
+            {canOpenWeeklyPage && (
+              <Anchor component={Link} href={weeklyActivityHref} size="sm" c="dimmed" visibleFrom="sm">
+                Détail complet
+              </Anchor>
+            )}
           </Group>
           <EmployeeWeeklyDashboard
             businessSlug={businessSlug}
             canEdit={activity.canEdit}
             canEditAll={activity.canEditAll}
+            canMarkChest={activity.canMarkChest}
+            readOnly={weekLocked}
             sessionUserId={activity.sessionUserId}
             viewerDiscordId={activity.viewerDiscordId}
             defaultDisplayName={activity.defaultDisplayName}
@@ -142,6 +161,7 @@ export function EmployeeWeeklyOverview({
           initialSummary={sales.initialSummary}
           periodWeekDateValue={periodWeekDateValue}
           pageSize={5}
+          readOnly={weekLocked}
           detailVisible={salesDetailVisible}
           onDetailVisibleChange={setSalesDetailVisible}
         />

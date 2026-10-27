@@ -19,7 +19,13 @@ const { attachBotSalaryEstimates, estimateRowSalary } = await import('@/lib/payr
 const { businessTypes } = await import('@/lib/businessTypes');
 
 const DISPENSARY_COUNTERS = businessTypes.DISPENSARY.weeklyCounters;
-const defaults = { caisseUnitUsd: 6.5, patientCareUsd: 0.3, defaultSalaryTypeLabel: 'Employé' };
+const defaults = {
+  caisseUnitUsd: 6.5,
+  patientCareUsd: 0.3,
+  defaultSalaryTypeLabel: 'Employé',
+  cashPreparerCaisseUnitUsd: 4,
+  cashPreparerSalaryTypeLabel: 'Préparateur',
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -48,6 +54,17 @@ describe('estimateRowSalary', () => {
       DISPENSARY_COUNTERS,
     );
     expect(estimate).toMatchObject({ typeLabel: 'Préparateur de caisse', caisseUnitUsd: 5, estimatedUsd: 10 });
+  });
+
+  it('gives a préparateur de caisses without salary type the préparateurs default', () => {
+    const estimate = estimateRowSalary(
+      { chestTotal: 3, counters: {} },
+      null,
+      defaults,
+      DISPENSARY_COUNTERS,
+      'Préparatrice de caisses',
+    );
+    expect(estimate).toMatchObject({ typeLabel: 'Préparateur', caisseUnitUsd: 4, estimatedUsd: 12 });
   });
 });
 

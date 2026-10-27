@@ -10,6 +10,8 @@ import { requireBusinessAdminContext } from '@/lib/business/serverActionContext'
 import { tenantWhere } from '@/lib/business/tenantWhere';
 import { BUSINESS_MEMBER_ROLES, serializeRoleList } from '@/types/enum/roles';
 import { isMemberRoleAllowedForType } from '@/lib/businessTypes';
+import { employmentOfAccounts, syncEmployeeMembers, syncMemberRoles } from '@/lib/staff/access';
+import { gradeMemberRoles } from '@/lib/staff/roles';
 import {
   attachUserProfiles,
   fetchUserProfile,
@@ -18,9 +20,16 @@ import {
 
 const businessRoleEnum = z.enum(BUSINESS_MEMBER_ROLES);
 
+class MemberWithoutRoleError extends Error {
+  constructor() {
+    super('Au moins un rôle est requis (cette personne n’est pas employée : aucun rôle ne vient de son grade).');
+  }
+}
+
 const upsertMemberSchema = z.object({
   userId: z.string().min(1),
-  roles: z.array(businessRoleEnum).min(1, 'Au moins un rôle est requis'),
+  /** Manual roles, on top of those of the grade (may be empty for an employee). */
+  roles: z.array(businessRoleEnum),
   description: z
     .string()
     .max(200)
@@ -39,16 +48,28 @@ export async function listBusinessMembers(businessSlug: string) {
     return { status: auth.status, error: auth.error };
   }
 
+  const { businessId, business } = auth.ctx;
+  // Employees whose account is not a member yet show up right away.
+  await syncEmployeeMembers(businessId);
   const members = await prisma.businessMember.findMany({
-    where: { businessId: auth.ctx.businessId },
+    where: { businessId },
     orderBy: { createdAt: 'asc' },
   });
 
-  const usersById = await fetchBusinessUserProfiles(
-    auth.ctx.businessId,
-    members.map((member) => member.userId),
-  );
-  const enriched = attachUserProfiles(members, usersById).sort((a, b) =>
+  const userIds = members.map((member) => member.userId);
+  const [usersById, employments] = await Promise.all([
+    fetchBusinessUserProfiles(businessId, userIds),
+    employmentOfAccounts(businessId, userIds),
+  ]);
+  const withGrades = members.map((member) => {
+    const employment = employments.get(member.userId);
+    return {
+      ...member,
+      grade: employment?.employed ? employment.grade : null,
+      gradeRoles: [...gradeMemberRoles(business.type, employment?.employed ?? false, employment?.grade)],
+    };
+  });
+  const enriched = attachUserProfiles(withGrades, usersById).sort((a, b) =>
     (a.user?.name ?? a.userId).localeCompare(b.user?.name ?? b.userId, 'fr'),
   );
 
@@ -79,30 +100,40 @@ async function upsertBusinessMemberUnlogged(
       return { status: 404, error: 'Utilisateur introuvable' };
     }
 
-    const role = serializeRoleList(validated.roles);
+    const { businessId } = auth.ctx;
+    const manualRoles = serializeRoleList(validated.roles);
     const descriptionProvided = validated.description !== undefined;
 
-    const member = await prisma.businessMember.upsert({
-      where: {
-        businessId_userId: {
-          businessId: auth.ctx.businessId,
+    const member = await prisma.$transaction(async (tx) => {
+      // `role` is recomputed right after (grade roles + these manual roles).
+      await tx.businessMember.upsert({
+        where: { businessId_userId: { businessId, userId: validated.userId } },
+        create: {
+          businessId,
           userId: validated.userId,
+          role: manualRoles,
+          manualRoles,
+          description: validated.description ?? null,
         },
-      },
-      create: {
-        businessId: auth.ctx.businessId,
-        userId: validated.userId,
-        role,
-        description: validated.description ?? null,
-      },
-      update: {
-        role,
-        ...(descriptionProvided ? { description: validated.description ?? null } : {}),
-      },
+        update: {
+          manualRoles,
+          ...(descriptionProvided ? { description: validated.description ?? null } : {}),
+        },
+      });
+      const role = await syncMemberRoles(tx, businessId, validated.userId);
+      if (!role) {
+        throw new MemberWithoutRoleError();
+      }
+      return tx.businessMember.findUniqueOrThrow({
+        where: { businessId_userId: { businessId, userId: validated.userId } },
+      });
     });
 
     return { status: 200, data: member };
   } catch (error) {
+    if (error instanceof MemberWithoutRoleError) {
+      return { status: 422, error: error.message };
+    }
     return actionErrorParser(error, 'Erreur lors de la mise à jour du membre');
   }
 }
@@ -114,14 +145,14 @@ async function removeBusinessMemberUnlogged(businessSlug: string, userId: string
       return { status: auth.status, error: auth.error };
     }
 
-    await prisma.businessMember.deleteMany({
-      where: {
-        userId,
-        ...tenantWhere(auth.ctx.businessId),
-      },
+    await prisma.businessMember.updateMany({
+      where: { userId, ...tenantWhere(auth.ctx.businessId) },
+      data: { manualRoles: '' },
     });
+    // Still employed: keeps the roles of the grade (leaving goes through the register).
+    const role = await syncMemberRoles(prisma, auth.ctx.businessId, userId);
 
-    return { status: 200 };
+    return { status: 200, data: { keptByGrade: role !== '' } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la suppression du membre');
   }

@@ -28,7 +28,13 @@ import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/Del
 import { PAYROLL_CAISSE_USD, PAYROLL_MAX_USD } from '@/lib/payroll/constants';
 import type { PayrollSalaryTypeDTO } from '@/lib/payroll/salaryTypes';
 
-type SalaryTypeForm = { id: string | null; label: string; caisseUnitUsd: number; isDefault: boolean };
+type SalaryTypeForm = {
+  id: string | null;
+  label: string;
+  caisseUnitUsd: number;
+  isDefault: boolean;
+  isCashPreparerDefault: boolean;
+};
 
 const usd = (value: number) => `${value.toFixed(2)} $`;
 
@@ -62,7 +68,12 @@ export function SalaryTypesPanel({
   const submitForm = async () => {
     if (!form) return;
     setSaving(true);
-    const input = { label: form.label, caisseUnitUsd: form.caisseUnitUsd, isDefault: form.isDefault };
+    const input = {
+      label: form.label,
+      caisseUnitUsd: form.caisseUnitUsd,
+      isDefault: form.isDefault,
+      isCashPreparerDefault: form.isCashPreparerDefault,
+    };
     const res = form.id
       ? await updatePayrollSalaryType(businessSlug, { id: form.id, ...input })
       : await createPayrollSalaryType(businessSlug, input);
@@ -119,6 +130,7 @@ export function SalaryTypesPanel({
                   label: '',
                   caisseUnitUsd: PAYROLL_CAISSE_USD,
                   isDefault: salaryTypes.length === 0,
+                  isCashPreparerDefault: false,
                 })
               }
             >
@@ -151,6 +163,11 @@ export function SalaryTypesPanel({
                         {salaryType.isDefault && (
                           <Badge size="sm" variant="light">
                             Par défaut
+                          </Badge>
+                        )}
+                        {salaryType.isCashPreparerDefault && (
+                          <Badge size="sm" variant="light" color="leather">
+                            Défaut préparateurs
                           </Badge>
                         )}
                       </Group>
@@ -255,6 +272,12 @@ export function SalaryTypesPanel({
               description="Pour les personnes sans salaire attribué, et comme prix de caisse des nouveaux rapports."
               checked={form.isDefault}
               onChange={(e) => setForm({ ...form, isDefault: e.currentTarget.checked })}
+            />
+            <Checkbox
+              label="Salaire par défaut des préparateurs de caisses"
+              description="Pour les préparateurs sans salaire attribué, dans le rapport « Préparateurs de caisse ». Sans ce choix, ils prennent le salaire par défaut."
+              checked={form.isCashPreparerDefault}
+              onChange={(e) => setForm({ ...form, isCashPreparerDefault: e.currentTarget.checked })}
             />
             <AppModalFooter>
               <Button variant="default" onClick={() => setForm(null)}>

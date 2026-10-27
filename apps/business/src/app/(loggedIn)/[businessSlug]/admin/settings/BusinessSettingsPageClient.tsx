@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Container, Tabs } from '@mantine/core';
+import { Container, Space, Tabs } from '@mantine/core';
 import { IconAdjustments, IconCoin, IconLock, IconUsers } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import type { BusinessSettingsAdminDTO } from '@/app/_actions/appSettings';
@@ -13,6 +13,7 @@ import {
   BusinessPermissionsPanel,
   type RolePermissionsMatrixData,
 } from './BusinessPermissionsPanel';
+import { PayrollLetterPanel } from './PayrollLetterPanel';
 import { SalaryTypesPanel } from './SalaryTypesPanel';
 import { isBusinessSettingsTab, type BusinessSettingsTab } from './settingsTabs';
 
@@ -130,6 +131,8 @@ export default function BusinessSettingsPageClient({
               initialPatientCareUsd={initialSettings.payrollPatientCareUsd}
               error={salaryTypesError}
             />
+            <Space h="lg" />
+            <PayrollLetterPanel businessSlug={businessSlug} />
           </Tabs.Panel>
         )}
       </Tabs>

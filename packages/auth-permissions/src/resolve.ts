@@ -139,8 +139,12 @@ export type PermissionsObject = {
   };
   weeklyActivity: {
     view: boolean;
+    /** « Activité hebdo » page; `view` alone only gives the home page block. */
+    page: boolean;
     editOwn: boolean;
     editAll: boolean;
+    /** Caisse button: given by `mark_chest_own`, or by any edit right. */
+    markChestOwn: boolean;
   };
   stockStatistics: {
     view: boolean;
@@ -198,8 +202,13 @@ export function toPermissionsObject(
     },
     weeklyActivity: {
       view: has("weekly_activity", "view"),
+      page: has("weekly_activity", "page"),
       editOwn: has("weekly_activity", "edit_own"),
       editAll: has("weekly_activity", "edit_all"),
+      markChestOwn:
+        has("weekly_activity", "mark_chest_own") ||
+        has("weekly_activity", "edit_own") ||
+        has("weekly_activity", "edit_all"),
     },
     stockStatistics: {
       view: has("stock_statistics", "view"),

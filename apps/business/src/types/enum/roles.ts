@@ -5,6 +5,7 @@ export enum Role {
     INVENTORY_MANAGER = "inventory_manager",
     INVENTORY_VIEWER = "inventory_viewer",
     DIRECTION = "direction",
+    CASH_PREPARER = "cash_preparer",
 }
 
 export const BUSINESS_MEMBER_ROLES = [
@@ -13,6 +14,7 @@ export const BUSINESS_MEMBER_ROLES = [
     Role.INVENTORY_MANAGER,
     Role.INVENTORY_VIEWER,
     Role.DIRECTION,
+    Role.CASH_PREPARER,
 ] as const;
 
 export type BusinessMemberRole = (typeof BUSINESS_MEMBER_ROLES)[number];
@@ -52,5 +54,7 @@ export const rolesAsString = (role: Role): string => {
             return "Consultant de stock";
         case Role.DIRECTION:
             return "Direction";
+        case Role.CASH_PREPARER:
+            return "Préparateur de caisses";
     }
 };

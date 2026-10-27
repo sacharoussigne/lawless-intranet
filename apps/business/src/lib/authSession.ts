@@ -4,19 +4,39 @@ import { getSession as fetchAuthSession } from '@lawless-intranet/auth-client/se
 import { buildOriginFromHeaders } from '@lawless-intranet/auth-client/config';
 import type { AuthSession } from '@lawless-intranet/types';
 import { isAllowedCallbackHostname } from '@/lib/ssoHosts';
+import { cache } from 'react';
+import { hasRole } from '@lawless-intranet/auth-permissions';
+import prisma from '@/lib/prisma';
+import { Role } from '@/types/enum/roles';
+import { applyViewAs, type ViewAsSession } from '@/lib/business/viewAs';
 
 export type { AuthSession };
 
-export async function getAuthSession(): Promise<AuthSession | null> {
+/** Real role of a member (« Voir en tant que » is only honored for admins). */
+const isRealBusinessAdmin = cache(async (userId: string, businessId: string): Promise<boolean> => {
+  const member = await prisma.businessMember.findUnique({
+    where: { businessId_userId: { businessId, userId } },
+    select: { role: true },
+  });
+  return hasRole(member?.role, Role.ADMIN);
+});
+
+/** Session of the request, with the « Voir en tant que » view applied (lib/business/viewAs). */
+export async function getAuthSession(): Promise<ViewAsSession | null> {
   const cookieHeader = (await headers()).get('cookie');
-  return fetchAuthSession(cookieHeader);
+  return applyViewAs(await fetchAuthSession(cookieHeader), cookieHeader, isRealBusinessAdmin);
+}
+
+/** Session without the view: only to start or leave it. */
+export async function getRealAuthSession(): Promise<AuthSession | null> {
+  return fetchAuthSession((await headers()).get('cookie'));
 }
 
 export async function getRequestAuthSession(
   request: Request,
-): Promise<AuthSession | null> {
+): Promise<ViewAsSession | null> {
   const cookieHeader = request.headers.get('cookie');
-  return fetchAuthSession(cookieHeader);
+  return applyViewAs(await fetchAuthSession(cookieHeader), cookieHeader, isRealBusinessAdmin);
 }
 
 function getDefaultAppOrigin(): string {

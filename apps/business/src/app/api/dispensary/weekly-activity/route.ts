@@ -12,6 +12,7 @@ import { loadSerializedWeeklyActivityByIdForBusiness } from '@/lib/businessWeekl
 import { listSerializedWeeklyActivities } from '@/lib/businessWeeklyActivity/listSerialized';
 import { createBusinessWeeklyActivityWithHistory } from '@/lib/businessWeeklyActivity/service';
 import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
+import { botPastWeekLockError } from '@/lib/businessWeeklyActivity/botWeekLock';
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
@@ -70,6 +71,14 @@ async function handlePost(request: Request) {
 
   if (parsed.data.discordUserId !== discordUserId) {
     return jsonError(403, 'Le Discord ID du corps doit correspondre à l’en-tête');
+  }
+  const lockError = await botPastWeekLockError(
+    businessCtx.businessId,
+    discordUserId,
+    parsed.data.periodStart,
+  );
+  if (lockError) {
+    return jsonError(403, lockError);
   }
 
   try {

@@ -249,6 +249,26 @@ Le select actuel devient un switcher qui :
 - `weekly_dispensary_activity` devient `weekly_activity`. On migre les lignes de rôles et de surcharges par membre.
 - Le catalogue de permissions ne montre que les ressources des modules permis par le type. Par exemple, `cabinet` n'apparaît que pour un dispensaire et `price_catalog` que si le module est permis.
 
+### Rôles dérivés du grade
+
+- Le registre du personnel (Gestion › Personnes) pilote l'accès. Tant qu'une personne est employée, son compte est membre avec les rôles de son grade. La correspondance vient de `gradeRoles` dans `lib/businessTypes`, avec la clé `default` pour un employé sans grade connu.
+- `BusinessMember.manualRoles` contient les rôles donnés à la main dans Réglages › Membres (`admin`, `inventory_manager`…). `BusinessMember.role` stocke le résultat (rôles du grade + rôles manuels), ce qui laisse les lecteurs sur une seule requête. Seul `lib/staff/access.ts` (`syncMemberRoles`) l'écrit.
+- La synchro se fait :
+  - après chaque mutation du registre et chaque changement de grade ;
+  - à la première visite d'un compte créé après l'embauche (`ensureEmployeeMembership`, appelé seulement s'il n'existe pas encore de ligne membre) ;
+  - à l'ouverture de Réglages › Membres (`syncEmployeeMembers`).
+- Un départ retire les rôles du grade. La ligne membre disparaît s'il ne reste aucun rôle manuel.
+- Le titre dans les courriers (`description`) se rabat sur le grade quand il est vide.
+
+### « Voir en tant que »
+
+- Un admin (plateforme, ou rôle `admin` du business) peut parcourir un business avec un jeu de rôles. Il y accède depuis Réglages › Rôles, puis modifie les rôles ou quitte la vue avec le bandeau en haut de page.
+- Le cookie httpOnly `disp-view-as` (`<businessId>:<rôles>`) est appliqué à la session par `getAuthSession` / `getRequestAuthSession` (`lib/business/viewAs.ts`) :
+  - le rôle plateforme passe à `user` ;
+  - dans ce business, le rôle vient de la vue (sans overrides du membre).
+- La vue ne fait que réduire les droits : le cookie d'un non-admin est ignoré.
+- Les mutations faites pendant la vue sont réelles. Leur log porte `viewAs` dans son contexte.
+
 ## 6. Profils des personnes (Discord)
 
 ### Aujourd'hui

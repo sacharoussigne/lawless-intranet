@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActionIcon,
+  Badge,
   Button,
   Card,
   Group,
@@ -12,6 +13,7 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconKey, IconTrash, IconUsers } from '@tabler/icons-react';
@@ -37,7 +39,14 @@ function roleOptions(roles: readonly BusinessMemberRole[]) {
 
 export type BusinessMemberRow = {
   id: string;
+  /** Effective roles (grade + manual). */
   role: string;
+  /** Roles given by hand: the only ones edited here. */
+  manualRoles: string;
+  /** RP grade while employed (Gestion › Personnes), null otherwise. */
+  grade: string | null;
+  /** Roles given by that grade. */
+  gradeRoles: string[];
   description: string | null;
   user: { id: string; name: string };
 };
@@ -60,7 +69,7 @@ export function BusinessMembersPanel({
   const [loading, setLoading] = useState(false);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [roleEdits, setRoleEdits] = useState<Record<string, string[]>>(() =>
-    Object.fromEntries(initialMembers.map((m) => [m.user.id, parseRoleList(m.role)])),
+    Object.fromEntries(initialMembers.map((m) => [m.user.id, parseRoleList(m.manualRoles)])),
   );
   const [descriptionEdits, setDescriptionEdits] = useState<Record<string, string>>(() =>
     Object.fromEntries(initialMembers.map((m) => [m.user.id, m.description ?? ''])),
@@ -91,7 +100,7 @@ export function BusinessMembersPanel({
       const rows = result.data as BusinessMemberRow[];
       setMembers(rows);
       setRoleEdits(
-        Object.fromEntries(rows.map((m) => [m.user.id, parseRoleList(m.role)])),
+        Object.fromEntries(rows.map((m) => [m.user.id, parseRoleList(m.manualRoles)])),
       );
       setDescriptionEdits(
         Object.fromEntries(rows.map((m) => [m.user.id, m.description ?? ''])),
@@ -103,15 +112,15 @@ export function BusinessMembersPanel({
     if (roleEdits[member.user.id] !== undefined) {
       return roleEdits[member.user.id];
     }
-    return parseRoleList(member.role);
+    return parseRoleList(member.manualRoles);
   };
 
   const saveMemberRoles = async (
     userId: string,
     roles: string[],
-    options?: { successMessage?: string; description?: string | null },
+    options?: { successMessage?: string; description?: string | null; hasGradeRoles?: boolean },
   ) => {
-    if (roles.length === 0) {
+    if (roles.length === 0 && !options?.hasGradeRoles) {
       notifications.show({
         title: 'Erreur',
         message: 'Sélectionnez au moins un rôle.',
@@ -163,11 +172,13 @@ export function BusinessMembersPanel({
 
   const handleSaveMember = async (userId: string) => {
     const roles = roleEdits[userId] ?? [];
+    const member = members.find((m) => m.user.id === userId);
     setSavingUserId(userId);
     try {
       await saveMemberRoles(userId, roles, {
         successMessage: 'Membre mis à jour',
         description: descriptionEdits[userId] ?? null,
+        hasGradeRoles: (member?.gradeRoles.length ?? 0) > 0,
       });
     } finally {
       setSavingUserId(null);
@@ -176,7 +187,7 @@ export function BusinessMembersPanel({
 
   const rolesChangedForMember = (member: BusinessMemberRow) => {
     const current = getRolesForMember(member).slice().sort().join(',');
-    const original = parseRoleList(member.role).slice().sort().join(',');
+    const original = parseRoleList(member.manualRoles).slice().sort().join(',');
     return current !== original;
   };
 
@@ -194,9 +205,12 @@ export function BusinessMembersPanel({
       notifications.show({ title: 'Erreur', message, color: 'danger' });
       return;
     }
+    const keptByGrade = 'data' in result && result.data?.keptByGrade;
     notifications.show({
-      title: 'Membre retiré',
-      message: 'Le membre a été retiré du dispensaire.',
+      title: keptByGrade ? 'Rôles manuels retirés' : 'Membre retiré',
+      message: keptByGrade
+        ? 'Cette personne garde les rôles de son grade : enregistrez son départ dans Gestion › Personnes pour lui retirer l’accès.'
+        : 'Le membre a été retiré du dispensaire.',
       color: 'moss',
     });
     await refresh();
@@ -215,7 +229,8 @@ export function BusinessMembersPanel({
           <div>
             <Text fw={600}>Ajouter un membre</Text>
             <Text size="sm" c="dimmed" mt={4}>
-              Recherchez un compte utilisateur, attribuez des rôles, puis enregistrez.
+              Pour les comptes hors effectif (admin, gestion du stock…). Les employés du registre
+              (Gestion › Personnes) sont ajoutés automatiquement avec les rôles de leur grade.
             </Text>
           </div>
           <UserPseudoSearch
@@ -239,7 +254,7 @@ export function BusinessMembersPanel({
               clearable={false}
             />
             <TextInput
-              label="Grade"
+              label="Titre dans les courriers"
               placeholder="Directeur, Co-directrice…"
               value={newMemberGrade}
               onChange={(event) => {
@@ -280,7 +295,8 @@ export function BusinessMembersPanel({
           <div>
             <Title order={5}>Membres ({members.length})</Title>
             <Text size="sm" c="dimmed" mt={4}>
-              Le grade est affiché dans les courriers du dispensaire.
+              Les rôles du grade suivent le registre du personnel ; ajoutez ici les rôles en plus.
+              Le titre est affiché dans les courriers (par défaut : le grade).
             </Text>
           </div>
           {members.map((m) => {
@@ -303,7 +319,11 @@ export function BusinessMembersPanel({
                       </ActionIcon>
                       <DeleteConfirmPopover
                         title="Retirer ce membre ?"
-                        message={`« ${m.user.name} » perdra l’accès à ce dispensaire.`}
+                        message={
+                          m.gradeRoles.length > 0
+                            ? `« ${m.user.name} » perdra ses rôles en plus et gardera ceux de son grade.`
+                            : `« ${m.user.name} » perdra l’accès à ce dispensaire.`
+                        }
                         confirmLabel="Retirer"
                         position="left"
                         onConfirm={() => handleRemove(m.user.id)}
@@ -319,9 +339,24 @@ export function BusinessMembersPanel({
                     </Group>
                   </Group>
 
+                  {m.gradeRoles.length > 0 && (
+                    <Group gap="xs">
+                      <Text size="sm" c="dimmed">
+                        Via le grade {m.grade ?? '(sans grade)'} :
+                      </Text>
+                      {m.gradeRoles.map((role) => (
+                        <Tooltip key={role} label="Suit le registre du personnel (Gestion › Personnes)">
+                          <Badge variant="light" color="sage">
+                            {rolesAsString(role as Role)}
+                          </Badge>
+                        </Tooltip>
+                      ))}
+                    </Group>
+                  )}
+
                   <MultiSelect
-                    label="Rôles"
-                    data={roleSelectData}
+                    label={m.gradeRoles.length > 0 ? 'Rôles en plus' : 'Rôles'}
+                    data={roleSelectData.filter((option) => !m.gradeRoles.includes(option.value))}
                     value={memberRoles}
                     onChange={(roles) =>
                       setRoleEdits((prev) => ({ ...prev, [m.user.id]: roles }))
@@ -333,8 +368,8 @@ export function BusinessMembersPanel({
                   <Group align="flex-end" wrap="nowrap" gap="sm">
                     <TextInput
                       style={{ flex: 1 }}
-                      label="Grade"
-                      placeholder="Directeur, Co-directrice…"
+                      label="Titre dans les courriers"
+                      placeholder={m.grade ?? 'Directeur, Co-directrice…'}
                       value={descriptionEdits[m.user.id] ?? ''}
                       onChange={(event) => {
                         const nextValue =
@@ -350,7 +385,7 @@ export function BusinessMembersPanel({
                     <Button
                       color="sage"
                       loading={savingUserId === m.user.id}
-                      disabled={!memberChanged(m) || memberRoles.length === 0}
+                      disabled={!memberChanged(m) || (memberRoles.length === 0 && m.gradeRoles.length === 0)}
                       onClick={() => handleSaveMember(m.user.id)}
                     >
                       Enregistrer
