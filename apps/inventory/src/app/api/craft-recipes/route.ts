@@ -1,5 +1,6 @@
 import { requireSession, errorResponse } from '@/lib/auth';
 import { corsPreflightResponse } from '@/lib/cors';
+import { requireInternalSecret } from '@/lib/internalAuth';
 import { parseJsonBody, parseScopeQuery } from '@/lib/request';
 import { fromDomainResult } from '@/lib/http';
 import {
@@ -14,11 +15,13 @@ import {
   updateCraftRecipeSchema,
 } from '@/lib/validation';
 
+/** Host-only: the intranet checks the craft permissions before calling. */
 export async function OPTIONS(request: Request) {
   return corsPreflightResponse(request);
 }
 
 export async function GET(request: Request) {
+  if (!requireInternalSecret(request)) return errorResponse(request, 'Forbidden', 403);
   const auth = await requireSession(request);
   if (auth instanceof Response) return auth;
 
@@ -41,6 +44,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!requireInternalSecret(request)) return errorResponse(request, 'Forbidden', 403);
   const auth = await requireSession(request);
   if (auth instanceof Response) return auth;
 
@@ -51,6 +55,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (!requireInternalSecret(request)) return errorResponse(request, 'Forbidden', 403);
   const auth = await requireSession(request);
   if (auth instanceof Response) return auth;
 
@@ -61,6 +66,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (!requireInternalSecret(request)) return errorResponse(request, 'Forbidden', 403);
   const auth = await requireSession(request);
   if (auth instanceof Response) return auth;
 

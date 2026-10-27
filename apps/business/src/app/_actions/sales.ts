@@ -1,5 +1,6 @@
 'use server';
 
+import { canEditPastWeeks } from '@/lib/businessWeeklyActivity/weekLock';
 import { emitStockChange } from '@/lib/stock/realtime/broadcast';
 import { fetchBusinessUserProfiles } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
@@ -262,7 +263,7 @@ async function cancelSaleUnlogged(
       },
     });
     if (!ctx.ok) return ctx.response;
-    const { businessId, effectivePermissions } = ctx.tenant;
+    const { businessId, effectivePermissions, effectiveRole } = ctx.tenant;
     const userId = ctx.session.user.id;
     const canViewAll = can(effectivePermissions, 'sales', 'view_all');
     const mutationMeta = parseMutationMeta(meta);
@@ -273,6 +274,7 @@ async function cancelSaleUnlogged(
         id: saleId,
         userId,
         canViewAll,
+        canEditPastWeeks: canEditPastWeeks(effectiveRole),
         originClientId: mutationMeta?.originClientId,
       },
       await inventoryCookie(),
@@ -323,6 +325,7 @@ async function depositSaleInCashRegisterUnlogged(
         id: saleId,
         userId,
         canDepositOthers,
+        canEditPastWeeks: canEditPastWeeks(effectiveRole),
         originClientId: mutationMeta?.originClientId,
       },
       await inventoryCookie(),

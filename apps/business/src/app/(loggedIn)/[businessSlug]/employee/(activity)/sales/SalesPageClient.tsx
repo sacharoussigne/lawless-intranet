@@ -10,12 +10,14 @@ import {
   getCurrentParisWeekStart,
 } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
+import { isCurrentBankWeek } from '@/lib/businessWeeklyActivity/weekLock';
 import type { WeeklySalesSummary } from '@/app/_actions/sales';
 import { EmployeeWeeklySalesDashboard } from '../../EmployeeWeeklySalesDashboard';
 
 type SalesPageClientProps = {
   businessSlug: string;
   canCancel: boolean;
+  /** Admin or direction: also edits past weeks (lib/businessWeeklyActivity/weekLock). */
   canDepositOthers: boolean;
   canDelete: boolean;
   sessionUserId: string;
@@ -70,6 +72,7 @@ export default function SalesPageClient({
         initialSummary={initialSummary}
         periodWeekDateValue={periodWeekDateValue}
         pageSize={10}
+        readOnly={!canDepositOthers && !isCurrentBankWeek(periodWeekDateValue)}
       />
     </Stack>
   );

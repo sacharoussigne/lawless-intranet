@@ -28,6 +28,7 @@ import type { OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import { Role } from '@/types/enum/roles';
 import { defaultActiveOrdersPageFilters } from '@/lib/orders/queryKeys';
+import { canEditPastWeeks } from '@/lib/businessWeeklyActivity/weekLock';
 import { EmployeeWeeklyOverview } from './EmployeeWeeklyOverview';
 import { EmployeeQuickActions } from './EmployeeQuickActions';
 
@@ -146,6 +147,8 @@ export default async function EmployeePage({
           businessSlug={businessSlug}
           showActivity={weeklyFeatureEnabled && canViewWeekly}
           showSales={Boolean(canViewSales && initialSalesSummary)}
+          canEditPastWeeks={canEditPastWeeks(effectiveRole)}
+          canOpenWeeklyPage={can(effectivePermissions, 'weekly_activity', 'page')}
           activity={
             weeklyFeatureEnabled && canViewWeekly
               ? {

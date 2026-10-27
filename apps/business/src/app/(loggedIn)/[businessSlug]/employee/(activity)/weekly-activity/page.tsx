@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { tenantRoutes } from '@/types/routes';
 import { listBusinessWeeklyActivities } from '@/app/_actions/businessWeeklyActivity';
 import { resolveDiscordPersonName } from '@/lib/people/resolveNames';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
@@ -28,6 +30,11 @@ async function WeeklyActivityContent({ businessSlug }: { businessSlug: string })
     business.id,
     effectiveRole,
   );
+
+  // The middleware already guards the page; checked again for direct renders.
+  if (!can(effectivePermissions, 'weekly_activity', 'page')) {
+    redirect(tenantRoutes(businessSlug).employee.index);
+  }
 
   const week = getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate());
   const initialWeekBounds = { periodStart: week.start, periodEnd: week.end };
