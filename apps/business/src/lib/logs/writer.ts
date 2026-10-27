@@ -76,6 +76,8 @@ export type RequestLogContext = {
   userId: string | null;
   /** Platform admin acting as `userId` (impersonation). */
   impersonatedById: string | null;
+  /** Roles of a « Voir en tant que » view (lib/business/viewAs), if active. */
+  viewAsRoles: string | null;
 };
 
 /**
@@ -102,6 +104,7 @@ export async function resolveRequestLogContext(): Promise<RequestLogContext> {
     businessId: business?.id ?? null,
     userId: session?.user?.id ?? null,
     impersonatedById: session?.session?.impersonatedBy ?? null,
+    viewAsRoles: session?.viewAs?.roles ?? null,
   };
 }
 
@@ -152,7 +155,8 @@ export function logAction(input: ActionLogInput): void {
       durationMs: input.durationMs ?? null,
       path: request.path,
       targetId: input.targetId ?? null,
-      context: input.context,
+      // An action made while testing roles says so.
+      context: request.viewAsRoles ? { viewAs: request.viewAsRoles, data: input.context } : input.context,
       error: input.error === undefined ? undefined : serializeError(input.error),
     })),
   );

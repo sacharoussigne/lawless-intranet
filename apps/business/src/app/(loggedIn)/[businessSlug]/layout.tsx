@@ -28,6 +28,7 @@ import { StockRealtimeBridge } from './StockRealtimeBridge';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import { getMemberDescription } from '@/lib/business/memberDescription';
 import { MailTemplateProvider } from '@lawless-intranet/mail-template-ui';
+import { ViewAsBanner } from '@/app/_components/ViewAsBanner/ViewAsBanner';
 
 export default async function BusinessLayout({
   children,
@@ -121,6 +122,9 @@ export default async function BusinessLayout({
             userGender={session?.user.gender ?? 'male'}
           >
           <LoggedInShell>
+          {session?.viewAs?.businessId === business.id && (
+            <ViewAsBanner businessSlug={businessSlug} roles={session.viewAs.roles} />
+          )}
           <Header
             session={authSession}
             impersonatorDisplayName={impersonatorDisplayName}

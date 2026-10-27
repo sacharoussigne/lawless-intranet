@@ -11,6 +11,7 @@ import { ensureBusinessRolePermissions } from '@/lib/business/permissionsSeed';
 
 type SessionLike = {
   user: { id: string; role?: string | null };
+  viewAs?: { businessId: string; roles: string } | null;
 } | null;
 
 export async function loadBusinessRolePermissionRows(businessId: string) {
@@ -62,9 +63,11 @@ export async function resolveEffectivePermissionsForBusinessUncached(
     return [...resolvePermissions({ roles: null, grantAll: true })];
   }
 
+  // « Voir en tant que »: the roles alone, without the member's own overrides.
+  const viewing = session.viewAs?.businessId === businessId;
   const [roleRows, memberPerms] = await Promise.all([
     loadBusinessRolePermissionRows(businessId),
-    loadMemberPermissionOverrides(businessId, session.user.id),
+    viewing ? { overrides: [] } : loadMemberPermissionOverrides(businessId, session.user.id),
   ]);
 
   const effective = resolvePermissions({

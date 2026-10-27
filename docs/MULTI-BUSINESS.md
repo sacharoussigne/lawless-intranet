@@ -260,6 +260,15 @@ Le select actuel devient un switcher qui :
 - Un départ retire les rôles du grade. La ligne membre disparaît s'il ne reste aucun rôle manuel.
 - Le titre dans les courriers (`description`) se rabat sur le grade quand il est vide.
 
+### « Voir en tant que »
+
+- Un admin (plateforme, ou rôle `admin` du business) peut parcourir un business avec un jeu de rôles. Il y accède depuis Réglages › Rôles, puis modifie les rôles ou quitte la vue avec le bandeau en haut de page.
+- Le cookie httpOnly `disp-view-as` (`<businessId>:<rôles>`) est appliqué à la session par `getAuthSession` / `getRequestAuthSession` (`lib/business/viewAs.ts`) :
+  - le rôle plateforme passe à `user` ;
+  - dans ce business, le rôle vient de la vue (sans overrides du membre).
+- La vue ne fait que réduire les droits : le cookie d'un non-admin est ignoré.
+- Les mutations faites pendant la vue sont réelles. Leur log porte `viewAs` dans son contexte.
+
 ## 6. Profils des personnes (Discord)
 
 ### Aujourd'hui

@@ -15,6 +15,8 @@ export type AppMiddlewareSession = {
     email?: string | null;
     role?: string | null;
   };
+  /** « Voir en tant que » (lib/business/viewAs). */
+  viewAs?: { businessId: string; roles: string } | null;
   tenant?: TenantMiddlewareContext;
 } | null;
 
