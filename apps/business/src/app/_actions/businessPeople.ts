@@ -6,6 +6,8 @@ import { actionErrorParser } from '@/lib/action';
 import { loggedAction } from '@/lib/logs/writer';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { accountIdOfDiscord, reconcileAccountLinks } from '@/lib/people/accountLinks';
+import { syncPersonAccess } from '@/lib/staff/access';
+import { parseRoleList } from '@/types/enum/roles';
 import {
   getDiscordAccountIdsForUsers,
   getLatestDiscordDisplayName,
@@ -80,6 +82,7 @@ function toPerson(
   profile: DiscordProfileSnapshot,
   accountName: string | null,
   employment: EmploymentStatus,
+  memberRole: string | null,
 ): BusinessPerson {
   return {
     discordUserId: profile.discordUserId,
@@ -90,6 +93,7 @@ function toPerson(
     accountNumber: profile.accountNumber,
     salaryType: profile.salaryType ? { id: profile.salaryType.id, label: profile.salaryType.label } : null,
     account: profile.userId ? { id: profile.userId, name: accountName ?? 'Compte intranet' } : null,
+    intranetRoles: profile.userId ? parseRoleList(memberRole) : null,
     employment,
     updatedAt: profile.updatedAt,
   };
@@ -99,11 +103,22 @@ async function loadPerson(businessId: string, discordUserId: string): Promise<Bu
   const profile = await findBusinessProfile(prisma, businessId, discordUserId);
   if (!profile) throw new DiscordProfileNotFoundError('Profil introuvable pour cette personne');
   const userId = profile.userId;
-  const [account, statuses] = await Promise.all([
+  const [account, statuses, member] = await Promise.all([
     userId ? fetchUserProfiles([userId]).then((users) => users.get(userId)) : undefined,
     loadEmploymentStatuses(prisma, businessId),
+    userId
+      ? prisma.businessMember.findUnique({
+          where: { businessId_userId: { businessId, userId } },
+          select: { role: true },
+        })
+      : null,
   ]);
-  return toPerson(profile, account?.name ?? null, statuses.get(discordUserId) ?? NEVER_EMPLOYED);
+  return toPerson(
+    profile,
+    account?.name ?? null,
+    statuses.get(discordUserId) ?? NEVER_EMPLOYED,
+    member?.role ?? null,
+  );
 }
 
 export async function listBusinessPeople(businessSlug: string) {
@@ -114,7 +129,7 @@ export async function listBusinessPeople(businessSlug: string) {
 
     const [initialProfiles, members, settings, statuses] = await Promise.all([
       findBusinessProfiles(prisma, businessId),
-      prisma.businessMember.findMany({ where: { businessId }, select: { userId: true } }),
+      prisma.businessMember.findMany({ where: { businessId }, select: { userId: true, role: true } }),
       getAppSettings(businessId),
       loadEmploymentStatuses(prisma, businessId),
     ]);
@@ -139,6 +154,7 @@ export async function listBusinessPeople(businessSlug: string) {
     });
 
     const memberIds = members.map((m) => m.userId);
+    const roleByUser = new Map(members.map((m) => [m.userId, m.role]));
     const accountIds = profiles.map((p) => p.userId).filter((id): id is string => Boolean(id));
     const [accounts, memberDiscordIds] = await Promise.all([
       fetchUserProfiles([...new Set([...accountIds, ...memberIds])]),
@@ -151,6 +167,7 @@ export async function listBusinessPeople(businessSlug: string) {
           profile,
           profile.userId ? accounts.get(profile.userId)?.name ?? null : null,
           statuses.get(profile.discordUserId) ?? NEVER_EMPLOYED,
+          profile.userId ? (roleByUser.get(profile.userId) ?? null) : null,
         ),
       )
       .sort((a, b) => a.displayName.localeCompare(b.displayName, 'fr'));
@@ -207,6 +224,7 @@ async function createBusinessPersonUnlogged(businessSlug: string, input: unknown
         });
       }
     });
+    if (data.role) await syncPersonAccess(prisma, businessId, data.discordUserId);
 
     return { status: 200 as const, data: await loadPerson(businessId, data.discordUserId) };
   } catch (error) {
@@ -249,6 +267,8 @@ async function updateBusinessPersonUnlogged(businessSlug: string, input: unknown
         salaryTypeId: data.salaryTypeId,
       });
     });
+    // The grade gives the intranet roles of an employed person.
+    if (data.role !== undefined) await syncPersonAccess(prisma, businessId, data.discordUserId);
 
     return { status: 200 as const, data: await loadPerson(businessId, data.discordUserId) };
   } catch (error) {

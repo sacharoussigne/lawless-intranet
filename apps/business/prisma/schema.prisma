@@ -39,7 +39,10 @@ model BusinessMember {
   id          String                     @id @default(uuid())
   businessId  String                     @map("dispensaryId")
   userId      String
+  /// Effective roles (comma list): grade roles while employed + manualRoles. Written only by lib/staff/access.
   role        String
+  /// Roles given by hand in Réglages › Membres (comma list), kept on top of the grade.
+  manualRoles String                     @default("")
   description String?
   createdAt   DateTime                   @default(now())
   updatedAt   DateTime                   @updatedAt

@@ -17,6 +17,7 @@ import {
   updateEmploymentEvent,
 } from '@/lib/staff/service';
 import { EMPLOYMENT_END_REASONS } from '@/lib/staff/types';
+import { syncPersonAccess } from '@/lib/staff/access';
 
 /** Same rights as Gestion › Personnes, where the register lives. */
 const staffGuard = {
@@ -63,6 +64,15 @@ const updateEventSchema = z.object({
 
 const cancelEventSchema = z.object({ eventId: z.string().min(1) });
 
+/** Person of an event, read before the change (cancelling a hiring deletes its events). */
+async function discordIdOfEvent(businessId: string, eventId: string): Promise<string | null> {
+  const event = await prisma.businessEmploymentEvent.findFirst({
+    where: { id: eventId, employment: { businessPerson: { businessId } } },
+    select: { employment: { select: { businessPerson: { select: { person: { select: { discordUserId: true } } } } } } },
+  });
+  return event?.employment.businessPerson.person.discordUserId ?? null;
+}
+
 function staffErrorResponse(error: unknown, defaultMessage: string) {
   if (error instanceof StaffRegisterError) {
     return { status: error.status, error: error.message };
@@ -90,6 +100,7 @@ async function hireStaffMemberUnlogged(businessSlug: string, input: unknown) {
     await prisma.$transaction((tx) =>
       hirePerson(tx, { ...data, businessId: ctx.tenant.businessId, createdById: ctx.session.user.id }),
     );
+    await syncPersonAccess(prisma, ctx.tenant.businessId, data.discordUserId);
     return { status: 200 as const, data: { discordUserId: data.discordUserId } };
   } catch (error) {
     return staffErrorResponse(error, 'Erreur lors de l’embauche');
@@ -104,6 +115,7 @@ async function changeStaffRoleUnlogged(businessSlug: string, input: unknown) {
     await prisma.$transaction((tx) =>
       changeEmploymentRole(tx, { ...data, businessId: ctx.tenant.businessId, createdById: ctx.session.user.id }),
     );
+    await syncPersonAccess(prisma, ctx.tenant.businessId, data.discordUserId);
     return { status: 200 as const, data: { discordUserId: data.discordUserId } };
   } catch (error) {
     return staffErrorResponse(error, 'Erreur lors du changement de grade');
@@ -118,6 +130,7 @@ async function endStaffEmploymentUnlogged(businessSlug: string, input: unknown) 
     await prisma.$transaction((tx) =>
       endEmployment(tx, { ...data, businessId: ctx.tenant.businessId, createdById: ctx.session.user.id }),
     );
+    await syncPersonAccess(prisma, ctx.tenant.businessId, data.discordUserId);
     return { status: 200 as const, data: { discordUserId: data.discordUserId } };
   } catch (error) {
     return staffErrorResponse(error, 'Erreur lors de l’enregistrement du départ');
@@ -129,9 +142,11 @@ async function updateStaffEventUnlogged(businessSlug: string, input: unknown) {
     const ctx = await requireTenantServerActionContext(businessSlug, staffGuard);
     if (!ctx.ok) return ctx.response;
     const data = updateEventSchema.parse(input);
+    const discordUserId = await discordIdOfEvent(ctx.tenant.businessId, data.eventId);
     await prisma.$transaction((tx) =>
       updateEmploymentEvent(tx, { ...data, businessId: ctx.tenant.businessId }),
     );
+    if (discordUserId) await syncPersonAccess(prisma, ctx.tenant.businessId, discordUserId);
     return { status: 200 as const, data: { eventId: data.eventId } };
   } catch (error) {
     return staffErrorResponse(error, 'Erreur lors de la modification de l’événement');
@@ -143,9 +158,11 @@ async function cancelStaffEventUnlogged(businessSlug: string, input: unknown) {
     const ctx = await requireTenantServerActionContext(businessSlug, staffGuard);
     if (!ctx.ok) return ctx.response;
     const data = cancelEventSchema.parse(input);
+    const discordUserId = await discordIdOfEvent(ctx.tenant.businessId, data.eventId);
     await prisma.$transaction((tx) =>
       cancelLatestEmploymentEvent(tx, { ...data, businessId: ctx.tenant.businessId }),
     );
+    if (discordUserId) await syncPersonAccess(prisma, ctx.tenant.businessId, discordUserId);
     return { status: 200 as const, data: { eventId: data.eventId } };
   } catch (error) {
     return staffErrorResponse(error, 'Erreur lors de l’annulation de l’événement');

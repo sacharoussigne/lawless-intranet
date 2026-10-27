@@ -10,6 +10,7 @@ import { Role } from '@/types/enum/roles';
 import { rewritePathWithBusinessSlug } from '@/lib/business/slug';
 import { routes } from '@/types/routes';
 import { resolveEffectivePermissionsForBusiness } from '@/lib/business/permissionsResolve';
+import { ensureEmployeeMembership, ensureEmployeeMemberships } from '@/lib/staff/access';
 
 export type BusinessContext = {
   id: string;
@@ -68,7 +69,8 @@ export async function userCanAccessBusiness(
     },
     select: { id: true },
   });
-  return member != null;
+  // Employed in the register but not a member yet (account created after the hiring).
+  return member != null || (await ensureEmployeeMembership(businessId, session.user.id)) != null;
 }
 
 /** One query for both `userCanAccessBusiness` and `getEffectiveRoleForBusiness` (every action runs it). */
@@ -88,7 +90,9 @@ async function resolveBusinessMembership(
     },
     select: { role: true },
   });
-  return { allowed: member != null, role: member?.role ?? null };
+  if (member) return { allowed: true, role: member.role };
+  const role = await ensureEmployeeMembership(businessId, session.user.id);
+  return { allowed: role != null, role };
 }
 
 export async function requireBusinessFromSlug(slug: string): Promise<BusinessContext> {
@@ -132,6 +136,9 @@ export async function listAccessibleBusinesses(session: SessionLike) {
     settings: { select: { businessName: true } },
   } as const;
 
+  if (!isPlatformAdmin(session.user.role)) {
+    await ensureEmployeeMemberships(session.user.id);
+  }
   const rows = isPlatformAdmin(session.user.role)
     ? await prisma.business.findMany({ orderBy: { name: 'asc' }, select })
     : await prisma.business.findMany({

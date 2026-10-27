@@ -45,6 +45,13 @@ export type BusinessTypeDefinition = {
   modules: readonly AppFeatureKey[];
   /** Roles a member can hold, in display order. */
   memberRoles: readonly BusinessMemberRole[];
+  /**
+   * Roles given by the RP grade while the person is employed (lib/staff/access),
+   * on top of the member's manual roles. `default`: employed without a known grade.
+   */
+  gradeRoles: { readonly default: readonly BusinessMemberRole[] } & Readonly<
+    Record<string, readonly BusinessMemberRole[]>
+  >;
   /** Seeded when a business has no role permissions yet, and on « reset ». */
   defaultRoleMatrix: RoleMatrix;
   /** Counters of the weekly activity (each can be turned off in the settings). */
@@ -66,6 +73,20 @@ export const businessTypes = {
       Role.DIRECTION,
       Role.CASH_PREPARER,
     ],
+    gradeRoles: {
+      default: [Role.EMPLOYEE],
+      Directeur: [Role.DIRECTION, Role.EMPLOYEE],
+      Directrice: [Role.DIRECTION, Role.EMPLOYEE],
+      'Co-Directeur': [Role.DIRECTION, Role.EMPLOYEE],
+      'Co-Directrice': [Role.DIRECTION, Role.EMPLOYEE],
+      Médecin: [Role.EMPLOYEE],
+      Infirmier: [Role.EMPLOYEE],
+      Infirmière: [Role.EMPLOYEE],
+      Apprenti: [Role.EMPLOYEE],
+      Apprentie: [Role.EMPLOYEE],
+      'Préparateur de caisses': [Role.CASH_PREPARER],
+      'Préparatrice de caisses': [Role.CASH_PREPARER],
+    },
     defaultRoleMatrix: DEFAULT_ROLE_MATRIX,
     weeklyCounters: [
       {
@@ -109,6 +130,13 @@ export function getBusinessTypeDefinition(type: BusinessType): BusinessTypeDefin
 
 export function isModuleAllowedForType(type: BusinessType, feature: AppFeatureKey): boolean {
   return getBusinessTypeDefinition(type).modules.includes(feature);
+}
+
+/** Roles an employed person gets from this grade (`default` for an empty or unknown grade). */
+export function rolesOfGrade(type: BusinessType, grade: string | null | undefined): readonly BusinessMemberRole[] {
+  const { gradeRoles } = getBusinessTypeDefinition(type);
+  const key = grade?.trim();
+  return (key && gradeRoles[key]) || gradeRoles.default;
 }
 
 export function isMemberRoleAllowedForType(type: BusinessType, role: string): boolean {

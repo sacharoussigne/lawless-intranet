@@ -10,6 +10,7 @@ import {
   Group,
   Paper,
   SegmentedControl,
+  Stack,
   Text,
   TextInput,
   Tooltip,
@@ -20,6 +21,7 @@ import { IconCheck, IconCopy, IconEdit, IconHistory, IconPlus, IconSearch } from
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
 import type { BusinessPeopleList, BusinessPerson } from '@/lib/people/types';
+import { type Role, rolesAsString } from '@/types/enum/roles';
 import { EmploymentStatusBadge } from './components/EmploymentStatusBadge';
 import { OrgChart } from './components/OrgChart';
 import { PersonModal } from './components/PersonModal';
@@ -177,9 +179,16 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
                 title: 'Compte intranet',
                 render: (person) =>
                   person.account ? (
-                    <Badge variant="outline" radius="sm" style={apothecaryBooleanPills.yes}>
-                      {person.account.name}
-                    </Badge>
+                    <Stack gap={2} align="flex-start">
+                      <Badge variant="outline" radius="sm" style={apothecaryBooleanPills.yes}>
+                        {person.account.name}
+                      </Badge>
+                      <Text size="xs" c="dimmed">
+                        {person.intranetRoles?.length
+                          ? person.intranetRoles.map((role) => rolesAsString(role as Role)).join(', ')
+                          : 'Sans accès'}
+                      </Text>
+                    </Stack>
                   ) : (
                     <Badge variant="outline" radius="sm" style={apothecaryBooleanPills.no}>
                       Aucun compte
