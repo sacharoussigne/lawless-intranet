@@ -4,6 +4,7 @@ import { withStockChange } from '@/lib/stock/realtime/broadcast';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
+import { can } from '@lawless-intranet/auth-permissions';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
 import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
@@ -49,7 +50,13 @@ export async function getCraftRecipesByItemId(
   try {
     const ctx = await requireTenantServerActionContext(businessSlug);
     if (!ctx.ok) return ctx.response;
-    const { businessId } = ctx.tenant;
+    const { businessId, effectivePermissions } = ctx.tenant;
+    if (
+      !can(effectivePermissions, 'stock', 'craft-read') &&
+      !can(effectivePermissions, 'stock', 'craft-write')
+    ) {
+      return { status: 403, error: "Permission refusée : vous n'avez pas accès aux recettes de craft" };
+    }
 
     const craftRecipes = await listCraftRecipesByItemId(
       {

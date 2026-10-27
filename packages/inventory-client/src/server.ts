@@ -533,6 +533,7 @@ export async function deleteCustomerByName(
 }
 
 // --- Craft recipes ---
+// Host-only (internal secret): the service cannot check the tenant permissions itself.
 
 export async function listCraftRecipesByItemId(
   params: InventoryScopeParams & { itemId: string; onlyEnabled?: boolean },
@@ -545,7 +546,7 @@ export async function listCraftRecipesByItemId(
       itemId: params.itemId,
       onlyEnabled: params.onlyEnabled ? 'true' : undefined,
     })}`,
-    { cookieHeader: options.cookieHeader },
+    { cookieHeader: options.cookieHeader, internal: true },
   );
   return parseJsonResponse(response);
 }
@@ -564,6 +565,7 @@ export async function createCraftRecipe(
   const response = await inventoryFetch('/api/craft-recipes', {
     method: 'POST',
     cookieHeader: options.cookieHeader,
+    internal: true,
     body: JSON.stringify(input),
   });
   return parseJsonResponse(response);
@@ -583,6 +585,7 @@ export async function updateCraftRecipe(
   const response = await inventoryFetch('/api/craft-recipes', {
     method: 'PATCH',
     cookieHeader: options.cookieHeader,
+    internal: true,
     body: JSON.stringify(input),
   });
   return parseJsonResponse(response);
@@ -595,6 +598,7 @@ export async function deleteCraftRecipe(
   const response = await inventoryFetch('/api/craft-recipes', {
     method: 'DELETE',
     cookieHeader: options.cookieHeader,
+    internal: true,
     body: JSON.stringify(input),
   });
   return parseJsonResponse(response);
@@ -882,6 +886,7 @@ export async function deleteOrderMailAssignment(
 }
 
 // --- Sales ---
+// Host-only (internal secret): the rights below (canViewAll, canEditPastWeeks...) come from the host.
 
 export async function getSellableItems(
   params: InventoryScopeParams,
@@ -889,7 +894,7 @@ export async function getSellableItems(
 ): Promise<SellableItemRecord[]> {
   const response = await inventoryFetch(
     `/api/sales${toQuery({ ...params, sellable: 'true' })}`,
-    { cookieHeader: options.cookieHeader },
+    { cookieHeader: options.cookieHeader, internal: true },
   );
   return parseJsonResponse(response);
 }
@@ -908,7 +913,7 @@ export async function listWeeklySales(
       weekDate: params.weekDate,
       canViewAll: params.canViewAll ? 'true' : undefined,
     })}`,
-    { cookieHeader: options.cookieHeader },
+    { cookieHeader: options.cookieHeader, internal: true },
   );
   return parseJsonResponse(response);
 }
@@ -930,6 +935,7 @@ export async function createSale(
   const response = await inventoryFetch('/api/sales', {
     method: 'POST',
     cookieHeader: options.cookieHeader,
+    internal: true,
     body: JSON.stringify(input),
   });
   return parseJsonResponse(response);
@@ -940,6 +946,8 @@ export async function cancelSale(
     id: string;
     userId?: string;
     canViewAll?: boolean;
+    /** Admin or direction: may touch a sale of a past week. */
+    canEditPastWeeks?: boolean;
     originClientId?: string;
   },
   options: ClientOptions = {},
@@ -947,6 +955,7 @@ export async function cancelSale(
   const response = await inventoryFetch('/api/sales', {
     method: 'POST',
     cookieHeader: options.cookieHeader,
+    internal: true,
     body: JSON.stringify({ action: 'cancel', ...input }),
   });
   return parseJsonResponse(response);
@@ -957,6 +966,8 @@ export async function depositSale(
     id: string;
     userId?: string;
     canDepositOthers?: boolean;
+    /** Admin or direction: may touch a sale of a past week. */
+    canEditPastWeeks?: boolean;
     originClientId?: string;
   },
   options: ClientOptions = {},
@@ -964,6 +975,7 @@ export async function depositSale(
   const response = await inventoryFetch('/api/sales', {
     method: 'POST',
     cookieHeader: options.cookieHeader,
+    internal: true,
     body: JSON.stringify({ action: 'deposit', ...input }),
   });
   return parseJsonResponse(response);
@@ -981,6 +993,7 @@ export async function deleteSale(
   const response = await inventoryFetch('/api/sales', {
     method: 'POST',
     cookieHeader: options.cookieHeader,
+    internal: true,
     body: JSON.stringify({ action: 'delete', ...input }),
   });
   return parseJsonResponse(response);

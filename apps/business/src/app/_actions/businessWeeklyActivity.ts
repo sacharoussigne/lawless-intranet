@@ -65,6 +65,7 @@ import {
   weeklyCounterValue,
 } from '@/lib/businessWeeklyActivity/counters';
 import { requireTenantServerActionContext } from '@/lib/serverActionAuth';
+import { isWeekLocked, PAST_WEEK_LOCKED_MESSAGE } from '@/lib/businessWeeklyActivity/weekLock';
 import { tenantWhere } from '@/lib/business/tenantWhere';
 import {
   assertIntranetWeekdayFlagsEditAllowed,
@@ -504,6 +505,9 @@ async function createBusinessWeeklyActivityUnlogged(
       return { status: 400 as const, error: parsed.error.issues[0]?.message ?? 'Données invalides' };
     }
     const mutationMeta = parseMutationMeta(meta);
+    if (isWeekLocked(parsed.data.periodStart, gate.tenant.effectiveRole)) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
+    }
 
     const { session, tenant } = gate;
     const { businessId } = tenant;
@@ -634,6 +638,16 @@ async function updateBusinessWeeklyActivityUnlogged(
     if (!allowed) {
       return { status: 403 as const, error: 'Permission refusée' };
     }
+    if (isWeekLocked(existing.periodStart, gate.tenant.effectiveRole)) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
+    }
+
+    if (
+      parsedBody.data.periodStart &&
+      isWeekLocked(parsedBody.data.periodStart, gate.tenant.effectiveRole)
+    ) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
+    }
 
     const settings = await getAppSettings(businessId);
     const visibility = weeklyActivityFieldVisibilityFromSettings(settings);
@@ -712,6 +726,9 @@ async function deleteBusinessWeeklyActivityUnlogged(
     );
     if (!allowed) {
       return { status: 403 as const, error: 'Permission refusée' };
+    }
+    if (isWeekLocked(existing.periodStart, gate.tenant.effectiveRole)) {
+      return { status: 403 as const, error: PAST_WEEK_LOCKED_MESSAGE };
     }
 
     const actorDiscordUserId = await getDiscordAccountIdForUser(prisma, gate.session.user.id);

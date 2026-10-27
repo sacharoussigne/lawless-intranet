@@ -19,6 +19,7 @@ import {
   updateBusinessWeeklyActivityWithHistory,
 } from '@/lib/businessWeeklyActivity/service';
 import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
+import { botPastWeekLockError } from '@/lib/businessWeeklyActivity/botWeekLock';
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
@@ -110,6 +111,14 @@ async function handlePatch(request: NextRequest, context: RouteContext) {
   if ('error' in loaded) {
     return loaded.error;
   }
+  const lockError = await botPastWeekLockError(
+    businessCtx.businessId,
+    discordUserId,
+    loaded.activity.periodStart,
+  );
+  if (lockError) {
+    return jsonError(403, lockError);
+  }
 
   let body: unknown;
   try {
@@ -121,6 +130,17 @@ async function handlePatch(request: NextRequest, context: RouteContext) {
   const parsed = businessWeeklyActivityBotPatchSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(422, parsed.error.issues[0]?.message ?? 'Données invalides');
+  }
+
+  if (parsed.data.periodStart) {
+    const targetLockError = await botPastWeekLockError(
+      businessCtx.businessId,
+      discordUserId,
+      parsed.data.periodStart,
+    );
+    if (targetLockError) {
+      return jsonError(403, targetLockError);
+    }
   }
 
   const settings = await getAppSettings(businessCtx.businessId);
@@ -182,6 +202,14 @@ async function handleDelete(request: NextRequest, context: RouteContext) {
   );
   if ('error' in loaded) {
     return loaded.error;
+  }
+  const lockError = await botPastWeekLockError(
+    businessCtx.businessId,
+    discordUserId,
+    loaded.activity.periodStart,
+  );
+  if (lockError) {
+    return jsonError(403, lockError);
   }
 
   await deleteBusinessWeeklyActivityWithHistory(id, {

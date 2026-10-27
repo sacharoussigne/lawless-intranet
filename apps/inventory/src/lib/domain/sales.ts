@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { scopeWhere } from '@/lib/scope';
 import { ok, err, type DomainResult } from '@/lib/result';
 import { getTodayStart, getTomorrowStart } from '@/lib/date';
-import { getWeekBounds } from '@/lib/weekBounds';
+import { getWeekBounds, isPastWeekLocked, PAST_WEEK_LOCKED_MESSAGE } from '@/lib/weekBounds';
 import {
   ensureTodayStockForAllActiveChests,
   ensureTodayStockForPairs,
@@ -298,6 +298,7 @@ export async function cancelSale(input: {
   id: string;
   userId: string;
   canViewAll?: boolean;
+  canEditPastWeeks?: boolean;
 }): Promise<DomainResult<{ success: true }>> {
   const sale = await prisma.sale.findFirst({
     where: { id: input.id, ...scopeWhere(input.scopeType, input.scopeId) },
@@ -310,6 +311,9 @@ export async function cancelSale(input: {
   }
   if (sale.userId !== input.userId && !input.canViewAll) {
     return err('Vous ne pouvez annuler que vos propres ventes', 403);
+  }
+  if (isPastWeekLocked(sale.createdAt, input.canEditPastWeeks)) {
+    return err(PAST_WEEK_LOCKED_MESSAGE, 403);
   }
 
   const today = getTodayStart();
@@ -387,6 +391,7 @@ export async function depositSale(input: {
   id: string;
   userId: string;
   canDepositOthers?: boolean;
+  canEditPastWeeks?: boolean;
 }): Promise<DomainResult<{ success: true }>> {
   const sale = await prisma.sale.findFirst({
     where: { id: input.id, ...scopeWhere(input.scopeType, input.scopeId) },
@@ -395,6 +400,7 @@ export async function depositSale(input: {
       userId: true,
       status: true,
       depositedInCashRegister: true,
+      createdAt: true,
     },
   });
   if (!sale) return err('Vente introuvable', 404);
@@ -402,6 +408,9 @@ export async function depositSale(input: {
   if (sale.depositedInCashRegister) return err('Cette vente est déjà déposée en caisse', 400);
   if (sale.userId !== input.userId && !input.canDepositOthers) {
     return err('Vous ne pouvez déposer en caisse que vos propres ventes', 403);
+  }
+  if (isPastWeekLocked(sale.createdAt, input.canEditPastWeeks)) {
+    return err(PAST_WEEK_LOCKED_MESSAGE, 403);
   }
 
   await prisma.sale.update({

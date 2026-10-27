@@ -245,6 +245,7 @@ export const saleActionSchema = scopeFieldsSchema.extend({
   userId: z.string().min(1),
   canViewAll: z.boolean().optional(),
   canDepositOthers: z.boolean().optional(),
+  canEditPastWeeks: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
   originClientId: z.string().min(1).max(128).optional(),
 });

@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { getAppSettings } from '@/lib/appSettings';
 import { serializeBusinessWeeklyActivityApiRow } from '@/lib/businessWeeklyActivity/apiRow';
 import { BotDayEditError, resolveParisDayAnchor } from '@/lib/businessWeeklyActivity/botDayEdit';
+import { botPastWeekLockError, PastWeekLockedError } from '@/lib/businessWeeklyActivity/botWeekLock';
 import {
   redactSerializedWeeklyActivityRow,
   weeklyActivityFieldVisibilityFromSettings,
@@ -75,6 +76,9 @@ export function mapBotRouteError(e: unknown): NextResponse {
   if (e instanceof BotDayEditError) {
     return jsonBotError(400, e.message);
   }
+  if (e instanceof PastWeekLockedError) {
+    return jsonBotError(403, e.message);
+  }
   throw e;
 }
 
@@ -85,6 +89,9 @@ export async function botEditWeekdayFlag(
   input: BotDayEditRequestBody,
 ) {
   const dayAnchor = resolveParisDayAnchor({ weekday: input.weekday, date: input.date });
+  if (await botPastWeekLockError(businessId, discordUserId, dayAnchor)) {
+    throw new PastWeekLockedError();
+  }
   return botSetWeekdayFlag(businessId, discordUserId, field, dayAnchor, input.value, {
     displayName: input.displayName,
   });

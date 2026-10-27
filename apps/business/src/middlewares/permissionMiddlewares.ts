@@ -31,7 +31,8 @@ export const hasOrdersViewAccessMiddleware = requirePermissionMiddleware('orders
 export const hasPayrollReportsAccessMiddleware = requirePermissionMiddleware('payroll_reports', 'view', 'noManagementAccess');
 export const hasSearchAccessMiddleware = requirePermissionMiddleware('search', 'access');
 export const hasStockStatisticsAccessMiddleware = requirePermissionMiddleware('stock_statistics', 'view', 'noManagementAccess');
-export const hasWeeklyActivityMiddleware = requirePermissionMiddleware('weekly_activity', 'view');
+/** « Activité hebdo » page; `weekly_activity:view` alone only gives the home page block. */
+export const hasWeeklyActivityMiddleware = requirePermissionMiddleware('weekly_activity', 'page');
 export const hasWeeklyActivityEditAllMiddleware = requirePermissionMiddleware(
   'weekly_activity',
   'edit_all',
