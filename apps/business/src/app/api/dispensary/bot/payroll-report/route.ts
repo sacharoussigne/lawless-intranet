@@ -8,12 +8,14 @@ import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botReque
 import { jsonBotError } from '@/lib/businessWeeklyActivity/botRouteHandlers';
 import { withBotRouteLog } from '@/lib/logs/botRoute';
 import {
+  isPayrollReportType,
   PAYROLL_CAISSE_SALE_USD,
   PAYROLL_OFFERED_ITEM_USD,
   PAYROLL_REPORT_TYPE_EMPLOYES,
+  type PayrollReportType,
 } from '@/lib/payroll/constants';
 import { createPayrollReport, EMPTY_PARSED_PAYROLL_TABLE } from '@/lib/payroll/createReport';
-import { resolvePayrollDefaultRates } from '@/lib/payroll/salaryTypes';
+import { defaultCaisseUnitForReport, resolvePayrollDefaultRates } from '@/lib/payroll/salaryTypes';
 import { accountIdOfDiscord } from '@/lib/people/accountLinks';
 import { tenantRoutes } from '@/types/routes';
 
@@ -33,11 +35,17 @@ const bodySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'date doit être au format YYYY-MM-DD')
     .refine(isCalendarDate, 'date invalide')
     .optional(),
+  /** Absent (older bot): « Employés ». */
+  reportType: z
+    .string()
+    .refine((value): value is PayrollReportType => isPayrollReportType(value), 'Type de rapport inconnu')
+    .optional(),
 });
 
 /**
- * Bot only: creates the « Employés » payroll report of the week of `date` (Paris, default today),
- * filled from the weekly activity. An existing report of that week is returned instead of a 409.
+ * Bot only: creates the payroll report of `reportType` (default « Employés ») for the week of
+ * `date` (Paris, default today), filled from the weekly activity. An existing report of that
+ * week and type is returned instead of a 409. The city hall letter only exists for « Employés ».
  */
 async function handlePost(request: Request) {
   const req = request as Parameters<typeof isBusinessBotApiAuthorized>[0];
@@ -73,6 +81,7 @@ async function handlePost(request: Request) {
   }
 
   const date = parsed.data.date ?? dayjs().tz(PARIS_TZ).format('YYYY-MM-DD');
+  const reportType: PayrollReportType = parsed.data.reportType ?? PAYROLL_REPORT_TYPE_EMPLOYES;
   // No account linked (or auth service down): the author stays identifiable by its Discord id.
   const createdById = (await accountIdOfDiscord(discordUserId)) ?? `discord:${discordUserId}`;
   const rates = await resolvePayrollDefaultRates(businessCtx.businessId);
@@ -81,11 +90,11 @@ async function handlePost(request: Request) {
     businessId: businessCtx.businessId,
     businessType: businessCtx.businessType,
     weekStartStr: date,
-    reportType: PAYROLL_REPORT_TYPE_EMPLOYES,
+    reportType,
     parsed: EMPTY_PARSED_PAYROLL_TABLE,
     importWeeklyActivity: true,
     prices: {
-      caissePriceUsd: rates.caisseUnitUsd,
+      caissePriceUsd: defaultCaisseUnitForReport(rates, reportType),
       caisseSalePriceUsd: PAYROLL_CAISSE_SALE_USD,
       patientCarePriceUsd: rates.patientCareUsd,
       offeredItemPriceUsd: PAYROLL_OFFERED_ITEM_USD,
@@ -106,9 +115,9 @@ async function handlePost(request: Request) {
     data: {
       id,
       url,
-      /** Same page with the city hall letter open. */
-      letterUrl: `${url}?lettre`,
-      reportType: PAYROLL_REPORT_TYPE_EMPLOYES,
+      /** Same page with the city hall letter open; « Employés » reports only. */
+      letterUrl: reportType === PAYROLL_REPORT_TYPE_EMPLOYES ? `${url}?lettre` : null,
+      reportType,
       weekStart: weekStart.toISOString(),
       weekEnd: weekEnd.toISOString(),
       alreadyExists,
