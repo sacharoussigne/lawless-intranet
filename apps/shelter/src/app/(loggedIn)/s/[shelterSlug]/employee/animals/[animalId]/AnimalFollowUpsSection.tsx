@@ -203,6 +203,7 @@ export function AnimalFollowUpsSection({
             />
             <TextInput
               label="Destinataire"
+              data-autofocus
               required
               value={recipientName}
               onChange={(e) => setRecipientName(e.currentTarget.value)}

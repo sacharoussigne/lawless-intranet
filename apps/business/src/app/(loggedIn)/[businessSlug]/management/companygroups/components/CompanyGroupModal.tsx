@@ -120,6 +120,7 @@ export function CompanyGroupModal({
         <Stack>
           <TextInput
             label="Nom"
+            data-autofocus
             placeholder="Nom du groupe d'entreprises"
             required
             {...form.getInputProps('name')}

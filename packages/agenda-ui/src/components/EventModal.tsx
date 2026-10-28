@@ -417,6 +417,7 @@ export function EventModal({
       <Stack gap="md">
         <TextInput
           label="Titre"
+          data-autofocus
           value={title}
           onChange={(e) => setTitle(e.currentTarget.value)}
           readOnly={readOnly}

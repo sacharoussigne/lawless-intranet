@@ -135,6 +135,7 @@ export function AgendaFormModal({
     >
       <TextInput
         label="Nom"
+        data-autofocus
         value={name}
         onChange={(e) => setName(e.currentTarget.value)}
         required

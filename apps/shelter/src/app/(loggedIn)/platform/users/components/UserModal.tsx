@@ -133,6 +133,7 @@ export function UserModal({ opened, onClose, editingUser, onSuccess }: UserModal
         <Stack gap="md">
           <TextInput
             label="Nom"
+            data-autofocus
             placeholder="Nom de l'utilisateur"
             required
             {...form.getInputProps('name')}

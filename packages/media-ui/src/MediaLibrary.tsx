@@ -561,7 +561,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                   </>
                 )}
                 {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
-                <Menu position="bottom-start" width={230} shadow="md" withinPortal>
+                <Menu position="bottom-start" width={230} shadow="md" withinPortal returnFocus={false}>
                   <Menu.Target>
                     <UnstyledButton px="xs" py={4} style={{ borderRadius: 'var(--mantine-radius-xl)' }}>
                       <Group gap={4} wrap="nowrap">
@@ -842,7 +842,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                 </Paper>
               </Box>
             ) : isTouch && !selectionMode ? (
-              <Menu position="top-end" width={230} shadow="md" withinPortal>
+              <Menu position="top-end" width={230} shadow="md" withinPortal returnFocus={false}>
                 <Menu.Target>
                   <ActionIcon
                     size={56}

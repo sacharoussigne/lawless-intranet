@@ -140,6 +140,8 @@ export function MailTemplateModal({
           <Stack>
             <TextInput
               label="Nom"
+              data-autofocus
+              autoFocus
               placeholder="Nom du template"
               required
               {...form.getInputProps('name')}

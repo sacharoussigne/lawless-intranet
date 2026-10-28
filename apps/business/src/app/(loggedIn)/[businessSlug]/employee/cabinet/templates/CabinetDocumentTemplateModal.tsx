@@ -155,6 +155,8 @@ export function CabinetDocumentTemplateModal({
         <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
             <TextInput label="Nom" required {...form.getInputProps('name')} />
+            data-autofocus
+            autoFocus
             <TextInput
               label="Nom du document par défaut"
               placeholder="Nom proposé à la création d’un document"

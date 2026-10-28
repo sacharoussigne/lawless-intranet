@@ -95,6 +95,7 @@ export function CategoryItemModal({
         <Stack>
           <TextInput
             label="Nom"
+            data-autofocus
             placeholder="Nom de la catégorie d'objet"
             required
             {...form.getInputProps('name')}

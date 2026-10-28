@@ -104,6 +104,8 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <TextInput
                     label="Nom"
+                    data-autofocus
+                    autoFocus
                     placeholder="Nom de la commande"
                     required
                     {...form.getInputProps('name')}

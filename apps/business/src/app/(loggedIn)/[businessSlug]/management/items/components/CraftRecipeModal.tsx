@@ -170,6 +170,7 @@ export function CraftRecipeModal({
         <Stack>
           <TextInput
             label="Nom de la recette"
+            data-autofocus
             placeholder="Nom de la recette"
             required
             {...craftRecipeForm.getInputProps('name')}

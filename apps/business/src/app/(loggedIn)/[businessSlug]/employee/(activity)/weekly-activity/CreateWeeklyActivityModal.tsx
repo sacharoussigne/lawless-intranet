@@ -135,6 +135,7 @@ export function CreateWeeklyActivityModal({
               </Text>
               <Select
                 label="Personne"
+                data-autofocus
                 description="Personnes du dispensaire, avec ou sans compte intranet (Gestion › Personnes)."
                 placeholder="Choisir une personne"
                 data={targetUsers.map((u) => ({
@@ -227,10 +228,12 @@ export function CreateWeeklyActivityModal({
                 Compteurs
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                {fieldVisibility.counters.map((counter) => (
+                {fieldVisibility.counters.map((counter, index) => (
                   <NumberInput
                     key={counter.key}
                     label={counter.label}
+                    // Mantine focuses the first `data-autofocus` in the DOM: the name above when shown.
+                    data-autofocus={index === 0 || undefined}
                     value={cCounters[counter.key] ?? 0}
                     onChange={(v) =>
                       setCCounters((prev) => ({ ...prev, [counter.key]: Number(v) || 0 }))

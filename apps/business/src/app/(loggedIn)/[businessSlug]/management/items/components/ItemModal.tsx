@@ -176,6 +176,7 @@ export function ItemModal({
           <FormSection title="Informations générales">
             <TextInput
               label="Nom"
+              data-autofocus
               placeholder="Nom de l'objet"
               required
               {...form.getInputProps('name')}

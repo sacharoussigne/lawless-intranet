@@ -22,7 +22,8 @@ export function useContextMenu() {
 
 /**
  * Mantine menu anchored to an invisible point at the cursor. Remounted per position
- * so the dropdown never animates from the previous location.
+ * so the dropdown never animates from the previous location. No focus return: like the
+ * other media menus (`returnFocus={false}`), its items open modals whose field must keep it.
  */
 export function ContextMenu({ state, onClose }: { state: ContextMenuState; onClose: () => void }) {
   if (!state) return null;
@@ -39,6 +40,7 @@ export function ContextMenu({ state, onClose }: { state: ContextMenuState; onClo
       width={230}
       shadow="md"
       withinPortal
+      returnFocus={false}
     >
       <Menu.Target>
         <div
