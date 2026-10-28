@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect } from 'react';
 import {
   Modal,
@@ -89,7 +90,7 @@ export function PasswordModal({
       }}
       title="Changer le mot de passe"
     >
-      <form onSubmit={passwordForm.onSubmit(handlePasswordChange)}>
+      <form {...noAutofillProps} onSubmit={passwordForm.onSubmit(handlePasswordChange)}>
         <Stack gap="md">
           <Text size="sm" c="dimmed">
             Utilisateur : {userForPassword?.name} ({userForPassword?.email})

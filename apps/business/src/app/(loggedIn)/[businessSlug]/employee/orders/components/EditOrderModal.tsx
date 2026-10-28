@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState } from 'react';
 import {
   Stack,
@@ -88,6 +89,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
           </Stack>
         ) : (
           <form
+            {...noAutofillProps}
             id="edit-order-form"
             onSubmit={(event) => {
               event.preventDefault();

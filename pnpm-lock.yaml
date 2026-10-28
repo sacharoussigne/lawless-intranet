@@ -905,6 +905,9 @@ importers:
 
   packages/agenda-ui:
     dependencies:
+      '@lawless-intranet/host-kit':
+        specifier: workspace:*
+        version: link:../host-kit
       '@lawless-intranet/realtime':
         specifier: workspace:*
         version: link:../realtime
@@ -1211,6 +1214,9 @@ importers:
 
   packages/mail-template-ui:
     dependencies:
+      '@lawless-intranet/host-kit':
+        specifier: workspace:*
+        version: link:../host-kit
       '@lawless-intranet/mail-template-engine':
         specifier: workspace:*
         version: link:../mail-template-engine
@@ -1284,6 +1290,9 @@ importers:
 
   packages/media-ui:
     dependencies:
+      '@lawless-intranet/host-kit':
+        specifier: workspace:*
+        version: link:../host-kit
       '@lawless-intranet/realtime':
         specifier: workspace:*
         version: link:../realtime

@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState, type FormEvent } from 'react';
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core';
 import { splitExtension } from '../format';
@@ -44,7 +45,7 @@ function NameForm({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form {...noAutofillProps} onSubmit={handleSubmit}>
       <Stack gap="md">
         <TextInput
           label={label}

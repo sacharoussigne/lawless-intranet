@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useTenantRoutes, useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -94,7 +95,7 @@ export default function EditMailPageClient({
 
         <Title order={1}>Modifier le courrier</Title>
 
-        <form onSubmit={form.onSubmit(handleSubmit)}>
+        <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <TextInput
               label="Nom"

@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState, type FormEvent } from 'react';
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core';
 import { linkHost, normalizeLinkUrl } from '../format';
@@ -47,7 +48,7 @@ function LinkForm({ submitLabel, initialValues, loading = false, onSubmit, onClo
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form {...noAutofillProps} onSubmit={handleSubmit}>
       <Stack gap="md">
         <TextInput
           label="Adresse"

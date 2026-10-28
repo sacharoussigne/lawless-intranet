@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import type { MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader } from '@mantine/core';
@@ -77,6 +78,7 @@ export function InlineEditableText({
       <input
         ref={inputRef}
         type="text"
+        {...noAutofillProps}
         className={inputClassName ?? classes.inlineEditableInput}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
