@@ -66,6 +66,7 @@ export function EditMovementModal({ opened, onClose, movement }: EditMovementMod
     >
       <NumberInput
         label="Delta"
+        data-autofocus
         value={quantity}
         onChange={setQuantity}
         allowDecimal={false}

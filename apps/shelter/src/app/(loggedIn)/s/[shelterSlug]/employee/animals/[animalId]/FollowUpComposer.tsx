@@ -56,7 +56,7 @@ export function FollowUpComposer({
     <div className={classes.threadComposer}>
       <div className={classes.composerBox}>
         <div className={classes.composerInputRow}>
-          <Menu shadow="md" width={260} position="top-start" disabled={pending}>
+          <Menu shadow="md" width={260} position="top-start" disabled={pending} returnFocus={false}>
             <Menu.Target>
               <ActionIcon
                 variant="subtle"

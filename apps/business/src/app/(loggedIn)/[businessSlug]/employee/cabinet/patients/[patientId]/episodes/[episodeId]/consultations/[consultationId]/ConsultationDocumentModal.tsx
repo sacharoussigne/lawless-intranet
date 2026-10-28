@@ -239,6 +239,8 @@ export function ConsultationDocumentModal({
 
           <TextInput
             label="Nom"
+            data-autofocus
+            autoFocus
             placeholder="Nom du document"
             required
             {...form.getInputProps('name')}

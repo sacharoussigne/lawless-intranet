@@ -632,6 +632,7 @@ export function WaitlistPageClient({
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <TextInput
                 label="Demandeur"
+                data-autofocus
                 required
                 placeholder="Nom de la personne"
                 {...form.getInputProps('requesterName')}

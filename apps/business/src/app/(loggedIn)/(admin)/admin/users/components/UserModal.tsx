@@ -155,6 +155,7 @@ export function UserModal({
         <Stack gap="md">
           <TextInput
             label="Nom"
+            data-autofocus
             placeholder="Nom de l'utilisateur"
             required
             {...form.getInputProps('name')}

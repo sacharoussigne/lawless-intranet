@@ -114,6 +114,8 @@ export function FollowUpTemplateMessageModal({
         <Stack gap="md" style={{ flex: 1, minHeight: 0 }}>
           <Select
             label="Modèle"
+            data-autofocus
+            autoFocus
             placeholder="Choisir un modèle"
             data={templateOptions}
             value={selectedTemplateId}

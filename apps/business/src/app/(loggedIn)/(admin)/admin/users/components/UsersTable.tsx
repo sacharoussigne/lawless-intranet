@@ -189,7 +189,7 @@ export function UsersTable({
             title: 'Actions',
             render: (user: User) => (
               <Group gap="xs" wrap="nowrap" justify="flex-end">
-                <Menu shadow="md" width={200}>
+                <Menu shadow="md" width={200} returnFocus={false}>
                   <Menu.Target>
                     <ActionIcon variant="light" color="slate">
                       <IconDots size={16} />

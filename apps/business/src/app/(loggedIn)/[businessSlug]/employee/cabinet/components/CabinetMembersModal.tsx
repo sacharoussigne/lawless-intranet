@@ -158,6 +158,7 @@ export function CabinetMembersModal({
           <UserPseudoSearch
             enabled={opened}
             inputName="cabinet-member-user-search"
+            autoFocus
             excludeUserIds={memberUserIds}
             onSearch={searchCabinetUsers}
             onSelect={(user) => void handleAddMember(user.id)}

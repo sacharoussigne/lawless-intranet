@@ -87,6 +87,7 @@ export function DeleteBusinessModal({
         </Text>
         <TextInput
           label="Confirmation"
+          data-autofocus
           description={`Saisissez « ${expectedName} » pour confirmer`}
           placeholder={expectedName}
           value={confirmationName}

@@ -85,6 +85,7 @@ export function PasswordModal({
           </Text>
           <PasswordInput
             label="Nouveau mot de passe"
+            data-autofocus
             placeholder="Mot de passe (min. 8 caractères)"
             required
             {...passwordForm.getInputProps('password')}

@@ -107,6 +107,7 @@ export function ChestModal({
         <Stack>
           <TextInput
             label="Nom"
+            data-autofocus
             placeholder="Nom du coffre"
             required
             {...form.getInputProps('name')}

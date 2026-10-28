@@ -258,6 +258,8 @@ export function AnimalDocumentModal({
               <Grid.Col span={{ base: 12, sm: showTemplatePreview ? 6 : 12 }}>
                 <TextInput
                   label="Nom"
+                  data-autofocus
+                  autoFocus
                   placeholder="Nom du document"
                   required
                   {...form.getInputProps('name')}

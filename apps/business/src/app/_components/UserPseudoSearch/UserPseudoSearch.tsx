@@ -19,6 +19,8 @@ export type UserPseudoSearchProps = {
   actionLabel?: string;
   hideResults?: boolean;
   clearQueryOnSelect?: boolean;
+  /** Field focused when its modal opens (Mantine `data-autofocus`). */
+  autoFocus?: boolean;
 };
 
 export function UserPseudoSearch({
@@ -35,6 +37,7 @@ export function UserPseudoSearch({
   actionLabel = 'Sélectionner',
   hideResults = false,
   clearQueryOnSelect = true,
+  autoFocus = false,
 }: UserPseudoSearchProps) {
   const [internalQuery, setInternalQuery] = useState('');
   const [results, setResults] = useState<UserPseudoSearchResult[]>([]);
@@ -99,6 +102,7 @@ export function UserPseudoSearch({
         data-1p-ignore
         data-lpignore="true"
         data-form-type="other"
+        data-autofocus={autoFocus || undefined}
       />
       {searching && (
         <Text size="xs" c="dimmed">

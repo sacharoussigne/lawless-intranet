@@ -75,6 +75,7 @@ function EditDiscordProfileForm({
       {canEditAll ? (
         <TextInput
           label="Nom"
+          data-autofocus
           description="Un nom modifié ici est fixé : le bot ne l'écrase plus."
           value={name}
           onChange={(event) => setName(event.currentTarget.value)}
@@ -88,6 +89,7 @@ function EditDiscordProfileForm({
       )}
       <Select
         label="Grade"
+        data-autofocus
         placeholder="Choisir un grade"
         data={PAYROLL_EMPLOYEE_ROLES.map((r) => ({ value: r, label: r }))}
         value={role}

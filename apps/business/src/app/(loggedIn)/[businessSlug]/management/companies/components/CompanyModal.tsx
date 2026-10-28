@@ -119,6 +119,7 @@ export function CompanyModal({
         <Stack>
           <TextInput
             label="Nom"
+            data-autofocus
             placeholder="Nom de l'entreprise"
             required
             {...form.getInputProps('name')}
