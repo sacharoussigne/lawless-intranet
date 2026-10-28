@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect } from 'react';
 import {
   Modal,
@@ -90,10 +91,11 @@ export function CategoryItemModal({
       title={editingCategoryItem ? 'Modifier la catégorie d\'objet' : 'Créer une catégorie d\'objet'}
       size="md"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
         <Stack>
           <TextInput
             label="Nom"
+            data-autofocus
             placeholder="Nom de la catégorie d'objet"
             required
             {...form.getInputProps('name')}

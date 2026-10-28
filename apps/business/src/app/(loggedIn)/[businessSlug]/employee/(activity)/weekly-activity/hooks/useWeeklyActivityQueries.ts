@@ -25,6 +25,7 @@ import {
   type WeeklyActivityWeekBounds,
 } from '@/lib/businessWeeklyActivity/queryKeys';
 import type { SerializedBusinessWeeklyActivityRow } from '@/lib/businessWeeklyActivity/apiRow';
+import type { SalaryEstimate } from '@/lib/payroll/botSalaryEstimate';
 import type { WeekHoursRecapBundle, WeekHoursRecapDay } from '@/lib/businessWeeklyActivity/weekHoursRecap';
 import {
   useOptionalRealtimeSocket,
@@ -33,7 +34,8 @@ import {
 import { weeklyActivityMutationMeta } from '@/lib/businessWeeklyActivity/realtime/client/mutationMeta';
 import type { WeeklyActivityRealtimeEvent } from '@/lib/businessWeeklyActivity/realtime/types';
 
-export type WeeklyActivityListItem = SerializedBusinessWeeklyActivityRow;
+/** `salary`: estimated pay, on the viewer's own row only (null otherwise or without payroll). */
+export type WeeklyActivityListItem = SerializedBusinessWeeklyActivityRow & { salary?: SalaryEstimate | null };
 
 export type WeeklyActivityHistoryEntry = {
   id: string;

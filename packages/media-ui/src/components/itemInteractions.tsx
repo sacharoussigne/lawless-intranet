@@ -172,7 +172,7 @@ export function KebabMenu({ label, children }: { label: string; children: ReactN
   const touch = useMediaQuery('(hover: none)') ?? false;
   return (
     <Box onClick={stopPropagation} onDoubleClick={stopPropagation} style={{ pointerEvents: 'auto' }}>
-      <Menu position="bottom-end" width={230} shadow="md" withinPortal>
+      <Menu position="bottom-end" width={230} shadow="md" withinPortal returnFocus={false}>
         <Menu.Target>
           <ActionIcon
             variant="subtle"

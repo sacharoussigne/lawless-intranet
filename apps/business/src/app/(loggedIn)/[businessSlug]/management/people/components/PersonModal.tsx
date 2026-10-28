@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { Button, NumberInput, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
@@ -142,7 +143,7 @@ function PersonForm({
   };
 
   return (
-    <form onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
+    <form {...noAutofillProps} onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
       <Stack gap="md">
         {!person && membersWithoutProfile.length > 0 && (
           <Select
@@ -153,6 +154,7 @@ function PersonForm({
             onChange={pickMember}
             searchable
             clearable
+            data-autofocus
           />
         )}
         <TextInput
@@ -165,10 +167,13 @@ function PersonForm({
           placeholder="Ex. 284726189304512512"
           disabled={Boolean(person)}
           withAsterisk={!person}
+          // Mantine focuses the first `data-autofocus` field: member, else Discord ID, else the name (edit).
+          data-autofocus={!person || undefined}
           {...form.getInputProps('discordUserId')}
         />
         <TextInput
           label="Nom"
+          data-autofocus
           description="Utilisé partout dans le dispensaire, à la place du pseudo envoyé par le bot."
           withAsterisk
           maxLength={200}

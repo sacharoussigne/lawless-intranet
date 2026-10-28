@@ -158,6 +158,7 @@ export function AgendaMembersModal({
           <UserPseudoSearch
             enabled={opened}
             inputName="agenda-member-user-search"
+            autoFocus
             excludeUserIds={memberUserIds}
             onSearch={searchAgendaUsers}
             onSelect={(user) => void handleAddMember(user.id)}

@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState } from 'react';
 import {
   Stack,
@@ -88,6 +89,7 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
           </Stack>
         ) : (
           <form
+            {...noAutofillProps}
             id="edit-order-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -102,6 +104,8 @@ export function EditOrderModal({ opened, onClose, orderId }: EditOrderModalProps
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <TextInput
                     label="Nom"
+                    data-autofocus
+                    autoFocus
                     placeholder="Nom de la commande"
                     required
                     {...form.getInputProps('name')}

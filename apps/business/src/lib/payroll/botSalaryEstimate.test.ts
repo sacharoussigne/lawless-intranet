@@ -15,7 +15,7 @@ vi.mock('@/lib/appSettings', () => ({
 vi.mock('@/lib/payroll/salaryTypes', () => ({ resolvePayrollDefaultRates: mocks.resolveRates }));
 vi.mock('@/lib/businessDiscordProfile/queries', () => ({ loadDiscordProfilesByIds: mocks.loadProfiles }));
 
-const { attachBotSalaryEstimates, estimateRowSalary } = await import('@/lib/payroll/botSalaryEstimate');
+const { attachBotSalaryEstimates, attachViewerSalaryEstimates, estimateRowSalary } = await import('@/lib/payroll/botSalaryEstimate');
 const { businessTypes } = await import('@/lib/businessTypes');
 
 const DISPENSARY_COUNTERS = businessTypes.DISPENSARY.weeklyCounters;
@@ -90,5 +90,42 @@ describe('attachBotSalaryEstimates', () => {
     const out = await attachBotSalaryEstimates('b1', 'DISPENSARY', rows);
     expect(out[0].salary?.estimatedUsd).toBeCloseTo(3 * 6.5 + 10 * 0.3);
     expect(out[1].salary).toMatchObject({ typeLabel: 'Préparateur de caisse', estimatedUsd: 5 });
+  });
+});
+
+describe('attachViewerSalaryEstimates', () => {
+  const rows = [
+    { discordUserId: '1', userId: 'u1', chestTotal: 3, counters: { patients: 10 } },
+    { discordUserId: '2', userId: 'u2', chestTotal: 2, counters: { patients: 0 } },
+  ];
+
+  beforeEach(() => mocks.loadProfiles.mockResolvedValue(new Map()));
+
+  it('estimates the viewer row only, found by Discord ID', async () => {
+    const out = await attachViewerSalaryEstimates('b1', 'DISPENSARY', rows, { sessionUserId: 'someone-else', discordUserId: '2', all: false });
+    expect(out[0].salary).toBeNull();
+    expect(out[1].salary?.estimatedUsd).toBeCloseTo(2 * 6.5);
+    expect(mocks.loadProfiles).toHaveBeenCalledWith({}, 'b1', ['2']);
+  });
+
+  it('falls back on the account when the viewer has no Discord ID', async () => {
+    const out = await attachViewerSalaryEstimates('b1', 'DISPENSARY', rows, { sessionUserId: 'u1', discordUserId: null, all: false });
+    expect(out.map((r) => r.salary != null)).toEqual([true, false]);
+  });
+
+  it('gives no salary when the viewer has no row', async () => {
+    const out = await attachViewerSalaryEstimates('b1', 'DISPENSARY', rows, { sessionUserId: 'u9', discordUserId: '9', all: false });
+    expect(out.map((r) => r.salary)).toEqual([null, null]);
+    expect(mocks.loadProfiles).not.toHaveBeenCalled();
+  });
+
+  it('estimates every row for the team list', async () => {
+    const out = await attachViewerSalaryEstimates('b1', 'DISPENSARY', rows, {
+      sessionUserId: 'u9',
+      discordUserId: '9',
+      all: true,
+    });
+    expect(out.map((r) => r.salary?.estimatedUsd)).toEqual([3 * 6.5 + 10 * 0.3, 2 * 6.5]);
+    expect(mocks.loadProfiles).toHaveBeenCalledWith({}, 'b1', ['1', '2']);
   });
 });

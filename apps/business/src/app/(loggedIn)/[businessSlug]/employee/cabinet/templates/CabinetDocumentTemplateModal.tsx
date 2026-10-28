@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect, useState } from 'react';
 import {
   Button,
@@ -151,9 +152,11 @@ export function CabinetDocumentTemplateModal({
           <Loader color="sage" />
         </Center>
       ) : (
-        <form onSubmit={form.onSubmit(handleSubmit)}>
+        <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
             <TextInput label="Nom" required {...form.getInputProps('name')} />
+            data-autofocus
+            autoFocus
             <TextInput
               label="Nom du document par défaut"
               placeholder="Nom proposé à la création d’un document"

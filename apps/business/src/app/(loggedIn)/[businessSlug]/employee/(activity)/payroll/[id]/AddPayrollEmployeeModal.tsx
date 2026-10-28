@@ -118,6 +118,7 @@ export function AddPayrollEmployeeModal({
         {mode === 'registered' && (
           <Select
             label="Personne"
+            data-autofocus
             placeholder={isLoading ? 'Chargement…' : 'Rechercher une personne'}
             data={personOptions}
             value={personId}
@@ -132,6 +133,7 @@ export function AddPayrollEmployeeModal({
           <>
             <TextInput
               label="Nom"
+              data-autofocus
               value={name}
               onChange={(e) => setName(e.currentTarget.value)}
               required

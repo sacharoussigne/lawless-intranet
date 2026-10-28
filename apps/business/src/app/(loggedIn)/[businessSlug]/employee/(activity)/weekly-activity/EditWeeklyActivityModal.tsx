@@ -102,6 +102,7 @@ export function EditWeeklyActivityModal({
           {canEditAll && (
             <TextInput
               label="Nom affiché"
+              data-autofocus
               value={eDisplayName}
               onChange={(e) => setEDisplayName(e.currentTarget.value)}
             />
@@ -132,10 +133,12 @@ export function EditWeeklyActivityModal({
             <>
               {hasWeeklyScheduleFields && <Divider />}
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                {fieldVisibility.counters.map((counter) => (
+                {fieldVisibility.counters.map((counter, index) => (
                   <NumberInput
                     key={counter.key}
                     label={counter.label}
+                    // Mantine focuses the first `data-autofocus` in the DOM: the name above when shown.
+                    data-autofocus={index === 0 || undefined}
                     value={eCounters[counter.key] ?? 0}
                     onChange={(v) =>
                       setECounters((prev) => ({ ...prev, [counter.key]: Number(v) || 0 }))

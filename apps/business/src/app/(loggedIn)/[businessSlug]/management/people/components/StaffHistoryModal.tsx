@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState } from 'react';
 import {
   ActionIcon,
@@ -125,6 +126,7 @@ function HireForm({ person }: { person: BusinessPerson }) {
 
   return (
     <form
+      {...noAutofillProps}
       onSubmit={form.onSubmit(
         (values) =>
           void submit(() =>
@@ -205,7 +207,7 @@ function ActiveStaffForms({ person }: { person: BusinessPerson }) {
   };
 
   return (
-    <form onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
+    <form {...noAutofillProps} onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
       <Paper withBorder p="md">
         <Stack gap="sm">
           <SegmentedControl
@@ -366,7 +368,7 @@ function EventEditForm({ event, onDone }: { event: EmploymentEvent; onDone: () =
   };
 
   return (
-    <form onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
+    <form {...noAutofillProps} onSubmit={form.onSubmit((values) => void handleSubmit(values))}>
       <Stack gap="xs" mt="sm">
         <Group grow align="flex-start">
           <RpDateInput

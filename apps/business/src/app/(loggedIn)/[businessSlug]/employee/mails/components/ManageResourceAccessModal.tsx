@@ -185,6 +185,7 @@ export function ManageResourceAccessModal({
 
         <UserPseudoSearch
           inputName="document-access-user-search"
+          autoFocus
           label="Joueur"
           placeholder="Pseudo…"
           excludeUserIds={excludeUserIds}

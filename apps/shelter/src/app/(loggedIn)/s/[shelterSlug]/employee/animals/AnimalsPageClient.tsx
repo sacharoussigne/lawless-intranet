@@ -260,6 +260,7 @@ function CreateAnimalForm({
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         <TextInput
           label="Nom"
+          data-autofocus
           required
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}

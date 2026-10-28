@@ -6,9 +6,10 @@ import { weeklyCounterDefinitions, weeklyCounterValue, type WeeklyCounters } fro
 import { estimatePayoutUsd } from '@/lib/payroll/recalculatePayrollResult';
 import { resolvePayrollDefaultRates, type PayrollDefaultRates } from '@/lib/payroll/salaryTypes';
 import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
+import { findOwnWeeklyActivityRow } from '@/lib/businessWeeklyActivity/findOwnRow';
 
-/** Estimated pay of a weekly activity row, shown by the Discord bot. */
-export type BotSalaryEstimate = {
+/** Estimated pay of a weekly activity row, shown by the Discord bot and on the home page. */
+export type SalaryEstimate = {
   /** Salary type of the person, otherwise the default one (null: none configured). */
   typeLabel: string | null;
   caisseUnitUsd: number;
@@ -30,7 +31,7 @@ export function estimateRowSalary(
   defaults: PayrollDefaultRates,
   counterDefinitions: readonly WeeklyCounterDefinition[],
   grade: string | null = null,
-): BotSalaryEstimate {
+): SalaryEstimate {
   const preparer = isCashPreparerGrade(grade);
   const caisseUnitUsd =
     salaryType?.caisseUnitUsd ??
@@ -61,7 +62,7 @@ export async function attachBotSalaryEstimates<T extends RowForEstimate>(
   businessId: string,
   businessType: BusinessType,
   rows: T[],
-): Promise<(T & { salary: BotSalaryEstimate | null })[]> {
+): Promise<(T & { salary: SalaryEstimate | null })[]> {
   const settings = await getAppSettings(businessId);
   if (rows.length === 0 || !isAppFeatureEnabled(settings, 'payroll')) {
     return rows.map((row) => ({ ...row, salary: null }));
@@ -85,4 +86,20 @@ export async function attachBotSalaryEstimates<T extends RowForEstimate>(
       ),
     };
   });
+}
+
+/**
+ * Home page: the viewer's own row only, or every row with `all` (team list, the
+ * Direction), so an employee never receives the others' pay.
+ */
+export async function attachViewerSalaryEstimates<T extends RowForEstimate & { userId: string | null }>(
+  businessId: string,
+  businessType: BusinessType,
+  rows: T[],
+  viewer: { sessionUserId: string; discordUserId: string | null; all: boolean },
+): Promise<(T & { salary: SalaryEstimate | null })[]> {
+  if (viewer.all) return attachBotSalaryEstimates(businessId, businessType, rows);
+  const own = findOwnWeeklyActivityRow(rows, viewer.sessionUserId, viewer.discordUserId);
+  const [ownWithSalary] = own ? await attachBotSalaryEstimates(businessId, businessType, [own]) : [];
+  return rows.map((row) => (row === own && ownWithSalary ? ownWithSalary : { ...row, salary: null }));
 }

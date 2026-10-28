@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useTenantRoutes, useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -173,7 +174,7 @@ export default function NewMailPageClient({
 
         <Title order={1}>Créer un courrier</Title>
 
-        <form id="mail-form" onSubmit={form.onSubmit(handleSubmit)}>
+        <form {...noAutofillProps} id="mail-form" onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <Grid gutter="md">
               <Grid.Col span={4}>

@@ -105,6 +105,7 @@ export function CareEpisodeFormModal({
         <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
         <TextInput
           label="Motif"
+          data-autofocus
           value={motif}
           onChange={(e) => {
             clearFieldError('motif');

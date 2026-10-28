@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect } from 'react';
 import { useForm } from '@mantine/form';
 import { Modal, Stack, Select, Button, Group } from '@mantine/core';
@@ -95,7 +96,7 @@ export function OrderLetterTemplateAssignmentModal({
       title={editingAssignment ? 'Modifier l\'assignation' : 'Créer une assignation'}
       size="md"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
         <Stack>
           <Select
             label="Type de commande"

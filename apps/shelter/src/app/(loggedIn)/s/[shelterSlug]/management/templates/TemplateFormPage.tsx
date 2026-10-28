@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -157,7 +158,7 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
         </Button>
       </Group>
 
-      <form id="animal-template-form" onSubmit={form.onSubmit(handleSubmit)}>
+      <form {...noAutofillProps} id="animal-template-form" onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <Grid gutter="xl">
             <Grid.Col span={{ base: 12, sm: 6 }}>

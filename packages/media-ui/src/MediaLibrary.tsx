@@ -267,14 +267,14 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const breadcrumb = contents?.breadcrumb ?? [];
   const currentFolderName = breadcrumb.at(-1)?.name ?? 'Médiathèque';
 
-  /** Sorted folders, links then files (display, Shift ranges and viewer order) and lookup by selection key. */
+  /** Sorted links, folders then files (display, Shift ranges and viewer order) and lookup by selection key. */
   const { folders, links, files, order, targets } = useMemo(() => {
     const sortedFolders = sortItems(contents?.folders ?? [], sort);
     const sortedLinks = sortItems(contents?.links ?? [], sort);
     const sortedFiles = sortItems(contents?.files ?? [], sort);
     const entries: [string, Target][] = [
-      ...sortedFolders.map((item): [string, Target] => [itemKey('folder', item.id), { kind: 'folder', item }]),
       ...sortedLinks.map((item): [string, Target] => [itemKey('link', item.id), { kind: 'link', item }]),
+      ...sortedFolders.map((item): [string, Target] => [itemKey('folder', item.id), { kind: 'folder', item }]),
       ...sortedFiles.map((item): [string, Target] => [itemKey('file', item.id), { kind: 'file', item }]),
     ];
     return {
@@ -561,7 +561,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                   </>
                 )}
                 {/* Current folder: opens the same menu as a right-click on the background (Drive's « Mon Drive ▾ »). */}
-                <Menu position="bottom-start" width={230} shadow="md" withinPortal>
+                <Menu position="bottom-start" width={230} shadow="md" withinPortal returnFocus={false}>
                   <Menu.Target>
                     <UnstyledButton px="xs" py={4} style={{ borderRadius: 'var(--mantine-radius-xl)' }}>
                       <Group gap={4} wrap="nowrap">
@@ -642,23 +642,10 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
 
                 {view === 'list' && !isEmpty && contents ? (
                   <MediaList
-                    rows={[...folderRows, ...linkRows, ...fileRows]}
+                    rows={[...linkRows, ...folderRows, ...fileRows]}
                     sort={sort}
                     onSortChange={(key) => setSort(nextSort(sort, key))}
                   />
-                ) : null}
-
-                {view === 'grid' && folderRows.length > 0 ? (
-                  <Stack gap="xs">
-                    <Text size="sm" fw={500}>
-                      Dossiers
-                    </Text>
-                    <SimpleGrid cols={GRID_COLS} spacing="sm">
-                      {folderRows.map((row) => (
-                        <FolderCard key={itemKey('folder', row.item.id)} folder={row.item} href={row.href} {...row.interactions} />
-                      ))}
-                    </SimpleGrid>
-                  </Stack>
                 ) : null}
 
                 {view === 'grid' && linkRows.length > 0 ? (
@@ -669,6 +656,19 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                     <SimpleGrid cols={GRID_COLS} spacing="sm">
                       {linkRows.map((row) => (
                         <LinkCard key={itemKey('link', row.item.id)} link={row.item} {...row.interactions} />
+                      ))}
+                    </SimpleGrid>
+                  </Stack>
+                ) : null}
+
+                {view === 'grid' && folderRows.length > 0 ? (
+                  <Stack gap="xs">
+                    <Text size="sm" fw={500}>
+                      Dossiers
+                    </Text>
+                    <SimpleGrid cols={GRID_COLS} spacing="sm">
+                      {folderRows.map((row) => (
+                        <FolderCard key={itemKey('folder', row.item.id)} folder={row.item} href={row.href} {...row.interactions} />
                       ))}
                     </SimpleGrid>
                   </Stack>
@@ -842,7 +842,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                 </Paper>
               </Box>
             ) : isTouch && !selectionMode ? (
-              <Menu position="top-end" width={230} shadow="md" withinPortal>
+              <Menu position="top-end" width={230} shadow="md" withinPortal returnFocus={false}>
                 <Menu.Target>
                   <ActionIcon
                     size={56}

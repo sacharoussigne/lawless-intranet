@@ -135,6 +135,7 @@ export function PatientFormModal({
         <CabinetFormErrorBanner fieldErrors={fieldErrors} formError={formError} />
         <TextInput
           label="Prénom"
+          data-autofocus
           value={firstName}
           onChange={(e) => {
             clearFieldError('firstName');

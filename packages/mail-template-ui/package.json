@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@lawless-intranet/host-kit": "workspace:*",
     "@lawless-intranet/mail-template-engine": "workspace:*",
     "@tiptap/core": "3.31.4",
     "@tiptap/extension-document": "3.31.4",

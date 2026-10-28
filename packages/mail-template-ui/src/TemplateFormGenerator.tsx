@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useMemo, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import {
@@ -375,7 +376,7 @@ export const TemplateFormGenerator = forwardRef<
   };
 
   return (
-    <form onSubmit={form.onSubmit(handleSubmit)}>
+    <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
       <Stack
         gap={formSections.some((section) => section.title) ? 'lg' : 'md'}
         w="100%"

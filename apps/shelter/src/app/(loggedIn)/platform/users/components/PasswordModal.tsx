@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect } from 'react';
 import { Modal, Stack, PasswordInput, Button, Group, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -77,13 +78,14 @@ export function PasswordModal({
       }}
       title="Changer le mot de passe"
     >
-      <form onSubmit={passwordForm.onSubmit(handlePasswordChange)}>
+      <form {...noAutofillProps} onSubmit={passwordForm.onSubmit(handlePasswordChange)}>
         <Stack gap="md">
           <Text size="sm" c="dimmed">
             Utilisateur : {userForPassword?.name} ({userForPassword?.email})
           </Text>
           <PasswordInput
             label="Nouveau mot de passe"
+            data-autofocus
             placeholder="Mot de passe (min. 8 caractères)"
             required
             {...passwordForm.getInputProps('password')}

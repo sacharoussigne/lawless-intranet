@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect, useMemo } from 'react';
 import {
   Stack,
@@ -165,10 +166,11 @@ export function CraftRecipeModal({
         </AppModalFooter>
       }
     >
-      <form id="craft-recipe-modal-form" onSubmit={craftRecipeForm.onSubmit(handleSubmit)}>
+      <form {...noAutofillProps} id="craft-recipe-modal-form" onSubmit={craftRecipeForm.onSubmit(handleSubmit)}>
         <Stack>
           <TextInput
             label="Nom de la recette"
+            data-autofocus
             placeholder="Nom de la recette"
             required
             {...craftRecipeForm.getInputProps('name')}

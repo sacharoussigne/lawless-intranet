@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect, useMemo } from 'react';
 import {
   Stack,
@@ -170,11 +171,12 @@ export function ItemModal({
         </AppModalFooter>
       }
     >
-      <form id="item-modal-form" onSubmit={form.onSubmit(handleSubmit)}>
+      <form {...noAutofillProps} id="item-modal-form" onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <FormSection title="Informations générales">
             <TextInput
               label="Nom"
+              data-autofocus
               placeholder="Nom de l'objet"
               required
               {...form.getInputProps('name')}
