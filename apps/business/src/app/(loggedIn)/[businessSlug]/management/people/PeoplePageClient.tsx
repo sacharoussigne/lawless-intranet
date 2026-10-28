@@ -16,10 +16,11 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
-import { DataTable } from 'mantine-datatable';
+import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
 import { IconCheck, IconCopy, IconEdit, IconHistory, IconPlus, IconSearch } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
+import { comparePeople, DEFAULT_PEOPLE_SORT } from '@/lib/people/sort';
 import type { BusinessPeopleList, BusinessPerson } from '@/lib/people/types';
 import { type Role, rolesAsString } from '@/types/enum/roles';
 import { EmploymentStatusBadge } from './components/EmploymentStatusBadge';
@@ -65,14 +66,18 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
   const [staffFilter, setStaffFilter] = useState<StaffFilter>('all');
   const [historyId, setHistoryId] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'chart'>('list');
+  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<BusinessPerson>>(DEFAULT_PEOPLE_SORT);
   // From the query data, so the modal follows the status after a hiring or a leaving.
   const historyPerson = data.people.find((p) => p.discordUserId === historyId) ?? null;
   const staffCount = data.people.filter((p) => p.employment.active).length;
 
   const query = normalize(search.trim());
   const filtered = useMemo(
-    () => data.people.filter((person) => matchesStaffFilter(person, staffFilter) && matchesSearch(person, query)),
-    [data.people, query, staffFilter],
+    () =>
+      data.people
+        .filter((person) => matchesStaffFilter(person, staffFilter) && matchesSearch(person, query))
+        .sort((a, b) => comparePeople(a, b, String(sortStatus.columnAccessor), sortStatus.direction)),
+    [data.people, query, sortStatus, staffFilter],
   );
   const records = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -135,6 +140,7 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
             columns={[
               {
                 accessor: 'displayName',
+                sortable: true,
                 title: 'Nom',
                 render: (person) => (
                   <div>
@@ -149,6 +155,7 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
               },
               {
                 accessor: 'discordUserId',
+                sortable: true,
                 title: 'Discord ID',
                 render: (person) => (
                   <CopyButton value={person.discordUserId} timeout={1500}>
@@ -176,6 +183,7 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
               },
               {
                 accessor: 'account',
+                sortable: true,
                 title: 'Compte intranet',
                 render: (person) =>
                   person.account ? (
@@ -197,21 +205,25 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
               },
               {
                 accessor: 'accountNumber',
+                sortable: true,
                 title: 'N° de compte',
                 render: (person) => person.accountNumber ?? '—',
               },
               {
                 accessor: 'role',
+                sortable: true,
                 title: 'Grade',
                 render: (person) => person.role ?? '—',
               },
               {
                 accessor: 'employment',
+                sortable: true,
                 title: 'Effectif',
                 render: (person) => <EmploymentStatusBadge status={person.employment} />,
               },
               {
                 accessor: 'salaryType',
+                sortable: true,
                 title: 'Salaire',
                 hidden: data.salaryTypes == null,
                 render: (person) =>
@@ -249,6 +261,11 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
                 ),
               },
             ]}
+            sortStatus={sortStatus}
+            onSortStatusChange={(status) => {
+              setSortStatus(status);
+              setPage(1);
+            }}
             noRecordsText={search ? 'Aucune personne trouvée' : 'Aucune personne pour le moment'}
             striped
             highlightOnHover
