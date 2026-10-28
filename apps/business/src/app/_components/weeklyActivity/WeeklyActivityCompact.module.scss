@@ -49,6 +49,17 @@
   margin-top: var(--mantine-spacing-xs);
 }
 
+.salaryLine {
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-sage-1);
+}
+
+.salaryAmount {
+  @include mono;
+  font-weight: 700;
+  color: var(--mantine-color-sage-0);
+}
+
 .teamRow {
   padding-block: var(--mantine-spacing-sm);
   border-bottom: 1px solid color-mix(in srgb, var(--disp-sage-soft) 18%, transparent);

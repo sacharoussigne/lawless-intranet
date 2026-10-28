@@ -23,6 +23,7 @@ import {
 } from '@/lib/businessWeeklyActivity/resolveDisplayName';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { listSerializedWeeklyActivities } from '@/lib/businessWeeklyActivity/listSerialized';
+import { attachViewerSalaryEstimates } from '@/lib/payroll/botSalaryEstimate';
 import {
   businessWeeklyActivityCreateSchema,
   businessWeeklyActivityMetricsSchema,
@@ -158,7 +159,13 @@ export async function listBusinessWeeklyActivities(
       options ? { periodStart: { lte: options.periodEnd }, periodEnd: { gte: options.periodStart } } : {},
     );
 
-    const data = await listSerializedWeeklyActivities(where, businessId);
+    const rows = await listSerializedWeeklyActivities(where, businessId);
+    const data = await attachViewerSalaryEstimates(businessId, tenant.business.type, rows, {
+      sessionUserId: session.user.id,
+      discordUserId: await getDiscordAccountIdForUser(prisma, session.user.id),
+      // The home team list (edit_all) shows everyone's estimate, like the bot's recap for the Direction.
+      all: can(tenant.effectivePermissions, 'weekly_activity', 'edit_all'),
+    });
 
     return {
       status: 200 as const,
