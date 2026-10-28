@@ -40,6 +40,12 @@ export function WeeklyActivityCompactRow({
   const counterStats = buildCompactCounterStats(row?.counters ?? {}, fieldVisibility);
   const counterLine = formatCompactCounterLine(counterStats);
   const showDayGrid = fieldVisibility.chestDays || fieldVisibility.presenceDays;
+  // Only present with the payroll module, on the rows the viewer may see (lib/payroll/botSalaryEstimate).
+  const salaryLine = row?.salary ? (
+    <Text className={classes.salaryLine}>
+      Salaire estimé <span className={classes.salaryAmount}>{row.salary.estimatedUsd.toFixed(2)} $</span>
+    </Text>
+  ) : null;
 
   return (
     <div className={classes.teamRow}>
@@ -66,6 +72,7 @@ export function WeeklyActivityCompactRow({
               {counterLine ? (
                 <Text className={classes.counterLine}>{counterLine}</Text>
               ) : null}
+              {salaryLine}
               {!row && (
                 <Text className={classes.emptyHint}>Aucune saisie cette semaine</Text>
               )}
@@ -74,6 +81,7 @@ export function WeeklyActivityCompactRow({
           {!showDayGrid && counterLine ? (
             <Text className={classes.counterLine}>{counterLine}</Text>
           ) : null}
+          {!showDayGrid && salaryLine}
         </div>
         {row && (onHistory || (canEdit && onEdit)) ? (
           <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>

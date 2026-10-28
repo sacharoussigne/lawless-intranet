@@ -8,7 +8,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = (await request.json()) as { userIds?: string[] };
+  // A caller that gave up (timeout) leaves a truncated body: answer 400 instead of crashing.
+  const body = (await request.json().catch(() => null)) as { userIds?: string[] } | null;
+  if (!body) {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const userIds = Array.isArray(body.userIds) ? body.userIds.filter(Boolean) : [];
 
   if (userIds.length === 0) {
