@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useCallback, useRef, useState } from 'react';
 import { Loader } from '@mantine/core';
 import classes from '../agenda.module.scss';
@@ -86,6 +87,7 @@ export function InlineNoteInput({
     <input
       ref={inputRef}
       type="text"
+      {...noAutofillProps}
       className={`${classes.inlineNoteInput} ${className ?? ''}`}
       value={value}
       onChange={(e) => setValue(e.target.value)}

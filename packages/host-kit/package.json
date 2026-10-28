@@ -11,7 +11,8 @@
     "./realtime": "./src/realtime.ts",
     "./middleware": "./src/middleware.ts",
     "./service-host": "./src/serviceHost.ts",
-    "./theme": "./src/theme/index.ts"
+    "./theme": "./src/theme/index.ts",
+    "./no-autofill": "./src/noAutofill.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Title, Stack, TextInput, Grid } from '@mantine/core';
@@ -134,7 +135,7 @@ export function UserTemplateFormPage({ mode, template }: UserTemplateFormPagePro
             : `Modifier le modèle "${template?.name ?? ''}"`}
         </Title>
 
-        <form id="template-form" onSubmit={form.onSubmit(handleSubmit)}>
+        <form {...noAutofillProps} id="template-form" onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <Grid gutter="xl">
               <Grid.Col span={6}>

@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Container, Grid, Group, Stack, Tabs, TextInput, Textarea } from '@mantine/core';
@@ -173,7 +174,7 @@ export function TemplateFormPage({
           }
         />
 
-        <form id="cabinet-template-form" onSubmit={form.onSubmit(handleSubmit)}>
+        <form {...noAutofillProps} id="cabinet-template-form" onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
             <Grid gutter="xl">
               <Grid.Col span={6}>

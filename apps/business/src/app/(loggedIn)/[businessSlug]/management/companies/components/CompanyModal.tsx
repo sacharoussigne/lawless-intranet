@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect } from 'react';
 import { Stack, TextInput, MultiSelect, Button } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -114,7 +115,7 @@ export function CompanyModal({
         </AppModalFooter>
       }
     >
-      <form id={formId} onSubmit={form.onSubmit(handleSubmit)}>
+      <form {...noAutofillProps} id={formId} onSubmit={form.onSubmit(handleSubmit)}>
         <Stack>
           <TextInput
             label="Nom"

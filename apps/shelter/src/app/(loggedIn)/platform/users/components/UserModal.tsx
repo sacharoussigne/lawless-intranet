@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect } from 'react';
 import {
   Modal,
@@ -128,7 +129,7 @@ export function UserModal({ opened, onClose, editingUser, onSuccess }: UserModal
       }}
       title={editingUser ? "Modifier l'utilisateur" : 'Créer un utilisateur'}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <TextInput
             label="Nom"

@@ -1,3 +1,4 @@
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { createTheme, DEFAULT_THEME, type CSSVariablesResolver } from '@mantine/core';
 import {
   dangerPalette,
@@ -43,18 +44,6 @@ const comboboxOption = {
   color: c.ink,
 };
 
-/**
- * Business fields: keep password managers (Dashlane, LastPass, 1Password,
- * Bitwarden) from offering autofill. Dashlane ignores `autocomplete="off"`
- * and only honours `data-form-type`. Not applied to PasswordInput.
- */
-const noAutofillProps: Record<string, string> = {
-  autoComplete: 'off',
-  'data-form-type': 'other',
-  'data-lpignore': 'true',
-  'data-1p-ignore': 'true',
-  'data-bwignore': 'true',
-};
 
 const theme = createTheme({
   ...DEFAULT_THEME,

@@ -1,5 +1,6 @@
 'use client';
 
+import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useEffect, useState } from 'react';
 import {
   Modal,
@@ -135,7 +136,7 @@ export function MailTemplateModal({
           <Loader color="sage" />
         </Center>
       ) : (
-        <form onSubmit={form.onSubmit(handleSubmit)}>
+        <form {...noAutofillProps} onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
             <TextInput
               label="Nom"
