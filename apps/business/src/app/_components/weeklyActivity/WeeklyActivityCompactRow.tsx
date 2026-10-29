@@ -4,6 +4,7 @@ import { ActionIcon, Group, Stack, Text } from '@mantine/core';
 import { IconHistory, IconPencil } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import { emptyWeekdayFlags } from '@/lib/businessWeeklyActivity/weekdayFlags';
+import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   buildCompactCounterStats,
@@ -36,8 +37,10 @@ export function WeeklyActivityCompactRow({
 }: WeeklyActivityCompactRowProps) {
   const chestDays = row?.chestDays ?? emptyWeekdayFlags();
   const presenceDays = row?.presenceDays ?? emptyWeekdayFlags();
-  const dayCells = buildCompactDayCells(chestDays, presenceDays);
-  const counterStats = buildCompactCounterStats(row?.counters ?? {}, fieldVisibility);
+  // Cash preparers (by grade, like their pay) only do caisses: no presence mark, no counters.
+  const chestOnly = isCashPreparerGrade(row?.discordProfileRole);
+  const dayCells = buildCompactDayCells(chestDays, presenceDays, { chestOnly });
+  const counterStats = chestOnly ? [] : buildCompactCounterStats(row?.counters ?? {}, fieldVisibility);
   const counterLine = formatCompactCounterLine(counterStats);
   const showDayGrid = fieldVisibility.chestDays || fieldVisibility.presenceDays;
   // Only present with the payroll module, on the rows the viewer may see (lib/payroll/botSalaryEstimate).
@@ -51,7 +54,11 @@ export function WeeklyActivityCompactRow({
     <div className={classes.teamRow}>
       <Group align="flex-start" wrap="nowrap" gap="lg" justify="space-between">
         <div className={classes.rowMain}>
-          {showName && <Text className={`${classes.name} ${classes.nameCol}`}>{displayName}</Text>}
+          {showName && (
+            <Text className={`${classes.name} ${classes.nameCol}`} title={displayName}>
+              {displayName}
+            </Text>
+          )}
           {showDayGrid && (
             <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
               {/* Team list: one shared header row on desktop, a header per row on phones (names stack above). */}

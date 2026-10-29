@@ -88,6 +88,8 @@
 }
 
 $phone: 47.99em;
+/* Name column of the compact rows; the team header is offset by the same width. */
+$name-col: 11rem;
 
 /* Seven day columns: fixed width on desktop, shared width on phones (no horizontal scroll). */
 .dayGrid {
@@ -121,19 +123,23 @@ $phone: 47.99em;
   }
 }
 
+/* Fixed width so every row's week lines up under the shared header; long names get an ellipsis. */
 .nameCol {
-  min-width: 8rem;
+  width: $name-col;
   flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
   @media (max-width: $phone) {
-    min-width: 0;
+    width: auto;
+    max-width: 100%;
   }
 }
 
-/* Shared day header of the team list, aligned on the rows' grid (after the 8rem name column). */
+/* Shared day header of the team list, aligned on the rows' grid (after the name column). */
 .teamHeader {
   margin-bottom: var(--mantine-spacing-sm);
-  padding-left: calc(8rem + var(--mantine-spacing-lg));
+  padding-left: calc(#{$name-col} + var(--mantine-spacing-lg));
 
   @media (max-width: $phone) {
     display: none;
