@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 import { Button, NumberInput, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { IconUserPlus } from '@tabler/icons-react';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
-import { isCashPreparerGrade, PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
+import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
+import { isCashPreparerGrade } from '@/lib/businessTypes';
 import { payrollNameKey } from '@/lib/payroll/mergeWeeklyActivity';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
 import { usePayrollPeople } from '../hooks/usePayrollQueries';
@@ -35,6 +37,7 @@ export function AddPayrollEmployeeModal({
   onAdd,
 }: AddPayrollEmployeeModalProps) {
   const { data: people = [], isLoading } = usePayrollPeople(opened);
+  const { appSettings } = usePermissions();
   const [mode, setMode] = useState<Mode>('registered');
   const [personId, setPersonId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -46,7 +49,7 @@ export function AddPayrollEmployeeModal({
     const names = new Set(employees.map((e) => payrollNameKey(e.name)));
     const accounts = new Set(employees.map((e) => e.id).filter((id): id is number => id != null));
     return people
-      .filter((p) => isCashPreparerGrade(p.role) === forCashPreparers)
+      .filter((p) => isCashPreparerGrade(appSettings.businessType, p.role) === forCashPreparers)
       .map((p) => {
       const inReport =
         names.has(payrollNameKey(p.name)) ||
@@ -57,7 +60,7 @@ export function AddPayrollEmployeeModal({
         disabled: inReport,
       };
     });
-  }, [people, employees, forCashPreparers]);
+  }, [people, employees, forCashPreparers, appSettings.businessType]);
 
   const reset = () => {
     setMode('registered');

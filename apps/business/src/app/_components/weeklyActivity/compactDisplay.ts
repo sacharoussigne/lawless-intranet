@@ -6,8 +6,10 @@ import {
 
 export const COMPACT_DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as const;
 
-export function formatCompactDayCell(chest: boolean, presence: boolean): string {
+/** `chestOnly`: cash preparers, who only do caisses (no presence mark). */
+export function formatCompactDayCell(chest: boolean, presence: boolean, chestOnly = false): string {
   const chestMark = chest ? 'X' : '.';
+  if (chestOnly) return chestMark;
   const presenceMark = presence ? 'P' : '.';
   return `${chestMark} ${presenceMark}`;
 }
@@ -15,8 +17,11 @@ export function formatCompactDayCell(chest: boolean, presence: boolean): string 
 export function buildCompactDayCells(
   chestDays: WeekdayFlags,
   presenceDays: WeekdayFlags,
+  options: { chestOnly?: boolean } = {},
 ): string[] {
-  return WEEKDAY_KEYS.map((key) => formatCompactDayCell(chestDays[key], presenceDays[key]));
+  return WEEKDAY_KEYS.map((key) =>
+    formatCompactDayCell(chestDays[key], presenceDays[key], options.chestOnly),
+  );
 }
 
 export type CompactCounterStat = {

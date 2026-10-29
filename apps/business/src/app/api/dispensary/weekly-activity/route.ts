@@ -12,6 +12,7 @@ import { loadSerializedWeeklyActivityByIdForBusiness } from '@/lib/businessWeekl
 import { listSerializedWeeklyActivities } from '@/lib/businessWeeklyActivity/listSerialized';
 import { createBusinessWeeklyActivityWithHistory } from '@/lib/businessWeeklyActivity/service';
 import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
+import { CASH_PREPARER_ONLY_CHEST_MESSAGE, isCashPreparer, raisesWeeklyCounter } from '@/lib/businessWeeklyActivity/botCashPreparer';
 import { botPastWeekLockError } from '@/lib/businessWeeklyActivity/botWeekLock';
 
 function jsonError(status: number, error: string) {
@@ -88,6 +89,12 @@ async function handlePost(request: Request) {
       { ...parsed.data, counters: countersFromBotBody(businessCtx.businessType, parsed.data) },
       visibility,
     );
+    if (
+      raisesWeeklyCounter({}, createInput.counters) &&
+      (await isCashPreparer(businessCtx.businessId, businessCtx.businessType, discordUserId))
+    ) {
+      return jsonError(403, CASH_PREPARER_ONLY_CHEST_MESSAGE);
+    }
 
     const created = await createBusinessWeeklyActivityWithHistory(createInput, {
       source: 'DISCORD_BOT',

@@ -19,15 +19,6 @@ export function isPayrollEmployeeRole(value: string): value is PayrollEmployeeRo
   return (PAYROLL_EMPLOYEE_ROLES as readonly string[]).includes(value);
 }
 
-/** Préparateur de caisses: paid in the « Préparateurs de caisse » report, not with the employees. */
-export const CASH_PREPARER_GRADES: readonly PayrollEmployeeRole[] = [
-  'Préparateur de caisses',
-  'Préparatrice de caisses',
-];
-
-export function isCashPreparerGrade(value: string | null | undefined): boolean {
-  return (CASH_PREPARER_GRADES as readonly string[]).includes(value?.trim() ?? '');
-}
 
 /** A grade from a select (or stored text) as a payroll role; anything else is « no grade ». */
 export function toPayrollEmployeeRole(value: string | null | undefined): PayrollEmployeeRole | null {

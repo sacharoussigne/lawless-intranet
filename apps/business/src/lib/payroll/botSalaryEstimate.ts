@@ -1,11 +1,10 @@
 import prisma from '@/lib/prisma';
 import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
-import type { BusinessType, WeeklyCounterDefinition } from '@/lib/businessTypes';
+import { DEFAULT_BUSINESS_TYPE, isCashPreparerGrade, type BusinessType, type WeeklyCounterDefinition } from '@/lib/businessTypes';
 import { loadDiscordProfilesByIds, type ProfileSalaryType } from '@/lib/businessDiscordProfile/queries';
 import { weeklyCounterDefinitions, weeklyCounterValue, type WeeklyCounters } from '@/lib/businessWeeklyActivity/counters';
 import { estimatePayoutUsd } from '@/lib/payroll/recalculatePayrollResult';
 import { resolvePayrollDefaultRates, type PayrollDefaultRates } from '@/lib/payroll/salaryTypes';
-import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
 import { findOwnWeeklyActivityRow } from '@/lib/businessWeeklyActivity/findOwnRow';
 
 /** Estimated pay of a weekly activity row, shown by the Discord bot and on the home page. */
@@ -31,8 +30,9 @@ export function estimateRowSalary(
   defaults: PayrollDefaultRates,
   counterDefinitions: readonly WeeklyCounterDefinition[],
   grade: string | null = null,
+  businessType: BusinessType = DEFAULT_BUSINESS_TYPE,
 ): SalaryEstimate {
-  const preparer = isCashPreparerGrade(grade);
+  const preparer = isCashPreparerGrade(businessType, grade);
   const caisseUnitUsd =
     salaryType?.caisseUnitUsd ??
     (preparer ? defaults.cashPreparerCaisseUnitUsd : defaults.caisseUnitUsd);
@@ -83,6 +83,7 @@ export async function attachBotSalaryEstimates<T extends RowForEstimate>(
         defaults,
         counterDefinitions,
         profile?.role ?? null,
+        businessType,
       ),
     };
   });
