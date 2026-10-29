@@ -15,6 +15,7 @@ import {
 import { businessWeeklyActivityBotPresenceBodySchema } from '@/lib/businessWeeklyActivity/schemas';
 import { botMarkPresenceForParisRelativeDay } from '@/lib/businessWeeklyActivity/service';
 import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
+import { CASH_PREPARER_ONLY_CHEST_MESSAGE, isCashPreparer } from '@/lib/businessWeeklyActivity/botCashPreparer';
 
 async function handlePost(request: Request) {
   const req = request as Parameters<typeof isBusinessBotApiAuthorized>[0];
@@ -48,6 +49,11 @@ async function handlePost(request: Request) {
   const hiddenErr = botWeekdayFieldVisibilityError('presence', visibility);
   if (hiddenErr) {
     return jsonBotError(403, hiddenErr);
+  }
+  // Cash preparers have no presence; unchecking a day stays allowed to clean up.
+  const marks = !isPresenceEditBody(parsed.data) || parsed.data.value;
+  if (marks && (await isCashPreparer(businessCtx.businessId, discordUserId))) {
+    return jsonBotError(403, CASH_PREPARER_ONLY_CHEST_MESSAGE);
   }
 
   try {

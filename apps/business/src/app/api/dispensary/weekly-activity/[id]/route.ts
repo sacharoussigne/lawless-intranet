@@ -19,6 +19,12 @@ import {
   updateBusinessWeeklyActivityWithHistory,
 } from '@/lib/businessWeeklyActivity/service';
 import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
+import {
+  CASH_PREPARER_ONLY_CHEST_MESSAGE,
+  isCashPreparer,
+  raisesWeeklyCounter,
+} from '@/lib/businessWeeklyActivity/botCashPreparer';
+import { parseWeeklyCounters } from '@/lib/businessWeeklyActivity/counters';
 import { botPastWeekLockError } from '@/lib/businessWeeklyActivity/botWeekLock';
 
 function jsonError(status: number, error: string) {
@@ -154,6 +160,12 @@ async function handlePatch(request: NextRequest, context: RouteContext) {
     return jsonError(403, fieldError);
   }
   const updateInput = applyVisibilityToUpdateInput(patch, visibility);
+  if (
+    raisesWeeklyCounter(parseWeeklyCounters(loaded.activity.counters), updateInput.counters) &&
+    (await isCashPreparer(businessCtx.businessId, discordUserId))
+  ) {
+    return jsonError(403, CASH_PREPARER_ONLY_CHEST_MESSAGE);
+  }
 
   try {
     await updateBusinessWeeklyActivityWithHistory(id, updateInput, {
