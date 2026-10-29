@@ -8,6 +8,7 @@ import { getBankWeekBounds } from '@/lib/bankWeek';
 import { resolveBotBusinessContext } from '@/lib/businessWeeklyActivity/botRequestContext';
 import dayjs from '@/lib/dayjs';
 import { attachBotSalaryEstimates } from '@/lib/payroll/botSalaryEstimate';
+import { cashPreparerIds } from '@/lib/businessWeeklyActivity/botCashPreparer';
 
 function jsonError(status: number, error: string) {
   return NextResponse.json({ status, error }, { status });
@@ -56,11 +57,14 @@ async function handleGet(request: NextRequest) {
   );
 
   // Estimated pay of each row (null without the payroll module); the bot shows the team's to the Direction only.
-  const withSalary = await attachBotSalaryEstimates(
-    businessCtx.businessId,
-    businessCtx.businessType,
-    sorted,
-  );
+  const [withSalary, preparers] = await Promise.all([
+    attachBotSalaryEstimates(businessCtx.businessId, businessCtx.businessType, sorted),
+    // By grade in the business: the bot shows them the caisse alone (dashboard, recaps).
+    cashPreparerIds(businessCtx.businessId, [
+      ...sorted.map((row) => row.discordUserId),
+      ...(optionalDiscord ? [optionalDiscord] : []),
+    ]),
+  ]);
 
   return NextResponse.json({
     status: 200,
@@ -70,7 +74,10 @@ async function handleGet(request: NextRequest) {
       rows: withSalary.map(({ salary, ...row }) => ({
         ...toBotApiRow(row, businessCtx.businessType),
         salary,
+        cashPreparer: preparers.has(row.discordUserId),
       })),
+      // The asking member, even without a row this week yet.
+      ...(optionalDiscord ? { viewer: { cashPreparer: preparers.has(optionalDiscord) } } : {}),
     },
   });
 }
