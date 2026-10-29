@@ -91,7 +91,7 @@ async function handlePost(request: Request) {
     );
     if (
       raisesWeeklyCounter({}, createInput.counters) &&
-      (await isCashPreparer(businessCtx.businessId, discordUserId))
+      (await isCashPreparer(businessCtx.businessId, businessCtx.businessType, discordUserId))
     ) {
       return jsonError(403, CASH_PREPARER_ONLY_CHEST_MESSAGE);
     }

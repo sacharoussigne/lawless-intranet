@@ -4,7 +4,8 @@ import { ActionIcon, Group, Stack, Text } from '@mantine/core';
 import { IconHistory, IconPencil } from '@tabler/icons-react';
 import type { WeeklyActivityFieldVisibility } from '@/lib/businessWeeklyActivity/fieldVisibility';
 import { emptyWeekdayFlags } from '@/lib/businessWeeklyActivity/weekdayFlags';
-import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
+import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { isCashPreparerGrade } from '@/lib/businessTypes';
 import type { WeeklyActivityListItem } from '@/app/(loggedIn)/[businessSlug]/employee/(activity)/weekly-activity/hooks/useWeeklyActivityQueries';
 import {
   buildCompactCounterStats,
@@ -38,7 +39,8 @@ export function WeeklyActivityCompactRow({
   const chestDays = row?.chestDays ?? emptyWeekdayFlags();
   const presenceDays = row?.presenceDays ?? emptyWeekdayFlags();
   // Cash preparers (by grade, like their pay) only do caisses: no presence mark, no counters.
-  const chestOnly = isCashPreparerGrade(row?.discordProfileRole);
+  const { appSettings } = usePermissions();
+  const chestOnly = isCashPreparerGrade(appSettings.businessType, row?.discordProfileRole);
   const dayCells = buildCompactDayCells(chestDays, presenceDays, { chestOnly });
   const counterStats = chestOnly ? [] : buildCompactCounterStats(row?.counters ?? {}, fieldVisibility);
   const counterLine = formatCompactCounterLine(counterStats);

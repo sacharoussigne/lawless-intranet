@@ -52,6 +52,11 @@ export type BusinessTypeDefinition = {
   gradeRoles: { readonly default: readonly BusinessMemberRole[] } & Readonly<
     Record<string, readonly BusinessMemberRole[]>
   >;
+  /**
+   * Grades that only do caisses (cash preparers): caisse-only view (home page, bot),
+   * preparers' pay, the « Préparateurs de caisse » payroll report, left out of the city hall letter.
+   */
+  cashPreparerGrades: readonly string[];
   /** Seeded when a business has no role permissions yet, and on « reset ». */
   defaultRoleMatrix: RoleMatrix;
   /** Counters of the weekly activity (each can be turned off in the settings). */
@@ -87,6 +92,7 @@ export const businessTypes = {
       'Préparateur de caisses': [Role.CASH_PREPARER],
       'Préparatrice de caisses': [Role.CASH_PREPARER],
     },
+    cashPreparerGrades: ['Préparateur de caisses', 'Préparatrice de caisses'],
     defaultRoleMatrix: DEFAULT_ROLE_MATRIX,
     weeklyCounters: [
       {
@@ -130,6 +136,12 @@ export function getBusinessTypeDefinition(type: BusinessType): BusinessTypeDefin
 
 export function isModuleAllowedForType(type: BusinessType, feature: AppFeatureKey): boolean {
   return getBusinessTypeDefinition(type).modules.includes(feature);
+}
+
+/** Grade of a cash preparer in this kind of business (only caisses, see `cashPreparerGrades`). */
+export function isCashPreparerGrade(type: BusinessType, grade: string | null | undefined): boolean {
+  const key = grade?.trim();
+  return Boolean(key) && getBusinessTypeDefinition(type).cashPreparerGrades.includes(key as string);
 }
 
 /** Roles an employed person gets from this grade (`default` for an empty or unknown grade). */

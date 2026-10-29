@@ -162,7 +162,7 @@ async function handlePatch(request: NextRequest, context: RouteContext) {
   const updateInput = applyVisibilityToUpdateInput(patch, visibility);
   if (
     raisesWeeklyCounter(parseWeeklyCounters(loaded.activity.counters), updateInput.counters) &&
-    (await isCashPreparer(businessCtx.businessId, discordUserId))
+    (await isCashPreparer(businessCtx.businessId, businessCtx.businessType, discordUserId))
   ) {
     return jsonError(403, CASH_PREPARER_ONLY_CHEST_MESSAGE);
   }

@@ -1,7 +1,7 @@
 import type { PayrollReportResult } from '@/lib/payroll/schema';
 import { payrollNameKey, type WaRow } from '@/lib/payroll/mergeWeeklyActivity';
 import type { StaffMemberOfPeriod } from '@/lib/staff/service';
-import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
+import { isCashPreparerGrade, type BusinessType } from '@/lib/businessTypes';
 import { PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE, type PayrollReportType } from '@/lib/payroll/constants';
 
 type PayrollEmployee = PayrollReportResult['employees'][number];
@@ -67,13 +67,14 @@ export function appendIdleStaff(
  * « Employés » report everyone else.
  */
 export function staffForReportType<T extends Pick<WaRow, 'discordProfileRole'>>(
+  businessType: BusinessType,
   reportType: PayrollReportType,
   activities: T[],
   staff: StaffMemberOfPeriod[],
 ): { activities: T[]; staff: StaffMemberOfPeriod[] } {
   const wantsPreparers = reportType === PAYROLL_REPORT_TYPE_PREPARATEURS_CAISSE;
   return {
-    activities: activities.filter((row) => isCashPreparerGrade(row.discordProfileRole) === wantsPreparers),
-    staff: staff.filter((member) => isCashPreparerGrade(member.role) === wantsPreparers),
+    activities: activities.filter((row) => isCashPreparerGrade(businessType, row.discordProfileRole) === wantsPreparers),
+    staff: staff.filter((member) => isCashPreparerGrade(businessType, member.role) === wantsPreparers),
   };
 }

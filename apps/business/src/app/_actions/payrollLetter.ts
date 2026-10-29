@@ -171,6 +171,7 @@ export async function generatePayrollLetter(businessSlug: string, input: unknown
           weekEnd: report.weekEnd,
           result: parsed.data,
           genderOf: await letterGenderResolver(businessId),
+          businessType: ctx.tenant.business.type,
         }),
       }),
     );

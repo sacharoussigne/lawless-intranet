@@ -1,4 +1,5 @@
-import { isCashPreparerGrade, isPayrollEmployeeRole } from '@/lib/businessDiscordProfile/constants';
+import { isPayrollEmployeeRole } from '@/lib/businessDiscordProfile/constants';
+import { DEFAULT_BUSINESS_TYPE, isCashPreparerGrade, type BusinessType } from '@/lib/businessTypes';
 import { PAYROLL_DAYS } from '@/lib/payroll/parsePayrollHtmlTable';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
 import { formatRpDate } from '@/lib/rpCalendar';
@@ -44,11 +45,14 @@ const FEMININE_ROLES = new Set([
  * The letter lists the employees: lines with a payroll grade (the staff, see appendIdleStaff),
  * except the préparateurs de caisses, who are not care staff.
  */
-export function letterEmployees(employees: PayrollEmployee[]): PayrollEmployee[] {
+export function letterEmployees(
+  employees: PayrollEmployee[],
+  businessType: BusinessType = DEFAULT_BUSINESS_TYPE,
+): PayrollEmployee[] {
   return employees
     .filter(
       (employee) =>
-        isPayrollEmployeeRole(employee.role.trim()) && !isCashPreparerGrade(employee.role),
+        isPayrollEmployeeRole(employee.role.trim()) && !isCashPreparerGrade(businessType, employee.role),
     )
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
@@ -83,8 +87,10 @@ export function buildPayrollLetterVariables(input: {
   /** Gender of a line's person (intranet account), null when unknown: the grade decides. */
   genderOf?: (employee: PayrollEmployee) => LetterGender | null;
   now?: Date;
+  /** Decides who is a cash preparer (left out of the letter). */
+  businessType?: BusinessType;
 }): PayrollLetterVariables {
-  const employees = letterEmployees(input.result.employees);
+  const employees = letterEmployees(input.result.employees, input.businessType);
   const all = input.result.employees;
   const genderOf = input.genderOf ?? (() => null);
   return {

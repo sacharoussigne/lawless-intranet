@@ -43,13 +43,13 @@ describe('staffForReportType', () => {
   const staff = [member('1', 'Ada', 'Médecin'), member('3', 'Cléo', 'Préparateur de caisses')];
 
   it('keeps everyone but the préparateurs for the employees', () => {
-    const out = staffForReportType('Employés', rows, staff);
+    const out = staffForReportType('DISPENSARY', 'Employés', rows, staff);
     expect(out.activities.map((row) => row.discordUserId)).toEqual(['1']);
     expect(out.staff.map((m) => m.discordUserId)).toEqual(['1']);
   });
 
   it('keeps only the préparateurs for their report', () => {
-    const out = staffForReportType('Préparateurs de caisse', rows, staff);
+    const out = staffForReportType('DISPENSARY', 'Préparateurs de caisse', rows, staff);
     expect(out.activities.map((row) => row.discordUserId)).toEqual(['2']);
     expect(out.staff.map((m) => m.discordUserId)).toEqual(['3']);
   });
