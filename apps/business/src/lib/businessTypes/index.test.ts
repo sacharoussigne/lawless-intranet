@@ -9,6 +9,7 @@ import {
 import { BUSINESS_MEMBER_ROLES, Role } from '@/types/enum/roles';
 import { PAYROLL_EMPLOYEE_ROLES } from '@/lib/businessDiscordProfile/constants';
 import {
+  isCashPreparerGrade,
   businessTypes,
   isMemberRoleAllowedForType,
   isModuleAllowedForType,
@@ -76,5 +77,23 @@ describe('normalizeAppSettings', () => {
 
   it('fills the defaults', () => {
     expect(normalizeAppSettings({})).toEqual(APP_SETTINGS_DEFAULTS);
+  });
+});
+
+describe('isCashPreparerGrade', () => {
+  it('lists only grades that the type gives roles to', () => {
+    for (const [type, def] of Object.entries(businessTypes)) {
+      for (const grade of def.cashPreparerGrades) {
+        expect(Object.keys(def.gradeRoles), `${type}: ${grade}`).toContain(grade);
+      }
+    }
+  });
+
+  it('matches the cash preparer grades of the type, trimmed', () => {
+    expect(isCashPreparerGrade('DISPENSARY', 'Préparatrice de caisses')).toBe(true);
+    expect(isCashPreparerGrade('DISPENSARY', '  Préparateur de caisses ')).toBe(true);
+    expect(isCashPreparerGrade('DISPENSARY', 'Médecin')).toBe(false);
+    expect(isCashPreparerGrade('DISPENSARY', '')).toBe(false);
+    expect(isCashPreparerGrade('DISPENSARY', null)).toBe(false);
   });
 });

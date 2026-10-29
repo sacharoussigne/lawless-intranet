@@ -52,7 +52,7 @@ async function handlePost(request: Request) {
   }
   // Cash preparers have no presence; unchecking a day stays allowed to clean up.
   const marks = !isPresenceEditBody(parsed.data) || parsed.data.value;
-  if (marks && (await isCashPreparer(businessCtx.businessId, discordUserId))) {
+  if (marks && (await isCashPreparer(businessCtx.businessId, businessCtx.businessType, discordUserId))) {
     return jsonBotError(403, CASH_PREPARER_ONLY_CHEST_MESSAGE);
   }
 

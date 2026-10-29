@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { isCashPreparerGrade } from '@/lib/businessDiscordProfile/constants';
+import { isCashPreparerGrade, type BusinessType } from '@/lib/businessTypes';
 import { loadDiscordProfilesByIds } from '@/lib/businessDiscordProfile/queries';
 import type { WeeklyCounters } from '@/lib/businessWeeklyActivity/counters';
 
@@ -11,13 +11,23 @@ export const CASH_PREPARER_ONLY_CHEST_MESSAGE =
   'Réservé aux employés : en tant que préparateur de caisse, seule la caisse est disponible.';
 
 /** Discord ids among `discordUserIds` whose grade in the business is cash preparer. */
-export async function cashPreparerIds(businessId: string, discordUserIds: string[]): Promise<Set<string>> {
+export async function cashPreparerIds(
+  businessId: string,
+  businessType: BusinessType,
+  discordUserIds: string[],
+): Promise<Set<string>> {
   const profiles = await loadDiscordProfilesByIds(prisma, businessId, discordUserIds);
-  return new Set([...profiles.values()].filter((p) => isCashPreparerGrade(p.role)).map((p) => p.discordUserId));
+  return new Set(
+    [...profiles.values()].filter((p) => isCashPreparerGrade(businessType, p.role)).map((p) => p.discordUserId),
+  );
 }
 
-export async function isCashPreparer(businessId: string, discordUserId: string): Promise<boolean> {
-  return (await cashPreparerIds(businessId, [discordUserId])).has(discordUserId);
+export async function isCashPreparer(
+  businessId: string,
+  businessType: BusinessType,
+  discordUserId: string,
+): Promise<boolean> {
+  return (await cashPreparerIds(businessId, businessType, [discordUserId])).has(discordUserId);
 }
 
 /** True when `next` raises a counter above `previous` (lowering one stays allowed, e.g. an undo). */

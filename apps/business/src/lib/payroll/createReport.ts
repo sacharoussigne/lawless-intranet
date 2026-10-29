@@ -98,7 +98,12 @@ export async function createPayrollReport(input: CreatePayrollReportInput): Prom
     )) as WaRow[];
     // The grade held that week decides the report: préparateurs de caisses apart, everyone else as employees.
     const weekStaff = await loadStaffOfPeriod(prisma, businessId, waImportStart, waImportEnd);
-    const split = staffForReportType(reportType, withStaffRoles(activitiesWithNames, weekStaff), weekStaff);
+    const split = staffForReportType(
+      input.businessType,
+      reportType,
+      withStaffRoles(activitiesWithNames, weekStaff),
+      weekStaff,
+    );
     activitiesWithNames = split.activities;
     staff = split.staff;
   }

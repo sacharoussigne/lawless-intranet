@@ -60,7 +60,7 @@ async function handleGet(request: NextRequest) {
   const [withSalary, preparers] = await Promise.all([
     attachBotSalaryEstimates(businessCtx.businessId, businessCtx.businessType, sorted),
     // By grade in the business: the bot shows them the caisse alone (dashboard, recaps).
-    cashPreparerIds(businessCtx.businessId, [
+    cashPreparerIds(businessCtx.businessId, businessCtx.businessType, [
       ...sorted.map((row) => row.discordUserId),
       ...(optionalDiscord ? [optionalDiscord] : []),
     ]),

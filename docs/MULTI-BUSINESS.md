@@ -252,6 +252,7 @@ Le select actuel devient un switcher qui :
 ### Rôles dérivés du grade
 
 - Le registre du personnel (Gestion › Personnes) pilote l'accès. Tant qu'une personne est employée, son compte est membre avec les rôles de son grade. La correspondance vient de `gradeRoles` dans `lib/businessTypes`, avec la clé `default` pour un employé sans grade connu.
+- Les préparateurs de caisse sont les grades `cashPreparerGrades` du type (`isCashPreparerGrade(type, grade)` dans `lib/businessTypes`). Ils ne font que la caisse : vue caisse seule sur l'accueil et dans le bot (`cashPreparer` dans le récap de l'API du bot), prix préparateur, rapport « Préparateurs de caisse », exclus de la lettre à la mairie. Les routes du bot leur refusent présence et compteurs. Un nouveau type déclare ses propres grades.
 - `BusinessMember.manualRoles` contient les rôles donnés à la main dans Réglages › Membres (`admin`, `inventory_manager`…). `BusinessMember.role` stocke le résultat (rôles du grade + rôles manuels), ce qui laisse les lecteurs sur une seule requête. Seul `lib/staff/access.ts` (`syncMemberRoles`) l'écrit.
 - La synchro se fait :
   - après chaque mutation du registre et chaque changement de grade ;
