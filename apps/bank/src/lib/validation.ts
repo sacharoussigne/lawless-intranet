@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  DEFAULT_RP_YEAR_OFFSET,
+  MAX_RP_YEAR_OFFSET,
+  MIN_RP_YEAR_OFFSET,
+} from '@lawless-intranet/types';
 
 export const scopeFieldsSchema = z.object({
   scopeType: z.string().min(1),
@@ -115,6 +120,12 @@ export const importTransactionsSchema = z.object({
   scopeType: z.string().min(1),
   scopeId: z.string().uuid(),
   items: z.array(importTransactionItemSchema).min(1).max(5000),
+  rpYearOffset: z
+    .number()
+    .int()
+    .min(MIN_RP_YEAR_OFFSET)
+    .max(MAX_RP_YEAR_OFFSET)
+    .default(DEFAULT_RP_YEAR_OFFSET),
 });
 
 export function zodErrorMessage(error: z.ZodError): string {

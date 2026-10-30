@@ -1,7 +1,7 @@
 "use client";
 
 import { DateInput, type DateInputProps } from "@mantine/dates";
-import { fromRpDisplayDate, toRpDisplayDate } from "../rpCalendar";
+import { useBankUi } from "../BankUiProvider";
 
 export type RpDateInputProps = Omit<
   DateInputProps,
@@ -24,6 +24,8 @@ export function RpDateInput({
   locale = "fr",
   ...props
 }: RpDateInputProps) {
+  const { rp } = useBankUi();
+  const { fromRpDisplayDate, toRpDisplayDate } = rp;
   const realDate = toRealDate(value);
   const rpValue = realDate ? toRpDisplayDate(realDate) : null;
 

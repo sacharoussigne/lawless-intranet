@@ -152,6 +152,8 @@ model AppSettings {
   weeklyActivityCounters            Json     @default("{}")
   /// Paid per patient cared for (payroll), for every salary type.
   payrollPatientCareUsd             Decimal  @default(0.3) @db.Decimal(10, 2)
+  /// Years between the real date and the RP date shown (2026 → 1890). Display only: dates stay real in the database.
+  rpYearOffset                      Int      @default(136)
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
 

@@ -1,5 +1,5 @@
-import { format, getISOWeek, subYears } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { getISOWeek } from 'date-fns';
+import type { RpCalendar } from '@/lib/rpCalendar';
 
 export const PAYROLL_DAYS = [
   'lundi',
@@ -25,15 +25,6 @@ export const PRESENCE_OPTIONS = [
 
 export const BANDAGE_EXPORT_DEPOSIT_MOTIF = "Caisse d'exportation Bandage";
 
-/** Display-only: RP calendar is 136 years before real dates (DB unchanged). */
-export const PAYROLL_RP_DISPLAY_YEAR_OFFSET = 136;
-
-export function payrollRpDisplayDate(d: Date): Date {
-  return subYears(d, PAYROLL_RP_DISPLAY_YEAR_OFFSET);
-}
-
-export function wireTransferDescription(weekStart: Date, weekEnd: Date): string {
-  const displayStart = payrollRpDisplayDate(weekStart);
-  const displayEnd = payrollRpDisplayDate(weekEnd);
-  return `Salaire ${format(displayStart, 'dd MMMM yyyy', { locale: fr })} au ${format(displayEnd, 'dd MMMM yyyy', { locale: fr })} - N°${getISOWeek(weekStart)}`;
+export function wireTransferDescription(weekStart: Date, weekEnd: Date, rp: RpCalendar): string {
+  return `Salaire ${rp.formatRpDate(weekStart)} au ${rp.formatRpDate(weekEnd)} - N°${getISOWeek(weekStart)}`;
 }

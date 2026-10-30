@@ -19,7 +19,6 @@ import { notifications } from "@mantine/notifications";
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useBankUi } from "../BankUiProvider";
 import { apothecaryBooleanPills } from "../lib/apothecaryPill";
-import { formatRpDay } from "../rpCalendar";
 import type {
   BankActionResult,
   SerializedPlannedTransaction,
@@ -63,7 +62,8 @@ const parseAmount = (
 type BankPlannedPanelProps = { onChanged?: () => void };
 
 export function BankPlannedPanel({ onChanged }: BankPlannedPanelProps) {
-  const { actions } = useBankUi();
+  const { actions, rp } = useBankUi();
+  const { formatRpDay } = rp;
   const [planned, setPlanned] = useState<SerializedPlannedTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [formOpened, setFormOpened] = useState(false);

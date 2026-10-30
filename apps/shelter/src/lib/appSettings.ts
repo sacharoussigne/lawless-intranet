@@ -24,11 +24,13 @@ function mapFromDb(row: {
   shelterName: string;
   featureBankEnabled: boolean;
   featureMediaEnabled: boolean;
+  rpYearOffset: number;
 }): AppSettingsDTO {
   return {
     shelterName: row.shelterName?.trim() || APP_SETTINGS_DEFAULTS.shelterName,
     featureBankEnabled: row.featureBankEnabled,
     featureMediaEnabled: row.featureMediaEnabled,
+    rpYearOffset: row.rpYearOffset,
   };
 }
 
@@ -49,7 +51,7 @@ export async function loadAppSettingsFromDb(shelterId: string): Promise<AppSetti
 export function getAppSettings(shelterId: string) {
   return unstable_cache(
     () => loadAppSettingsFromDb(shelterId),
-    ['app-settings', shelterId, 'v1'],
+    ['app-settings', shelterId, 'v2'],
     {
       tags: [appSettingsCacheTag(shelterId)],
       revalidate: 86400,

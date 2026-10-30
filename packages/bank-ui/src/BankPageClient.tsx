@@ -52,7 +52,6 @@ import {
   mossPalette,
 } from "./lib/apothecaryPill";
 import { normalizeString } from "./normalizeString";
-import { formatRpDay, formatRpLongDay } from "./rpCalendar";
 import type {
   BankActionResult,
   SerializedBankWeek,
@@ -120,11 +119,11 @@ function isSuccess<T>(
   return result.data !== undefined;
 }
 
-const formatRpWeekRange = (start: Date | string, end: Date | string) =>
-  `${formatRpLongDay(start)} au ${formatRpLongDay(end)}`;
-
 export default function BankPage({ initialWeek }: BankPageProps) {
-  const { actions } = useBankUi();
+  const { actions, rp } = useBankUi();
+  const { formatRpDay, formatRpLongDay } = rp;
+  const formatRpWeekRange = (start: Date | string, end: Date | string) =>
+    `${formatRpLongDay(start)} au ${formatRpLongDay(end)}`;
   const [activeTab, setActiveTab] = useState<string | null>("ledger");
   const [week, setWeek] = useState(initialWeek);
   const [weeks, setWeeks] = useState<SerializedBankWeek[]>([]);

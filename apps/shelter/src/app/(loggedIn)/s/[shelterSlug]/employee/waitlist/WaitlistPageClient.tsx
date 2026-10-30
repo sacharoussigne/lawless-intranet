@@ -43,7 +43,7 @@ import {
   updateAnimalWaitRequest,
 } from '@/app/_actions/animalWaitRequests';
 import { handleAction } from '@/lib/action';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { fetchRead } from '@/lib/read/fetchRead';
 import { waitlistKeys } from '@/lib/waitlist/queryKeys';
 import {
@@ -125,6 +125,7 @@ export function WaitlistPageClient({
   initialRequests,
   speciesOptions,
 }: WaitlistPageClientProps) {
+  const { formatRpDate } = useRpCalendar();
   const t = useTenantRoutes();
   const realtimeClientId = useOptionalRealtimeSocket()?.clientId;
   const mutationMeta = realtimeMutationMeta(realtimeClientId);

@@ -32,7 +32,7 @@ import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/Del
 import { handleAction } from '@/lib/action';
 import { fetchRead } from '@/lib/read/fetchRead';
 import { buildAnimalTemplateVariables } from '@/lib/animals/documents';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import type {
   AnimalDocumentListItem,
   AnimalDocumentTemplateListItem,
@@ -57,6 +57,8 @@ export function AnimalDocumentsSection({
   availableTemplates,
   canUpdate,
 }: AnimalDocumentsSectionProps) {
+  const rp = useRpCalendar();
+  const { formatRpDate } = rp;
   const [documents, setDocuments] = useState(initialDocuments);
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<AnimalDocumentListItem | null>(null);
@@ -84,8 +86,8 @@ export function AnimalDocumentsSection({
           careProvided: animal.careProvided,
           notes: animal.notes,
         },
-      }),
-    [animal, shelterName],
+      }, rp),
+    [animal, shelterName, rp],
   );
 
   const openCreateDocumentModal = () => {

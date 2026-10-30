@@ -17,6 +17,8 @@ import {
   type LetterGender,
 } from '@/lib/payroll/letter/variables';
 import { findBusinessProfiles } from '@/lib/businessDiscordProfile/queries';
+import { getAppSettings } from '@/lib/appSettings';
+import { createRpCalendar } from '@/lib/rpCalendar';
 import { fetchUserProfiles } from '@/lib/authUsers';
 import { pickProfileDisplayName } from '@/lib/people/displayName';
 import { payrollNameKey } from '@/lib/payroll/mergeWeeklyActivity';
@@ -172,6 +174,7 @@ export async function generatePayrollLetter(businessSlug: string, input: unknown
           result: parsed.data,
           genderOf: await letterGenderResolver(businessId),
           businessType: ctx.tenant.business.type,
+          rp: createRpCalendar((await getAppSettings(businessId)).rpYearOffset),
         }),
       }),
     );

@@ -3,7 +3,7 @@ import type {
   DocumentRecord,
   TemplateRecord,
 } from '@lawless-intranet/types';
-import { formatRpDate } from '@/lib/rpCalendar';
+import type { RpCalendar } from '@/lib/rpCalendar';
 import { ANIMAL_STATUS_LABELS } from '@/lib/animals/labels';
 import type { AnimalStatus } from '@/generated/prisma/client';
 
@@ -59,6 +59,7 @@ function formatAdoptionPrice(value: number): string {
 
 export function buildAnimalTemplateVariables(
   source: AnimalTemplateVariableSource,
+  { formatRpDate }: RpCalendar,
 ): Record<string, string> {
   return {
     shelterName: source.shelterName,

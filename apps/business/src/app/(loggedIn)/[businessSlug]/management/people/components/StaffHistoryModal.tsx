@@ -25,7 +25,8 @@ import {
   PAYROLL_EMPLOYEE_ROLES,
   toPayrollEmployeeRole,
 } from '@/lib/businessDiscordProfile/constants';
-import { formatRpDate, getTodayRealDate } from '@/lib/rpCalendar';
+import { getTodayRealDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { ParsedZodError } from '@/lib/errors/ParsedZodError';
 import { handleApiZodError } from '@/lib/services/zod';
 import type { BusinessPerson } from '@/lib/people/types';
@@ -251,6 +252,7 @@ function ActiveStaffForms({ person }: { person: BusinessPerson }) {
 }
 
 function StayCard({ stay, number, latestEventId }: { stay: Employment; number: number; latestEventId: string | null }) {
+  const { formatRpDate } = useRpCalendar();
   return (
     <Paper withBorder p="md">
       <Group justify="space-between" mb="sm">
@@ -287,6 +289,7 @@ const EVENT_ICONS = {
 
 /** Timeline items render through Timeline's children: the item itself must be the direct child. */
 function EventItem({ event, canCancel, ...timelineProps }: { event: EmploymentEvent; canCancel: boolean }) {
+  const { formatRpDate } = useRpCalendar();
   const [editing, setEditing] = useState(false);
   const cancel = useCancelStaffEventMutation();
 

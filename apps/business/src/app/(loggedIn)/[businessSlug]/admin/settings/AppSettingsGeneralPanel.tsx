@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Group,
+  NumberInput,
   SimpleGrid,
   Stack,
   Switch,
@@ -15,6 +16,8 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { updateAppSettings, type BusinessSettingsAdminDTO } from '@/app/_actions/appSettings';
+import { MAX_RP_YEAR_OFFSET, MIN_RP_YEAR_OFFSET } from '@lawless-intranet/types';
+import { createRpCalendar } from '@/lib/rpCalendar';
 import { slugifyBusinessName } from '@/lib/business/slug';
 import { tenantRoutes } from '@/types/routes';
 import { isModuleAllowedForType } from '@/lib/businessTypes';
@@ -81,6 +84,13 @@ export function AppSettingsGeneralPanel({
   const [weeklyActivityCounters, setWeeklyActivityCounters] = useState(
     initial.weeklyActivityCounters,
   );
+  const [rpYearOffset, setRpYearOffset] = useState<number | ''>(initial.rpYearOffset);
+  const rpYearOffsetPreview =
+    typeof rpYearOffset === 'number' &&
+    rpYearOffset >= MIN_RP_YEAR_OFFSET &&
+    rpYearOffset <= MAX_RP_YEAR_OFFSET
+      ? createRpCalendar(rpYearOffset).formatRpDate(new Date(), 'd MMMM yyyy')
+      : null;
   const [submitting, setSubmitting] = useState(false);
 
   const featureToggles: (FeatureToggle & { feature: AppFeatureKey })[] = [
@@ -151,6 +161,8 @@ export function AppSettingsGeneralPanel({
       weeklyActivityChestDaysVisible,
       weeklyActivityPresenceDaysVisible,
       weeklyActivityCounters,
+      // Empty field: the server answers with its validation message.
+      rpYearOffset: rpYearOffset === '' ? Number.NaN : rpYearOffset,
     });
     setSubmitting(false);
 
@@ -210,6 +222,33 @@ export function AppSettingsGeneralPanel({
               Générer depuis le nom
             </Button>
           </Group>
+        </Stack>
+      </Card>
+
+      <Card withBorder shadow="sm" radius="md" padding="lg">
+        <Stack gap="md">
+          <div>
+            <Title order={4}>Calendrier RP</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Écart entre la date réelle et la date affichée partout dans l’intranet de l’entreprise. Les dates
+              enregistrées ne changent pas : seul l’affichage et la saisie suivent l’écart.
+            </Text>
+          </div>
+          <NumberInput
+            label="Écart du calendrier RP (années)"
+            description={
+              rpYearOffsetPreview
+                ? `Aujourd’hui en RP : ${rpYearOffsetPreview}`
+                : `Entre ${MIN_RP_YEAR_OFFSET} et ${MAX_RP_YEAR_OFFSET} ans`
+            }
+            min={MIN_RP_YEAR_OFFSET}
+            max={MAX_RP_YEAR_OFFSET}
+            allowDecimal={false}
+            allowNegative={false}
+            maw={320}
+            value={rpYearOffset}
+            onChange={(value) => setRpYearOffset(typeof value === 'number' ? value : '')}
+          />
         </Stack>
       </Card>
 

@@ -33,7 +33,7 @@ import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 import { getMantineLabelStyles } from '@/lib/cabinet/displaySettings';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/[businessSlug]/employee/cabinet/components/DynamicFormRenderer';
 import { CabinetFormErrorBanner } from '@/app/(loggedIn)/[businessSlug]/employee/cabinet/components/CabinetFormErrorBanner';
@@ -90,6 +90,8 @@ export function ConsultationDetailPageClient({
   initialDocuments,
   availableTemplates,
 }: ConsultationDetailPageClientProps) {
+  const rp = useRpCalendar();
+  const { formatRpDate } = rp;
   const [documents, setDocuments] = useState(initialDocuments);
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<ConsultationDocumentListItem | null>(null);
@@ -152,8 +154,8 @@ export function ConsultationDetailPageClient({
           date: consultation.date,
           customValues,
         },
-      }),
-    [consultation.careEpisode, consultation.date, customValues],
+      }, rp),
+    [consultation.careEpisode, consultation.date, customValues, rp],
   );
 
   const handleDelete = async () => {

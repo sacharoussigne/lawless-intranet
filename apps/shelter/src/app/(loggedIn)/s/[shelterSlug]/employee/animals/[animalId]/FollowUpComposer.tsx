@@ -13,7 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { RpDatePicker } from '@/app/_components/RpDateInput/RpDatePicker';
 import { MESSAGE_SIDE_LABELS } from '@/lib/animals/followUpLabels';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import type { AnimalFollowUpMessageSide } from '@/generated/prisma/client';
 import classes from './FollowUps.module.scss';
 
@@ -49,6 +49,7 @@ export function FollowUpComposer({
   onOpenTemplates: () => void;
   onSubmit: () => void;
 }) {
+  const { formatRpDate } = useRpCalendar();
   const [dateOpen, setDateOpen] = useState(false);
   const empty = !body.trim();
 
