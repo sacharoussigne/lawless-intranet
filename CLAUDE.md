@@ -7,7 +7,10 @@ Guide pour travailler sur **lawless-intranet**.
 Intranet pour un serveur **RP western (RedM, ~1890)**. Il sert à des organisations en jeu : le **dispensaire de Saint-Denis** (stock, commandes, ventes, banque, courriers, paie, activité hebdo, agenda, cabinet) et le **refuge animalier** (animaux, espèces/races, suivis, liste d'attente, documents, banque).
 
 - **Multi-tenant** : chaque organisation a un slug. Routes `/[businessSlug]/…` (business ; les slugs réservés sont dans `lib/business/slug.ts`, l'hôte peut filtrer le type d'entreprise via `BUSINESS_TYPE_HOSTS`, voir `lib/business/hosts.ts`) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
-- **Calendrier RP** : les dates sont stockées en réel et affichées **136 ans plus tôt** (`RP_DISPLAY_YEAR_OFFSET` dans `lib/rpCalendar.ts`). Ne jamais écrire de date RP en base. Côté UI, utiliser `formatRpDate`, `RpDateInput`, etc.
+- **Calendrier RP** : les dates sont stockées en réel et affichées **N ans plus tôt**. L'écart est un réglage par entreprise et par refuge (`AppSettings.rpYearOffset`, 136 par défaut : `DEFAULT_RP_YEAR_OFFSET` dans `@lawless-intranet/types`), modifiable dans Admin › Réglages. Ne jamais écrire de date RP en base ni coder une année en dur.
+  - Côté client : `useRpCalendar()` (`app/_contexts/RpCalendarContext`, alimenté par le layout du tenant) donne `formatRpDate`, `toRpDisplayDate`, `fromRpDisplayDate`, `currentYear`… Utiliser aussi `RpDateInput`, etc.
+  - Côté serveur : `createRpCalendar((await getAppSettings(id)).rpYearOffset)`, avec les réglages en cache, donc sans requête en plus.
+  - Banque : `BankUiProvider` reçoit `rpYearOffset`.
 - **Langue** : l'UI, les messages d'erreur et les docs sont en **français**. Le code (identifiants) et les messages de commit sont en **anglais**.
 
 ## Architecture (monorepo pnpm + Turborepo)

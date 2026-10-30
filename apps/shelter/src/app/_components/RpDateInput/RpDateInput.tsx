@@ -1,7 +1,7 @@
 'use client';
 
 import { DateInput, DatesProvider, type DateInputProps } from '@mantine/dates';
-import { fromRpDisplayDate, toRpDisplayDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import 'dayjs/locale/fr';
 
 export type RpDateInputProps = Omit<DateInputProps, 'value' | 'onChange' | 'defaultValue'> & {
@@ -23,6 +23,7 @@ export function RpDateInput({
   defaultDate,
   ...props
 }: RpDateInputProps) {
+  const { fromRpDisplayDate, toRpDisplayDate } = useRpCalendar();
   const realDate = toRealDate(value);
   const rpValue = realDate ? toRpDisplayDate(realDate) : null;
 

@@ -1,9 +1,10 @@
 import { Badge } from '@mantine/core';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import type { EmploymentStatus } from '@/lib/staff/types';
 
 export function EmploymentStatusBadge({ status }: { status: EmploymentStatus }) {
+  const { formatRpDate } = useRpCalendar();
   if (status.active) {
     return (
       <Badge variant="outline" radius="sm" style={apothecaryBooleanPills.yes}>

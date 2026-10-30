@@ -4,6 +4,7 @@ import { MobileTabBar } from '@/app/(loggedIn)/_components/MobileTabBar/MobileTa
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
+import { RpCalendarProvider } from '@/app/_contexts/RpCalendarContext';
 import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
 import { getAppSettings } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
@@ -114,6 +115,7 @@ export default async function BusinessLayout({
           url={getRealtimePublicUrl()}
         >
         <QueryProvider>
+          <RpCalendarProvider offset={appSettings.rpYearOffset}>
           <OrdersRealtimeBridge />
           <StockRealtimeBridge />
           <MailTemplateProvider
@@ -137,6 +139,7 @@ export default async function BusinessLayout({
           <MobileTabBar />
         </LoggedInShell>
           </MailTemplateProvider>
+          </RpCalendarProvider>
         </QueryProvider>
         </BusinessRealtimeSocketShell>
     </PermissionsProvider>

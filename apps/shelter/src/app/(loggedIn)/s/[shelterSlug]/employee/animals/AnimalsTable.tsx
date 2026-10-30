@@ -11,14 +11,15 @@ import {
   FOLLOW_UP_STATUS_LABELS,
   FOLLOW_UP_STATUS_OPTIONS,
 } from '@/lib/animals/followUpLabels';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
+import type { RpCalendar } from '@/lib/rpCalendar';
 import classes from './AnimalsPage.module.scss';
 import { parseIsoDateOnly, type AnimalDTO } from './types';
 
 export type SelectOption = { value: string; label: string };
 
 /** Relative day label + RP date in parentheses (trial display). */
-function formatLastFollowUpRelative(isoDate: string): string {
+function formatLastFollowUpRelative(isoDate: string, formatRpDate: RpCalendar['formatRpDate']): string {
   const date = parseIsoDateOnly(isoDate);
   if (!date) return '—';
 
@@ -96,6 +97,7 @@ export function AnimalsTable({
   getRowHref,
   onDelete,
 }: AnimalsTableProps) {
+  const { formatRpDate } = useRpCalendar();
   return (
     <Paper shadow="sm" p="md" withBorder>
       <DataTable
@@ -189,7 +191,7 @@ export function AnimalsTable({
               }
               return (
                 <Stack gap={4}>
-                  <Text size="sm">{formatLastFollowUpRelative(animal.lastFollowUpDate)}</Text>
+                  <Text size="sm">{formatLastFollowUpRelative(animal.lastFollowUpDate, formatRpDate)}</Text>
                   <Badge
                     size="sm"
                     radius="sm"

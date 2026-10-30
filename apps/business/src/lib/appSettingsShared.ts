@@ -6,6 +6,7 @@ import {
   isModuleAllowedForType,
 } from '@/lib/businessTypes';
 import { PAYROLL_PATIENT_CARE_USD } from '@/lib/payroll/constants';
+import { DEFAULT_RP_YEAR_OFFSET } from '@lawless-intranet/types';
 
 export { APP_FEATURE_KEYS, type AppFeatureKey };
 
@@ -30,6 +31,8 @@ export type AppSettingsDTO = {
   weeklyActivityCounters: Record<string, boolean>;
   /** Paid per patient cared for (payroll), for every salary type. Edited in the Salaires tab. */
   payrollPatientCareUsd: number;
+  /** Years between the real date and the RP date shown (display only). */
+  rpYearOffset: number;
 };
 
 export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
@@ -50,6 +53,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   weeklyActivityPresenceDaysVisible: true,
   weeklyActivityCounters: {},
   payrollPatientCareUsd: PAYROLL_PATIENT_CARE_USD,
+  rpYearOffset: DEFAULT_RP_YEAR_OFFSET,
 };
 
 /** Settings flag behind each module. */

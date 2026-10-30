@@ -12,6 +12,7 @@ import type {
   TransactionType,
   BankScheduleKind,
 } from './types';
+import { createBankRpCalendar, type BankRpCalendar } from './rpCalendar';
 
 export type CreateTransactionInput = {
   weekId: string;
@@ -67,7 +68,7 @@ export type BankUiActions = {
   ) => Promise<BankActionResult<SerializedBankTransaction>>;
   deleteTransaction: (data: { id: string }) => Promise<BankActionResult<{ success: true }>>;
   importTransactions: (
-    data: { items: ImportTransactionItem[] },
+    data: { items: ImportTransactionItem[]; rpYearOffset?: number },
   ) => Promise<BankActionResult<ImportTransactionsResult>>;
   getNameSuggestions: () => Promise<BankActionResult<BankNameSuggestions>>;
   getDescriptionSuggestions: () => Promise<BankActionResult<string[]>>;
@@ -96,6 +97,7 @@ export type BankUiActions = {
 export type BankUiContextValue = {
   scopeKey: string;
   actions: BankUiActions;
+  rp: BankRpCalendar;
 };
 
 const BankUiContext = createContext<BankUiContextValue | null>(null);
@@ -103,11 +105,14 @@ const BankUiContext = createContext<BankUiContextValue | null>(null);
 export type BankUiProviderProps = {
   scopeKey: string;
   actions: BankUiActions;
+  /** Years between real and RP dates of the scope (host setting); 136 when missing. */
+  rpYearOffset?: number;
   children: ReactNode;
 };
 
-export function BankUiProvider({ scopeKey, actions, children }: BankUiProviderProps) {
-  const value = useMemo(() => ({ scopeKey, actions }), [scopeKey, actions]);
+export function BankUiProvider({ scopeKey, actions, rpYearOffset, children }: BankUiProviderProps) {
+  const rp = useMemo(() => createBankRpCalendar(rpYearOffset), [rpYearOffset]);
+  const value = useMemo(() => ({ scopeKey, actions, rp }), [scopeKey, actions, rp]);
   return <BankUiContext.Provider value={value}>{children}</BankUiContext.Provider>;
 }
 

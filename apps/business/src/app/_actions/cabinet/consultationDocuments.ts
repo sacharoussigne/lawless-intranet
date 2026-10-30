@@ -1,5 +1,7 @@
 'use server';
 
+import { getAppSettings } from '@/lib/appSettings';
+import { createRpCalendar } from '@/lib/rpCalendar';
 import { getBusinessUserName } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
@@ -515,7 +517,7 @@ export async function generateConsultationDocumentPreview(
         date: source.consultationDate,
         customValues: source.consultationCustomValues,
       },
-    });
+    }, createRpCalendar((await getAppSettings(ctx.tenant.businessId)).rpYearOffset));
     const memberDescription =
       (await getMemberDescription(ctx.tenant.businessId, ctx.session.user.id)) ?? '';
     const preview = renderTemplate(

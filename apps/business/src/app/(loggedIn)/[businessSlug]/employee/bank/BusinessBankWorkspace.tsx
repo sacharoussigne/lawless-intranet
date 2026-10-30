@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { BankPage, BankUiProvider } from '@lawless-intranet/bank-ui';
 import type { SerializedBankWeek } from '@lawless-intranet/bank-ui';
 import { createBusinessBankActions } from '@/lib/bank/bankUiActions';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 
 type BusinessBankWorkspaceProps = {
   businessSlug: string;
@@ -18,9 +19,10 @@ export function BusinessBankWorkspace({
     () => createBusinessBankActions(businessSlug),
     [businessSlug],
   );
+  const { offset } = useRpCalendar();
 
   return (
-    <BankUiProvider scopeKey={businessSlug} actions={actions}>
+    <BankUiProvider scopeKey={businessSlug} actions={actions} rpYearOffset={offset}>
       <BankPage initialWeek={initialWeek} />
     </BankUiProvider>
   );

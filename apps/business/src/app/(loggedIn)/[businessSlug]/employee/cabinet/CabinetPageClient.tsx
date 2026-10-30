@@ -30,7 +30,7 @@ import {
   type CabinetSummaryDTO,
 } from '@/types/cabinet';
 import { tenantRoutes } from '@/types/routes';
-import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { CabinetSelector } from './components/CabinetSelector';
 import { CabinetMembersModal } from './components/CabinetMembersModal';
 import { PatientFormModal } from './components/PatientFormModal';
@@ -52,6 +52,7 @@ export function CabinetPageClient({
   initialPatients,
   isAdmin,
 }: CabinetPageClientProps) {
+  const { computeRpAge, formatRpDate } = useRpCalendar();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

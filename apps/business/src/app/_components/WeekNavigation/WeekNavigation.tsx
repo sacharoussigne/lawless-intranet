@@ -10,7 +10,7 @@ import {
   isParisWeekAfter,
 } from '@/lib/bankWeek';
 import dayjs from '@/lib/dayjs';
-import { fromRpDisplayDate, toRpDisplayDate } from '@/lib/rpCalendar';
+import { useRpCalendar as useTenantRpCalendar } from '@/app/_contexts/RpCalendarContext';
 
 interface WeekNavigationProps {
   weekStart: Date;
@@ -22,7 +22,7 @@ interface WeekNavigationProps {
   loading?: boolean;
   /** Latest selectable week (Monday, Europe/Paris). Blocks future weeks in picker and next button. */
   maxWeekStart?: Date;
-  /** Display and pick dates in RP calendar (−136 years). Stored/emitted dates stay real. */
+  /** Display and pick dates in the tenant's RP calendar. Stored/emitted dates stay real. */
   useRpCalendar?: boolean;
 }
 
@@ -37,6 +37,7 @@ export function WeekNavigation({
   maxWeekStart,
   useRpCalendar = false,
 }: WeekNavigationProps) {
+  const { fromRpDisplayDate, toRpDisplayDate } = useTenantRpCalendar();
   const displayStart = useRpCalendar ? toRpDisplayDate(weekStart) : weekStart;
   const displayEnd = useRpCalendar ? toRpDisplayDate(weekEnd) : weekEnd;
   const weekRange = `${dayjs(displayStart).tz('Europe/Paris').format('D MMM')} - ${dayjs(displayEnd).tz('Europe/Paris').format('D MMM YYYY')}`;

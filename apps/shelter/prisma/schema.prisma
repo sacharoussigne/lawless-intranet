@@ -85,6 +85,8 @@ model AppSettings {
   shelterName         String   @default("Refuge")
   featureBankEnabled  Boolean  @default(true)
   featureMediaEnabled Boolean  @default(true)
+  /// Years between the real date and the RP date shown (2026 → 1890). Display only: dates stay real in the database.
+  rpYearOffset        Int      @default(136)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

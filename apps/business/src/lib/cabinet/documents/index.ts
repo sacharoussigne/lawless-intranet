@@ -3,7 +3,7 @@ import type {
   DocumentRecord,
   TemplateRecord,
 } from '@lawless-intranet/types';
-import { formatRpDate } from '@/lib/rpCalendar';
+import type { RpCalendar } from '@/lib/rpCalendar';
 
 export const CONSULTATION_DOCUMENT_TEMPLATE_TYPE = 'consultation-document-template';
 export const CONSULTATION_DOCUMENT_TYPE = 'consultation-document';
@@ -73,6 +73,7 @@ function appendCustomVariables(
 
 export function buildConsultationTemplateVariables(
   source: ConsultationTemplateVariableSource,
+  { formatRpDate }: RpCalendar,
 ): Record<string, string> {
   const patientFullName = `${source.patient.firstName} ${source.patient.lastName}`.trim();
   const variables: Record<string, string> = {

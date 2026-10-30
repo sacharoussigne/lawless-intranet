@@ -114,7 +114,7 @@ export function ImportTransactionsModal({
   onClose,
   onImported,
 }: ImportTransactionsModalProps) {
-  const { actions } = useBankUi();
+  const { actions, rp } = useBankUi();
   const [raw, setRaw] = useState('');
   const [pending, setPending] = useState(false);
   const [jsonOpen, setJsonOpen] = useState<string | null>('source');
@@ -149,7 +149,7 @@ export function ImportTransactionsModal({
     if (preview.items.length === 0) return;
     setPending(true);
     try {
-      const result = await actions.importTransactions({ items: preview.items });
+      const result = await actions.importTransactions({ items: preview.items, rpYearOffset: rp.offset });
       if (result.status >= 400 || !('data' in result) || !result.data) {
         notifications.show({
           title: 'Import impossible',
@@ -176,7 +176,7 @@ export function ImportTransactionsModal({
 
   const jsonTextarea = (
     <Textarea
-      placeholder='[{ "date": "10/08/1890 18:16", "type": "TRANSFER_OUT", "name": "…", "description": "…", "amount": 2 }]'
+      placeholder={`[{ "date": "10/08/${rp.currentYear} 18:16", "type": "TRANSFER_OUT", "name": "…", "description": "…", "amount": 2 }]`}
       value={raw}
       onChange={(e) => handleRawChange(e.currentTarget.value)}
       rows={8}
@@ -217,7 +217,7 @@ export function ImportTransactionsModal({
         <Stack gap="sm" style={{ flexShrink: 0 }}>
           <Text size="sm" c="dimmed">
             Collez un tableau JSON ou chargez un fichier. Les dates sont en calendrier RP
-            (ex. 10/08/1890 18:16). Les doublons déjà présents sont ignorés.
+            (ex. 10/08/{rp.currentYear} 18:16). Les doublons déjà présents sont ignorés.
           </Text>
 
           <Group justify="space-between" align="center">

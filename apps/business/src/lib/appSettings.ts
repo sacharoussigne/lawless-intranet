@@ -39,6 +39,7 @@ function mapFromDb(businessType: BusinessType, row: {
   weeklyActivityPresenceDaysVisible: boolean;
   weeklyActivityCounters: unknown;
   payrollPatientCareUsd: { toNumber(): number } | number;
+  rpYearOffset: number;
 }): AppSettingsDTO {
   return {
     businessType,
@@ -65,6 +66,7 @@ function mapFromDb(businessType: BusinessType, row: {
       APP_SETTINGS_DEFAULTS.weeklyActivityPresenceDaysVisible,
     weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
     payrollPatientCareUsd: Number(row.payrollPatientCareUsd),
+    rpYearOffset: row.rpYearOffset,
   };
 }
 
@@ -89,7 +91,7 @@ export async function loadAppSettingsFromDb(businessId: string): Promise<AppSett
 export function getAppSettings(businessId: string) {
   return unstable_cache(
     () => loadAppSettingsFromDb(businessId),
-    ['app-settings', businessId, 'v5'],
+    ['app-settings', businessId, 'v6'],
     {
       tags: [appSettingsCacheTag(businessId)],
       revalidate: 86400,

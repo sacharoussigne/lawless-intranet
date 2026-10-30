@@ -25,7 +25,7 @@ import {
   FOLLOW_UP_STATUS_LABELS,
   isFollowUpClosed,
 } from '@/lib/animals/followUpLabels';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import pageClasses from '../AnimalsPage.module.scss';
 import {
   actionErrorMessage,
@@ -55,6 +55,7 @@ export function AnimalFollowUpsSection({
   defaultConductedByUserId: string;
   canUpdate: boolean;
 }) {
+  const { formatRpDate } = useRpCalendar();
   const router = useRouter();
   const t = useTenantRoutes();
   const [followUps, setFollowUps] = useState<FollowUpDTO[]>([]);

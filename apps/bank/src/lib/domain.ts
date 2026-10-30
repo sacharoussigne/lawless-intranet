@@ -572,16 +572,14 @@ export async function getGlobalStats(scopeType: string, scopeId: string) {
   };
 }
 
-const RP_DISPLAY_YEAR_OFFSET = 136;
-
-/** Parse RP `DD/MM/YYYY[ HH:mm]` → Paris wall time (+136y). `sortAt` equals that instant for ordering. */
-function parseRpImportDate(raw: string): { date: Date; sortAt: number } | null {
+/** Parse RP `DD/MM/YYYY[ HH:mm]` → Paris wall time (+ the scope's RP offset). `sortAt` equals that instant for ordering. */
+function parseRpImportDate(raw: string, rpYearOffset: number): { date: Date; sortAt: number } | null {
   const trimmed = raw.trim();
   let parsed = dayjs(trimmed, 'DD/MM/YYYY HH:mm', true);
   if (!parsed.isValid()) parsed = dayjs(trimmed, 'DD/MM/YYYY', true);
   if (!parsed.isValid()) return null;
 
-  const year = parsed.year() + RP_DISPLAY_YEAR_OFFSET;
+  const year = parsed.year() + rpYearOffset;
   const month = parsed.month() + 1;
   const day = parsed.date();
   const hour = parsed.hour();
@@ -623,6 +621,7 @@ export async function importTransactions(input: {
     description?: string | null;
     amount: number;
   }>;
+  rpYearOffset: number;
 }) {
   const errors: Array<{ index: number; message: string }> = [];
   const parsed: Array<{
@@ -636,7 +635,7 @@ export async function importTransactions(input: {
   }> = [];
 
   input.items.forEach((item, index) => {
-    const parsedDate = parseRpImportDate(item.date);
+    const parsedDate = parseRpImportDate(item.date, input.rpYearOffset);
     if (!parsedDate) {
       errors.push({ index, message: `Date invalide : ${item.date}` });
       return;

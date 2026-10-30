@@ -3,7 +3,7 @@
 import { Fragment } from 'react';
 import { Badge, Group, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import { apothecaryBooleanPills } from '@/lib/apothecaryPill';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { groupStaffByGrade } from '@/lib/staff/orgChart';
 import type { BusinessPerson } from '@/lib/people/types';
 import classes from './OrgChart.module.scss';
@@ -16,6 +16,7 @@ export function OrgChart({
   people: BusinessPerson[];
   onOpenPerson: (person: BusinessPerson) => void;
 }) {
+  const { formatRpDate } = useRpCalendar();
   const levels = groupStaffByGrade(people.filter((person) => person.employment.active));
 
   if (levels.length === 0) {

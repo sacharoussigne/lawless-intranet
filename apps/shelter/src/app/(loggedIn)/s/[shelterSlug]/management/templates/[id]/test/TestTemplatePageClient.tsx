@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import Link from 'next/link';
 import {
   Button,
@@ -23,7 +25,8 @@ import {
 } from '@lawless-intranet/mail-template-ui';
 import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
-import { SAMPLE_ANIMAL_TEMPLATE_VARIABLES } from '../../sampleAnimalTemplateVariables';
+import { sampleAnimalTemplateVariables } from '../../sampleAnimalTemplateVariables';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 
 interface TestTemplatePageClientProps {
   template: AnimalDocumentTemplateListItem;
@@ -33,9 +36,11 @@ export default function TestTemplatePageClient({
   template,
 }: TestTemplatePageClientProps) {
   const routes = useTenantRoutes();
+  const { currentYear } = useRpCalendar();
+  const sampleVariables = useMemo(() => sampleAnimalTemplateVariables(currentYear), [currentYear]);
   const preview = useTemplatePreviewActions(
     template.content,
-    SAMPLE_ANIMAL_TEMPLATE_VARIABLES,
+    sampleVariables,
   );
 
   return (
@@ -81,7 +86,7 @@ export default function TestTemplatePageClient({
         {preview.hasInputs ? (
           <TemplatePreviewWithForm
             templateContent={template.content}
-            variables={SAMPLE_ANIMAL_TEMPLATE_VARIABLES}
+            variables={sampleVariables}
             resultLabel="Résultat"
             formRef={preview.formRef}
             onFormChange={preview.setFormContent}

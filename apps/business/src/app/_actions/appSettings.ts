@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { updateTag } from 'next/cache';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
+import { MAX_RP_YEAR_OFFSET, MIN_RP_YEAR_OFFSET } from '@lawless-intranet/types';
 import { actionErrorParser } from '@/lib/action';
 import {
   appSettingsCacheTag,
@@ -31,6 +32,12 @@ const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug invalide (lettres minuscules, chiffres et tirets)')
   .refine((slug) => !isReservedBusinessSlug(slug), RESERVED_BUSINESS_SLUG_MESSAGE);
 
+const rpYearOffsetSchema = z
+  .number({ invalid_type_error: "L'écart du calendrier RP est requis" })
+  .int("L'écart du calendrier RP doit être un nombre entier d'années")
+  .min(MIN_RP_YEAR_OFFSET, `L'écart du calendrier RP doit être d'au moins ${MIN_RP_YEAR_OFFSET} an`)
+  .max(MAX_RP_YEAR_OFFSET, `L'écart du calendrier RP ne peut pas dépasser ${MAX_RP_YEAR_OFFSET} ans`);
+
 const updateSchema = z.object({
   businessName: z
     .string()
@@ -52,6 +59,7 @@ const updateSchema = z.object({
   weeklyActivityChestDaysVisible: z.boolean(),
   weeklyActivityPresenceDaysVisible: z.boolean(),
   weeklyActivityCounters: z.record(z.string(), z.boolean()),
+  rpYearOffset: rpYearOffsetSchema,
 });
 
 export async function getAppSettingsForAdmin(
@@ -155,6 +163,7 @@ async function updateAppSettingsUnlogged(
           weeklyActivityChestDaysVisible: parsed.data.weeklyActivityChestDaysVisible,
           weeklyActivityPresenceDaysVisible: parsed.data.weeklyActivityPresenceDaysVisible,
           weeklyActivityCounters: counterSettings,
+          rpYearOffset: parsed.data.rpYearOffset,
         },
         update: {
           businessName: parsed.data.businessName,
@@ -173,6 +182,7 @@ async function updateAppSettingsUnlogged(
           weeklyActivityChestDaysVisible: parsed.data.weeklyActivityChestDaysVisible,
           weeklyActivityPresenceDaysVisible: parsed.data.weeklyActivityPresenceDaysVisible,
           weeklyActivityCounters: counterSettings,
+          rpYearOffset: parsed.data.rpYearOffset,
         },
       }),
     ]);
@@ -203,6 +213,7 @@ async function updateAppSettingsUnlogged(
       weeklyActivityPresenceDaysVisible: row.weeklyActivityPresenceDaysVisible ?? true,
       weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
       payrollPatientCareUsd: Number(row.payrollPatientCareUsd),
+      rpYearOffset: row.rpYearOffset,
     };
 
     return { status: 200, data };
