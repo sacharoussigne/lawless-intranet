@@ -1,5 +1,7 @@
 'use client';
 
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
+import { formatOrderDateRange } from '@/lib/orders/chatterLines';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Container,
@@ -46,24 +48,12 @@ interface OrdersPageClientProps {
   initialAssignments: OrderMailTemplateAssignment[];
 }
 
-function formatDateRangeChip(from: string | null, to: string | null): string {
-  const format = (iso: string) =>
-    new Date(iso).toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  if (from && to) return `${format(from)} → ${format(to)}`;
-  if (from) return `Depuis ${format(from)}`;
-  if (to) return `Jusqu'au ${format(to)}`;
-  return '';
-}
-
 export default function OrdersPageClient({
   initialOrdersPage,
   initialAssignments,
 }: OrdersPageClientProps) {
   const { permissions } = usePermissions();
+  const rp = useRpCalendar();
   const businessSlug = useRequiredBusinessSlug();
   const router = useRouter();
   const routes = useTenantRoutes();
@@ -274,7 +264,7 @@ export default function OrdersPageClient({
                 label: 'Date de création',
                 value:
                   filters.createdAtFrom || filters.createdAtTo
-                    ? formatDateRangeChip(filters.createdAtFrom, filters.createdAtTo)
+                    ? formatOrderDateRange(filters.createdAtFrom, filters.createdAtTo, rp)
                     : null,
                 onRemove: () => handleCreatedAtRangeChange(null, null),
               },

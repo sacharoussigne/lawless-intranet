@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { OrderEventRecord } from '@lawless-intranet/types';
 import {
   chatterDayLabel,
+  formatOrderDateRange,
+  formatOrderDateTime,
   describeOrderChange,
   describeOrderEventAction,
   groupEventsByDay,
   splitChangeLine,
 } from './chatterLines';
+import { createRpCalendar } from '@/lib/rpCalendar';
 
 const people = { u1: { userId: 'u1', name: 'Sacha', image: null } };
 
@@ -70,13 +73,21 @@ describe('describeOrderEventAction', () => {
   });
 });
 
+const rp = createRpCalendar(136);
+
 describe('chatter days', () => {
   const now = new Date(2026, 9, 21, 20, 0);
 
   it('names today and yesterday', () => {
-    expect(chatterDayLabel(new Date(2026, 9, 21, 8, 0).toISOString(), now)).toBe('Aujourd’hui');
-    expect(chatterDayLabel(new Date(2026, 9, 20, 23, 0).toISOString(), now)).toBe('Hier');
-    expect(chatterDayLabel(new Date(2026, 9, 5, 12, 0).toISOString(), now)).toBe('5 oct. 2026');
+    expect(chatterDayLabel(new Date(2026, 9, 21, 8, 0).toISOString(), rp, now)).toBe('Aujourd’hui');
+    expect(chatterDayLabel(new Date(2026, 9, 20, 23, 0).toISOString(), rp, now)).toBe('Hier');
+    expect(chatterDayLabel(new Date(2026, 9, 5, 12, 0).toISOString(), rp, now)).toBe('5 oct. 1890');
+  });
+
+  it('writes dates in the RP calendar of the business', () => {
+    const iso = new Date(2026, 9, 5, 19, 54).toISOString();
+    expect(formatOrderDateTime(iso, rp)).toBe('5 oct. 1890 à 19:54');
+    expect(formatOrderDateRange(iso, null, createRpCalendar(130))).toBe('Depuis 5 oct. 1896');
   });
 
   it('groups consecutive events of a day', () => {
