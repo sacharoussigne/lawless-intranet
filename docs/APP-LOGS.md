@@ -9,6 +9,7 @@ Journal **à l'échelle de l'application** (pas d'un dispensaire), lu par les ad
 | **Chaque modification** (création, modification, suppression, action métier) de **toutes** les features, quel que soit le résultat | `ACTION` | `INFO` réussi ou rien à faire, `WARN` refusé ou invalide, `ERROR` échec | `loggedAction` sur chaque mutation exportée de `src/app/_actions/**` ; `withLoggedAction` (libellés français, cas « déjà fait ») pour l'activité hebdo et la paie |
 | Erreur serveur (500, exception inattendue), **lectures comprises** | `ERROR` | `ERROR` | automatique : `actionErrorParser` / `serviceActionError` (`src/lib/action.ts`, `src/lib/serviceAction.ts`) |
 | **Chaque requête** du bot Discord | `BOT_REQUEST` | `INFO` 2xx, `WARN` 4xx, `ERROR` 5xx | `withBotRouteLog` sur les routes `src/app/api/dispensary/weekly-activity/**`, `api/dispensary/bank/bot/**` et `api/dispensary/bot/**` (entreprises, rapport de paie) |
+| **Erreur côté bot**, que l'intranet ne voit jamais : accusé de réception Discord trop tard, intranet injoignable ou trop lent, réponse illisible, exception du bot | `ERROR` (source bot, événement `bot.client.*`) | `WARN` (lent) ou `ERROR` | le bot les envoie à `POST /api/dispensary/bot/client-log` (`src/lib/logs/botClientLog.ts`) |
 
 Les **lectures** (`get…`, `list…`, `search…`), rappelées en permanence par React Query et le temps réel, ne sont loguées qu'en cas d'erreur serveur. Une page qui recharge ses données ne crée donc aucune ligne.
 
@@ -59,7 +60,14 @@ Filtrer par Discord id ou par nom (champ « Personne ») et par période, type �
 - **`noop`** (« rien à faire ») : c'était déjà fait (ex. caisse déjà cochée), le message renvoyé au bot est dans la ligne ;
 - **`denied` / `invalid`** : refus (secret, feature désactivée, champ masqué) ou demande invalide (jour futur, hors de la semaine…), la raison est dans le message ;
 - **`failure`** : erreur serveur, la stack et sa cause sont dans le détail (ex. `fetch failed` → cause `ECONNREFUSED` : un service n'a pas répondu) ;
-- **aucune ligne** : la requête n'est jamais arrivée au serveur → problème côté bot ou réseau.
+- **une ligne `bot.client.*`** : le bot a échoué de son côté, la cause est dans la ligne :
+  - `interaction.expired` : le bot a accusé réception après les 3 s de Discord, qui affiche « Dispensaire n'a pas répondu à temps ». `ageMs` (clic → reçu par le bot), `ackMs` (clic → accusé de réception) et `workMs` (calcul de l'écran) disent où le temps est passé. Les requêtes du clic peuvent quand même avoir réussi ;
+  - `interaction.slow` (`WARN`) : accusé de réception juste à temps (plus de 2,5 s) ;
+  - `api.unreachable`, `api.timeout`, `api.invalidResponse` : l'intranet n'a pas répondu, ou pas en JSON ;
+  - `bot.exception` : erreur inattendue dans le bot ;
+- **aucune ligne du tout** : la requête n'est jamais arrivée au serveur et le bot n'a rien pu envoyer → bot arrêté ou réseau coupé.
+
+Toutes les lignes d'un même clic (requêtes reçues par l'intranet et erreurs du bot) portent l'id de l'interaction Discord (en-tête `X-Bot-Interaction-Id`) comme **objet visé** : « Voir son historique » affiche tout le clic.
 
 Les dates de la page sont en **heure réelle** (pas le calendrier RP), pour les comparer aux horodatages de Discord.
 
