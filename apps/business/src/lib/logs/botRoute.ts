@@ -4,6 +4,7 @@ import {
   getBusinessIdFromBotRequest,
   isBusinessBotApiAuthorized,
 } from '@/lib/businessWeeklyActivityApiAuth';
+import { interactionIdFromHeaders } from './botClientLog';
 import { serializeError } from './sanitize';
 import { levelFromOutcome, outcomeFromStatus, type LogFeature, type LogOutcome } from './types';
 import { writeAppLog } from './writer';
@@ -60,6 +61,7 @@ export function withBotRouteLog<Req extends Request, Ctx = unknown>(
     // The bot helpers only read headers and the URL, which every Request has.
     const botRequest = request as unknown as BotRequest;
     const authorized = isBusinessBotApiAuthorized(botRequest);
+    const interactionId = authorized ? interactionIdFromHeaders(request.headers) : null;
     const url = new URL(request.url);
     // The body is only read from authorized requests (no secrets, no junk from strangers).
     const bodyText =
@@ -95,8 +97,11 @@ export function withBotRouteLog<Req extends Request, Ctx = unknown>(
       httpStatus: response.status,
       durationMs: Date.now() - startedAt,
       path: url.pathname,
+      // Same id as the bot's own lines for this click (`bot.client.*`): « Objet (id) » shows the whole click.
+      targetId: interactionId,
       context: {
         authorized,
+        ...(interactionId ? { interactionId } : {}),
         query: Object.fromEntries(url.searchParams),
         body: parseJson(bodyText),
         response: summary,
