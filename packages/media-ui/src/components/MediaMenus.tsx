@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu } from '@mantine/core';
+import { Kbd, Menu } from '@mantine/core';
 import {
   IconArrowsMove,
   IconCopy,
@@ -25,12 +25,24 @@ export type BackgroundMenuActions = {
   onCreateLink: () => void;
   onUpload: () => void;
   uploadDisabled?: boolean;
+  /** Keyboard shortcuts next to the entries (not on touch screens). */
+  showShortcuts?: boolean;
 };
 
-export function BackgroundMenuItems({ onCreateFolder, onCreateLink, onUpload, uploadDisabled }: BackgroundMenuActions) {
+export function BackgroundMenuItems({
+  onCreateFolder,
+  onCreateLink,
+  onUpload,
+  uploadDisabled,
+  showShortcuts = false,
+}: BackgroundMenuActions) {
   return (
     <>
-      <Menu.Item leftSection={<IconFolderPlus size={16} />} onClick={onCreateFolder}>
+      <Menu.Item
+        leftSection={<IconFolderPlus size={16} />}
+        rightSection={showShortcuts ? <Kbd size="xs">Maj N</Kbd> : undefined}
+        onClick={onCreateFolder}
+      >
         Nouveau dossier
       </Menu.Item>
       {/* No storage needed: available even when uploads are not. */}
