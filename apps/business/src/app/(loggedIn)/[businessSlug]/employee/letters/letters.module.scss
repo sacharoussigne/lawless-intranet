@@ -3,22 +3,23 @@
 .toolbar {
   display: flex;
   align-items: center;
-  gap: var(--mantine-spacing-sm);
+  gap: var(--mantine-spacing-xs);
   flex-wrap: wrap;
-  margin-bottom: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-xs);
 }
 
 .title {
-  margin: 0;
+  margin: 0 4px 0 0;
   font-family: var(--disp-font-display);
   font-weight: 400;
-  font-size: 1.6rem;
+  font-size: 1.3rem;
+  line-height: 1.2;
   color: var(--disp-ink);
 }
 
 .searchTrigger {
-  flex: 1 1 220px;
-  max-width: 420px;
+  flex: 1 1 200px;
+  max-width: 360px;
   margin-left: auto;
 }
 
@@ -30,13 +31,21 @@
   background: var(--disp-surface);
   box-shadow: var(--disp-shadow-xs);
   overflow: hidden;
-  /* The page scrolls inside each pane, like a messaging app. */
-  height: calc(100dvh - 210px);
-  min-height: 480px;
+  /*
+   * Ends at the bottom of the viewport (`--letters-top` is measured by useFillViewport): only the panes
+   * scroll, like a messaging app. Phones also leave room for the tab bar (`.disp-mobile-tab-space`).
+   */
+  height: calc(100dvh - var(--letters-top, 160px) - var(--mantine-spacing-sm));
+  min-height: 420px;
+  margin-bottom: var(--mantine-spacing-sm);
 
   @media (max-width: 47.99em) {
     grid-template-columns: minmax(0, 1fr);
-    height: calc(100dvh - var(--disp-tabbar-height, 0px) - 150px);
+    height: calc(
+      100dvh - var(--letters-top, 120px) - var(--disp-tabbar-height) - var(--disp-safe-bottom) -
+        var(--mantine-spacing-md)
+    );
+    margin-bottom: 0;
   }
 }
 

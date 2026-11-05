@@ -40,7 +40,7 @@ export default async function LettersPage({
   const query = await searchParams;
 
   return (
-    <Container size="xl" py={{ base: 'xs', sm: 'lg' }}>
+    <Container size="xl" pt="xs" pb={0}>
       <SuspenseLoader>
         <LettersContent businessSlug={businessSlug} boxId={param(query.box)} correspondentId={param(query.c)} />
       </SuspenseLoader>

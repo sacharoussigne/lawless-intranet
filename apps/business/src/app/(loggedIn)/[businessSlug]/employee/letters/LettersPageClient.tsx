@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Badge, Button, Group, Kbd, Select, Stack, Text, UnstyledButton } from '@mantine/core';
 import { useWindowEvent } from '@mantine/hooks';
@@ -15,6 +15,7 @@ import {
   type LetterDTO,
   type LetterSearchHitDTO,
 } from '@/types/letters';
+import { useFillViewport } from './hooks/useFillViewport';
 import { useLetterCorrespondents, useLettersRealtime } from './hooks/useLettersQueries';
 import { Conversation } from './components/Conversation';
 import { CorrespondentFormModal } from './components/CorrespondentFormModal';
@@ -44,6 +45,9 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
   const correspondentId = searchParams.get('c') ?? initial.correspondentId;
   const correspondent = correspondents.find((entry) => entry.id === correspondentId) ?? null;
   useLettersRealtime(boxId);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
+  useFillViewport(layoutRef, toolbarRef);
 
   const [focus, setFocus] = useState<{ letterId: string; archived: boolean; nonce: number } | null>(null);
   const [form, setForm] = useState<FormState>(null);
@@ -81,13 +85,13 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
 
   return (
     <>
-      <div className={classes.toolbar}>
-        <IconMailbox size={28} stroke={1.4} color="var(--disp-sage)" />
+      <div ref={toolbarRef} className={classes.toolbar}>
+        <IconMailbox size={22} stroke={1.4} color="var(--disp-sage)" />
         <h1 className={classes.title}>Lettres</h1>
         {initial.boxes.length > 1 ? (
           <Select
-            size="sm"
-            w={220}
+            size="xs"
+            w={200}
             aria-label="Boîte aux lettres"
             data={initial.boxes.map((entry) => ({ value: entry.id, label: entry.name }))}
             value={boxId}
@@ -95,34 +99,42 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
             onChange={(value) => value && value !== boxId && router.push(`${pathname}?box=${encodeURIComponent(value)}`)}
           />
         ) : (
-          <Text fw={600}>{box.name}</Text>
+          <Text size="sm" fw={600}>
+            {box.name}
+          </Text>
         )}
-        <Badge variant="outline" radius="sm" style={apothecaryPillStyle(slatePalette)}>
+        <Badge size="sm" variant="outline" radius="sm" style={apothecaryPillStyle(slatePalette)}>
           {letterBoxAccessLevelLabel(box.accessLevel)}
         </Badge>
         <UnstyledButton className={classes.searchTrigger} onClick={() => setSpotlightOpen(true)} aria-label="Rechercher une lettre">
           <Group
             gap="xs"
             px="sm"
-            py={6}
+            py={4}
             wrap="nowrap"
             style={{ border: '1px solid var(--disp-surface-border)', borderRadius: 'var(--mantine-radius-md)', background: 'var(--disp-surface)' }}
           >
-            <IconSearch size={16} color="var(--disp-ink-muted)" />
-            <Text size="sm" c="dimmed" style={{ flex: 1 }} truncate="end">
+            <IconSearch size={14} color="var(--disp-ink-muted)" />
+            <Text size="xs" c="dimmed" style={{ flex: 1 }} truncate="end">
               Rechercher une lettre, un nom, un n° de série…
             </Text>
             <Kbd size="xs" visibleFrom="sm">Ctrl K</Kbd>
           </Group>
         </UnstyledButton>
         {initial.canManageMembers ? (
-          <Button variant="light" color="slate" leftSection={<IconUsers size={16} />} onClick={() => setMembersOpen(true)}>
+          <Button
+            size="xs"
+            variant="light"
+            color="slate"
+            leftSection={<IconUsers size={14} />}
+            onClick={() => setMembersOpen(true)}
+          >
             Accès
           </Button>
         ) : null}
       </div>
 
-      <div className={classes.layout}>
+      <div ref={layoutRef} className={classes.layout}>
         <aside className={`${classes.contacts} ${correspondent ? classes.hideOnPhone : ''}`} aria-label="Correspondants">
           <CorrespondentList
             correspondents={correspondents}
