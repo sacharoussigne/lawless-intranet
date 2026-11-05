@@ -153,9 +153,13 @@ export function useLetterImageUploads(boxId: string, limits: MediaLimitsRecord, 
     }
   }, [boxId, images, slug]);
 
+  /** Letter saved: its images belong to it now (nothing to discard). */
+  const clear = useCallback(() => setImages([]), []);
+
   return {
     images,
     setImages,
+    clear,
     add,
     remove,
     discardFresh,

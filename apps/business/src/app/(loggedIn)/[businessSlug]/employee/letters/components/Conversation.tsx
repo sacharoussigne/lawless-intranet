@@ -16,18 +16,19 @@ import {
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconMailPlus, IconPencil, IconSearch } from '@tabler/icons-react';
+import { IconArrowLeft, IconPencil, IconSearch } from '@tabler/icons-react';
 import { MediaViewer, copyImageToClipboard } from '@lawless-intranet/media-ui';
-import type { MediaFileRecord } from '@lawless-intranet/types';
+import type { MediaFileRecord, MediaLimitsRecord } from '@lawless-intranet/types';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
 import { archiveLetter, deleteLetter, unarchiveLetter } from '@/app/_actions/letters/letters';
 import { handleAction } from '@/lib/action';
 import { fetchRead } from '@/lib/read/fetchRead';
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
-import type { LetterCorrespondentDTO, LetterDTO } from '@/types/letters';
+import type { LetterCorrespondentDTO, LetterDTO, LetterReplyRefDTO } from '@/types/letters';
 import { useLetterBoxMutation, useLetterConversation, type ConversationFilters } from '../hooks/useLettersQueries';
 import { LetterBubble } from './LetterBubble';
+import { LetterComposer } from './LetterComposer';
 import classes from '../letters.module.scss';
 
 const HIGHLIGHT_MS = 2500;
@@ -55,8 +56,8 @@ export function Conversation({
   initialLetters,
   focus,
   onBack,
-  onAddLetter,
-  onReply,
+  limits,
+  paused,
   onEditLetter,
   onEditCorrespondent,
 }: {
@@ -67,8 +68,9 @@ export function Conversation({
   /** Letter to scroll to and highlight (from the search). The parent remounts the conversation for each request. */
   focus: { letterId: string; archived: boolean } | null;
   onBack: () => void;
-  onAddLetter: () => void;
-  onReply: (letter: LetterDTO) => void;
+  limits: MediaLimitsRecord;
+  /** A dialog of the page is open (edit form…): the message bar leaves paste and drop to it. */
+  paused: boolean;
   onEditLetter: (letter: LetterDTO) => void;
   onEditCorrespondent: () => void;
 }) {
@@ -84,6 +86,7 @@ export function Conversation({
   const letters = useMemo(() => conversation.data ?? [], [conversation.data]);
   const [viewer, setViewer] = useState<{ letter: LetterDTO; index: number } | null>(null);
   const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<LetterReplyRefDTO | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const bubbles = useRef(new Map<string, HTMLDivElement>());
 
@@ -201,7 +204,9 @@ export function Conversation({
               <Text size="sm" c="dimmed">
                 {debouncedSearch
                   ? 'Essayez un autre mot, le n° de série, ou cochez « Archivées ».'
-                  : 'Collez une capture (Ctrl/Cmd + V), glissez une image ici, ou utilisez « Ajouter une lettre ».'}
+                  : canWrite
+                    ? 'Collez les captures de sa lettre (Ctrl/Cmd + V) ou glissez-les ici, puis envoyez.'
+                    : 'Les lettres ajoutées apparaîtront ici.'}
               </Text>
             </Stack>
           </div>
@@ -222,7 +227,9 @@ export function Conversation({
                   highlighted={highlighted === letter.id}
                   canWrite={canWrite}
                   onOpenImage={(target, imageIndex) => setViewer({ letter: target, index: imageIndex })}
-                  onReply={onReply}
+                  onReply={(target) =>
+                    setReplyTo({ id: target.id, serial: target.serial, title: target.title, direction: target.direction })
+                  }
                   onEdit={onEditLetter}
                   onToggleArchived={(target) => archive.mutate(target)}
                   onDelete={async (target) => {
@@ -237,14 +244,15 @@ export function Conversation({
       </div>
 
       {canWrite ? (
-        <footer className={classes.composerBar}>
-          <Text size="xs" c="dimmed" className={classes.composerHint} visibleFrom="sm">
-            Astuce : collez une capture (Ctrl/Cmd + V) ou glissez une image ici pour ajouter une lettre.
-          </Text>
-          <Button color="sage" leftSection={<IconMailPlus size={16} />} onClick={onAddLetter} ml="auto">
-            Ajouter une lettre
-          </Button>
-        </footer>
+        <LetterComposer
+          boxId={boxId}
+          limits={limits}
+          correspondent={correspondent}
+          replyTo={replyTo}
+          onClearReply={() => setReplyTo(null)}
+          paused={paused || viewer !== null}
+          onSent={() => feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' })}
+        />
       ) : null}
 
       <MediaViewer

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActionIcon,
   Button,
@@ -24,7 +24,7 @@ import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
 import { RpDateInput } from '@/app/_components/RpDatePicker/RpDateInput';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { createLetterCorrespondent } from '@/app/_actions/letters/correspondents';
-import { createLetter, updateLetter } from '@/app/_actions/letters/letters';
+import { updateLetter } from '@/app/_actions/letters/letters';
 import { getTodayRealDate } from '@/lib/rpCalendar';
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import type { LetterCorrespondentDTO, LetterDTO, LetterDirection, LetterReplyRefDTO } from '@/types/letters';
@@ -36,18 +36,10 @@ import classes from '../letters.module.scss';
 /** Value of the « Ajouter « X » » option of the correspondent list. */
 const CREATE_VALUE_PREFIX = '__create__:';
 
-export type LetterFormSeed = {
-  /** Letter to edit; null to add one. */
-  letter: LetterDTO | null;
-  correspondentId: string | null;
-  replyTo: LetterReplyRefDTO | null;
-  /** Images dropped or pasted to open the form. */
-  files: File[];
-};
 
 /**
- * Add or edit a letter. Mounted with a new `key` for each opening, so its state
- * starts from the seed (and the images dropped or pasted to open it upload at once).
+ * Edit a letter (letters are added with the message bar of the conversation).
+ * Mounted with a new `key` for each opening, so its state starts from the letter.
  */
 export function LetterFormModal({
   opened,
@@ -55,7 +47,7 @@ export function LetterFormModal({
   boxId,
   limits,
   correspondents,
-  seed,
+  letter: editing,
   onSaved,
 }: {
   opened: boolean;
@@ -63,32 +55,24 @@ export function LetterFormModal({
   boxId: string;
   limits: MediaLimitsRecord;
   correspondents: LetterCorrespondentDTO[];
-  seed: LetterFormSeed;
+  letter: LetterDTO;
   onSaved: (letter: { id: string; correspondentId: string }) => void;
 }) {
   const { formatRpDate } = useRpCalendar();
-  const editing = seed.letter;
   const [direction, setDirection] = useState<LetterDirection>(
-    editing?.direction ?? (seed.replyTo ? (seed.replyTo.direction === 'RECEIVED' ? 'SENT' : 'RECEIVED') : 'RECEIVED'),
+    editing.direction,
   );
   const [correspondentId, setCorrespondentId] = useState<string | null>(
-    editing?.correspondentId ?? seed.correspondentId,
+    editing.correspondentId,
   );
   const [correspondentSearch, setCorrespondentSearch] = useState('');
-  const [title, setTitle] = useState(editing?.title ?? '');
-  const [transcript, setTranscript] = useState(editing?.transcript ?? '');
-  const [letterDate, setLetterDate] = useState<Date | null>(editing?.letterDate ?? getTodayRealDate());
-  const [replyTo, setReplyTo] = useState<LetterReplyRefDTO | null>(editing?.replyTo ?? seed.replyTo);
+  const [title, setTitle] = useState(editing.title);
+  const [transcript, setTranscript] = useState(editing.transcript ?? '');
+  const [letterDate, setLetterDate] = useState<Date | null>(editing.letterDate);
+  const [replyTo, setReplyTo] = useState<LetterReplyRefDTO | null>(editing.replyTo);
   const [extraCorrespondents, setExtraCorrespondents] = useState<{ id: string; name: string }[]>([]);
-  const uploads = useLetterImageUploads(boxId, limits, editing ? toFormImages(editing.images) : []);
-  const seeded = useRef(false);
+  const uploads = useLetterImageUploads(boxId, limits, toFormImages(editing.images));
   const { add } = uploads;
-  // Images that opened the form (dropped or pasted): uploaded once, as soon as it opens.
-  useEffect(() => {
-    if (seeded.current || seed.files.length === 0) return;
-    seeded.current = true;
-    add(seed.files);
-  }, [add, seed.files]);
 
   const correspondentOptions = useMemo(
     () =>
@@ -129,8 +113,7 @@ export function LetterFormModal({
 
   const save = useLetterBoxMutation(
     boxId,
-    (slug, vars: Parameters<typeof createLetter>[1] & { id?: string }, meta) =>
-      vars.id ? updateLetter(slug, { ...vars, id: vars.id }, meta) : createLetter(slug, vars, meta),
+    (slug, vars: Parameters<typeof updateLetter>[1], meta) => updateLetter(slug, vars, meta),
     { error: 'Impossible d’enregistrer la lettre' },
   );
 
@@ -161,9 +144,8 @@ export function LetterFormModal({
     const images = uploads.images.flatMap((image) =>
       image.status === 'ready' && image.mediaFileId ? [{ mediaFileId: image.mediaFileId }] : [],
     );
-    const saved = (await save.mutateAsync({
-      id: editing?.id,
-      boxId,
+    await save.mutateAsync({
+      id: editing.id,
       correspondentId,
       direction,
       title: finalTitle,
@@ -171,32 +153,9 @@ export function LetterFormModal({
       letterDate: letterDate ?? getTodayRealDate(),
       replyToId: replyTo?.id ?? null,
       images,
-    })) as { id: string; serial?: string };
-    if (!editing && saved.serial) {
-      const serial = saved.serial;
-      notifications.show({
-        title: 'Lettre ajoutée',
-        color: 'moss',
-        autoClose: 10_000,
-        message: (
-          <Group gap="xs" wrap="nowrap">
-            <Text size="sm">
-              N° de série : <span className={classes.serial}>{serial}</span>
-            </Text>
-            <CopyButton value={serial}>
-              {({ copied, copy }) => (
-                <Button size="compact-xs" variant="light" color="sage" onClick={copy}>
-                  {copied ? 'Copié' : 'Copier'}
-                </Button>
-              )}
-            </CopyButton>
-          </Group>
-        ),
-      });
-    } else {
-      notifications.show({ title: 'Lettres', message: 'Lettre modifiée', color: 'moss' });
-    }
-    onSaved({ id: saved.id, correspondentId });
+    });
+    notifications.show({ title: 'Lettres', message: 'Lettre modifiée', color: 'moss' });
+    onSaved({ id: editing.id, correspondentId });
     onClose();
   };
 
@@ -206,7 +165,7 @@ export function LetterFormModal({
     <AppModal
       opened={opened}
       onClose={close}
-      title={editing ? 'Modifier la lettre' : 'Ajouter une lettre'}
+      title="Modifier la lettre"
       icon={IconMail}
       size="xl"
       footer={
@@ -216,16 +175,14 @@ export function LetterFormModal({
               ? 'Envoi des images…'
               : uploads.failed
                 ? 'Retirez les images en erreur pour enregistrer'
-                : editing
-                  ? `N° ${editing.serial}`
-                  : 'Un n° de série sera attribué à la lettre'}
+                : `N° ${editing.serial}`}
           </Text>
           <Group gap="xs">
             <Button variant="subtle" color="slate" onClick={close}>
               Annuler
             </Button>
             <Button color="sage" loading={save.isPending} disabled={blocked} onClick={() => void submit().catch(() => undefined)}>
-              {editing ? 'Enregistrer' : 'Ajouter la lettre'}
+              Enregistrer
             </Button>
           </Group>
         </AppModalFooter>
@@ -277,7 +234,6 @@ export function LetterFormModal({
           disabled={addCorrespondent.isPending}
           rightSection={addCorrespondent.isPending ? <Loader size={16} color="sage" /> : undefined}
           nothingFoundMessage={canCreateCorrespondent ? `Ajouter « ${newName} »` : 'Aucun correspondant'}
-          data-autofocus={!seed.correspondentId || undefined}
           {...noAutofillProps}
         />
 
@@ -287,7 +243,7 @@ export function LetterFormModal({
           placeholder={suggestedTitle || 'Ex. Commande de bandages'}
           value={title}
           onChange={(event) => setTitle(event.currentTarget.value)}
-          data-autofocus={seed.correspondentId ? true : undefined}
+          data-autofocus
           rightSection={
             !title && suggestedTitle ? (
               <Tooltip label="Utiliser le titre proposé">

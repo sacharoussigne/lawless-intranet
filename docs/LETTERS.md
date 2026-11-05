@@ -31,7 +31,10 @@ Archive des lettres RP reçues et envoyées, rangées par correspondant, pour le
 ## Interface (`employee/letters`)
 
 - Contacts à gauche, conversation à droite : les lettres reçues à gauche, les envoyées à droite. L'URL (`?box=&c=`) garde la boîte et le correspondant.
-- Ajouter une lettre : coller une capture (Ctrl/Cmd + V), glisser une image sur la page, ou le bouton. Le formulaire envoie les images aussitôt et propose un titre.
+- On ajoute une lettre **depuis une conversation**, avec sa barre de message (`LetterComposer`) : on colle (Ctrl/Cmd + V) ou glisse plusieurs captures, réordonnées en les faisant glisser, et un seul transcript. Les images partent au stockage aussitôt.
+- À l'envoi (bouton ou Ctrl/Cmd + Entrée), une petite modale (`LetterSendModal`) demande le nom de la lettre (titre proposé), reçue ou envoyée, et sa date RP.
+- « Répondre » met la lettre en citation au-dessus de la barre, comme Discord. Modifier une lettre passe par `LetterFormModal`.
+- Un brouillon laissé en changeant de conversation : ses images sont supprimées du stockage.
 - Recherche dans la conversation (titre, transcript, n° de série), et recherche globale de la boîte (Ctrl/Cmd + K), qui ouvre la conversation sur la lettre.
 
 ## Temps réel

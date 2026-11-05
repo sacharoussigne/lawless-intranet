@@ -4,10 +4,8 @@ import { useCallback, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Badge, Button, Group, Kbd, Select, Stack, Text, UnstyledButton } from '@mantine/core';
 import { useWindowEvent } from '@mantine/hooks';
-import { IconMailbox, IconMailPlus, IconSearch, IconUsers } from '@tabler/icons-react';
-import { pastedFiles, useFileDrop } from '@lawless-intranet/media-ui';
+import { IconMailbox, IconSearch, IconUserPlus, IconUsers } from '@tabler/icons-react';
 import type { LettersPageBootstrap } from '@/app/_actions/letters/letters';
-import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { slatePalette } from '@/lib/design-tokens';
 import {
@@ -22,26 +20,21 @@ import { Conversation } from './components/Conversation';
 import { CorrespondentFormModal } from './components/CorrespondentFormModal';
 import { CorrespondentList } from './components/CorrespondentList';
 import { LetterBoxMembersModal } from './components/LetterBoxMembersModal';
-import { LetterFormModal, type LetterFormSeed } from './components/LetterFormModal';
+import { LetterFormModal } from './components/LetterFormModal';
 import { LetterSearchSpotlight } from './components/LetterSearchSpotlight';
 import classes from './letters.module.scss';
 
-function isEditableTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && target.closest('input, textarea, select, [contenteditable="true"]') !== null;
-}
-
-type FormState = { key: number; seed: LetterFormSeed } | null;
+type FormState = { key: number; letter: LetterDTO } | null;
 type CorrespondentFormState = { key: number; correspondent: LetterCorrespondentDTO | null; name: string } | null;
 
 /**
  * « Lettres »: the contacts of the box on the left, the conversation of letters on the right.
- * A letter is added by pasting or dropping its screenshot anywhere, or with the button.
+ * Letters are added from a conversation, with its message bar (paste or drop the screenshots).
  */
 export function LettersPageClient({ initial, box }: { initial: LettersPageBootstrap; box: LetterBoxSummaryDTO }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { formatRpDate } = useRpCalendar();
   const boxId = box.id;
   const canWrite = box.accessLevel !== 'READ';
   const { limits } = initial;
@@ -71,43 +64,20 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
     [boxId, pathname, searchParams],
   );
 
-  const openForm = (seed: Partial<LetterFormSeed>) => {
-    if (!canWrite) return;
-    setForm((current) => ({
-      key: (current?.key ?? 0) + 1,
-      seed: { letter: null, correspondentId: correspondent?.id ?? null, replyTo: null, files: [], ...seed },
-    }));
-  };
+  const openCorrespondentForm = (name: string) =>
+    setCorrespondentForm((current) => ({ key: (current?.key ?? 0) + 1, correspondent: null, name }));
 
-  // Ctrl/Cmd + K: search; paste a screenshot anywhere: new letter with it.
+  // Ctrl/Cmd + K: search of the box.
   useWindowEvent('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
       setSpotlightOpen(true);
     }
   });
-  useWindowEvent('paste', (event) => {
-    if (!canWrite || anyDialog || isEditableTarget(event.target)) return;
-    const files = pastedFiles(event.clipboardData, limits.allowedMimeTypes, `${formatRpDate(new Date(), 'd MMM yyyy HH')}h`);
-    if (files.length === 0) return;
-    event.preventDefault();
-    openForm({ files });
-  });
-  const drop = useFileDrop({
-    enabled: canWrite && !anyDialog && limits.storageConfigured,
-    onDrop: (files) => openForm({ files }),
-  });
-
   const openLetterFromSearch = (hit: LetterSearchHitDTO) => {
     selectCorrespondent(hit.correspondentId);
     setFocus((current) => ({ letterId: hit.id, archived: hit.archived, nonce: (current?.nonce ?? 0) + 1 }));
   };
-
-  const onReply = (letter: LetterDTO) =>
-    openForm({
-      correspondentId: letter.correspondentId,
-      replyTo: { id: letter.id, serial: letter.serial, title: letter.title, direction: letter.direction },
-    });
 
   return (
     <>
@@ -159,7 +129,7 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
             selectedId={correspondent?.id ?? null}
             canWrite={canWrite}
             onSelect={selectCorrespondent}
-            onCreate={(name) => setCorrespondentForm((current) => ({ key: (current?.key ?? 0) + 1, correspondent: null, name }))}
+            onCreate={openCorrespondentForm}
           />
         </aside>
 
@@ -173,9 +143,9 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
               initialLetters={correspondent.id === initial.correspondentId ? initial.letters : undefined}
               focus={focus}
               onBack={() => selectCorrespondent(null)}
-              onAddLetter={() => openForm({})}
-              onReply={onReply}
-              onEditLetter={(letter) => openForm({ letter, correspondentId: letter.correspondentId })}
+              limits={limits}
+              paused={anyDialog}
+              onEditLetter={(letter) => setForm((current) => ({ key: (current?.key ?? 0) + 1, letter }))}
               onEditCorrespondent={() =>
                 setCorrespondentForm((current) => ({ key: (current?.key ?? 0) + 1, correspondent, name: correspondent.name }))
               }
@@ -190,28 +160,17 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
                 {canWrite ? (
                   <>
                     <Text size="sm" c="dimmed" ta="center">
-                      Pour ranger une nouvelle lettre, collez sa capture (Ctrl/Cmd + V), glissez l’image ici ou utilisez le
-                      bouton.
+                      Ouvrez sa conversation, puis collez ou glissez les captures de la lettre dans la barre du bas. Nouveau
+                      correspondant : bouton + de la liste.
                     </Text>
-                    <Button color="sage" leftSection={<IconMailPlus size={16} />} onClick={() => openForm({})}>
-                      Ajouter une lettre
+                    <Button color="sage" leftSection={<IconUserPlus size={16} />} onClick={() => openCorrespondentForm('')}>
+                      Nouveau correspondant
                     </Button>
                   </>
                 ) : null}
               </Stack>
             </div>
           )}
-          {drop.active ? (
-            <div className={classes.dropOverlay}>
-              <Stack gap={4} align="center">
-                <IconMailPlus size={36} stroke={1.4} />
-                <Text fw={600}>Déposez pour ajouter une lettre</Text>
-                <Text size="sm" c="dimmed">
-                  {correspondent ? `Elle sera rangée avec ${correspondent.name}` : 'Vous choisirez son correspondant'}
-                </Text>
-              </Stack>
-            </div>
-          ) : null}
         </section>
       </div>
 
@@ -223,7 +182,7 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
           boxId={boxId}
           limits={limits}
           correspondents={correspondents}
-          seed={form.seed}
+          letter={form.letter}
           onSaved={(saved) => {
             if (saved.correspondentId !== correspondent?.id) selectCorrespondent(saved.correspondentId);
           }}

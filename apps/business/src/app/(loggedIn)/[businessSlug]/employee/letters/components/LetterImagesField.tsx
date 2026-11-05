@@ -77,6 +77,42 @@ function ImageTile({ image, index, onRemove }: { image: LetterFormImage; index: 
   );
 }
 
+/** Sortable thumbnails of a letter's images (1 = first page); `compact` for the message bar. */
+export function LetterImageTiles({
+  images,
+  onRemove,
+  onReorder,
+  compact = false,
+}: {
+  images: LetterFormImage[];
+  onRemove: (key: string) => void;
+  onReorder: (images: LetterFormImage[]) => void;
+  compact?: boolean;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = images.findIndex((image) => image.key === active.id);
+    const to = images.findIndex((image) => image.key === over.id);
+    if (from >= 0 && to >= 0) onReorder(arrayMove(images, from, to));
+  };
+  if (images.length === 0) return null;
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={images.map((image) => image.key)} strategy={rectSortingStrategy}>
+        <div className={compact ? classes.tilesCompact : classes.tiles}>
+          {images.map((image, index) => (
+            <ImageTile key={image.key} image={image} index={index} onRemove={() => onRemove(image.key)} />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 /** Images of a letter: drop, paste or browse; drag the tiles to reorder (1 = first page). */
 export function LetterImagesField({
   images,
@@ -92,17 +128,6 @@ export function LetterImagesField({
   accept: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
-    const from = images.findIndex((image) => image.key === active.id);
-    const to = images.findIndex((image) => image.key === over.id);
-    if (from >= 0 && to >= 0) onReorder(arrayMove(images, from, to));
-  };
 
   return (
     <Stack gap="xs">
@@ -139,17 +164,7 @@ export function LetterImagesField({
           event.currentTarget.value = '';
         }}
       />
-      {images.length > 0 ? (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={images.map((image) => image.key)} strategy={rectSortingStrategy}>
-            <div className={classes.tiles}>
-              {images.map((image, index) => (
-                <ImageTile key={image.key} image={image} index={index} onRemove={() => onRemove(image.key)} />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      ) : null}
+      <LetterImageTiles images={images} onRemove={onRemove} onReorder={onReorder} />
     </Stack>
   );
 }
