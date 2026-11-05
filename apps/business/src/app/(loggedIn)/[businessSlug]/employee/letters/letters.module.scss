@@ -1,0 +1,383 @@
+/* « Lettres »: contacts on the left, the conversation of letters on the right (WhatsApp-like). */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  color: var(--disp-ink);
+}
+
+.searchTrigger {
+  flex: 1 1 220px;
+  max-width: 420px;
+  margin-left: auto;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  border: 1px solid var(--disp-surface-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--disp-surface);
+  box-shadow: var(--disp-shadow-xs);
+  overflow: hidden;
+  /* The page scrolls inside each pane, like a messaging app. */
+  height: calc(100dvh - 210px);
+  min-height: 480px;
+
+  @media (max-width: 47.99em) {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100dvh - var(--disp-tabbar-height, 0px) - 150px);
+  }
+}
+
+/* Phones show one pane at a time. */
+.hideOnPhone {
+  @media (max-width: 47.99em) {
+    display: none !important;
+  }
+}
+
+/* --- Contacts --- */
+
+.contacts {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--disp-surface-border);
+
+  @media (max-width: 47.99em) {
+    border-right: 0;
+  }
+}
+
+.contactsHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-sm);
+  border-bottom: 1px solid var(--disp-surface-border);
+}
+
+.contactsList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.contact {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  padding: 10px var(--mantine-spacing-sm);
+  border: 0;
+  border-bottom: 1px solid var(--disp-surface-border);
+  background: transparent;
+  color: var(--disp-ink);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+
+  &:hover {
+    background: var(--disp-sage-soft);
+  }
+
+  &[data-active] {
+    background: var(--disp-sage-soft-strong, var(--disp-sage-soft));
+    box-shadow: inset 3px 0 0 var(--disp-sage);
+  }
+}
+
+.contactBody {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Conversation --- */
+
+.conversation {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--disp-bg);
+}
+
+.conversationHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  flex-wrap: wrap;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-bottom: 1px solid var(--disp-surface-border);
+  background: var(--disp-surface);
+}
+
+.conversationName {
+  margin: 0;
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  font-size: var(--mantine-font-size-lg);
+  color: var(--disp-ink);
+}
+
+.feed {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--mantine-spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.day {
+  align-self: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--disp-surface);
+  border: 1px solid var(--disp-surface-border);
+  color: var(--disp-ink-muted);
+  font-size: var(--mantine-font-size-xs);
+  margin: var(--mantine-spacing-xs) 0;
+}
+
+.composerBar {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-top: 1px solid var(--disp-surface-border);
+  background: var(--disp-surface);
+}
+
+.composerHint {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Files dragged over the conversation. */
+.dropOverlay {
+  position: absolute;
+  inset: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--disp-sage);
+  border-radius: var(--mantine-radius-md);
+  background: color-mix(in srgb, var(--disp-surface) 85%, transparent);
+  color: var(--disp-ink);
+  pointer-events: none;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-xl);
+  text-align: center;
+}
+
+/* --- A letter --- */
+
+.row {
+  display: flex;
+
+  &[data-direction='SENT'] {
+    justify-content: flex-end;
+  }
+}
+
+.bubble {
+  position: relative;
+  width: min(560px, 88%);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border: 1px solid var(--disp-surface-border);
+  border-radius: var(--mantine-radius-md);
+  border-top-left-radius: 4px;
+  background: var(--disp-surface);
+  box-shadow: var(--disp-shadow-xs);
+  transition: box-shadow 200ms ease;
+
+  &[data-direction='SENT'] {
+    border-radius: var(--mantine-radius-md);
+    border-top-right-radius: 4px;
+    background: var(--disp-leather-soft, var(--disp-surface));
+    border-color: var(--disp-leather-soft-border, var(--disp-surface-border));
+  }
+
+  &[data-archived] {
+    opacity: 0.7;
+    border-style: dashed;
+  }
+
+  /* Reached from a reply or the search. */
+  &[data-highlighted] {
+    box-shadow: 0 0 0 3px var(--disp-sage);
+  }
+}
+
+.bubbleTitle {
+  margin: 0;
+  font-family: var(--disp-font-display);
+  font-weight: 400;
+  font-size: var(--mantine-font-size-md);
+  color: var(--disp-ink);
+  overflow-wrap: anywhere;
+}
+
+.quote {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--mantine-spacing-xs);
+  padding: 4px 8px;
+  border: 0;
+  border-left: 3px solid var(--disp-sage);
+  border-radius: 4px;
+  background: var(--disp-sage-soft);
+  color: var(--disp-ink-muted);
+  font: inherit;
+  font-size: var(--mantine-font-size-xs);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--disp-ink);
+  }
+}
+
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+  margin: var(--mantine-spacing-xs) 0;
+}
+
+.thumb {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  border: 1px solid var(--disp-surface-border);
+  border-radius: var(--mantine-radius-sm);
+  overflow: hidden;
+  background: var(--disp-bg);
+  cursor: zoom-in;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &:hover img {
+    transform: scale(1.03);
+  }
+
+  img {
+    transition: transform 150ms ease;
+  }
+}
+
+.transcript {
+  margin: var(--mantine-spacing-xs) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--mantine-font-size-sm);
+  color: var(--disp-ink);
+}
+
+.transcriptClamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.serial {
+  font-family: var(--mantine-font-family-monospace, monospace);
+  letter-spacing: 0.06em;
+}
+
+/* --- Images of the form --- */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: var(--mantine-spacing-md);
+  border: 2px dashed var(--disp-surface-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--disp-bg);
+  color: var(--disp-ink-muted);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+
+  &:hover,
+  &[data-active] {
+    border-color: var(--disp-sage);
+    background: var(--disp-sage-soft);
+    color: var(--disp-ink);
+  }
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: var(--mantine-spacing-xs);
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--disp-surface-border);
+  border-radius: var(--mantine-radius-sm);
+  overflow: hidden;
+  background: var(--disp-bg);
+  touch-action: none;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+}
+
+.tileActions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+}
+
+.tileProgress {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+}
+
+.tileIndex {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+}

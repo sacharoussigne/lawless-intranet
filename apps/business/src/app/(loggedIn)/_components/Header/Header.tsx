@@ -48,7 +48,7 @@ export default function Header({
   const pathname = usePathname();
   const [userMenuOpened, setUserMenuOpened] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
-  const { permissions, userRole, appSettings, accessibleBusinesses, agendaModuleAccess, cabinetModuleAccess, hasAccessibleChests, businessSlug: ctxSlug } = usePermissions();
+  const { permissions, userRole, appSettings, accessibleBusinesses, agendaModuleAccess, cabinetModuleAccess, letterBoxModuleAccess, hasAccessibleChests, businessSlug: ctxSlug } = usePermissions();
   const businessSlug = businessSlugProp ?? ctxSlug;
   const t = businessSlug ? tenantRoutes(businessSlug) : null;
   const isPlatformAdminUser = isPlatformAdmin(session?.user?.role);
@@ -134,6 +134,7 @@ export default function Header({
       permissions,
       userRole,
       cabinetModuleAccess,
+      letterBoxModuleAccess,
       hasAccessibleChests,
     }).search;
   }, [
@@ -143,6 +144,7 @@ export default function Header({
     permissions,
     userRole,
     cabinetModuleAccess,
+    letterBoxModuleAccess,
     hasAccessibleChests,
   ]);
 
@@ -212,6 +214,7 @@ export default function Header({
                   canManage={permissions?.application.management === true}
                   isRouteActive={isRouteActive}
                   cabinetModuleAccess={cabinetModuleAccess}
+                  letterBoxModuleAccess={letterBoxModuleAccess}
                   hasAccessibleChests={hasAccessibleChests}
                 />
               </div>
@@ -315,6 +318,11 @@ export default function Header({
                         {isAppFeatureEnabled(appSettings, 'cabinet') && (
                           <Link href={t.admin.cabinets}>
                             <Menu.Item>Gestion des cabinets</Menu.Item>
+                          </Link>
+                        )}
+                        {isAppFeatureEnabled(appSettings, 'letters') && (
+                          <Link href={t.admin.letterBoxes}>
+                            <Menu.Item>Gestion des boîtes aux lettres</Menu.Item>
                           </Link>
                         )}
                         {appSettings.featureStockEnabled && (

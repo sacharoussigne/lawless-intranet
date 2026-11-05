@@ -13,6 +13,7 @@ export const LOG_FEATURE_LABELS: Record<LogFeature, string> = {
   agenda: 'Agenda',
   cabinet: 'Cabinet',
   media: 'Médiathèque',
+  letters: 'Lettres',
   management: 'Gestion',
   settings: 'Réglages',
   account: 'Compte',

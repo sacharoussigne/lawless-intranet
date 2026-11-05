@@ -25,6 +25,7 @@ export type AppSettingsDTO = {
   featureCabinetEnabled: boolean;
   featureSalesEnabled: boolean;
   featureMediaEnabled: boolean;
+  featureLettersEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   /** Weekly activity counters of the business type: key → enabled (a missing key is enabled). */
@@ -49,6 +50,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   featureCabinetEnabled: true,
   featureSalesEnabled: true,
   featureMediaEnabled: true,
+  featureLettersEnabled: true,
   weeklyActivityChestDaysVisible: true,
   weeklyActivityPresenceDaysVisible: true,
   weeklyActivityCounters: {},
@@ -69,6 +71,7 @@ const FEATURE_SETTING: Record<AppFeatureKey, keyof AppSettingsDTO & `feature${st
   cabinet: 'featureCabinetEnabled',
   sales: 'featureSalesEnabled',
   media: 'featureMediaEnabled',
+  letters: 'featureLettersEnabled',
 };
 
 /**
@@ -122,6 +125,8 @@ export function isAppFeatureEnabled(
       return settings.featureSalesEnabled ?? APP_SETTINGS_DEFAULTS.featureSalesEnabled;
     case 'media':
       return settings.featureMediaEnabled ?? APP_SETTINGS_DEFAULTS.featureMediaEnabled;
+    case 'letters':
+      return settings.featureLettersEnabled ?? APP_SETTINGS_DEFAULTS.featureLettersEnabled;
     default: {
       const _exhaustive: never = feature;
       return _exhaustive;

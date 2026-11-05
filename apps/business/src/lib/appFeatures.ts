@@ -11,6 +11,7 @@ export const APP_FEATURE_KEYS = [
   'cabinet',
   'sales',
   'media',
+  'letters',
 ] as const;
 
 export type AppFeatureKey = (typeof APP_FEATURE_KEYS)[number];

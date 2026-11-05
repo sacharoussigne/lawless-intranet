@@ -21,6 +21,8 @@ export const realtimeTopics = {
   stock: (businessId: string) => `stock:${businessId}`,
   /** Media library of a scope (folders and files). */
   media: (scopeType: string, scopeId: string) => `media:${scopeType}:${scopeId}`,
+  /** One letter box of a business (correspondents, letters, members): its members only. */
+  letterBox: (boxId: string) => `letterbox:${boxId}`,
   /** Per-user notifications (participant events, access changes). */
   user: (userId: string) => `user:${userId}`,
 } as const;

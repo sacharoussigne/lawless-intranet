@@ -81,6 +81,7 @@ export function HeaderNavLinks({
   canManage,
   isRouteActive,
   cabinetModuleAccess = false,
+  letterBoxModuleAccess = false,
   hasAccessibleChests = false,
 }: {
   t: ReturnType<typeof tenantRoutes>;
@@ -91,6 +92,7 @@ export function HeaderNavLinks({
   canManage: boolean;
   isRouteActive: (route: string) => boolean;
   cabinetModuleAccess?: boolean;
+  letterBoxModuleAccess?: boolean;
   hasAccessibleChests?: boolean;
 }) {
   const [drawerOpened, { toggle: toggleDrawer, close: closeDrawer }] = useDisclosure(false);
@@ -191,6 +193,7 @@ export function HeaderNavLinks({
     permissions,
     userRole,
     cabinetModuleAccess,
+    letterBoxModuleAccess,
     hasAccessibleChests,
   });
 
