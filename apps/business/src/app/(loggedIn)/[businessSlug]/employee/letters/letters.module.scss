@@ -199,7 +199,7 @@
 .bubble {
   position: relative;
   width: min(560px, 88%);
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   border: 1px solid var(--disp-surface-border);
   border-radius: var(--mantine-radius-md);
   border-top-left-radius: 4px;
@@ -226,6 +226,8 @@
 }
 
 .bubbleTitle {
+  flex: 1 1 200px;
+  min-width: 0;
   margin: 0;
   font-family: var(--disp-font-display);
   font-weight: 400;
@@ -254,15 +256,28 @@
   }
 }
 
+.bubbleBody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-sm);
+  margin-top: 6px;
+}
+
 .thumbs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  margin: var(--mantine-spacing-xs) 0;
+}
+
+.transcriptBlock {
+  flex: 1 1 220px;
+  min-width: 0;
 }
 
 .thumb {
   position: relative;
+  width: 72px;
   aspect-ratio: 3 / 4;
   padding: 0;
   border: 1px solid var(--disp-surface-border);
@@ -288,7 +303,7 @@
 }
 
 .transcript {
-  margin: var(--mantine-spacing-xs) 0 0;
+  margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: var(--mantine-font-size-sm);

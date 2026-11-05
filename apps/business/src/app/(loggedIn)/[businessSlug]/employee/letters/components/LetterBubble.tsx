@@ -12,7 +12,6 @@ import {
   IconPencil,
   IconTrash,
 } from '@tabler/icons-react';
-import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { amberPalette, leatherPalette, sagePalette, slatePalette } from '@/lib/design-tokens';
@@ -37,6 +36,7 @@ export const LetterBubble = forwardRef<
 >(function LetterBubble({ letter, highlighted, canWrite, ...actions }, ref) {
   const { formatRpDate } = useRpCalendar();
   const [expanded, setExpanded] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const transcript = letter.transcript ?? '';
   const long = transcript.length > LONG_TRANSCRIPT || transcript.split('\n').length > 5;
   const archived = letter.archivedAt !== null;
@@ -62,131 +62,142 @@ export const LetterBubble = forwardRef<
           </button>
         ) : null}
 
-        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-          <div style={{ minWidth: 0 }}>
-            <h3 className={classes.bubbleTitle}>{letter.title}</h3>
-            <Group gap={6} mt={2} wrap="wrap">
-              <CopyButton value={letter.serial}>
-                {({ copied, copy }) => (
-                  <Tooltip label={copied ? 'Copié' : 'Copier le n° de série'}>
-                    <Badge
-                      variant="outline"
-                      radius="sm"
-                      style={{ ...apothecaryPillStyle(slatePalette), cursor: 'pointer' }}
-                      className={classes.serial}
-                      onClick={copy}
-                      rightSection={copied ? <IconCheck size={10} /> : <IconCopy size={10} />}
-                    >
-                      {letter.serial}
-                    </Badge>
-                  </Tooltip>
-                )}
-              </CopyButton>
-              <Badge
-                variant="outline"
-                radius="sm"
-                style={apothecaryPillStyle(letter.direction === 'RECEIVED' ? sagePalette : leatherPalette)}
-              >
-                {letterDirectionLabel(letter.direction)}
+        <Group justify="space-between" align="center" wrap="wrap" gap={6}>
+          <h3 className={classes.bubbleTitle}>{letter.title}</h3>
+          <Group gap={4} wrap="nowrap" ml="auto">
+            <CopyButton value={letter.serial}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? 'Copié' : 'Copier le n° de série'}>
+                  <Badge
+                    size="xs"
+                    variant="outline"
+                    radius="sm"
+                    style={{ ...apothecaryPillStyle(slatePalette), cursor: 'pointer' }}
+                    className={classes.serial}
+                    onClick={copy}
+                    rightSection={copied ? <IconCheck size={9} /> : <IconCopy size={9} />}
+                  >
+                    {letter.serial}
+                  </Badge>
+                </Tooltip>
+              )}
+            </CopyButton>
+            <Badge
+              size="xs"
+              variant="outline"
+              radius="sm"
+              style={apothecaryPillStyle(letter.direction === 'RECEIVED' ? sagePalette : leatherPalette)}
+            >
+              {letterDirectionLabel(letter.direction)}
+            </Badge>
+            {archived ? (
+              <Badge size="xs" variant="outline" radius="sm" style={apothecaryPillStyle(amberPalette)}>
+                Archivée
               </Badge>
-              {archived ? (
-                <Badge variant="outline" radius="sm" style={apothecaryPillStyle(amberPalette)}>
-                  Archivée
-                </Badge>
-              ) : null}
-            </Group>
-          </div>
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <ActionIcon variant="subtle" color="slate" aria-label="Actions de la lettre">
-                <IconDots size={18} />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item leftSection={<IconArrowBackUp size={16} />} disabled={!canWrite} onClick={() => actions.onReply(letter)}>
-                Répondre
-              </Menu.Item>
-              <Menu.Item leftSection={<IconPencil size={16} />} disabled={!canWrite} onClick={() => actions.onEdit(letter)}>
-                Modifier
-              </Menu.Item>
-              <Menu.Item
-                leftSection={archived ? <IconArchiveOff size={16} /> : <IconArchive size={16} />}
-                disabled={!canWrite}
-                onClick={() => actions.onToggleArchived(letter)}
-              >
-                {archived ? 'Désarchiver' : 'Archiver'}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+            ) : null}
+            {canWrite ? (
+              <Tooltip label="Répondre">
+                <ActionIcon size="sm" variant="subtle" color="sage" onClick={() => actions.onReply(letter)} aria-label="Répondre">
+                  <IconArrowBackUp size={16} />
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
+            <Menu position="bottom-end" withinPortal onClose={() => setConfirmingDelete(false)}>
+              <Menu.Target>
+                <ActionIcon size="sm" variant="subtle" color="slate" aria-label="Actions de la lettre">
+                  <IconDots size={16} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown maw={280}>
+                <Menu.Item leftSection={<IconArrowBackUp size={16} />} disabled={!canWrite} onClick={() => actions.onReply(letter)}>
+                  Répondre
+                </Menu.Item>
+                <Menu.Item leftSection={<IconPencil size={16} />} disabled={!canWrite} onClick={() => actions.onEdit(letter)}>
+                  Modifier
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={archived ? <IconArchiveOff size={16} /> : <IconArchive size={16} />}
+                  disabled={!canWrite}
+                  onClick={() => actions.onToggleArchived(letter)}
+                >
+                  {archived ? 'Désarchiver' : 'Archiver'}
+                </Menu.Item>
+                {canWrite ? (
+                  <>
+                    <Menu.Divider />
+                    {confirmingDelete ? (
+                      <Menu.Label style={{ whiteSpace: 'normal' }}>
+                        La lettre et ses images seront supprimées définitivement. Pour la retirer du fil sans la perdre,
+                        archivez-la.
+                      </Menu.Label>
+                    ) : null}
+                    <Menu.Item
+                      color="danger"
+                      leftSection={<IconTrash size={16} />}
+                      closeMenuOnClick={confirmingDelete}
+                      onClick={() => (confirmingDelete ? void actions.onDelete(letter) : setConfirmingDelete(true))}
+                    >
+                      {confirmingDelete ? 'Confirmer la suppression' : 'Supprimer'}
+                    </Menu.Item>
+                  </>
+                ) : null}
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Group>
 
-        {letter.images.length > 0 ? (
-          <div className={classes.thumbs}>
-            {letter.images.map((image, index) => (
-              <button
-                type="button"
-                key={image.id}
-                className={classes.thumb}
-                onClick={() => actions.onOpenImage(letter, index)}
-                aria-label={`Voir ${image.name}`}
-              >
-                {image.previewUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- signed storage URL
-                  <img src={image.previewUrl} alt={image.name} loading="lazy" />
-                ) : (
-                  <Text size="xs" c="dimmed" p="xs">
-                    Aperçu indisponible
-                  </Text>
-                )}
-              </button>
-            ))}
+        {letter.images.length > 0 || transcript ? (
+          <div className={classes.bubbleBody}>
+            {letter.images.length > 0 ? (
+              <div className={classes.thumbs}>
+                {letter.images.map((image, index) => (
+                  <button
+                    type="button"
+                    key={image.id}
+                    className={classes.thumb}
+                    onClick={() => actions.onOpenImage(letter, index)}
+                    aria-label={`Voir ${image.name}`}
+                  >
+                    {image.previewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- signed storage URL
+                      <img src={image.previewUrl} alt={image.name} loading="lazy" />
+                    ) : (
+                      <Text size="xs" c="dimmed" p={4}>
+                        Aperçu indisponible
+                      </Text>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {transcript ? (
+              <div className={classes.transcriptBlock}>
+                <p className={`${classes.transcript} ${long && !expanded ? classes.transcriptClamp : ''}`}>{transcript}</p>
+                {long ? (
+                  <Anchor component="button" type="button" size="xs" c="sage" onClick={() => setExpanded((open) => !open)}>
+                    {expanded ? 'Réduire' : 'Lire tout'}
+                  </Anchor>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
-        {transcript ? (
-          <>
-            <p className={`${classes.transcript} ${long && !expanded ? classes.transcriptClamp : ''}`}>{transcript}</p>
-            <Group gap="sm" mt={4}>
-              {long ? (
-                <Anchor component="button" type="button" size="xs" c="sage" onClick={() => setExpanded((open) => !open)}>
-                  {expanded ? 'Réduire' : 'Lire tout'}
-                </Anchor>
-              ) : null}
-              <CopyButton value={transcript}>
-                {({ copied, copy }) => (
-                  <Anchor component="button" type="button" size="xs" c="dimmed" onClick={copy}>
-                    {copied ? 'Transcript copié' : 'Copier le transcript'}
-                  </Anchor>
-                )}
-              </CopyButton>
-            </Group>
-          </>
-        ) : null}
-
-        <Group justify="space-between" mt="xs" gap="xs">
-          <Text size="xs" c="dimmed">
+        <Group justify="space-between" mt={4} gap="xs" wrap="nowrap">
+          <Text size="xs" c="dimmed" truncate="end">
             {formatRpDate(letter.letterDate, 'd MMMM yyyy')} · ajoutée par {letter.createdBy.name}
           </Text>
-          <Group gap={4}>
-            {canWrite ? (
-              <>
-                <Tooltip label="Répondre">
-                  <ActionIcon size="sm" variant="subtle" color="sage" onClick={() => actions.onReply(letter)} aria-label="Répondre">
-                    <IconArrowBackUp size={16} />
+          {transcript ? (
+            <CopyButton value={transcript}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? 'Transcript copié' : 'Copier le transcript'}>
+                  <ActionIcon size="sm" variant="subtle" color="slate" onClick={copy} aria-label="Copier le transcript">
+                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
                   </ActionIcon>
                 </Tooltip>
-                <DeleteConfirmPopover
-                  title="Supprimer la lettre ?"
-                  message={`« ${letter.title} » et ses images seront supprimées définitivement. Pour la retirer du fil sans la perdre, archivez-la.`}
-                  onConfirm={() => actions.onDelete(letter)}
-                >
-                  <ActionIcon size="sm" variant="subtle" color="danger" aria-label="Supprimer la lettre">
-                    <IconTrash size={15} />
-                  </ActionIcon>
-                </DeleteConfirmPopover>
-              </>
-            ) : null}
-          </Group>
+              )}
+            </CopyButton>
+          ) : null}
         </Group>
       </article>
     </div>
