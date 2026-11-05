@@ -48,7 +48,7 @@ export function LetterSearchSpotlight({
         <TextInput
           data-autofocus
           size="md"
-          placeholder="Nom, titre, mot de la lettre ou n° de série (LT-…)"
+          placeholder="Nom, titre, mot de la lettre ou n° de série (GM-…)"
           leftSection={search.isFetching ? <Loader size={16} color="sage" /> : <IconSearch size={18} />}
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}

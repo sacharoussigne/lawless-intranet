@@ -13,7 +13,7 @@ import { deleteLetterMediaFiles, lettersMediaScope } from '@/lib/letters/media';
 import { findCorrespondent, loadCorrespondents } from '@/lib/letters/queries';
 import { emitLetterBoxChanged } from '@/lib/letters/realtime/broadcast';
 import { excerptAround, letterTextWhere } from '@/lib/letters/search';
-import { generateLetterSerial } from '@/lib/letters/serial';
+import { generateLetterSerial, letterSerialPrefix } from '@/lib/letters/serial';
 import { letterInclude, refreshCorrespondentLastLetter, toLetterDTOs } from '@/lib/letters/serialize';
 import type {
   LetterBoxSummaryDTO,
@@ -232,7 +232,7 @@ async function checkLetterLinks(
   boxId: string,
   input: { correspondentId: string; replyToId?: string | null },
   letterId: string | null,
-): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+): Promise<{ ok: true; correspondentName: string } | { ok: false; status: number; error: string }> {
   const correspondent = await findCorrespondent(ctx.tenant.businessId, input.correspondentId);
   if (!correspondent || correspondent.boxId !== boxId) {
     return { ok: false, status: 400, error: 'Correspondant introuvable dans cette boîte' };
@@ -242,7 +242,7 @@ async function checkLetterLinks(
     const replyTo = await prisma.letter.findFirst({ where: { id: input.replyToId, boxId }, select: { id: true } });
     if (!replyTo) return { ok: false, status: 400, error: 'La lettre d’origine est introuvable' };
   }
-  return { ok: true };
+  return { ok: true, correspondentName: correspondent.name };
 }
 
 function isSerialCollision(error: unknown): boolean {
@@ -286,7 +286,7 @@ async function createLetterUnlogged(
             boxId: data.boxId,
             correspondentId: data.correspondentId,
             direction: data.direction,
-            serial: generateLetterSerial(),
+            serial: generateLetterSerial(letterSerialPrefix(links.correspondentName)),
             title: data.title,
             transcript: data.transcript?.trim() || null,
             letterDate: data.letterDate,

@@ -11,7 +11,7 @@ Archive des lettres RP reçues et envoyées, rangées par correspondant, pour le
   - `direction` (`RECEIVED` / `SENT`), `title`, `transcript`, `letterDate` (date réelle, affichée en RP) ;
   - `replyToId` : la lettre à laquelle elle répond, comme une réponse Discord ;
   - `archivedAt` : retire la lettre du fil sans la supprimer ;
-  - `serial` : numéro de série unique dans la boîte, à écrire sur la lettre papier pour la retrouver dans un coffre (`lib/letters/serial.ts`).
+  - `serial` : numéro de série unique dans la boîte, à écrire sur la lettre papier pour la retrouver dans un coffre (`lib/letters/serial.ts`). Il commence par les initiales du correspondant au moment de l'ajout (« George Montgomery » donne `GM-7K3Q9P` ; un seul mot donne ses 2 premières lettres ; `LT` si le nom n'a pas de lettre). Il ne change jamais, même si on renomme le correspondant ou qu'on déplace la lettre.
 - `LetterImage` : images d'une lettre, dans l'ordre des pages. Le fichier vit dans le service média.
 
 ## Accès
