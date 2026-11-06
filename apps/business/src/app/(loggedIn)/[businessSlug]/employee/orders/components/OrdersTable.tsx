@@ -23,6 +23,8 @@ import {
   Text,
 } from '@mantine/core';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
+import { formatOrderDay } from '@/lib/orders/chatterLines';
 import type { CSSProperties, ReactNode } from 'react';
 import { OrderStatusBadge } from '@/app/_components/OrderBadges/OrderStatusBadge';
 import { OrderTypeBadge } from '@/app/_components/OrderBadges/OrderTypeBadge';
@@ -155,12 +157,15 @@ function CreatedAtRangeFilter({
   value: [Date | null, Date | null];
   onChange: (from: string | null, to: string | null) => void;
 }) {
+  // Picked in the RP calendar; the filter itself stays on real dates.
+  const { toRpDisplayDate, fromRpDisplayDate } = useRpCalendar();
+  const toRp = (date: Date | null) => (date ? toRpDisplayDate(date) : null);
   return (
     <DatesProvider settings={{ locale: 'fr', firstDayOfWeek: 1 }}>
       <DatePickerInput
         type="range"
         placeholder="Période"
-        value={value}
+        value={[toRp(value[0]), toRp(value[1])]}
         onChange={(next) => {
           const [rawFrom, rawTo] = (next ?? [null, null]) as [
             Date | string | null,
@@ -168,7 +173,10 @@ function CreatedAtRangeFilter({
           ];
           const from = parsePickerDate(rawFrom);
           const to = parsePickerDate(rawTo);
-          onChange(from?.toISOString() ?? null, to?.toISOString() ?? null);
+          onChange(
+            from ? fromRpDisplayDate(from).toISOString() : null,
+            to ? fromRpDisplayDate(to).toISOString() : null,
+          );
         }}
         valueFormat="D MMM YYYY"
         clearable
@@ -207,6 +215,7 @@ function OrdersMobileList({
 }: OrdersTableProps) {
   const [filtersOpened, setFiltersOpened] = useState(false);
   const routes = useTenantRoutes();
+  const rp = useRpCalendar();
   const activeFilters =
     (typeFilter ? 1 : 0) +
     (createdAtFrom || createdAtTo ? 1 : 0) +
@@ -264,11 +273,7 @@ function OrdersMobileList({
                 </Group>
                 <Group justify="space-between" wrap="nowrap">
                   <Text size="sm" c="dimmed">
-                    {new Date(order.createdAt).toLocaleDateString('fr-FR', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                    {formatOrderDay(order.createdAt, rp)}
                   </Text>
                   <Text fw={600}>{order.price != null ? `${order.price.toFixed(2)} $` : '-'}</Text>
                 </Group>
@@ -404,6 +409,7 @@ function OrdersDataTable({
   hasLetterTemplateForOrder,
 }: OrdersTableProps) {
   const routes = useTenantRoutes();
+  const rp = useRpCalendar();
   const router = useRouter();
   const dateRange: [Date | null, Date | null] = [
     createdAtFrom ? new Date(createdAtFrom) : null,
@@ -494,11 +500,7 @@ function OrdersDataTable({
             accessor: 'createdAt',
             title: 'Date de création',
             render: (order: OrderSummary) =>
-              new Date(order.createdAt).toLocaleDateString('fr-FR', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              }),
+              formatOrderDay(order.createdAt, rp),
             sortable: true,
             filtering: Boolean(createdAtFrom || createdAtTo),
             filterPopoverProps: { trapFocus: false },

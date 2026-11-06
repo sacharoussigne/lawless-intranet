@@ -120,6 +120,22 @@ export async function updateMediaFile(
   );
 }
 
+/** Ready files of the scope by id, with preview URLs (unknown ids are left out). */
+export async function getMediaFilesByIds(
+  scope: MediaScopeParams,
+  ids: string[],
+  options: ClientOptions = {},
+): Promise<MediaFileRecord[]> {
+  if (ids.length === 0) return [];
+  return parseJsonResponse(
+    await mediaFetch('/api/files/by-ids', {
+      method: 'POST',
+      cookieHeader: options.cookieHeader,
+      body: JSON.stringify({ ...scope, ids }),
+    }),
+  );
+}
+
 export async function deleteMediaFile(
   scope: MediaScopeParams,
   fileId: string,

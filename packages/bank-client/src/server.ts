@@ -79,6 +79,8 @@ export async function importBankTransactions(
       description?: string | null;
       amount: number;
     }>;
+    /** Years to add to the RP dates of the items; the service default applies when missing. */
+    rpYearOffset?: number;
   },
   options: ClientOptions = {},
 ): Promise<{

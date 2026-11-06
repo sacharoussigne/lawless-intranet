@@ -117,13 +117,11 @@ export function createBankHostActions(run: BankHostRun, { getCompanyNames }: Ban
           description?: string | null;
           amount: number;
         }>;
+        rpYearOffset?: number;
       },
     ) =>
       run(slug, "Erreur lors de l'import des transactions", (scope, options) =>
-        importBankTransactions(
-          { ...scope, items: importTransactionsSchema.parse(data).items },
-          options,
-        ),
+        importBankTransactions({ ...scope, ...importTransactionsSchema.parse(data) }, options),
       ),
 
     updateTransaction: (

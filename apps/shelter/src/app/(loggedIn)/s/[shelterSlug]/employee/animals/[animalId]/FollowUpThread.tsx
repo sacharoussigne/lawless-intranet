@@ -29,7 +29,7 @@ import {
   MESSAGE_SIDE_LABELS,
   isFollowUpClosed,
 } from '@/lib/animals/followUpLabels';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import type { AnimalFollowUpMessageSide, AnimalFollowUpStatus } from '@/generated/prisma/client';
 import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
 import { actionErrorMessage, parseIsoDateOnly, toIsoDateOnly } from '../types';
@@ -68,6 +68,7 @@ export function FollowUpThread({
   templateVariables?: Record<string, string>;
   fullPage?: boolean;
 }) {
+  const { formatRpDate } = useRpCalendar();
   const [pending, startTransition] = useTransition();
   const [body, setBody] = useState('');
   const [side, setSide] = useState<AnimalFollowUpMessageSide>('shelter');

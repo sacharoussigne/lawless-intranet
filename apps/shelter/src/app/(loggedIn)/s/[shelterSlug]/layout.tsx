@@ -3,6 +3,7 @@ import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/Logged
 import { ShelterClientProviders } from '@/app/(loggedIn)/_components/ShelterClientProviders/ShelterClientProviders';
 import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
+import { RpCalendarProvider } from '@/app/_contexts/RpCalendarContext';
 import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
 import { getAppSettings } from '@/lib/appSettings';
 import type { AuthSession } from '@/types/session';
@@ -69,6 +70,7 @@ export default async function ShelterLayout({
       shelterId={shelter.id}
       accessibleShelters={accessibleShelters}
     >
+      <RpCalendarProvider offset={appSettings.rpYearOffset}>
       <MailTemplateProvider
         username={session?.user.name ?? 'Utilisateur'}
         userGender={session?.user.gender ?? 'male'}
@@ -86,6 +88,7 @@ export default async function ShelterLayout({
           </LoggedInShell>
         </ShelterRealtimeSocketShell>
       </MailTemplateProvider>
+      </RpCalendarProvider>
     </PermissionsProvider>
   );
 }

@@ -1,15 +1,20 @@
+import { DEFAULT_RP_YEAR_OFFSET } from '@lawless-intranet/types';
+
 export type AppFeatureKey = 'bank' | 'media';
 
 export type AppSettingsDTO = {
   shelterName: string;
   featureBankEnabled: boolean;
   featureMediaEnabled: boolean;
+  /** Years between the real date and the RP date shown (display only). */
+  rpYearOffset: number;
 };
 
 export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   shelterName: 'Refuge',
   featureBankEnabled: true,
   featureMediaEnabled: true,
+  rpYearOffset: DEFAULT_RP_YEAR_OFFSET,
 };
 
 export function normalizeAppSettings(

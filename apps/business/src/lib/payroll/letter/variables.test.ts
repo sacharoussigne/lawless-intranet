@@ -4,8 +4,11 @@ import {
   buildPayrollLetterVariables,
   DEFAULT_PAYROLL_LETTER_CONTENT,
   rpWeekRange,
-  SAMPLE_PAYROLL_LETTER_VARIABLES,
+  samplePayrollLetterVariables,
 } from './variables';
+import { createRpCalendar } from '@/lib/rpCalendar';
+
+const rp = createRpCalendar(136);
 
 const day = (presence: boolean) => ({ caisse: null, presence: presence ? 'P' : null });
 
@@ -43,6 +46,7 @@ describe('buildPayrollLetterVariables', () => {
     result,
     genderOf: (e) => (e.name === 'Ada' ? 'female' : null),
     now: new Date(2026, 9, 12),
+    rp,
   });
 
   it('writes one paragraph per graded employee, by name', () => {
@@ -69,12 +73,16 @@ describe('buildPayrollLetterVariables', () => {
 });
 
 describe('rpWeekRange', () => {
+  it('follows the business offset', () => {
+    expect(rpWeekRange(new Date(2026, 9, 5), new Date(2026, 9, 11), createRpCalendar(130))).toBe('du 5 au 11 octobre 1896');
+  });
+
   it('names both months when the week spans two', () => {
-    expect(rpWeekRange(new Date(2026, 8, 28), new Date(2026, 9, 4))).toBe('du 28 septembre au 4 octobre 1890');
+    expect(rpWeekRange(new Date(2026, 8, 28), new Date(2026, 9, 4), rp)).toBe('du 28 septembre au 4 octobre 1890');
   });
 
   it('names both years when the week spans two', () => {
-    expect(rpWeekRange(new Date(2026, 11, 28), new Date(2027, 0, 3))).toBe('du 28 décembre 1890 au 3 janvier 1891');
+    expect(rpWeekRange(new Date(2026, 11, 28), new Date(2027, 0, 3), rp)).toBe('du 28 décembre 1890 au 3 janvier 1891');
   });
 });
 
@@ -87,7 +95,7 @@ describe('DEFAULT_PAYROLL_LETTER_CONTENT', () => {
         username: 'Dr. Owen Clark',
         userDescription: 'Directeur du Dispensaire de Saint-Denis',
         userGender: gender,
-        variables: SAMPLE_PAYROLL_LETTER_VARIABLES,
+        variables: samplePayrollLetterVariables(1890),
       }),
     );
 

@@ -86,7 +86,7 @@ export type MediaUiContextValue = {
 
 const MediaUiContext = createContext<MediaUiContextValue | null>(null);
 
-const defaultFormatDate = (iso: string) =>
+export const defaultFormatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 
 const defaultFormatDateTime = (iso: string) =>
@@ -116,6 +116,11 @@ export function MediaUiProvider({
     [scopeKey, actions, limits, formatDate, formatDateTime, buildShareUrl],
   );
   return <MediaUiContext.Provider value={value}>{children}</MediaUiContext.Provider>;
+}
+
+/** Same context, or null outside a provider (components also usable on their own, like the viewer). */
+export function useOptionalMediaUi(): MediaUiContextValue | null {
+  return useContext(MediaUiContext);
 }
 
 export function useMediaUi(): MediaUiContextValue {

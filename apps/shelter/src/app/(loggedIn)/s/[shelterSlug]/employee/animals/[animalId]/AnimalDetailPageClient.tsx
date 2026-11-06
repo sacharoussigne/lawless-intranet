@@ -44,7 +44,8 @@ import { MarkdownContent } from '@/app/_components/MarkdownContent';
 import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { ANIMAL_STATUS_LABELS, ANIMAL_STATUS_OPTIONS } from '@/lib/animals/labels';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
+import type { RpCalendar } from '@/lib/rpCalendar';
 import type { AnimalStatus } from '@/generated/prisma/client';
 import { AdoptionPriceHint } from '../AdoptionPriceHint';
 import classes from '../AnimalsPage.module.scss';
@@ -158,7 +159,7 @@ function FieldReadout({
   );
 }
 
-function formatHistoryValue(key: string, value: unknown): string {
+function formatHistoryValue(key: string, value: unknown, formatRpDate: RpCalendar['formatRpDate']): string {
   if (value == null || value === '') return '—';
   if (key === 'status' && typeof value === 'string' && value in ANIMAL_STATUS_LABELS) {
     return ANIMAL_STATUS_LABELS[value as AnimalStatus];
@@ -175,6 +176,7 @@ function formatHistoryValue(key: string, value: unknown): string {
 function summarizeHistoryDiff(
   previousValues: unknown,
   nextValues: unknown,
+  formatRpDate: RpCalendar['formatRpDate'],
 ): { label: string; before: string; after: string }[] {
   const prev =
     previousValues && typeof previousValues === 'object'
@@ -189,13 +191,13 @@ function summarizeHistoryDiff(
     return Object.keys(next).map((key) => ({
       label: FIELD_LABELS[key] ?? key,
       before: '—',
-      after: formatHistoryValue(key, next[key]),
+      after: formatHistoryValue(key, next[key], formatRpDate),
     }));
   }
   if (prev && !next) {
     return Object.keys(prev).map((key) => ({
       label: FIELD_LABELS[key] ?? key,
-      before: formatHistoryValue(key, prev[key]),
+      before: formatHistoryValue(key, prev[key], formatRpDate),
       after: '—',
     }));
   }
@@ -209,8 +211,8 @@ function summarizeHistoryDiff(
     if (JSON.stringify(a) === JSON.stringify(b)) continue;
     diffs.push({
       label: FIELD_LABELS[key] ?? key,
-      before: formatHistoryValue(key, a),
-      after: formatHistoryValue(key, b),
+      before: formatHistoryValue(key, a, formatRpDate),
+      after: formatHistoryValue(key, b, formatRpDate),
     });
   }
   return diffs;
@@ -229,6 +231,7 @@ export function AnimalDetailPageClient({
   initialDocuments: AnimalDocumentListItem[];
   availableTemplates: AnimalDocumentTemplateListItem[];
 }) {
+  const { formatRpDate } = useRpCalendar();
   const router = useRouter();
   const t = useTenantRoutes();
   const { permissions } = usePermissions();
@@ -805,7 +808,7 @@ export function AnimalDetailPageClient({
         ) : (
           <Stack gap={0}>
             {history.map((entry) => {
-              const diffs = summarizeHistoryDiff(entry.previousValues, entry.nextValues);
+              const diffs = summarizeHistoryDiff(entry.previousValues, entry.nextValues, formatRpDate);
               return (
                 <div key={entry.id} className={classes.historyEntry}>
                   <Group justify="space-between" wrap="wrap">

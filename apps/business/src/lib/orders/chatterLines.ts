@@ -2,20 +2,30 @@ import type { OrderEventChange, OrderEventRecord } from '@lawless-intranet/types
 import { getOrderStatusLabel } from '@/types/enum/orderStatus';
 import { getOrderTypeLabel } from '@/types/enum/orderType';
 import type { OrderPerson } from '@/types/orders';
+import type { RpCalendar } from '@/lib/rpCalendar';
+
+type RpFormat = Pick<RpCalendar, 'formatRpDate'>;
 
 export function formatOrderPrice(price: number | null | undefined): string {
   return price != null ? `${price.toFixed(2)} $` : '—';
 }
 
-/** Date and time of an order or a chatter entry (same real dates as the orders list). */
-export function formatOrderDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/** Date and time of an order or a chatter entry, in the RP calendar of the business. */
+export function formatOrderDateTime(iso: string, { formatRpDate }: RpFormat): string {
+  return formatRpDate(new Date(iso), "d MMM yyyy 'à' HH:mm");
+}
+
+/** Day of an order (lists), in the RP calendar of the business. */
+export function formatOrderDay(iso: string, { formatRpDate }: RpFormat): string {
+  return formatRpDate(new Date(iso), 'd MMM yyyy');
+}
+
+/** Chip of the creation date filter: « 5 oct. 1890 → 11 oct. 1890 », « Depuis … », « Jusqu'au … ». */
+export function formatOrderDateRange(from: string | null, to: string | null, rp: RpFormat): string {
+  if (from && to) return `${formatOrderDay(from, rp)} → ${formatOrderDay(to, rp)}`;
+  if (from) return `Depuis ${formatOrderDay(from, rp)}`;
+  if (to) return `Jusqu'au ${formatOrderDay(to, rp)}`;
+  return '';
 }
 
 export function personName(
@@ -103,13 +113,13 @@ function dayKey(date: Date): string {
 }
 
 /** Day separator of the chatter: "Aujourd'hui", "Hier", else the short date. */
-export function chatterDayLabel(iso: string, now: Date = new Date()): string {
+export function chatterDayLabel(iso: string, rp: RpFormat, now: Date = new Date()): string {
   const date = new Date(iso);
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (dayKey(date) === dayKey(now)) return 'Aujourd’hui';
   if (dayKey(date) === dayKey(yesterday)) return 'Hier';
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatOrderDay(iso, rp);
 }
 
 /** Consecutive events of the same day, in the given order (newest first in the chatter). */

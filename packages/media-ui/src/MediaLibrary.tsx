@@ -79,6 +79,7 @@ import {
 import { useMediaRealtime } from './hooks/useMediaRealtime';
 import { useFileDrop } from './hooks/useFileDrop';
 import { useMediaUploads } from './hooks/useMediaUploads';
+import { pastedFiles } from './paste';
 import { useMediaUi } from './MediaUiProvider';
 import { canDrop, parseDropId, type DragItem } from './dnd';
 import { DEFAULT_MEDIA_SORT, getFileKind, nextSort, parseMediaSort, sortItems, type MediaSort } from './format';
@@ -200,7 +201,7 @@ export type MediaLibraryProps = {
  * rename, move, delete, preview, and saved external links (opened in a new tab).
  */
 export function MediaLibrary({ initialContents, initialFolderId = null }: MediaLibraryProps) {
-  const { limits } = useMediaUi();
+  const { limits, formatDateTime } = useMediaUi();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -317,12 +318,22 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
   const deleteKeys = (keys: readonly string[]) =>
     mutations.deleteItems.mutateAsync({ ...splitSelection(keys), name: nameOf(keys) }).then(() => clearSelection());
 
-  // --- Keyboard: Ctrl+A, Escape, Delete (ignored in fields, dialogs, viewer and menus) ---
+  // --- Keyboard: Ctrl+A, Shift+N, Escape, Delete (ignored in fields, dialogs, viewer and menus) ---
   useWindowEvent('keydown', (event) => {
     if (dialog || previewId || contextMenu.state || isEditableTarget(event.target)) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
       event.preventDefault();
       setSelection({ keys: new Set(order), anchor: order[0] ?? null });
+    } else if (
+      // Shift+N: Ctrl/Cmd+Shift+N is kept by Chrome and Edge (private window) and never reaches the page.
+      event.shiftKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      event.key.toLowerCase() === 'n'
+    ) {
+      event.preventDefault();
+      setDialog({ type: 'create' });
     } else if (event.key === 'Escape' && selection.keys.size > 0) {
       clearSelection();
     } else if (event.key === 'Delete' && selectedKeys.length > 0) {
@@ -412,6 +423,18 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
     if (picked.length > 0) void uploads.upload(picked, destination);
   };
 
+  // --- Ctrl/Cmd+V: images of the clipboard go to the current folder (fields keep their own paste) ---
+  useWindowEvent('paste', (event) => {
+    if (!limits.storageConfigured) return;
+    if (dialog || previewId || contextMenu.state || isEditableTarget(event.target)) return;
+    // « : » is not allowed in Windows file names once downloaded.
+    const label = formatDateTime(new Date().toISOString()).replace(/:/g, 'h');
+    const pasted = pastedFiles(event.clipboardData, limits.allowedMimeTypes, label);
+    if (pasted.length === 0) return;
+    event.preventDefault();
+    startUpload(pasted);
+  });
+
   // Files from the computer: dropped anywhere goes to the current folder, onto a folder goes inside it.
   const fileDrop = useFileDrop({
     enabled: limits.storageConfigured,
@@ -433,6 +456,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
       onCreateLink={() => setDialog({ type: 'createLink' })}
       onUpload={() => fileInputRef.current?.click()}
       uploadDisabled={!limits.storageConfigured}
+      showShortcuts={!isTouch}
     />
   );
 
@@ -695,7 +719,7 @@ export function MediaLibrary({ initialContents, initialFolderId = null }: MediaL
                       <Text c="dimmed" size="sm" ta="center">
                         {isTouch
                           ? 'Touchez + pour créer un dossier, ajouter un lien ou importer des fichiers.'
-                          : 'Faites un clic droit pour créer un dossier, ajouter un lien ou importer, ou glissez des fichiers ici.'}
+                          : 'Faites un clic droit pour créer un dossier, ajouter un lien ou importer, glissez des fichiers ici ou collez une image (Ctrl/Cmd + V).'}
                       </Text>
                     </Stack>
                   </Center>

@@ -1,5 +1,7 @@
 'use client';
 
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
+import { formatOrderDateRange } from '@/lib/orders/chatterLines';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
@@ -19,19 +21,6 @@ import { EditOrderModal } from './orders/components/EditOrderModal';
 import { DeleteOrderModal } from './orders/components/DeleteOrderModal';
 import { OrderLetterPreviewModal } from './orders/components/OrderLetterPreviewModal';
 
-function formatDateRangeChip(from: string | null, to: string | null): string {
-  const format = (iso: string) =>
-    new Date(iso).toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  if (from && to) return `${format(from)} → ${format(to)}`;
-  if (from) return `Depuis ${format(from)}`;
-  if (to) return `Jusqu'au ${format(to)}`;
-  return '';
-}
-
 type EmployeeActiveOrdersDashboardProps = {
   initialOrdersPage: OrdersPageResult;
   initialAssignments: OrderMailTemplateAssignment[];
@@ -42,6 +31,7 @@ export function EmployeeActiveOrdersDashboard({
   initialAssignments,
 }: EmployeeActiveOrdersDashboardProps) {
   const { permissions } = usePermissions();
+  const rp = useRpCalendar();
   const [filters, setFilters] = useState<Omit<OrdersPageFilters, 'search'>>({
     page: defaultActiveOrdersPageFilters.page,
     pageSize: defaultActiveOrdersPageFilters.pageSize,
@@ -123,7 +113,7 @@ export function EmployeeActiveOrdersDashboard({
             label: 'Date de création',
             value:
               filters.createdAtFrom || filters.createdAtTo
-                ? formatDateRangeChip(filters.createdAtFrom, filters.createdAtTo)
+                ? formatOrderDateRange(filters.createdAtFrom, filters.createdAtTo, rp)
                 : null,
             onRemove: () =>
               setFilters((current) => ({

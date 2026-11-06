@@ -1,7 +1,7 @@
 'use client';
 
 import { DatePicker, DatesProvider, type DatePickerProps } from '@mantine/dates';
-import { fromRpDisplayDate, toRpDisplayDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import 'dayjs/locale/fr';
 
 export type RpDatePickerProps = Omit<
@@ -14,6 +14,7 @@ export type RpDatePickerProps = Omit<
 
 /** Inline calendar showing RP dates; values in and out are real dates (see RpDateInput). */
 export function RpDatePicker({ value, onChange, locale = 'fr', defaultDate, ...props }: RpDatePickerProps) {
+  const { fromRpDisplayDate, toRpDisplayDate } = useRpCalendar();
   const rpValue = value && !Number.isNaN(value.getTime()) ? toRpDisplayDate(value) : null;
 
   return (

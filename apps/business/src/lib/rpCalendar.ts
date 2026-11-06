@@ -1,35 +1,45 @@
 import { addYears, differenceInYears, format, subYears } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { DEFAULT_RP_YEAR_OFFSET } from '@lawless-intranet/types';
 
-/** Display-only: RP calendar is 136 years before real dates (DB unchanged). */
-export const RP_DISPLAY_YEAR_OFFSET = 136;
+export { DEFAULT_RP_YEAR_OFFSET };
+
+/**
+ * RP calendar of a business: display-only, `offset` years before real dates (DB unchanged).
+ * The offset is a business setting (`AppSettings.rpYearOffset`): client code reads it with
+ * `useRpCalendar()`, server code with `createRpCalendar(settings.rpYearOffset)`.
+ */
+export type RpCalendar = {
+  offset: number;
+  /** Current RP year, for examples in help texts. */
+  currentYear: number;
+  toRpDisplayDate: (real: Date) => Date;
+  fromRpDisplayDate: (rp: Date) => Date;
+  formatRpDate: (real: Date | null | undefined, pattern?: string) => string;
+  computeRpAge: (birthDate: Date | null | undefined, referenceReal?: Date) => number | null;
+};
+
+export function createRpCalendar(offset: number = DEFAULT_RP_YEAR_OFFSET): RpCalendar {
+  const toRpDisplayDate = (real: Date): Date => subYears(real, offset);
+  return {
+    offset,
+    currentYear: new Date().getFullYear() - offset,
+    toRpDisplayDate,
+    fromRpDisplayDate: (rp) => addYears(rp, offset),
+    formatRpDate: (real, pattern = 'dd MMMM yyyy') => {
+      if (!real) return '—';
+      return format(toRpDisplayDate(real), pattern, { locale: fr });
+    },
+    computeRpAge: (birthDate, referenceReal = new Date()) => {
+      if (!birthDate) return null;
+      return differenceInYears(toRpDisplayDate(referenceReal), toRpDisplayDate(birthDate));
+    },
+  };
+}
 
 export function getTodayRealDate(): Date {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-export function toRpDisplayDate(real: Date): Date {
-  return subYears(real, RP_DISPLAY_YEAR_OFFSET);
-}
-
-export function fromRpDisplayDate(rp: Date): Date {
-  return addYears(rp, RP_DISPLAY_YEAR_OFFSET);
-}
-
-export function formatRpDate(real: Date | null | undefined, pattern = 'dd MMMM yyyy'): string {
-  if (!real) return '—';
-  return format(toRpDisplayDate(real), pattern, { locale: fr });
-}
-
-export function computeRpAge(
-  birthDate: Date | null | undefined,
-  referenceReal: Date = new Date(),
-): number | null {
-  if (!birthDate) return null;
-  const rpBirth = toRpDisplayDate(birthDate);
-  const rpRef = toRpDisplayDate(referenceReal);
-  return differenceInYears(rpRef, rpBirth);
 }
 
 export function parseRealDateFromIso(iso: string | null | undefined): Date | null {

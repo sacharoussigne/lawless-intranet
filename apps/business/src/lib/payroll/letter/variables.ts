@@ -2,16 +2,19 @@ import { isPayrollEmployeeRole } from '@/lib/businessDiscordProfile/constants';
 import { DEFAULT_BUSINESS_TYPE, isCashPreparerGrade, type BusinessType } from '@/lib/businessTypes';
 import { PAYROLL_DAYS } from '@/lib/payroll/parsePayrollHtmlTable';
 import type { PayrollReportResult } from '@/lib/payroll/schema';
-import { formatRpDate } from '@/lib/rpCalendar';
+import type { RpCalendar } from '@/lib/rpCalendar';
 
 /** Type of the city hall letter template in the documents service (one per business). */
 export const PAYROLL_LETTER_TEMPLATE_TYPE = 'payroll-letter';
 
-/** Variables of the city hall letter, offered by `@` in its editor (author variables come with every template). */
-export const PAYROLL_LETTER_VARIABLE_DESCRIPTIONS = {
-  semaine: 'Semaine du rapport, ex. « du 5 au 11 octobre 1890 »',
-  semaine_debut: 'Premier jour de la semaine du rapport, ex. « 5 octobre 1890 »',
-  semaine_fin: 'Dernier jour de la semaine du rapport, ex. « 11 octobre 1890 »',
+/**
+ * Variables of the city hall letter, offered by `@` in its editor (author variables come with every template).
+ * `rpYear`: current RP year of the business, for the examples.
+ */
+export const payrollLetterVariableDescriptions = (rpYear: number) => ({
+  semaine: `Semaine du rapport, ex. « du 5 au 11 octobre ${rpYear} »`,
+  semaine_debut: `Premier jour de la semaine du rapport, ex. « 5 octobre ${rpYear} »`,
+  semaine_fin: `Dernier jour de la semaine du rapport, ex. « 11 octobre ${rpYear} »`,
   date_courrier: 'Date RP du jour où la lettre est générée',
   employes: 'Un paragraphe par employé : nom, n° de compte et nombre de présences',
   nb_employes: 'Nombre d’employés de la liste',
@@ -21,10 +24,10 @@ export const PAYROLL_LETTER_VARIABLE_DESCRIPTIONS = {
   username: 'Nom de l’auteur du courrier',
   description: 'Description (fonction) de l’auteur du courrier',
   gender: 'Genre de l’auteur : male ou female',
-} as const;
+});
 
 export type PayrollLetterVariables = Record<
-  Exclude<keyof typeof PAYROLL_LETTER_VARIABLE_DESCRIPTIONS, 'username' | 'description' | 'gender'>,
+  Exclude<keyof ReturnType<typeof payrollLetterVariableDescriptions>, 'username' | 'description' | 'gender'>,
   string
 >;
 
@@ -68,7 +71,7 @@ function employeeParagraph(employee: PayrollEmployee, gender: LetterGender | nul
 }
 
 /** « du 5 au 11 octobre 1890 », « du 29 septembre au 5 octobre 1890 », across years too. */
-export function rpWeekRange(weekStart: Date, weekEnd: Date): string {
+export function rpWeekRange(weekStart: Date, weekEnd: Date, { formatRpDate }: RpCalendar): string {
   const sameYear = formatRpDate(weekStart, 'yyyy') === formatRpDate(weekEnd, 'yyyy');
   const sameMonth = sameYear && formatRpDate(weekStart, 'MM') === formatRpDate(weekEnd, 'MM');
   const startPattern = sameMonth ? 'd' : sameYear ? 'd MMMM' : 'd MMMM yyyy';
@@ -89,12 +92,15 @@ export function buildPayrollLetterVariables(input: {
   now?: Date;
   /** Decides who is a cash preparer (left out of the letter). */
   businessType?: BusinessType;
+  /** RP calendar of the business. */
+  rp: RpCalendar;
 }): PayrollLetterVariables {
+  const { formatRpDate } = input.rp;
   const employees = letterEmployees(input.result.employees, input.businessType);
   const all = input.result.employees;
   const genderOf = input.genderOf ?? (() => null);
   return {
-    semaine: rpWeekRange(input.weekStart, input.weekEnd),
+    semaine: rpWeekRange(input.weekStart, input.weekEnd, input.rp),
     semaine_debut: formatRpDate(input.weekStart, 'd MMMM yyyy'),
     semaine_fin: formatRpDate(input.weekEnd, 'd MMMM yyyy'),
     date_courrier: formatRpDate(input.now ?? new Date(), 'd MMMM yyyy'),
@@ -106,12 +112,12 @@ export function buildPayrollLetterVariables(input: {
   };
 }
 
-/** Sample values for the editor's preview. */
-export const SAMPLE_PAYROLL_LETTER_VARIABLES: PayrollLetterVariables = {
-  semaine: 'du 5 au 11 octobre 1890',
-  semaine_debut: '5 octobre 1890',
-  semaine_fin: '11 octobre 1890',
-  date_courrier: '12 octobre 1890',
+/** Sample values for the editor's preview, in the current RP year of the business. */
+export const samplePayrollLetterVariables = (rpYear: number): PayrollLetterVariables => ({
+  semaine: `du 5 au 11 octobre ${rpYear}`,
+  semaine_debut: `5 octobre ${rpYear}`,
+  semaine_fin: `11 octobre ${rpYear}`,
+  date_courrier: `12 octobre ${rpYear}`,
   employes: [
     'Dr. Owen Clark, numéro de compte 5154, a été présent 5 fois cette semaine pour effectuer des soins et consultations.',
     'Dr. Violet Clark, numéro de compte 5374, a été présente 5 fois cette semaine pour effectuer des soins et consultations.',
@@ -121,7 +127,7 @@ export const SAMPLE_PAYROLL_LETTER_VARIABLES: PayrollLetterVariables = {
   total_presences: '10',
   total_patients: '13',
   total_sherifs: '11',
-};
+});
 
 /** Starting text of the letter, offered while the business has none. */
 export const DEFAULT_PAYROLL_LETTER_CONTENT = [

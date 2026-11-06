@@ -4,8 +4,10 @@ import { MobileTabBar } from '@/app/(loggedIn)/_components/MobileTabBar/MobileTa
 import { LoggedInShell } from '@/app/(loggedIn)/_components/LoggedInShell/LoggedInShell';
 import { getAuthSession } from '@/lib/authSession';
 import { PermissionsProvider } from '@/app/_contexts/PermissionsContext';
+import { RpCalendarProvider } from '@/app/_contexts/RpCalendarContext';
 import { calculatePermissionsFromEffective } from '@/lib/auth/calculatePermissions';
-import { getAppSettings } from '@/lib/appSettings';
+import { getAppSettings, isAppFeatureEnabled } from '@/lib/appSettings';
+import { userHasAnyLetterBoxAccess } from '@/lib/letters/access';
 import type { AuthSession } from '@/types/session';
 import { getImpersonatorDisplayName } from '@/lib/auth/impersonationDisplay';
 import { listAccessibleBusinessesForRequest } from '@/lib/business/accessibleBusinesses';
@@ -77,6 +79,7 @@ export default async function BusinessLayout({
     [cabinetModuleAccess, accessibleCabinetIds],
     hasAccessibleChests,
     memberDescription,
+    letterBoxModuleAccess,
   ] = await Promise.all([
     resolveEffectivePermissionsForBusiness(authSession, business.id, effectiveRole),
     getBusinessUserName(business.id, userId, user?.name ?? 'Utilisateur'),
@@ -92,6 +95,9 @@ export default async function BusinessLayout({
     })(),
     userHasAccessibleChests(business.id, effectiveRole),
     userId ? getMemberDescription(business.id, userId) : null,
+    userId && isAppFeatureEnabled(appSettings, 'letters')
+      ? userHasAnyLetterBoxAccess(business.id, userId)
+      : false,
   ]);
   const permissions = calculatePermissionsFromEffective(effectivePermissions);
 
@@ -106,6 +112,7 @@ export default async function BusinessLayout({
       agendaModuleAccess={agendaModuleAccess}
       accessibleAgendaIds={accessibleAgendaIds}
       cabinetModuleAccess={cabinetModuleAccess}
+      letterBoxModuleAccess={letterBoxModuleAccess}
       accessibleCabinetIds={accessibleCabinetIds}
       hasAccessibleChests={hasAccessibleChests}
     >
@@ -114,6 +121,7 @@ export default async function BusinessLayout({
           url={getRealtimePublicUrl()}
         >
         <QueryProvider>
+          <RpCalendarProvider offset={appSettings.rpYearOffset}>
           <OrdersRealtimeBridge />
           <StockRealtimeBridge />
           <MailTemplateProvider
@@ -137,6 +145,7 @@ export default async function BusinessLayout({
           <MobileTabBar />
         </LoggedInShell>
           </MailTemplateProvider>
+          </RpCalendarProvider>
         </QueryProvider>
         </BusinessRealtimeSocketShell>
     </PermissionsProvider>

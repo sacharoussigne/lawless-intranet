@@ -36,7 +36,7 @@ import type { CabinetAccessLevel } from '@prisma/client';
 import type { CabinetFormSchemas, CustomValues } from '@/lib/cabinet/formSchema';
 import type { CabinetDisplaySettings } from '@/lib/cabinet/displaySettings';
 import { getMantineLabelStyles } from '@/lib/cabinet/displaySettings';
-import { computeRpAge, formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { tenantRoutes } from '@/types/routes';
 import { DynamicFormRenderer } from '@/app/(loggedIn)/[businessSlug]/employee/cabinet/components/DynamicFormRenderer';
 import { CabinetFormErrorBanner } from '@/app/(loggedIn)/[businessSlug]/employee/cabinet/components/CabinetFormErrorBanner';
@@ -69,6 +69,7 @@ export function PatientDetailPageClient({
   patient: initialPatient,
   initialEpisodes,
 }: PatientDetailPageClientProps) {
+  const { computeRpAge, formatRpDate } = useRpCalendar();
   const [episodes, setEpisodes] = useState(initialEpisodes);
   const [episodeModalOpen, setEpisodeModalOpen] = useState(false);
 

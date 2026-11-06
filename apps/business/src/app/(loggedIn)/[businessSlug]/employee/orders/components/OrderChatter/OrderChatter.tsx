@@ -26,6 +26,7 @@ import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/Del
 import { MarkdownContent } from '@/app/_components/MarkdownContent/MarkdownContent';
 import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import {
   chatterDayLabel,
   describeOrderChange,
@@ -68,8 +69,9 @@ function PersonAvatar({ person, name }: { person?: OrderPerson; name: string }) 
 
 /** Time of an entry; the full date in its tooltip. */
 function EntryTime({ iso }: { iso: string }) {
+  const rp = useRpCalendar();
   return (
-    <Tooltip label={formatOrderDateTime(iso)} withArrow openDelay={400}>
+    <Tooltip label={formatOrderDateTime(iso, rp)} withArrow openDelay={400}>
       <time dateTime={iso} className={classes.time}>
         {formatOrderTime(iso)}
       </time>
@@ -338,6 +340,7 @@ function TrackingEntry({
  * orders realtime topic.
  */
 export function OrderChatter({ orderId, currentUserId, initialChatter }: OrderChatterProps) {
+  const rp = useRpCalendar();
   const { permissions } = usePermissions();
   const { data, isLoading } = useOrderChatter(orderId, initialChatter);
   const [filter, setFilter] = useState<ChatterFilter>('all');
@@ -384,9 +387,9 @@ export function OrderChatter({ orderId, currentUserId, initialChatter }: OrderCh
       ) : (
         <div className={classes.days}>
           {days.map((day) => (
-            <section key={day.key} aria-label={chatterDayLabel(day.iso)}>
+            <section key={day.key} aria-label={chatterDayLabel(day.iso, rp)}>
               <div className={classes.daySeparator}>
-                <span>{chatterDayLabel(day.iso)}</span>
+                <span>{chatterDayLabel(day.iso, rp)}</span>
               </div>
               <ul className={classes.feed}>
                 {day.events.map((event) =>

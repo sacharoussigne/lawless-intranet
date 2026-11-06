@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { MarkdownContent } from '@/app/_components/MarkdownContent';
 import { usePermissions, useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { buildAnimalTemplateVariables } from '@/lib/animals/documents';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { ANIMAL_STATUS_LABELS } from '@/lib/animals/labels';
 import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
 import type { AnimalDTO } from '../../../types';
@@ -59,6 +60,7 @@ export function FollowUpDetailPageClient({
   availableTemplates: AnimalDocumentTemplateListItem[];
 }) {
   const t = useTenantRoutes();
+  const rp = useRpCalendar();
   const { permissions } = usePermissions();
   const canUpdate = Boolean(permissions?.animals.update);
   const [followUp, setFollowUp] = useState(initialFollowUp);
@@ -82,8 +84,8 @@ export function FollowUpDetailPageClient({
           careProvided: animal.careProvided,
           notes: animal.notes,
         },
-      }),
-    [animal, shelterName],
+      }, rp),
+    [animal, shelterName, rp],
   );
 
   return (

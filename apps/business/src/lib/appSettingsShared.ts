@@ -6,6 +6,7 @@ import {
   isModuleAllowedForType,
 } from '@/lib/businessTypes';
 import { PAYROLL_PATIENT_CARE_USD } from '@/lib/payroll/constants';
+import { DEFAULT_RP_YEAR_OFFSET } from '@lawless-intranet/types';
 
 export { APP_FEATURE_KEYS, type AppFeatureKey };
 
@@ -24,12 +25,15 @@ export type AppSettingsDTO = {
   featureCabinetEnabled: boolean;
   featureSalesEnabled: boolean;
   featureMediaEnabled: boolean;
+  featureLettersEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   /** Weekly activity counters of the business type: key → enabled (a missing key is enabled). */
   weeklyActivityCounters: Record<string, boolean>;
   /** Paid per patient cared for (payroll), for every salary type. Edited in the Salaires tab. */
   payrollPatientCareUsd: number;
+  /** Years between the real date and the RP date shown (display only). */
+  rpYearOffset: number;
 };
 
 export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
@@ -46,10 +50,12 @@ export const APP_SETTINGS_DEFAULTS: AppSettingsDTO = {
   featureCabinetEnabled: true,
   featureSalesEnabled: true,
   featureMediaEnabled: true,
+  featureLettersEnabled: true,
   weeklyActivityChestDaysVisible: true,
   weeklyActivityPresenceDaysVisible: true,
   weeklyActivityCounters: {},
   payrollPatientCareUsd: PAYROLL_PATIENT_CARE_USD,
+  rpYearOffset: DEFAULT_RP_YEAR_OFFSET,
 };
 
 /** Settings flag behind each module. */
@@ -65,6 +71,7 @@ const FEATURE_SETTING: Record<AppFeatureKey, keyof AppSettingsDTO & `feature${st
   cabinet: 'featureCabinetEnabled',
   sales: 'featureSalesEnabled',
   media: 'featureMediaEnabled',
+  letters: 'featureLettersEnabled',
 };
 
 /**
@@ -118,6 +125,8 @@ export function isAppFeatureEnabled(
       return settings.featureSalesEnabled ?? APP_SETTINGS_DEFAULTS.featureSalesEnabled;
     case 'media':
       return settings.featureMediaEnabled ?? APP_SETTINGS_DEFAULTS.featureMediaEnabled;
+    case 'letters':
+      return settings.featureLettersEnabled ?? APP_SETTINGS_DEFAULTS.featureLettersEnabled;
     default: {
       const _exhaustive: never = feature;
       return _exhaustive;

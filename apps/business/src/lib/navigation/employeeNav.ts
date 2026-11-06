@@ -10,6 +10,7 @@ import {
   IconCashRegister,
   IconHistory,
   IconMail,
+  IconMailbox,
   IconNotebook,
   IconReceipt,
   IconReportMoney,
@@ -22,6 +23,7 @@ export type EmployeeNavId =
   | 'orders'
   | 'bank'
   | 'cabinet'
+  | 'letters'
   | 'activity'
   | 'mails'
   | 'search';
@@ -55,6 +57,7 @@ export type EmployeeNavContext = {
   permissions: Permissions | null;
   userRole: string | null;
   cabinetModuleAccess?: boolean;
+  letterBoxModuleAccess?: boolean;
   hasAccessibleChests?: boolean;
 };
 
@@ -150,6 +153,8 @@ function isItemVisible(item: EmployeeNavItem, ctx: EmployeeNavContext): boolean 
       return (
         isAppFeatureEnabled(appSettings, 'cabinet') && (ctx.cabinetModuleAccess ?? false)
       );
+    case 'letters':
+      return isAppFeatureEnabled(appSettings, 'letters') && (ctx.letterBoxModuleAccess ?? false);
     case 'mails':
       return appSettings.featureMailsEnabled && (permissions?.mails.access ?? false);
     case 'search':
@@ -195,6 +200,14 @@ function buildAllItems(ctx: EmployeeNavContext): EmployeeNavItem[] {
       href: t.cabinet.index,
       icon: IconStethoscope,
       navOrder: 17,
+    },
+    {
+      id: 'letters',
+      label: 'Lettres',
+      shortLabel: 'Lettres',
+      href: t.letters.index,
+      icon: IconMailbox,
+      navOrder: 18,
     },
     {
       id: 'mails',

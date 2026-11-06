@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { updateTag } from 'next/cache';
 import { z } from 'zod/v3';
 import prisma from '@/lib/prisma';
+import { MAX_RP_YEAR_OFFSET, MIN_RP_YEAR_OFFSET } from '@lawless-intranet/types';
 import { actionErrorParser } from '@/lib/action';
 import {
   appSettingsCacheTag,
@@ -32,6 +33,11 @@ const updateSchema = z.object({
   slug: slugSchema,
   featureBankEnabled: z.boolean(),
   featureMediaEnabled: z.boolean(),
+  rpYearOffset: z
+    .number({ invalid_type_error: "L'écart du calendrier RP est requis" })
+    .int("L'écart du calendrier RP doit être un nombre entier d'années")
+    .min(MIN_RP_YEAR_OFFSET, `L'écart du calendrier RP doit être d'au moins ${MIN_RP_YEAR_OFFSET} an`)
+    .max(MAX_RP_YEAR_OFFSET, `L'écart du calendrier RP ne peut pas dépasser ${MAX_RP_YEAR_OFFSET} ans`),
 });
 
 export async function getAppSettingsForAdmin(
@@ -115,11 +121,13 @@ export async function updateAppSettings(
           shelterName: parsed.data.shelterName,
           featureBankEnabled: parsed.data.featureBankEnabled,
           featureMediaEnabled: parsed.data.featureMediaEnabled,
+          rpYearOffset: parsed.data.rpYearOffset,
         },
         update: {
           shelterName: parsed.data.shelterName,
           featureBankEnabled: parsed.data.featureBankEnabled,
           featureMediaEnabled: parsed.data.featureMediaEnabled,
+          rpYearOffset: parsed.data.rpYearOffset,
         },
       }),
     ]);
@@ -136,6 +144,7 @@ export async function updateAppSettings(
       slug: newSlug,
       featureBankEnabled: row.featureBankEnabled,
       featureMediaEnabled: row.featureMediaEnabled,
+      rpYearOffset: row.rpYearOffset,
     };
 
     return { status: 200, data };

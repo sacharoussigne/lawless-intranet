@@ -1,4 +1,5 @@
 import { z } from 'zod/v3';
+import { MAX_RP_YEAR_OFFSET, MIN_RP_YEAR_OFFSET } from '@lawless-intranet/types';
 
 export const transactionTypeSchema = z.enum([
   'DEPOSIT',
@@ -41,6 +42,7 @@ export const importTransactionItemSchema = z.object({
 
 export const importTransactionsSchema = z.object({
   items: z.array(importTransactionItemSchema).min(1, 'Au moins une transaction').max(5000),
+  rpYearOffset: z.number().int().min(MIN_RP_YEAR_OFFSET).max(MAX_RP_YEAR_OFFSET).optional(),
 });
 
 export const createPlannedTransactionSchema = z

@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconClipboardList } from '@tabler/icons-react';
-import { formatRpDate } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import {
   useOpenWaitRequestsPreview,
   useWaitlistRealtimeInvalidation,
@@ -39,6 +39,7 @@ export function HeaderWaitlistIndicator({
   shelterSlug,
   waitlistHref,
 }: HeaderWaitlistIndicatorProps) {
+  const { formatRpDate } = useRpCalendar();
   const router = useRouter();
   const [opened, setOpened] = useState(false);
   const previewQuery = useOpenWaitRequestsPreview(shelterSlug);

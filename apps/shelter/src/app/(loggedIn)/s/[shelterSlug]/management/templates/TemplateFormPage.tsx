@@ -1,7 +1,7 @@
 'use client';
 
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Container, Grid, Group, Stack, Tabs, TextInput, Textarea } from '@mantine/core';
@@ -21,7 +21,8 @@ import {
 import { handleAction } from '@/lib/action';
 import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import type { AnimalDocumentTemplateListItem } from '@/types/animalDocuments';
-import { SAMPLE_ANIMAL_TEMPLATE_VARIABLES } from './sampleAnimalTemplateVariables';
+import { sampleAnimalTemplateVariables } from './sampleAnimalTemplateVariables';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 
 interface TemplateFormPageProps {
   shelterSlug: string;
@@ -48,9 +49,11 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
     },
   });
 
+  const { currentYear } = useRpCalendar();
+  const sampleVariables = useMemo(() => sampleAnimalTemplateVariables(currentYear), [currentYear]);
   const preview = useTemplatePreviewActions(
     form.values.content,
-    SAMPLE_ANIMAL_TEMPLATE_VARIABLES,
+    sampleVariables,
     {
       inputsMode: 'disabled',
     },
@@ -206,7 +209,7 @@ export function TemplateFormPage({ shelterSlug, mode, template }: TemplateFormPa
             <Tabs.Panel value="preview" pt="md">
               <TemplatePreviewWithForm
                 templateContent={form.values.content}
-                variables={SAMPLE_ANIMAL_TEMPLATE_VARIABLES}
+                variables={sampleVariables}
                 inputsMode="disabled"
                 resultLabel="Aperçu animal (données fictives)"
                 formRef={preview.formRef}

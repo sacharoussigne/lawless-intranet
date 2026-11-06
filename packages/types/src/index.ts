@@ -168,3 +168,5 @@ export type {
   MediaTreeFolderRecord,
   MediaUploadTicketRecord,
 } from './media';
+
+export { DEFAULT_RP_YEAR_OFFSET, MAX_RP_YEAR_OFFSET, MIN_RP_YEAR_OFFSET } from './rpCalendar';

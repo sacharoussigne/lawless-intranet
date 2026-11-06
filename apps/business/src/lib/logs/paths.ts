@@ -20,6 +20,8 @@ const SEGMENT_FEATURES: Record<string, LogFeature> = {
   cabinet: 'cabinet',
   cabinets: 'cabinet',
   media: 'media',
+  letters: 'letters',
+  'letter-boxes': 'letters',
   compte: 'account',
   settings: 'settings',
   members: 'settings',

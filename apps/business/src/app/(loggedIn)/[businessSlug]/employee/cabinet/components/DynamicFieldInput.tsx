@@ -28,7 +28,8 @@ import {
   tryMarkdownShortcut,
 } from '@/lib/markdown/markdownShortcuts';
 import { isBlockMarkdown } from '@/lib/markdown/isBlockMarkdown';
-import { formatRpDate, parseRealDateFromIso } from '@/lib/rpCalendar';
+import { parseRealDateFromIso } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { CabinetFieldLabel } from './CabinetFieldLabel';
 import { useCabinetDisplaySettings } from './CabinetDisplaySettingsContext';
 
@@ -142,6 +143,7 @@ const FieldRecursive = memo(function FieldRecursive({
   depth = 0,
   fieldErrors,
 }: DynamicFieldInputProps) {
+  const { formatRpDate } = useRpCalendar();
   const displaySettings = useCabinetDisplaySettings();
   const effectiveValue = resolveFieldInputValue(value, field.defaultValue);
   const error = fieldErrors?.[field.id];

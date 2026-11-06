@@ -5,7 +5,7 @@ import { useTenantRoutes } from '@/app/_contexts/PermissionsContext';
 import { Alert, Button, Container, Group, Text, Title } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import Link from 'next/link';
-import { format, subYears } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { IconArrowLeft, IconCheck, IconEdit, IconMail, IconTrash, IconX } from '@tabler/icons-react';
 import { useSearchParams } from 'next/navigation';
@@ -21,11 +21,8 @@ import { PayrollEmployeeSection } from './PayrollEmployeeSection';
 import { PayrollLetterModal } from './PayrollLetterModal';
 import { PayrollTotalsPaper } from './PayrollTotalsPaper';
 import { PayrollVirementsSection } from './PayrollVirementsSection';
-import {
-  PAYROLL_RP_DISPLAY_YEAR_OFFSET,
-  payrollRpDisplayDate,
-  wireTransferDescription,
-} from './payrollDetailUtils';
+import { wireTransferDescription } from './payrollDetailUtils';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { usePayrollReportDraft } from './usePayrollReportDraft';
 
 export default function PayrollReportDetail({
@@ -40,6 +37,7 @@ export default function PayrollReportDetail({
   report: PayrollReportDetailType;
 }) {
   const routes = useTenantRoutes();
+  const rp = useRpCalendar();
   const updateMutation = useUpdatePayrollReportMutation(reportId);
   const deleteMutation = useDeletePayrollReportMutation({ redirectToList: true });
   const parsed = payrollReportResultSchema.safeParse(report.resultJson);
@@ -89,7 +87,7 @@ export default function PayrollReportDetail({
 
   const weekStartDate = new Date(report.weekStart);
   const weekEndDate = new Date(report.weekEnd);
-  const wireDescription = wireTransferDescription(weekStartDate, weekEndDate);
+  const wireDescription = wireTransferDescription(weekStartDate, weekEndDate, rp);
 
   return (
     <Container size="xl" py="xl">
@@ -108,8 +106,7 @@ export default function PayrollReportDetail({
           </Button>
           <Title order={1}>
             {report.reportType} - Semaine du{' '}
-            {format(payrollRpDisplayDate(weekStartDate), 'dd MMMM yyyy', { locale: fr })} au{' '}
-            {format(payrollRpDisplayDate(weekEndDate), 'dd MMMM yyyy', { locale: fr })}
+            {rp.formatRpDate(weekStartDate)} au {rp.formatRpDate(weekEndDate)}
           </Title>
           <Text size="sm" c="dimmed" mt="xs">
             Par {report.createdBy.name} — {format(new Date(report.createdAt), 'Pp', { locale: fr })}
@@ -117,17 +114,8 @@ export default function PayrollReportDetail({
           {draft?.weekly_activity_import && (
             <Text size="xs" c="dimmed" mt={6}>
               Import de l'activité hebdomadaire :{' '}
-              {format(
-                subYears(new Date(draft.weekly_activity_import.weekStart), PAYROLL_RP_DISPLAY_YEAR_OFFSET),
-                'dd/MM/yyyy',
-                { locale: fr },
-              )}{' '}
-              –{' '}
-              {format(
-                subYears(new Date(draft.weekly_activity_import.weekEnd), PAYROLL_RP_DISPLAY_YEAR_OFFSET),
-                'dd/MM/yyyy',
-                { locale: fr },
-              )}
+              {rp.formatRpDate(new Date(draft.weekly_activity_import.weekStart), 'dd/MM/yyyy')} –{' '}
+              {rp.formatRpDate(new Date(draft.weekly_activity_import.weekEnd), 'dd/MM/yyyy')}
             </Text>
           )}
         </div>

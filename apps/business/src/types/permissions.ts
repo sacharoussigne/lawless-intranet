@@ -25,5 +25,7 @@ export interface PermissionsContextType {
   accessibleAgendaIds: string[];
   cabinetModuleAccess: boolean;
   accessibleCabinetIds: string[];
+  /** Member of at least one letter box (Lettres). */
+  letterBoxModuleAccess: boolean;
   hasAccessibleChests: boolean;
 }

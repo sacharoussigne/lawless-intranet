@@ -29,6 +29,7 @@ model Business {
   businessWeeklyActivities BusinessWeeklyActivity[]
   people                   BusinessPerson[]
   cabinets                 Cabinet[]
+  letterBoxes              LetterBox[]
   payrollSalaryTypes       PayrollSalaryType[]
 
   @@index([createdById])
@@ -146,12 +147,15 @@ model AppSettings {
   featureCabinetEnabled             Boolean  @default(true)
   featureSalesEnabled               Boolean  @default(true)
   featureMediaEnabled               Boolean  @default(true)
+  featureLettersEnabled             Boolean  @default(true)
   weeklyActivityChestDaysVisible    Boolean  @default(true)
   weeklyActivityPresenceDaysVisible Boolean  @default(true)
   /// Weekly activity counters of the business type: key → enabled (a missing key is enabled).
   weeklyActivityCounters            Json     @default("{}")
   /// Paid per patient cared for (payroll), for every salary type.
   payrollPatientCareUsd             Decimal  @default(0.3) @db.Decimal(10, 2)
+  /// Years between the real date and the RP date shown (2026 → 1890). Display only: dates stay real in the database.
+  rpYearOffset                      Int      @default(136)
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
 
@@ -498,4 +502,111 @@ model AppLog {
   @@index([userId, createdAt(sort: Desc)])
   @@index([targetId, createdAt(sort: Desc)])
   @@map("app_logs")
+}
+
+/// Letters (« Lettres »): a box per person, shared like a cabinet (owner picks who reads or writes).
+enum LetterBoxAccessLevel {
+  OWNER
+  WRITE
+  READ
+}
+
+model LetterBox {
+  id             String                @id @default(uuid())
+  businessId     String
+  business       Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  members        LetterBoxMember[]
+  correspondents LetterCorrespondent[]
+  letters        Letter[]
+
+  @@index([businessId])
+  @@map("letter_box")
+}
+
+model LetterBoxMember {
+  id          String               @id @default(uuid())
+  boxId       String
+  box         LetterBox            @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  /// SSO user id.
+  userId      String
+  accessLevel LetterBoxAccessLevel
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([boxId, userId])
+  @@index([userId])
+  @@map("letter_box_member")
+}
+
+model LetterCorrespondent {
+  id           String    @id @default(uuid())
+  boxId        String
+  box          LetterBox @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  name         String
+  /// Name lowercased without accents (normalizeLetterSearch): accent-insensitive search.
+  searchName   String    @default("") @map("search_name")
+  note         String?
+  /// Date of the latest letter (kept in sync on writes): sorts the contact list without an aggregate.
+  lastLetterAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  letters      Letter[]
+
+  @@index([boxId, lastLetterAt])
+  @@map("letter_correspondent")
+}
+
+enum LetterDirection {
+  RECEIVED
+  SENT
+}
+
+model Letter {
+  id              String              @id @default(uuid())
+  boxId           String
+  box             LetterBox           @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  correspondentId String
+  correspondent   LetterCorrespondent @relation(fields: [correspondentId], references: [id], onDelete: Cascade)
+  direction       LetterDirection
+  /// Short random code written on the paper letter (« LT-7K3Q9P »), unique in the box.
+  serial          String
+  title           String
+  transcript      String?
+  /// Title and transcript lowercased without accents (normalizeLetterSearch): accent-insensitive search.
+  searchText      String              @default("") @map("search_text")
+  /// Real date of the letter, shown in the RP calendar.
+  letterDate      DateTime
+  replyToId       String?
+  replyTo         Letter?             @relation("LetterReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies         Letter[]            @relation("LetterReplies")
+  archivedAt      DateTime?
+  createdById     String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  images          LetterImage[]
+
+  @@unique([boxId, serial])
+  @@index([correspondentId, letterDate])
+  @@index([boxId, archivedAt])
+  @@map("letter")
+}
+
+/// Image of a letter: the file lives in the media service (scope business-letters), never in the library.
+model LetterImage {
+  id          String   @id @default(uuid())
+  letterId    String
+  letter      Letter   @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  mediaFileId String   @unique
+  position    Int
+  name        String
+  mimeType    String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  @@index([letterId, position])
+  @@map("letter_image")
 }

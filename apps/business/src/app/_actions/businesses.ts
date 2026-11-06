@@ -31,6 +31,7 @@ import { purgeInventoryScope } from '@lawless-intranet/inventory-client/server';
 import { InventoryClientError } from '@lawless-intranet/inventory-client';
 import { inventoryScope } from '@/lib/inventory/client';
 import { purgeMediaScope } from '@lawless-intranet/media-client/server';
+import { lettersMediaScope } from '@/lib/letters/media';
 import { mediaScope } from '@/lib/media/client';
 import { ensureBusinessRolePermissions } from '@/lib/business/permissionsSeed';
 
@@ -161,6 +162,12 @@ async function deleteBusinessUnlogged(data: { id: string }) {
       await purgeMediaScope(mediaScope(business.id));
     } catch (error) {
       console.error('Failed to purge media scope', error);
+    }
+
+    try {
+      await purgeMediaScope(lettersMediaScope(business.id));
+    } catch (error) {
+      console.error('Failed to purge letters media scope', error);
     }
 
     try {

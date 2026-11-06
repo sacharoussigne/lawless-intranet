@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button, Card, Center, Group, Loader, Stack, Tabs, Text, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconMail } from '@tabler/icons-react';
@@ -12,12 +12,13 @@ import {
 } from '@lawless-intranet/mail-template-ui';
 import { savePayrollLetterTemplate, type PayrollLetterTemplate } from '@/app/_actions/payrollLetter';
 import { handleAction } from '@/lib/action';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { fetchRead } from '@/lib/read/fetchRead';
 import { payrollKeys } from '@/lib/payroll/queryKeys';
 import {
   DEFAULT_PAYROLL_LETTER_CONTENT,
-  PAYROLL_LETTER_VARIABLE_DESCRIPTIONS,
-  SAMPLE_PAYROLL_LETTER_VARIABLES,
+  payrollLetterVariableDescriptions,
+  samplePayrollLetterVariables,
 } from '@/lib/payroll/letter/variables';
 
 /** City hall letter generated from each « Employés » payroll report (Paramètres › Salaires). */
@@ -68,7 +69,10 @@ function LetterEditor({
 }) {
   const [content, setContent] = useState(initialContent);
   const queryClient = useQueryClient();
-  const preview = useTemplatePreviewActions(content, SAMPLE_PAYROLL_LETTER_VARIABLES, { inputsMode: 'disabled' });
+  const { currentYear } = useRpCalendar();
+  const variableDescriptions = useMemo(() => payrollLetterVariableDescriptions(currentYear), [currentYear]);
+  const sampleVariables = useMemo(() => samplePayrollLetterVariables(currentYear), [currentYear]);
+  const preview = useTemplatePreviewActions(content, sampleVariables, { inputsMode: 'disabled' });
 
   const save = useMutation({
     mutationFn: async () =>
@@ -97,7 +101,7 @@ function LetterEditor({
           <TemplateEditorWithModes
             value={content}
             onChange={setContent}
-            variables={PAYROLL_LETTER_VARIABLE_DESCRIPTIONS}
+            variables={variableDescriptions}
             showParametersPanel={false}
             required
           />
@@ -105,7 +109,7 @@ function LetterEditor({
         <Tabs.Panel value="preview" pt="md">
           <TemplatePreviewWithForm
             templateContent={content}
-            variables={SAMPLE_PAYROLL_LETTER_VARIABLES}
+            variables={sampleVariables}
             inputsMode="disabled"
             resultLabel="Aperçu de la lettre"
             formRef={preview.formRef}

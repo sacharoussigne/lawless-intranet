@@ -35,6 +35,7 @@ import { apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { amberPalette, sagePalette } from '@/lib/design-tokens';
 import { calculateOrderWeightFromItems } from '@/lib/orders/calculateOrderWeightFromItems';
 import { formatOrderDateTime, formatOrderPrice } from '@/lib/orders/chatterLines';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { orderStatusSelectOptions, orderTypeSelectOptions } from '@/lib/orders/orderSelectOptions';
 import { OrderStatusEnum } from '@/types/enum/orderStatus';
 import type { OrderTypeEnum } from '@/types/enum/orderType';
@@ -117,6 +118,7 @@ export function OrderDetailPageClient({
   initialChatter,
   initialAssignments,
 }: OrderDetailPageClientProps) {
+  const rp = useRpCalendar();
   const router = useRouter();
   const routes = useTenantRoutes();
   const { permissions } = usePermissions();
@@ -394,10 +396,10 @@ export function OrderDetailPageClient({
                 )}
               </FieldReadout>
               <FieldReadout label="Créée le">
-                <Text size="sm">{formatOrderDateTime(order.createdAt)}</Text>
+                <Text size="sm">{formatOrderDateTime(order.createdAt, rp)}</Text>
               </FieldReadout>
               <FieldReadout label="Modifiée le">
-                <Text size="sm">{formatOrderDateTime(order.updatedAt)}</Text>
+                <Text size="sm">{formatOrderDateTime(order.updatedAt, rp)}</Text>
               </FieldReadout>
             </div>
             {isEditing ? (

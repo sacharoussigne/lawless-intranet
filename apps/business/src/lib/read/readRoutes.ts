@@ -19,6 +19,11 @@ import {
   getPlannedTransactions,
 } from '@/app/_actions/bankAccounts';
 import { getCabinetWithMembers, listCabinetsForAdmin } from '@/app/_actions/cabinet/cabinets';
+import { listLetterBoxesForAdmin } from '@/app/_actions/letters/boxes';
+import { listLetterCorrespondents } from '@/app/_actions/letters/correspondents';
+import { getLetterImageDownloadUrl } from '@/app/_actions/letters/images';
+import { listLetters, searchLetters } from '@/app/_actions/letters/letters';
+import { getLetterBoxMembers, searchLetterBoxUsers } from '@/app/_actions/letters/members';
 import { listCareEpisodes } from '@/app/_actions/cabinet/careEpisodes';
 import { listConsultations } from '@/app/_actions/cabinet/consultations';
 import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySettings';
@@ -229,7 +234,19 @@ export const readRoutes = {
   agendaWithMembers: (slug: string, input: { agendaId: string }) =>
     getAgendaWithMembers(slug, input?.agendaId),
 
+  // Letters
+  letterCorrespondents: (slug: string, input: { boxId: string }) =>
+    listLetterCorrespondents(slug, input?.boxId),
+  letters: (slug: string, input: Parameters<typeof listLetters>[1]) => listLetters(slug, input),
+  letterSearch: (slug: string, input: Parameters<typeof searchLetters>[1]) => searchLetters(slug, input),
+  letterBoxMembers: (slug: string, input: { boxId: string }) => getLetterBoxMembers(slug, input?.boxId),
+  letterImageDownloadUrl: (slug: string, input: { boxId: string; fileId: string }) =>
+    getLetterImageDownloadUrl(slug, input),
+  letterUserSearch: (slug: string, input: { boxId?: string; query: string }) =>
+    searchLetterBoxUsers(slug, input),
+
   // Dispensary admin
+  adminLetterBoxes: (slug: string, _input?: undefined) => listLetterBoxesForAdmin(slug),
   adminCabinets: (slug: string, _input?: undefined) => listCabinetsForAdmin(slug),
   adminAgendas: (slug: string, _input?: undefined) => listAgendasForAdmin(slug),
   businessMembers: (slug: string, _input?: undefined) => listBusinessMembers(slug),

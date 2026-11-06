@@ -9,12 +9,13 @@ import {
   IconDownload,
   IconExternalLink,
   IconFileTypePdf,
+  IconLayoutSidebarRight,
   IconLink,
   IconX,
 } from '@tabler/icons-react';
 import type { MediaFileRecord } from '@lawless-intranet/types';
 import { formatBytes, getFileKind, stepIndex } from '../format';
-import { useMediaUi } from '../MediaUiProvider';
+import { defaultFormatDate, useOptionalMediaUi } from '../MediaUiProvider';
 
 /** Dark glass surfaces over the dimmed site (Discord-like). Host-theme independent on purpose. */
 const ON_DARK = 'var(--mantine-color-white)';
@@ -66,7 +67,14 @@ type MediaViewerProps = {
   /** Signed preview URLs expire: asks the host to refresh the folder. */
   onExpired: () => void;
   onClose: () => void;
+  /** Date under the file name; defaults to the provider's (outside a provider: fr-FR). */
+  formatDate?: (iso: string) => string;
+  /** Side panel next to the file (e.g. the transcript of a letter), toggled by a tool on phones. */
+  aside?: ReactNode;
+  asideLabel?: string;
 };
+
+const ASIDE_WIDTH = 380;
 
 /**
  * Full-screen viewer over the dimmed site (Discord-like): file centered, tools
@@ -80,13 +88,20 @@ export function MediaViewer({
   onCopyShareLink,
   onExpired,
   onClose,
+  formatDate: formatDateProp,
+  aside,
+  asideLabel = 'Détails',
 }: MediaViewerProps) {
-  const { formatDate } = useMediaUi();
+  const context = useOptionalMediaUi();
+  const formatDate = formatDateProp ?? context?.formatDate ?? defaultFormatDate;
+  /** null until toggled: open on desktop, closed on phones (it would cover the file). */
+  const [asideToggled, setAsideToggled] = useState<boolean | null>(null);
   const file = index !== null ? files[index] : undefined;
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [retriedId, setRetriedId] = useState<string | null>(null);
   const touch = useMediaQuery('(hover: none)') ?? false;
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const asideOpen = asideToggled ?? !touch;
 
   const step = (delta: number) => {
     if (index === null) return;
@@ -126,6 +141,7 @@ export function MediaViewer({
         <Box
           h="100%"
           p={{ base: 'md', sm: 72 }}
+          pr={aside && asideOpen && !touch ? ASIDE_WIDTH + 48 : undefined}
           pt={{ base: `calc(72px + ${SAFE_TOP})`, sm: 80 }}
           pb={{ base: `calc(72px + ${SAFE_BOTTOM})`, sm: 72 }}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -180,6 +196,11 @@ export function MediaViewer({
               {onCopyShareLink ? (
                 <Tool label="Copier le lien de partage" onClick={() => onCopyShareLink(file)}>
                   <IconLink size={20} />
+                </Tool>
+              ) : null}
+              {aside ? (
+                <Tool label={asideOpen ? `Masquer : ${asideLabel}` : `Afficher : ${asideLabel}`} onClick={() => setAsideToggled(!asideOpen)}>
+                  <IconLayoutSidebarRight size={20} />
                 </Tool>
               ) : null}
             </Group>
@@ -246,6 +267,22 @@ export function MediaViewer({
               />
             </>
           )}
+
+          {aside && asideOpen ? (
+            <Box
+              pos="absolute"
+              top={`calc(72px + ${SAFE_TOP})`}
+              right={16}
+              bottom={`calc(16px + ${SAFE_BOTTOM})`}
+              left={touch ? 16 : undefined}
+              w={touch ? undefined : ASIDE_WIDTH}
+              p="md"
+              c={ON_DARK}
+              style={{ ...glassStyle, borderRadius: 'var(--mantine-radius-lg)', overflowY: 'auto', zIndex: 1 }}
+            >
+              {aside}
+            </Box>
+          ) : null}
 
           {hasPrevious ? (
             <ActionIcon size={48} radius="xl" aria-label="Fichier précédent" onClick={() => step(-1)} style={{ ...navButtonStyle, left: 16 }}>

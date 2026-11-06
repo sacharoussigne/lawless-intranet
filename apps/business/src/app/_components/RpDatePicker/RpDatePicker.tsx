@@ -3,12 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { DatePickerInput, DatesProvider, type DatePickerInputProps } from '@mantine/dates';
 import 'dayjs/locale/fr';
-import {
-  fromRpDisplayDate,
-  getTodayRealDate,
-  parseRealDateFromIso,
-  toRpDisplayDate,
-} from '@/lib/rpCalendar';
+import { getTodayRealDate, parseRealDateFromIso } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 
 export type RpDatePickerProps = Omit<
   DatePickerInputProps,
@@ -27,6 +23,7 @@ export function RpDatePicker({
   defaultToToday = false,
   ...props
 }: RpDatePickerProps) {
+  const { fromRpDisplayDate, toRpDisplayDate } = useRpCalendar();
   const initializedDefault = useRef(false);
   const realDate =
     typeof value === 'string' ? parseRealDateFromIso(value) : value ?? null;

@@ -2,12 +2,8 @@
 
 import { DateInput, DatesProvider, type DateInputProps } from '@mantine/dates';
 import 'dayjs/locale/fr';
-import {
-  fromRpDisplayDate,
-  getTodayRealDate,
-  parseRealDateFromIso,
-  toRpDisplayDate,
-} from '@/lib/rpCalendar';
+import { getTodayRealDate, parseRealDateFromIso } from '@/lib/rpCalendar';
+import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 
 export type RpDateInputProps = Omit<DateInputProps, 'value' | 'onChange' | 'defaultValue'> & {
   /** Real date stored in DB (ISO / Date). Displayed in RP calendar in the input. */
@@ -16,6 +12,7 @@ export type RpDateInputProps = Omit<DateInputProps, 'value' | 'onChange' | 'defa
 };
 
 export function RpDateInput({ value, onChange, valueFormat = 'DD/MM/YYYY', ...props }: RpDateInputProps) {
+  const { fromRpDisplayDate, toRpDisplayDate } = useRpCalendar();
   const realDate =
     typeof value === 'string' ? parseRealDateFromIso(value) : value ?? null;
   const rpValue = realDate ? toRpDisplayDate(realDate) : null;

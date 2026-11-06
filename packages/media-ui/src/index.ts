@@ -10,3 +10,9 @@ export { runMediaAction, type MediaActionResult } from './runMediaAction';
 export { mediaKeys } from './queryKeys';
 export { formatBytes, getFileKind } from './format';
 export { useInvalidateMedia } from './hooks/useMediaQueries';
+// Building blocks for hosts that attach files to their own records (letters).
+export { MediaViewer } from './components/MediaViewer';
+export { uploadToPresignedPost } from './upload';
+export { pastedFiles } from './paste';
+export { useFileDrop } from './hooks/useFileDrop';
+export { canCopyImages, copyImageToClipboard } from './clipboard';

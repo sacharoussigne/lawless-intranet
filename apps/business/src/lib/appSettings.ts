@@ -35,10 +35,12 @@ function mapFromDb(businessType: BusinessType, row: {
   featureCabinetEnabled: boolean;
   featureSalesEnabled: boolean;
   featureMediaEnabled: boolean;
+  featureLettersEnabled: boolean;
   weeklyActivityChestDaysVisible: boolean;
   weeklyActivityPresenceDaysVisible: boolean;
   weeklyActivityCounters: unknown;
   payrollPatientCareUsd: { toNumber(): number } | number;
+  rpYearOffset: number;
 }): AppSettingsDTO {
   return {
     businessType,
@@ -58,6 +60,8 @@ function mapFromDb(businessType: BusinessType, row: {
       row.featureSalesEnabled ?? APP_SETTINGS_DEFAULTS.featureSalesEnabled,
     featureMediaEnabled:
       row.featureMediaEnabled ?? APP_SETTINGS_DEFAULTS.featureMediaEnabled,
+    featureLettersEnabled:
+      row.featureLettersEnabled ?? APP_SETTINGS_DEFAULTS.featureLettersEnabled,
     weeklyActivityChestDaysVisible:
       row.weeklyActivityChestDaysVisible ?? APP_SETTINGS_DEFAULTS.weeklyActivityChestDaysVisible,
     weeklyActivityPresenceDaysVisible:
@@ -65,6 +69,7 @@ function mapFromDb(businessType: BusinessType, row: {
       APP_SETTINGS_DEFAULTS.weeklyActivityPresenceDaysVisible,
     weeklyActivityCounters: parseWeeklyCounterSettings(row.weeklyActivityCounters),
     payrollPatientCareUsd: Number(row.payrollPatientCareUsd),
+    rpYearOffset: row.rpYearOffset,
   };
 }
 
@@ -89,7 +94,7 @@ export async function loadAppSettingsFromDb(businessId: string): Promise<AppSett
 export function getAppSettings(businessId: string) {
   return unstable_cache(
     () => loadAppSettingsFromDb(businessId),
-    ['app-settings', businessId, 'v5'],
+    ['app-settings', businessId, 'v7'],
     {
       tags: [appSettingsCacheTag(businessId)],
       revalidate: 86400,
