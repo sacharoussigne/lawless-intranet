@@ -12,9 +12,14 @@ export function normalizeLetterSearch(text: string): string {
     .replace(/[œæ]/g, (char) => LIGATURES[char] ?? char);
 }
 
-/** Stored `Letter.searchText`: title and transcript, normalized. */
-export function letterSearchText(title: string, transcript: string | null | undefined): string {
-  return normalizeLetterSearch([title, transcript?.trim()].filter(Boolean).join('\n'));
+/** Serial without its dash, lowercased (« GM-576YYF » → « gm576yyf »): found when typed without the dash. */
+export function compactSerial(serial: string): string {
+  return serial.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Stored `Letter.searchText`: compact serial, title and transcript, normalized. */
+export function letterSearchText(title: string, transcript: string | null | undefined, serial: string): string {
+  return normalizeLetterSearch([compactSerial(serial), title, transcript?.trim()].filter(Boolean).join('\n'));
 }
 
 /** Stored `LetterCorrespondent.searchName`. */
@@ -26,9 +31,13 @@ export function correspondentSearchName(name: string): string {
 export function letterTextWhere(query: string): Prisma.LetterWhereInput {
   const text = query.trim();
   const serial = normalizeLetterSerial(text);
+  const normalized = normalizeLetterSearch(text);
+  // A piece of serial typed without its dash (« gm 576 »); plain words are not glued together.
+  const compact = /^[a-z0-9\s-]+$/.test(normalized) && /\d/.test(normalized) ? compactSerial(normalized) : null;
   return {
     OR: [
-      { searchText: { contains: normalizeLetterSearch(text) } },
+      { searchText: { contains: normalized } },
+      ...(compact && compact !== normalized ? [{ searchText: { contains: compact } }] : []),
       { serial: { contains: text.toUpperCase() } },
       ...(serial ? [{ serial }] : []),
     ],

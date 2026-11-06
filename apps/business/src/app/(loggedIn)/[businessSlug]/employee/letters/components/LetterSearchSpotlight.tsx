@@ -12,7 +12,10 @@ import { letterDirectionLabel, type LetterSearchHitDTO } from '@/types/letters';
 import { useLetterSearch } from '../hooks/useLettersQueries';
 import classes from '../letters.module.scss';
 
-/** Search of the whole box (Ctrl/Cmd + K): contacts, then letters by title, transcript or serial. */
+/**
+ * Search of the whole box (Ctrl/Cmd + K): contacts, letters by title, transcript or serial, then the
+ * letters close by meaning (« la lettre où il demande un oiseau »).
+ */
 export function LetterSearchSpotlight({
   opened,
   onClose,
@@ -33,6 +36,45 @@ export function LetterSearchSpotlight({
   const search = useLetterSearch(boxId, debounced, includeArchived);
   const results = search.data;
   const tooShort = debounced.trim().length < 2;
+  const exactLetters = results?.letters.filter((hit) => hit.match === 'text') ?? [];
+  const meaningLetters = results?.letters.filter((hit) => hit.match === 'meaning') ?? [];
+  const renderHit = (hit: LetterSearchHitDTO) => (
+    <UnstyledButton
+      key={hit.id}
+      className={classes.contact}
+      onClick={() => {
+        onOpenLetter(hit);
+        onClose();
+      }}
+    >
+      <div className={classes.contactBody}>
+        <Group justify="space-between" gap="xs" wrap="nowrap">
+          <Text size="sm" fw={600} truncate="end">
+            {hit.title}
+          </Text>
+          <Text size="xs" c="dimmed" className={classes.serial} style={{ flexShrink: 0 }}>
+            {hit.serial}
+          </Text>
+        </Group>
+        <Group gap={6} wrap="nowrap">
+          <Text size="xs" c="dimmed" truncate="end">
+            {letterDirectionLabel(hit.direction)} · {hit.correspondentName} ·{' '}
+            {formatRpDate(hit.letterDate, 'd MMM yyyy')}
+          </Text>
+          {hit.archived ? (
+            <Badge size="xs" variant="outline" radius="sm" style={apothecaryPillStyle(amberPalette)}>
+              Archivée
+            </Badge>
+          ) : null}
+        </Group>
+        {hit.excerpt ? (
+          <Text size="xs" mt={2} lineClamp={2}>
+            {hit.excerpt}
+          </Text>
+        ) : null}
+      </div>
+    </UnstyledButton>
+  );
 
   return (
     <Modal
@@ -48,7 +90,7 @@ export function LetterSearchSpotlight({
         <TextInput
           data-autofocus
           size="md"
-          placeholder="Nom, titre, mot de la lettre ou n° de série (GM-…)"
+          placeholder="Nom, mot, idée de la lettre ou n° de série (GM-…)"
           leftSection={search.isFetching ? <Loader size={16} color="sage" /> : <IconSearch size={18} />}
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
@@ -92,43 +134,13 @@ export function LetterSearchSpotlight({
                   </Text>
                 </UnstyledButton>
               ))}
-              {results?.letters.map((hit) => (
-                <UnstyledButton
-                  key={hit.id}
-                  className={classes.contact}
-                  onClick={() => {
-                    onOpenLetter(hit);
-                    onClose();
-                  }}
-                >
-                  <div className={classes.contactBody}>
-                    <Group justify="space-between" gap="xs" wrap="nowrap">
-                      <Text size="sm" fw={600} truncate="end">
-                        {hit.title}
-                      </Text>
-                      <Text size="xs" c="dimmed" className={classes.serial} style={{ flexShrink: 0 }}>
-                        {hit.serial}
-                      </Text>
-                    </Group>
-                    <Group gap={6} wrap="nowrap">
-                      <Text size="xs" c="dimmed" truncate="end">
-                        {letterDirectionLabel(hit.direction)} · {hit.correspondentName} ·{' '}
-                        {formatRpDate(hit.letterDate, 'd MMM yyyy')}
-                      </Text>
-                      {hit.archived ? (
-                        <Badge size="xs" variant="outline" radius="sm" style={apothecaryPillStyle(amberPalette)}>
-                          Archivée
-                        </Badge>
-                      ) : null}
-                    </Group>
-                    {hit.excerpt ? (
-                      <Text size="xs" mt={2} lineClamp={2}>
-                        {hit.excerpt}
-                      </Text>
-                    ) : null}
-                  </div>
-                </UnstyledButton>
-              ))}
+              {exactLetters.map(renderHit)}
+              {meaningLetters.length > 0 ? (
+                <Text size="xs" c="dimmed" fw={600} tt="uppercase" mt="xs" px="sm">
+                  Proches par le sens
+                </Text>
+              ) : null}
+              {meaningLetters.map(renderHit)}
             </Stack>
           )}
         </ScrollArea.Autosize>

@@ -13,7 +13,9 @@ import { deleteLetterMediaFiles, lettersMediaScope } from '@/lib/letters/media';
 import { findCorrespondent, loadCorrespondents } from '@/lib/letters/queries';
 import { emitLetterBoxChanged } from '@/lib/letters/realtime/broadcast';
 import { excerptAround, letterSearchText, letterTextWhere, normalizeLetterSearch } from '@/lib/letters/search';
-import { generateLetterSerial, letterSerialPrefix } from '@/lib/letters/serial';
+import { findSimilarLetterIds, scheduleLetterEmbeddings } from '@/lib/letters/embeddings';
+import { wantsSemanticSearch } from '@/lib/letters/semantic';
+import { generateLetterSerial, letterSerialPrefix, normalizeLetterSerial } from '@/lib/letters/serial';
 import { letterInclude, refreshCorrespondentLastLetter, toLetterDTOs } from '@/lib/letters/serialize';
 import type {
   LetterBoxSummaryDTO,
@@ -33,6 +35,7 @@ import { getLettersContext, guardLetterBox, type LettersContext } from './intern
 /** A conversation shows its latest letters; older ones are reached with the search. */
 const CONVERSATION_LIMIT = 300;
 const SEARCH_LIMIT = 30;
+const SEMANTIC_LIMIT = 6;
 const NO_STORAGE: MediaLimitsRecord = { maxFileSizeBytes: 0, allowedMimeTypes: [], storageConfigured: false };
 
 export type LettersPageBootstrap = {
@@ -153,6 +156,7 @@ export async function searchLetters(
     const access = await guardLetterBox(ctx, data.boxId, 'read');
     if (!access.ok) return { status: access.status, error: access.error };
 
+    const archivedWhere = data.includeArchived ? {} : { archivedAt: null };
     const [correspondents, letters] = await Promise.all([
       prisma.letterCorrespondent.findMany({
         where: { boxId: data.boxId, searchName: { contains: normalizeLetterSearch(data.query) } },
@@ -163,7 +167,7 @@ export async function searchLetters(
       prisma.letter.findMany({
         where: {
           boxId: data.boxId,
-          ...(data.includeArchived ? {} : { archivedAt: null }),
+          ...archivedWhere,
           OR: [
             letterTextWhere(data.query),
             { correspondent: { searchName: { contains: normalizeLetterSearch(data.query) } } },
@@ -174,7 +178,26 @@ export async function searchLetters(
         take: SEARCH_LIMIT,
       }),
     ]);
-    const hits: LetterSearchHitDTO[] = letters.map((letter) => ({
+
+    // Then the letters close by meaning (« la lettre où il demande un oiseau »), after the exact ones.
+    const similarIds = wantsSemanticSearch(data.query, normalizeLetterSerial(data.query) !== null)
+      ? await findSimilarLetterIds(data.boxId, data.query, {
+          includeArchived: data.includeArchived ?? false,
+          excludeIds: letters.map((letter) => letter.id),
+          limit: SEMANTIC_LIMIT,
+        })
+      : [];
+    const similarRows = similarIds.length
+      ? await prisma.letter.findMany({
+          where: { id: { in: similarIds }, boxId: data.boxId },
+          include: { correspondent: { select: { name: true } } },
+        })
+      : [];
+    const similar = similarIds.flatMap((id) => similarRows.filter((letter) => letter.id === id));
+    // Letters added before the meaning search (or while the model was down) get their vector now.
+    scheduleLetterEmbeddings(data.boxId);
+
+    const toHit = (letter: (typeof letters)[number], match: LetterSearchHitDTO['match']): LetterSearchHitDTO => ({
       id: letter.id,
       correspondentId: letter.correspondentId,
       correspondentName: letter.correspondent.name,
@@ -183,8 +206,10 @@ export async function searchLetters(
       title: letter.title,
       letterDate: letter.letterDate,
       archived: letter.archivedAt !== null,
-      excerpt: excerptAround(letter.transcript, data.query),
-    }));
+      excerpt: match === 'text' ? excerptAround(letter.transcript, data.query) : null,
+      match,
+    });
+    const hits = [...letters.map((letter) => toHit(letter, 'text')), ...similar.map((letter) => toHit(letter, 'meaning'))];
     return { status: 200, data: { correspondents, letters: hits } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la recherche');
@@ -280,16 +305,17 @@ async function createLetterUnlogged(
 
     // A random serial can collide with one of the box: draw again (3 tries).
     for (let attempt = 0; ; attempt += 1) {
+      const serial = generateLetterSerial(letterSerialPrefix(links.correspondentName));
       try {
         const letter = await prisma.letter.create({
           data: {
             boxId: data.boxId,
             correspondentId: data.correspondentId,
             direction: data.direction,
-            serial: generateLetterSerial(letterSerialPrefix(links.correspondentName)),
+            serial,
             title: data.title,
             transcript: data.transcript?.trim() || null,
-            searchText: letterSearchText(data.title, data.transcript),
+            searchText: letterSearchText(data.title, data.transcript, serial),
             letterDate: data.letterDate,
             replyToId: data.replyToId ?? null,
             createdById: ctx.session.user.id,
@@ -299,6 +325,7 @@ async function createLetterUnlogged(
         });
         await refreshCorrespondentLastLetter(letter.correspondentId);
         emitLetterBoxChanged(data.boxId, meta);
+        scheduleLetterEmbeddings(data.boxId);
         return { status: 201, data: letter };
       } catch (error) {
         if (!isSerialCollision(error) || attempt >= 2) throw error;
@@ -313,7 +340,7 @@ async function createLetterUnlogged(
 async function findLetter(businessId: string, id: string) {
   return prisma.letter.findFirst({
     where: { id, box: tenantWhere(businessId) },
-    select: { id: true, boxId: true, correspondentId: true, images: { select: { mediaFileId: true } } },
+    select: { id: true, boxId: true, correspondentId: true, serial: true, images: { select: { mediaFileId: true } } },
   });
 }
 
@@ -354,7 +381,7 @@ async function updateLetterUnlogged(
           direction: data.direction,
           title: data.title,
           transcript: data.transcript?.trim() || null,
-          searchText: letterSearchText(data.title, data.transcript),
+          searchText: letterSearchText(data.title, data.transcript, letter.serial),
           letterDate: data.letterDate,
           replyToId: data.replyToId ?? null,
           images: { create: images.images.map((image, position) => ({ ...image, position })) },
@@ -368,6 +395,7 @@ async function updateLetterUnlogged(
       await refreshCorrespondentLastLetter(letter.correspondentId);
     }
     emitLetterBoxChanged(letter.boxId, meta);
+    scheduleLetterEmbeddings(letter.boxId, { letterIds: [letter.id] });
     return { status: 200, data: { id: letter.id } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la modification de la lettre');

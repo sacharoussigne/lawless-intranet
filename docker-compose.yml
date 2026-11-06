@@ -68,6 +68,8 @@ services:
       args:
         APP_NAME: business
         APP_PORT: "3000"
+        # glibc image: native ONNX runtime of the letters meaning search (see Dockerfile)
+        RUNNER_IMAGE: node:22.23.2-bookworm-slim
         NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
         NEXT_PUBLIC_APP_URL: "${DISPENSARY_PUBLIC_URL:?err}"
     environment:
@@ -103,12 +105,18 @@ services:
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
       # Host of each kind of business (docs/DOCKER.md, « Plusieurs hôtes »): DISPENSARY=dispensaire.example.com,...
       BUSINESS_TYPE_HOSTS: "${BUSINESS_TYPE_HOSTS:-}"
+      # Letters « close by meaning » search (docs/LETTERS.md): local model, downloaded once into the volume.
+      # Needs pgvector on the business database. false = text search only.
+      LETTERS_SEMANTIC_SEARCH: "${LETTERS_SEMANTIC_SEARCH:-true}"
+      LETTERS_EMBEDDINGS_CACHE_DIR: /app/models
       # One host or a comma-separated list (main host + one per kind of business)
       VIRTUAL_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
       VIRTUAL_PORT: "3000"
       LETSENCRYPT_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
       LETSENCRYPT_DNS_CHALLENGE: "${LETSENCRYPT_DNS_CHALLENGE:-true}"
       SELF_SIGNED_HOST: "${DISPENSARY_VIRTUAL_HOST:?err}"
+    volumes:
+      - business-models:/app/models
     networks:
       - internal
       - proxy
@@ -362,6 +370,10 @@ services:
     networks:
       - proxy
       - realtime
+
+volumes:
+  # Model of the letters meaning search (business), downloaded on first use.
+  business-models: {}
 
 networks:
   proxy:

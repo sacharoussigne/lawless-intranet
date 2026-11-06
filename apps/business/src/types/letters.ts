@@ -78,6 +78,8 @@ export type LetterSearchHitDTO = {
   archived: boolean;
   /** Part of the transcript around the match, when the match is in the transcript. */
   excerpt: string | null;
+  /** `text`: the typed words are in the letter; `meaning`: close by meaning only (embeddings). */
+  match: 'text' | 'meaning';
 };
 
 export const LETTER_BOX_ACCESS_LEVELS: LetterBoxAccessLevel[] = ['OWNER', 'WRITE', 'READ'];

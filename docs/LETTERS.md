@@ -38,6 +38,17 @@ Archive des lettres RP reçues et envoyées, rangées par correspondant, pour le
 - Recherche dans la conversation (titre, transcript, n° de série), et recherche globale de la boîte (Ctrl/Cmd + K), qui ouvre la conversation sur la lettre.
 - La recherche ignore la casse et les accents (« elise » trouve « Élise ») : les colonnes `Letter.searchText` (titre + transcript) et `LetterCorrespondent.searchName` gardent une copie normalisée (`normalizeLetterSearch`, `lib/letters/search.ts`), écrite à chaque création ou modification. Pas d'extension Postgres `unaccent`.
 
+## Recherche par le sens
+
+La recherche globale (Ctrl/Cmd + K) montre, sous les résultats exacts, les lettres **proches par le sens** : « il veut un oiseau » trouve « veut oieau ».
+
+- Modèle local `Xenova/multilingual-e5-small` (transformers.js, ONNX runtime natif) : rien ne sort du serveur. Téléchargé (~120 Mo) au premier usage dans `LETTERS_EMBEDDINGS_CACHE_DIR` (volume `business-models` en prod), puis gardé en mémoire. Le premier chargement prend ~20 s : pendant ce temps, la recherche ne renvoie que les résultats exacts (délai de 2 s).
+- Vecteurs (384 dimensions) dans `letter.embedding` (**pgvector**, index HNSW cosinus), avec `embedding_model`. Prisma ne lit pas cette colonne : écriture et voisins en SQL brut paramétré (`lib/letters/embeddings.ts`, helpers purs dans `semantic.ts`).
+- Calcul après la réponse (`after()`) : à l'ajout ou à la modification d'une lettre, au renommage d'un correspondant (son nom fait partie du texte), et à chaque recherche pour les lettres de la boîte encore sans vecteur (rattrapage, par lots de 32). Changer de modèle : modifier `LETTER_EMBEDDING_MODEL`, les vecteurs se recalculent seuls.
+- Scores e5 serrés (≈ 0,78–0,86) : on garde les voisins ≥ 0,80 et à moins de 0,03 du meilleur (`pickSemanticMatches`), 6 au plus.
+- Image business sur `node:…-bookworm-slim` (argument `RUNNER_IMAGE` du `Dockerfile`) : l'ONNX runtime n'existe pas pour musl/alpine.
+- **Prérequis** : pgvector sur la base business (voir `docs/DOCKER.md`). `LETTERS_SEMANTIC_SEARCH=false` coupe la fonctionnalité ; en cas d'erreur du modèle, la recherche exacte répond seule.
+
 ## Temps réel
 
 - Topic `letterbox:<boxId>`, donné dans le jeton aux membres de la boîte (`lib/realtime/token.ts`).

@@ -20,7 +20,7 @@ docker build (context: .)
 - Docker + Docker Compose
 - Réseau `proxy` externe (nginx-proxy / letsencrypt-companion), comme avant
 - Un enregistrement DNS pour `REALTIME_VIRTUAL_HOST` (ex. `realtime.example.com`), couvert par `AUTH_COOKIE_DOMAIN`
-- Huit bases PostgreSQL (auth + business + shelter + documents + agenda + bank + inventory + media)
+- Huit bases PostgreSQL (auth + business + shelter + documents + agenda + bank + inventory + media). La base **business** doit avoir l'extension **pgvector** (image `pgvector/pgvector:pg17`, ou paquet `postgresql-17-pgvector`) **avant** le déploiement : sa migration fait `CREATE EXTENSION vector`, sinon `migrate deploy` échoue et le conteneur ne démarre pas (voir [docs/LETTERS.md](LETTERS.md))
 - Un bucket S3 pour la médiathèque, avec son CORS et un utilisateur IAM (voir [docs/MEDIA.md](MEDIA.md))
 - Discord redirect URI : `https://<AUTH_VIRTUAL_HOST>/api/auth/callback/discord`
 
@@ -192,6 +192,8 @@ docker build \
 | `MEDIA_INTERNAL_SECRET` | media + shelter + business | Secret hôte→media (toutes les routes) |
 | `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION` | media | Bucket S3 de la médiathèque |
 | `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY` | media | Clés de l'utilisateur IAM du bucket |
+| `LETTERS_SEMANTIC_SEARCH` | business | `false` coupe la recherche des lettres « par le sens » (défaut : activée) |
+| `LETTERS_EMBEDDINGS_CACHE_DIR` | business | Dossier du modèle de cette recherche (volume `business-models`, `/app/models`) |
 
 ## Appels entre conteneurs (réseau `internal`)
 
