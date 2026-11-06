@@ -13,9 +13,8 @@ import { deleteLetterMediaFiles, lettersMediaScope } from '@/lib/letters/media';
 import { findCorrespondent, loadCorrespondents } from '@/lib/letters/queries';
 import { emitLetterBoxChanged } from '@/lib/letters/realtime/broadcast';
 import { excerptAround, letterSearchText, letterTextWhere, normalizeLetterSearch } from '@/lib/letters/search';
-import { findSimilarLetterIds, scheduleLetterEmbeddings } from '@/lib/letters/embeddings';
-import { wantsSemanticSearch } from '@/lib/letters/semantic';
-import { generateLetterSerial, letterSerialPrefix, normalizeLetterSerial } from '@/lib/letters/serial';
+import { findFuzzyCorrespondentIds, findFuzzyLetterIds } from '@/lib/letters/fuzzy';
+import { generateLetterSerial, letterSerialPrefix } from '@/lib/letters/serial';
 import { letterInclude, refreshCorrespondentLastLetter, toLetterDTOs } from '@/lib/letters/serialize';
 import type {
   LetterBoxSummaryDTO,
@@ -35,7 +34,7 @@ import { getLettersContext, guardLetterBox, type LettersContext } from './intern
 /** A conversation shows its latest letters; older ones are reached with the search. */
 const CONVERSATION_LIMIT = 300;
 const SEARCH_LIMIT = 30;
-const SEMANTIC_LIMIT = 6;
+const FUZZY_LIMIT = 10;
 const NO_STORAGE: MediaLimitsRecord = { maxFileSizeBytes: 0, allowedMimeTypes: [], storageConfigured: false };
 
 export type LettersPageBootstrap = {
@@ -54,12 +53,20 @@ async function loadConversation(
   correspondentId: string,
   options: { search?: string; includeArchived?: boolean } = {},
 ): Promise<LetterDTO[]> {
+  // A search also keeps the letters with words spelled close to the typed ones (typos).
+  const fuzzyIds = options.search
+    ? await findFuzzyLetterIds(boxId, options.search, {
+        correspondentId,
+        includeArchived: options.includeArchived ?? false,
+        limit: CONVERSATION_LIMIT,
+      })
+    : [];
   const rows = await prisma.letter.findMany({
     where: {
       boxId,
       correspondentId,
       ...(options.includeArchived ? {} : { archivedAt: null }),
-      ...(options.search ? letterTextWhere(options.search) : {}),
+      ...(options.search ? { OR: [letterTextWhere(options.search), { id: { in: fuzzyIds } }] } : {}),
     },
     include: letterInclude,
     orderBy: [{ letterDate: 'desc' }, { createdAt: 'desc' }],
@@ -179,23 +186,37 @@ export async function searchLetters(
       }),
     ]);
 
-    // Then the letters close by meaning (« la lettre où il demande un oiseau »), after the exact ones.
-    const similarIds = wantsSemanticSearch(data.query, normalizeLetterSerial(data.query) !== null)
-      ? await findSimilarLetterIds(data.boxId, data.query, {
-          includeArchived: data.includeArchived ?? false,
-          excludeIds: letters.map((letter) => letter.id),
-          limit: SEMANTIC_LIMIT,
-        })
-      : [];
-    const similarRows = similarIds.length
-      ? await prisma.letter.findMany({
-          where: { id: { in: similarIds }, boxId: data.boxId },
-          include: { correspondent: { select: { name: true } } },
-        })
-      : [];
-    const similar = similarIds.flatMap((id) => similarRows.filter((letter) => letter.id === id));
-    // Letters added before the meaning search (or while the model was down) get their vector now.
-    scheduleLetterEmbeddings(data.boxId);
+    // Then the letters with words spelled close to the typed ones (« oiseau » → « oieau »).
+    const [fuzzyIds, fuzzyCorrespondentIds] = await Promise.all([
+      findFuzzyLetterIds(data.boxId, data.query, {
+        includeArchived: data.includeArchived ?? false,
+        excludeIds: letters.map((letter) => letter.id),
+        limit: FUZZY_LIMIT,
+      }),
+      findFuzzyCorrespondentIds(data.boxId, data.query, {
+        excludeIds: correspondents.map((entry) => entry.id),
+        limit: 5,
+      }),
+    ]);
+    const [fuzzyRows, fuzzyCorrespondentRows] = await Promise.all([
+      fuzzyIds.length
+        ? prisma.letter.findMany({
+            where: { id: { in: fuzzyIds }, boxId: data.boxId },
+            include: { correspondent: { select: { name: true } } },
+          })
+        : [],
+      fuzzyCorrespondentIds.length
+        ? prisma.letterCorrespondent.findMany({
+            where: { id: { in: fuzzyCorrespondentIds }, boxId: data.boxId },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
+    const fuzzy = fuzzyIds.flatMap((id) => fuzzyRows.filter((letter) => letter.id === id));
+    const allCorrespondents = [
+      ...correspondents,
+      ...fuzzyCorrespondentIds.flatMap((id) => fuzzyCorrespondentRows.filter((entry) => entry.id === id)),
+    ];
 
     const toHit = (letter: (typeof letters)[number], match: LetterSearchHitDTO['match']): LetterSearchHitDTO => ({
       id: letter.id,
@@ -209,8 +230,11 @@ export async function searchLetters(
       excerpt: match === 'text' ? excerptAround(letter.transcript, data.query) : null,
       match,
     });
-    const hits = [...letters.map((letter) => toHit(letter, 'text')), ...similar.map((letter) => toHit(letter, 'meaning'))];
-    return { status: 200, data: { correspondents, letters: hits } };
+    const hits = [
+      ...letters.map((letter) => toHit(letter, 'text')),
+      ...fuzzy.map((letter) => toHit(letter, 'fuzzy')),
+    ];
+    return { status: 200, data: { correspondents: allCorrespondents, letters: hits } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la recherche');
   }
@@ -325,7 +349,6 @@ async function createLetterUnlogged(
         });
         await refreshCorrespondentLastLetter(letter.correspondentId);
         emitLetterBoxChanged(data.boxId, meta);
-        scheduleLetterEmbeddings(data.boxId);
         return { status: 201, data: letter };
       } catch (error) {
         if (!isSerialCollision(error) || attempt >= 2) throw error;
@@ -395,7 +418,6 @@ async function updateLetterUnlogged(
       await refreshCorrespondentLastLetter(letter.correspondentId);
     }
     emitLetterBoxChanged(letter.boxId, meta);
-    scheduleLetterEmbeddings(letter.boxId, { letterIds: [letter.id] });
     return { status: 200, data: { id: letter.id } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la modification de la lettre');

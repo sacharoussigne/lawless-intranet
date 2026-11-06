@@ -16,9 +16,6 @@ const nextConfig: NextConfig = {
     '@prisma/client',
     '@prisma/client-runtime-utils',
     '@prisma/adapter-pg',
-    // Letters « close by meaning » search: native ONNX runtime, loaded from node_modules at runtime.
-    '@huggingface/transformers',
-    'onnxruntime-node',
   ],
   experimental: {
     optimizePackageImports: [

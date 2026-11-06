@@ -578,11 +578,6 @@ model Letter {
   transcript      String?
   /// Title and transcript lowercased without accents (normalizeLetterSearch): accent-insensitive search.
   searchText      String              @default("") @map("search_text")
-  /// Meaning of the letter (pgvector, lib/letters/embeddings.ts): « close by meaning » search. Raw SQL only;
-  /// its HNSW index (letter_embedding_idx) lives in migration 20261106140000_letters_embedding.
-  embedding       Unsupported("vector(384)")?
-  /// Model that computed `embedding`: computed again when the model changes.
-  embeddingModel  String?             @map("embedding_model")
   /// Real date of the letter, shown in the RP calendar.
   letterDate      DateTime
   replyToId       String?

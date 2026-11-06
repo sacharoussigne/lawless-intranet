@@ -4,9 +4,6 @@
 
 ARG APP_NAME=business
 ARG APP_PORT=3000
-# Runtime image. business uses a glibc one (node:…-bookworm-slim): the letters meaning search runs the
-# native ONNX runtime, which has no musl (alpine) build.
-ARG RUNNER_IMAGE=node:22.23.2-alpine3.24
 
 FROM node:22.23.2-alpine3.24 AS base
 RUN apk add --no-cache libc6-compat openssl
@@ -64,13 +61,11 @@ RUN mkdir -p "/app/apps/${APP_NAME}/public"
 RUN npm install prisma@7.8.0 dotenv@17.2.3 --prefix /prisma-tools --omit=dev
 
 # --- Runtime (Next.js standalone — traced node_modules) ---
-FROM ${RUNNER_IMAGE} AS runner
+FROM node:22.23.2-alpine3.24 AS runner
 ARG APP_NAME
 ARG APP_PORT
 
-RUN if command -v apk >/dev/null; then apk add --no-cache libc6-compat openssl; \
-    else apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
-      && rm -rf /var/lib/apt/lists/*; fi
+RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
@@ -81,8 +76,7 @@ ENV PORT="${APP_PORT}"
 ENV HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nextjs \
-  && mkdir -p /app/models && chown nextjs:nodejs /app/models
+  && adduser --system --uid 1001 nextjs
 
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

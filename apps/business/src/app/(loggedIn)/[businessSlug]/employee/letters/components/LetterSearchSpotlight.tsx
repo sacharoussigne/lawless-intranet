@@ -14,7 +14,7 @@ import classes from '../letters.module.scss';
 
 /**
  * Search of the whole box (Ctrl/Cmd + K): contacts, letters by title, transcript or serial, then the
- * letters close by meaning (« la lettre où il demande un oiseau »).
+ * letters spelled close (typos: « oiseau » finds « oieau »).
  */
 export function LetterSearchSpotlight({
   opened,
@@ -37,7 +37,7 @@ export function LetterSearchSpotlight({
   const results = search.data;
   const tooShort = debounced.trim().length < 2;
   const exactLetters = results?.letters.filter((hit) => hit.match === 'text') ?? [];
-  const meaningLetters = results?.letters.filter((hit) => hit.match === 'meaning') ?? [];
+  const fuzzyLetters = results?.letters.filter((hit) => hit.match === 'fuzzy') ?? [];
   const renderHit = (hit: LetterSearchHitDTO) => (
     <UnstyledButton
       key={hit.id}
@@ -90,7 +90,7 @@ export function LetterSearchSpotlight({
         <TextInput
           data-autofocus
           size="md"
-          placeholder="Nom, mot, idée de la lettre ou n° de série (GM-…)"
+          placeholder="Nom, mot de la lettre ou n° de série (GM-…)"
           leftSection={search.isFetching ? <Loader size={16} color="sage" /> : <IconSearch size={18} />}
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
@@ -135,12 +135,12 @@ export function LetterSearchSpotlight({
                 </UnstyledButton>
               ))}
               {exactLetters.map(renderHit)}
-              {meaningLetters.length > 0 ? (
+              {fuzzyLetters.length > 0 ? (
                 <Text size="xs" c="dimmed" fw={600} tt="uppercase" mt="xs" px="sm">
-                  Proches par le sens
+                  Orthographe proche
                 </Text>
               ) : null}
-              {meaningLetters.map(renderHit)}
+              {fuzzyLetters.map(renderHit)}
             </Stack>
           )}
         </ScrollArea.Autosize>

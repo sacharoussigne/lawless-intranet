@@ -5,7 +5,6 @@ import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { emitLetterBoxChanged } from '@/lib/letters/realtime/broadcast';
 import { findCorrespondent, loadCorrespondents } from '@/lib/letters/queries';
-import { scheduleLetterEmbeddings } from '@/lib/letters/embeddings';
 import { correspondentSearchName } from '@/lib/letters/search';
 import { correspondentSchema, letterIdSchema, updateCorrespondentSchema } from './schemas';
 import { getLettersContext, guardLetterBox } from './internals';
@@ -80,8 +79,6 @@ async function updateLetterCorrespondentUnlogged(
       data: { name: data.name, searchName: correspondentSearchName(data.name), note: data.note || null },
     });
     emitLetterBoxChanged(correspondent.boxId, meta);
-    // The name is part of what the meaning search reads.
-    if (correspondent.name !== data.name) scheduleLetterEmbeddings(correspondent.boxId, { correspondentId: data.id });
     return { status: 200, data: { id: data.id } };
   } catch (error) {
     return actionErrorParser(error, 'Erreur lors de la modification du correspondant');
