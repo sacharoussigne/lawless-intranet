@@ -57,6 +57,7 @@ export function tenantRoutes(slug: string) {
     weeklyActivity: { index: `${employeeBase}/weekly-activity` },
     agenda: { index: `${employeeBase}/agenda`, tasks: `${employeeBase}/agenda/taches` },
     media: { index: `${employeeBase}/media` },
+    letters: { index: `${employeeBase}/letters` },
     cabinet: {
       index: `${employeeBase}/cabinet`,
       forms: (cabinetId: string, tab?: FormEntityType) => {
@@ -97,6 +98,7 @@ export function tenantRoutes(slug: string) {
       payrollDetail: (id: string) => `${base}/admin/payroll/${id}`,
       agendas: `${base}/admin/agendas`,
       cabinets: `${base}/admin/cabinets`,
+      letterBoxes: `${base}/admin/letter-boxes`,
     },
   };
 }

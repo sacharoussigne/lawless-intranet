@@ -103,3 +103,8 @@ export function readScopeQuery(request: Request) {
   const { searchParams } = new URL(request.url);
   return Object.fromEntries(searchParams.entries());
 }
+
+/** Files by id (host records pointing at media files). */
+export const filesByIdsSchema = scopeFieldsSchema.extend({
+  ids: z.array(z.string().uuid()).max(200),
+});

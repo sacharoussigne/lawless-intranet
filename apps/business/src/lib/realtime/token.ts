@@ -6,6 +6,7 @@ import { actionErrorParser } from '@/lib/action';
 import { getAppFeatureActionBlock } from '@/lib/appSettings';
 import { agendaCookie, agendaScope, AGENDA_SCOPE_TYPE } from '@/lib/agenda/client';
 import { MEDIA_SCOPE_TYPE } from '@/lib/media/client';
+import { listAccessibleLetterBoxIds } from '@/lib/letters/access';
 import {
   canEditAllWeeklyActivity,
   canViewWeeklyActivity,
@@ -77,6 +78,13 @@ export async function createRealtimeToken(businessSlug: string) {
     const mediaBlocked = await getAppFeatureActionBlock(businessId, 'media');
     if (!mediaBlocked && can(effectivePermissions, 'media', 'access')) {
       topics.push(realtimeTopics.media(MEDIA_SCOPE_TYPE, businessId));
+    }
+
+    const lettersBlocked = await getAppFeatureActionBlock(businessId, 'letters');
+    if (!lettersBlocked) {
+      for (const boxId of await listAccessibleLetterBoxIds(businessId, userId)) {
+        topics.push(realtimeTopics.letterBox(boxId));
+      }
     }
 
     return { status: 200, data: signRealtimeToken({ userId, topics }, secret) };

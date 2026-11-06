@@ -177,6 +177,21 @@ export async function getDownloadUrl(
   return { ok: true, data: { url: signed.url, expiresAt: signed.expiresAt.toISOString() } };
 }
 
+/**
+ * Ready files of a scope by id, with fresh preview URLs (missing ids are skipped).
+ * Lets a host show files it attaches to its own records (letters) in one call.
+ */
+export async function getFilesByIds(
+  scope: MediaScopeParams,
+  ids: string[],
+): Promise<LibraryResult<MediaFileRecord[]>> {
+  if (ids.length === 0) return { ok: true, data: [] };
+  const files = await prisma.mediaFile.findMany({
+    where: { id: { in: ids }, ...scopeWhere(scope), status: 'READY' },
+  });
+  return { ok: true, data: await Promise.all(files.map(serializeFile)) };
+}
+
 // --- Folders ---
 
 export async function createFolder(

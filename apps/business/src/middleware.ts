@@ -141,7 +141,9 @@ export async function middleware(req: NextRequest) {
       pathname === t.admin.agendas ||
       pathname.startsWith(`${t.admin.agendas}/`) ||
       pathname === t.admin.cabinets ||
-      pathname.startsWith(`${t.admin.cabinets}/`)
+      pathname.startsWith(`${t.admin.cabinets}/`) ||
+      pathname === t.admin.letterBoxes ||
+      pathname.startsWith(`${t.admin.letterBoxes}/`)
     ) {
       middlewares.push(hasAdminRoleMiddleware);
       if (pathname === t.admin.settings || pathname.startsWith(`${t.admin.settings}/`)) {
@@ -194,6 +196,11 @@ export async function middleware(req: NextRequest) {
     } else if (pathname.startsWith(t.cabinet.index)) {
       middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
         assertAppFeatureEnabledMiddleware(request, s, 'cabinet'),
+      );
+    } else if (pathname.startsWith(t.letters.index)) {
+      // Box access (owner, write, read) is checked by the page and the actions.
+      middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
+        assertAppFeatureEnabledMiddleware(request, s, 'letters'),
       );
     } else if (
       pathname === t.employee.payroll ||
