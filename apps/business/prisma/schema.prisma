@@ -547,6 +547,8 @@ model LetterCorrespondent {
   boxId        String
   box          LetterBox @relation(fields: [boxId], references: [id], onDelete: Cascade)
   name         String
+  /// Name lowercased without accents (normalizeLetterSearch): accent-insensitive search.
+  searchName   String    @default("") @map("search_name")
   note         String?
   /// Date of the latest letter (kept in sync on writes): sorts the contact list without an aggregate.
   lastLetterAt DateTime?
@@ -574,6 +576,8 @@ model Letter {
   serial          String
   title           String
   transcript      String?
+  /// Title and transcript lowercased without accents (normalizeLetterSearch): accent-insensitive search.
+  searchText      String              @default("") @map("search_text")
   /// Real date of the letter, shown in the RP calendar.
   letterDate      DateTime
   replyToId       String?

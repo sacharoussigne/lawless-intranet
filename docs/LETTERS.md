@@ -36,6 +36,7 @@ Archive des lettres RP reçues et envoyées, rangées par correspondant, pour le
 - « Répondre » met la lettre en citation au-dessus de la barre, comme Discord. Modifier une lettre passe par `LetterFormModal`.
 - Un brouillon laissé en changeant de conversation : ses images sont supprimées du stockage.
 - Recherche dans la conversation (titre, transcript, n° de série), et recherche globale de la boîte (Ctrl/Cmd + K), qui ouvre la conversation sur la lettre.
+- La recherche ignore la casse et les accents (« elise » trouve « Élise ») : les colonnes `Letter.searchText` (titre + transcript) et `LetterCorrespondent.searchName` gardent une copie normalisée (`normalizeLetterSearch`, `lib/letters/search.ts`), écrite à chaque création ou modification. Pas d'extension Postgres `unaccent`.
 
 ## Temps réel
 

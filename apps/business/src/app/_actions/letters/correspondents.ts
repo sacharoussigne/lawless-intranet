@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { actionErrorParser } from '@/lib/action';
 import { emitLetterBoxChanged } from '@/lib/letters/realtime/broadcast';
 import { findCorrespondent, loadCorrespondents } from '@/lib/letters/queries';
+import { correspondentSearchName } from '@/lib/letters/search';
 import { correspondentSchema, letterIdSchema, updateCorrespondentSchema } from './schemas';
 import { getLettersContext, guardLetterBox } from './internals';
 
@@ -39,7 +40,7 @@ async function createLetterCorrespondentUnlogged(
     if (existing) return { status: 409, error: `${data.name} est déjà dans vos correspondants` };
 
     const created = await prisma.letterCorrespondent.create({
-      data: { boxId: data.boxId, name: data.name, note: data.note || null },
+      data: { boxId: data.boxId, name: data.name, searchName: correspondentSearchName(data.name), note: data.note || null },
       select: { id: true, name: true },
     });
     emitLetterBoxChanged(data.boxId, meta);
@@ -75,7 +76,7 @@ async function updateLetterCorrespondentUnlogged(
 
     await prisma.letterCorrespondent.update({
       where: { id: data.id },
-      data: { name: data.name, note: data.note || null },
+      data: { name: data.name, searchName: correspondentSearchName(data.name), note: data.note || null },
     });
     emitLetterBoxChanged(correspondent.boxId, meta);
     return { status: 200, data: { id: data.id } };

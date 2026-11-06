@@ -12,7 +12,7 @@ import { mediaCookie } from '@/lib/media/client';
 import { deleteLetterMediaFiles, lettersMediaScope } from '@/lib/letters/media';
 import { findCorrespondent, loadCorrespondents } from '@/lib/letters/queries';
 import { emitLetterBoxChanged } from '@/lib/letters/realtime/broadcast';
-import { excerptAround, letterTextWhere } from '@/lib/letters/search';
+import { excerptAround, letterSearchText, letterTextWhere, normalizeLetterSearch } from '@/lib/letters/search';
 import { generateLetterSerial, letterSerialPrefix } from '@/lib/letters/serial';
 import { letterInclude, refreshCorrespondentLastLetter, toLetterDTOs } from '@/lib/letters/serialize';
 import type {
@@ -155,7 +155,7 @@ export async function searchLetters(
 
     const [correspondents, letters] = await Promise.all([
       prisma.letterCorrespondent.findMany({
-        where: { boxId: data.boxId, name: { contains: data.query, mode: 'insensitive' } },
+        where: { boxId: data.boxId, searchName: { contains: normalizeLetterSearch(data.query) } },
         select: { id: true, name: true },
         orderBy: { name: 'asc' },
         take: 10,
@@ -166,7 +166,7 @@ export async function searchLetters(
           ...(data.includeArchived ? {} : { archivedAt: null }),
           OR: [
             letterTextWhere(data.query),
-            { correspondent: { name: { contains: data.query, mode: 'insensitive' } } },
+            { correspondent: { searchName: { contains: normalizeLetterSearch(data.query) } } },
           ],
         },
         include: { correspondent: { select: { name: true } } },
@@ -289,6 +289,7 @@ async function createLetterUnlogged(
             serial: generateLetterSerial(letterSerialPrefix(links.correspondentName)),
             title: data.title,
             transcript: data.transcript?.trim() || null,
+            searchText: letterSearchText(data.title, data.transcript),
             letterDate: data.letterDate,
             replyToId: data.replyToId ?? null,
             createdById: ctx.session.user.id,
@@ -353,6 +354,7 @@ async function updateLetterUnlogged(
           direction: data.direction,
           title: data.title,
           transcript: data.transcript?.trim() || null,
+          searchText: letterSearchText(data.title, data.transcript),
           letterDate: data.letterDate,
           replyToId: data.replyToId ?? null,
           images: { create: images.images.map((image, position) => ({ ...image, position })) },

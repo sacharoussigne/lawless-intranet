@@ -5,6 +5,7 @@ import { ActionIcon, Avatar, Badge, CloseButton, Group, Stack, Text, TextInput, 
 import { IconArrowBackUp, IconSearch, IconUserPlus } from '@tabler/icons-react';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
+import { normalizeLetterSearch } from '@/lib/letters/search';
 import type { LetterCorrespondentDTO } from '@/types/letters';
 import classes from '../letters.module.scss';
 
@@ -25,9 +26,9 @@ export function CorrespondentList({
   const { formatRpDate } = useRpCalendar();
   const [filter, setFilter] = useState('');
   const visible = useMemo(() => {
-    const needle = filter.trim().toLocaleLowerCase('fr');
+    const needle = normalizeLetterSearch(filter.trim());
     return needle
-      ? correspondents.filter((entry) => entry.name.toLocaleLowerCase('fr').includes(needle))
+      ? correspondents.filter((entry) => normalizeLetterSearch(entry.name).includes(needle))
       : correspondents;
   }, [correspondents, filter]);
 

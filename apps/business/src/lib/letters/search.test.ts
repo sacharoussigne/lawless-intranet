@@ -1,14 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { excerptAround, letterTextWhere } from './search';
+import { excerptAround, letterSearchText, letterTextWhere, normalizeLetterSearch } from './search';
+
+describe('normalizeLetterSearch', () => {
+  it('drops case, accents and ligatures', () => {
+    expect(normalizeLetterSearch('Élise ANDRÉ')).toBe('elise andre');
+    expect(normalizeLetterSearch('Cœur Ægir')).toBe('coeur aegir');
+  });
+
+  it('builds the stored search text from the title and the transcript', () => {
+    expect(letterSearchText('Théâtre', '  Le Cœur  ')).toBe('theatre\nle coeur');
+    expect(letterSearchText('Théâtre', null)).toBe('theatre');
+  });
+});
 
 describe('letterTextWhere', () => {
-  it('matches the title, the transcript and the serial', () => {
-    const where = letterTextWhere(' george ');
-    expect(where.OR).toEqual([
-      { title: { contains: 'george', mode: 'insensitive' } },
-      { transcript: { contains: 'george', mode: 'insensitive' } },
-      { serial: { contains: 'GEORGE' } },
-    ]);
+  it('matches the normalized text and the serial', () => {
+    const where = letterTextWhere(' Élise ');
+    expect(where.OR).toEqual([{ searchText: { contains: 'elise' } }, { serial: { contains: 'ÉLISE' } }]);
   });
 
   it('finds a serial typed loosely', () => {
@@ -29,5 +37,11 @@ describe('excerptAround', () => {
     expect(excerptAround(text, 'Jess')).toBeNull();
     expect(excerptAround(null, 'George')).toBeNull();
     expect(excerptAround('Bonjour George', 'George')).toBe('Bonjour George');
+  });
+
+  it('ignores accents and keeps the original text', () => {
+    expect(excerptAround('Rendez-vous au Théâtre ce soir', 'theatre')).toBe('Rendez-vous au Théâtre ce soir');
+    const long = `${'a'.repeat(100)} mon cœur ${'b'.repeat(100)}`;
+    expect(excerptAround(long, 'COEUR')).toMatch(/^…a+ mon cœur b+…$/);
   });
 });
