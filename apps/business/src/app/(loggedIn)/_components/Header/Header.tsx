@@ -21,13 +21,21 @@ import { type AuthSession } from '@/types/session';
 import { routes, tenantRoutes } from '@/types/routes';
 import Link from 'next/link';
 import Image from 'next/image';
-import { IconArrowBackUp, IconLogout, IconPhoto, IconSearch, IconSettings } from '@tabler/icons-react';
+import {
+  IconArrowBackUp,
+  IconLogout,
+  IconPhoto,
+  IconSearch,
+  IconSettings,
+  IconShieldCog,
+  IconWorld,
+} from '@tabler/icons-react';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
 import { MobileHeader } from './MobileHeader';
 import { AccountMenuHeader, AccountThemeSync } from '@/app/_components/Theme/ThemeMenuSwitch';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
-import { businessSiteTitle, isAppFeatureEnabled } from '@/lib/appSettingsShared';
+import { businessSiteTitle } from '@/lib/appSettingsShared';
 import { hasRole } from '@lawless-intranet/auth-permissions';
 import { Role } from '@/types/enum/roles';
 import { isPlatformAdmin } from '@/lib/business/platformAdmin';
@@ -293,54 +301,31 @@ export default function Header({
                   <Menu.Dropdown>
                     <AccountMenuHeader name={session.user.name} />
                     {isPlatformAdminUser && (
-                      <>
-                        <Menu.Label>Plateforme</Menu.Label>
-                        <Menu.Item component={Link} href={routes.platform.businesses}>
-                          Entreprises
-                        </Menu.Item>
-                        <Menu.Item component={Link} href={routes.platform.users}>
-                          Comptes utilisateurs
-                        </Menu.Item>
-                        <Menu.Item component={Link} href={routes.platform.logs}>
-                          Logs
-                        </Menu.Item>
-                        <Menu.Divider />
-                      </>
+                      <Menu.Item
+                        component={Link}
+                        href={routes.platform.index}
+                        leftSection={<IconWorld size={16} stroke={1.5} />}
+                      >
+                        Plateforme
+                      </Menu.Item>
                     )}
                     {hasRole(userRole, Role.ADMIN) && t && (
-                      <>
-                        <Menu.Label>Admin dispensaire</Menu.Label>
-                        {appSettings.featureAgendaEnabled && (
-                          <Link href={t.admin.agendas}>
-                            <Menu.Item>Gestion des agendas</Menu.Item>
-                          </Link>
-                        )}
-                        {isAppFeatureEnabled(appSettings, 'cabinet') && (
-                          <Link href={t.admin.cabinets}>
-                            <Menu.Item>Gestion des cabinets</Menu.Item>
-                          </Link>
-                        )}
-                        {isAppFeatureEnabled(appSettings, 'letters') && (
-                          <Link href={t.admin.letterBoxes}>
-                            <Menu.Item>Gestion des boîtes aux lettres</Menu.Item>
-                          </Link>
-                        )}
-                        {appSettings.featureStockEnabled && (
-                          <Link href={t.admin.overwriteStock}>
-                            <Menu.Item>Écraser les stocks</Menu.Item>
-                          </Link>
-                        )}
-                        <Link href={t.admin.settings}>
-                          <Menu.Item>Paramètres du dispensaire</Menu.Item>
-                        </Link>
-                        <Menu.Divider />
-                      </>
-                    )}
-                    <Link href={routes.settings.index}>
-                      <Menu.Item leftSection={<IconSettings size={16} stroke={1.5} />}>
-                        Paramètres compte
+                      <Menu.Item
+                        component={Link}
+                        href={t.admin.index}
+                        leftSection={<IconShieldCog size={16} stroke={1.5} />}
+                      >
+                        Administration
                       </Menu.Item>
-                    </Link>
+                    )}
+                    {(isPlatformAdminUser || (hasRole(userRole, Role.ADMIN) && t)) && <Menu.Divider />}
+                    <Menu.Item
+                      component={Link}
+                      href={routes.settings.index}
+                      leftSection={<IconSettings size={16} stroke={1.5} />}
+                    >
+                      Paramètres compte
+                    </Menu.Item>
                     <Menu.Item
                       leftSection={<IconLogout size={16} stroke={1.5} />}
                       onClick={handleLogout}
