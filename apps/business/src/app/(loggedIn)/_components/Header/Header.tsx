@@ -30,6 +30,7 @@ import {
   IconShieldCog,
   IconWorld,
 } from '@tabler/icons-react';
+import { CommandPalette } from '../CommandPalette/CommandPalette';
 import { HeaderNavLinks } from './HeaderNavLinks';
 import { HeaderUpcomingEvents } from './HeaderUpcomingEvents';
 import { MobileHeader } from './MobileHeader';
@@ -174,6 +175,7 @@ export default function Header({
   return (
     <header className={classes.header}>
       {session && <AccountThemeSync />}
+      {session && businessSlug && t ? <CommandPalette businessSlug={businessSlug} /> : null}
       <Container size={'xl'}>
         {session && (
           <MobileHeader
