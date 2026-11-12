@@ -132,6 +132,7 @@ export async function middleware(req: NextRequest) {
         );
       }
     } else if (
+      pathname === t.admin.index ||
       pathname === t.admin.settings ||
       pathname.startsWith(`${t.admin.settings}/`) ||
       pathname === t.admin.overwriteStock ||

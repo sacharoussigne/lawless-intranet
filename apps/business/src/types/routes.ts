@@ -108,6 +108,7 @@ export const routes = {
     index: '/test',
   },
   platform: {
+    index: '/platform',
     businesses: '/platform/dispensaries',
     users: '/platform/users',
     logs: '/platform/logs',
