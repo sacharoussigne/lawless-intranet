@@ -111,7 +111,7 @@ function EditDiscordProfileForm({
       {canEditAll && (
         <Text size="xs" c="dimmed">
           Toutes les personnes, avec ou sans compte :{' '}
-          <Anchor component={Link} href={tenantRoutes(businessSlug).management.people} size="xs">
+          <Anchor component={Link} href={tenantRoutes(businessSlug).management.people()} size="xs">
             Gestion › Personnes
           </Anchor>
         </Text>

@@ -12,6 +12,7 @@ import {
   IconNotebook,
   IconSearch,
   IconStethoscope,
+  IconTools,
   IconUser,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -40,6 +41,7 @@ const ENTITY_SECTIONS: { type: PaletteEntityType; title: string; icon: Icon }[] 
   { type: 'correspondent', title: 'Correspondants', icon: IconUser },
   { type: 'letter', title: 'Lettres', icon: IconMailbox },
   { type: 'item', title: 'Objets', icon: IconBox },
+  { type: 'management', title: 'Gestion', icon: IconTools },
 ];
 
 /** One row of the palette: a page, an action or an entity. */

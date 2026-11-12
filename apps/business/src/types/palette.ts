@@ -1,5 +1,6 @@
 /** Entity found by the command palette (« @george »). */
-export type PaletteEntityType = 'order' | 'patient' | 'correspondent' | 'letter' | 'item';
+/** `management`: an entity of the management pages, opened in its edit window. */
+export type PaletteEntityType = 'order' | 'patient' | 'correspondent' | 'letter' | 'item' | 'management';
 
 export type PaletteEntityHit = {
   type: PaletteEntityType;

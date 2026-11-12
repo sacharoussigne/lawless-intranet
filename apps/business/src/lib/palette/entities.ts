@@ -1,8 +1,19 @@
 import type { ItemRecord } from '@lawless-intranet/types';
-import { listItems, listOrdersPage } from '@lawless-intranet/inventory-client/server';
+import { listTemplates } from '@lawless-intranet/documents-client/server';
+import {
+  listCategories,
+  listChests,
+  listCompanies,
+  listCompanyGroups,
+  listItems,
+  listOrdersPage,
+} from '@lawless-intranet/inventory-client/server';
 import prisma from '@/lib/prisma';
 import { getAppSettings } from '@/lib/appSettings';
 import type { TenantActionContext } from '@/lib/business/serverActionContext';
+import { findBusinessProfiles } from '@/lib/businessDiscordProfile/queries';
+import { getServerCookieHeader, ORDER_TEMPLATE_TYPE } from '@/lib/documents/mailDocuments';
+import { pickProfileDisplayName } from '@/lib/people/displayName';
 import { listAccessibleCabinetIds } from '@/lib/cabinet/access';
 import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import { listAccessibleLetterBoxIds } from '@/lib/letters/access';
@@ -21,8 +32,34 @@ import { tenantRoutes } from '@/types/routes';
  */
 
 export const PALETTE_ENTITY_LIMIT = 5;
+/** « Gestion » mixes several kinds of entity: a few more hits. */
+export const PALETTE_MANAGEMENT_LIMIT = 8;
 
-type Provider = (tenant: TenantActionContext, query: string, slug: string) => Promise<PaletteEntityHit[]>;
+/** Loaded once per search, shared by the providers that need it (stock items and their management). */
+type SharedLoads = { items: () => Promise<ItemRecord[]> };
+
+type Provider = (
+  tenant: TenantActionContext,
+  query: string,
+  slug: string,
+  shared: SharedLoads,
+) => Promise<PaletteEntityHit[]>;
+
+/**
+ * Entries whose name holds every typed word (case and accents ignored), names starting with the
+ * query first, then alphabetical.
+ */
+export function matchByName<T>(list: T[], query: string, getName: (entry: T) => string, limit: number): T[] {
+  const needle = normalizeString(query.trim());
+  const words = needle.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  return list
+    .map((entry) => ({ entry, name: normalizeString(getName(entry)) }))
+    .filter(({ name }) => words.every((word) => name.includes(word)))
+    .sort((a, b) => Number(!a.name.startsWith(needle)) - Number(!b.name.startsWith(needle)) || a.name.localeCompare(b.name))
+    .slice(0, limit)
+    .map(({ entry }) => entry);
+}
 
 async function allowed(
   tenant: TenantActionContext,
@@ -150,17 +187,13 @@ const searchLetters: Provider = async (tenant, query, slug) => {
 
 /** Items matching every typed word (case and accents ignored), names starting with the query first. */
 export function matchPaletteItems(items: ItemRecord[], query: string, slug: string): PaletteEntityHit[] {
-  const needle = normalizeString(query.trim());
-  const words = needle.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
   const t = tenantRoutes(slug);
-  return items
-    .filter((item) => item.isEnabled)
-    .map((item) => ({ item, name: normalizeString(item.name) }))
-    .filter(({ name }) => words.every((word) => name.includes(word)))
-    .sort((a, b) => Number(!a.name.startsWith(needle)) - Number(!b.name.startsWith(needle)) || a.name.localeCompare(b.name))
-    .slice(0, PALETTE_ENTITY_LIMIT)
-    .map(({ item }) => ({
+  return matchByName(
+    items.filter((item) => item.isEnabled),
+    query,
+    (item) => item.name,
+    PALETTE_ENTITY_LIMIT,
+  ).map((item) => ({
       type: 'item',
       id: item.id,
       label: item.name,
@@ -169,14 +202,128 @@ export function matchPaletteItems(items: ItemRecord[], query: string, slug: stri
     }));
 }
 
-const searchItems: Provider = async (tenant, query, slug) => {
+const searchItems: Provider = async (tenant, query, slug, shared) => {
   if (!(await allowed(tenant, 'search', ['search', 'access']))) return [];
   // No search on the inventory API: a business has a small catalog, filtered here.
-  const items = await listItems({ ...inventoryScope(tenant.businessId) }, await inventoryCookie());
-  return matchPaletteItems(items, query, slug);
+  return matchPaletteItems(await shared.items(), query, slug);
 };
 
-const PROVIDERS: Provider[] = [searchOrders, searchPatients, searchLetters, searchItems];
+type ManagementCandidate = {
+  kind: string;
+  id: string;
+  name: string;
+  /** Also searched, not shown (a person's Discord ID). */
+  alias?: string;
+  detail?: string | null;
+  href: string;
+};
+
+/** Management candidates matching the query, mixed and ranked together (management/edit pages). */
+export function matchManagementCandidates(candidates: ManagementCandidate[], query: string): PaletteEntityHit[] {
+  return matchByName(
+    candidates,
+    query,
+    (candidate) => [candidate.name, candidate.alias].filter(Boolean).join(' '),
+    PALETTE_MANAGEMENT_LIMIT,
+  ).map((candidate) => ({
+    type: 'management',
+    id: `${candidate.kind}:${candidate.id}`,
+    label: candidate.name,
+    detail: [candidate.kind, candidate.detail].filter(Boolean).join(' · '),
+    href: candidate.href,
+  }));
+}
+
+/**
+ * « Gestion »: what the management pages edit, each hit opening its edit window (`?edit=`).
+ * Same rights as the pages: management access, plus the modules and rights of people and mails.
+ */
+const searchManagement: Provider = async (tenant, query, slug, shared) => {
+  if (!requireEffectivePermission(tenant.effectivePermissions, 'application', 'management').ok) return [];
+  const m = tenantRoutes(slug).management;
+  const scope = inventoryScope(tenant.businessId);
+  const cookie = await inventoryCookie();
+  const [peopleAllowed, mailsAllowed] = await Promise.all([
+    allowed(tenant, 'weeklyActivity', ['weekly_activity', 'edit_all']),
+    allowed(tenant, 'mails'),
+  ]);
+
+  const sources = await Promise.allSettled([
+    shared.items().then((items) =>
+      items.map((item) => ({
+        kind: 'Objet',
+        id: item.id,
+        name: item.name,
+        detail: item.isEnabled ? item.category?.name : 'désactivé',
+        href: m.items(undefined, item.id),
+      })),
+    ),
+    listCategories(scope, cookie).then((categories) =>
+      categories.map((category) => ({
+        kind: 'Catégorie',
+        id: category.id,
+        name: category.name,
+        href: m.items('categories', category.id),
+      })),
+    ),
+    listCompanies(scope, cookie).then((companies) =>
+      companies.map((company) => ({
+        kind: 'Entreprise',
+        id: company.id,
+        name: company.name,
+        href: m.companies(undefined, company.id),
+      })),
+    ),
+    listCompanyGroups(scope, cookie).then((groups) =>
+      groups.map((group) => ({
+        kind: 'Groupe',
+        id: group.id,
+        name: group.name,
+        href: m.companies('groups', group.id),
+      })),
+    ),
+    listChests(scope, cookie).then((chests) =>
+      chests.map((chest) => ({ kind: 'Coffre', id: chest.id, name: chest.name, href: m.chests(chest.id) })),
+    ),
+    peopleAllowed
+      ? findBusinessProfiles(prisma, tenant.businessId).then((people) =>
+          people.map((person) => ({
+            kind: 'Personne',
+            id: person.discordUserId,
+            name: pickProfileDisplayName(person, person.discordUserId),
+            alias: person.discordUserId,
+            detail: person.role,
+            href: m.people(person.discordUserId),
+          })),
+        )
+      : Promise.resolve([]),
+    mailsAllowed
+      ? getServerCookieHeader()
+          .then((cookieHeader) =>
+            listTemplates(
+              { type: ORDER_TEMPLATE_TYPE, scopeId: tenant.businessId, ownerScope: 'org', pageSize: 50 },
+              { cookieHeader },
+            ),
+          )
+          .then((result) =>
+            result.items.map((template) => ({
+              kind: 'Modèle de courrier',
+              id: template.id,
+              name: template.name,
+              href: m.mails(template.id),
+            })),
+          )
+      : Promise.resolve([]),
+  ]);
+  const candidates = sources.flatMap((source) => {
+    if (source.status === 'fulfilled') return source.value;
+    console.error('Palette: management source failed', source.reason);
+    return [];
+  });
+  return matchManagementCandidates(candidates, query);
+};
+
+const PROVIDERS: Provider[] = [searchOrders, searchPatients, searchLetters, searchItems, searchManagement];
 
 /** Every provider in parallel; one that fails is left out instead of failing the palette. */
 export async function searchPaletteEntityHits(
@@ -184,7 +331,12 @@ export async function searchPaletteEntityHits(
   query: string,
   slug: string,
 ): Promise<PaletteEntityHit[]> {
-  const results = await Promise.allSettled(PROVIDERS.map((provider) => provider(tenant, query, slug)));
+  let itemsLoad: Promise<ItemRecord[]> | null = null;
+  const shared: SharedLoads = {
+    items: () =>
+      (itemsLoad ??= inventoryCookie().then((cookie) => listItems({ ...inventoryScope(tenant.businessId) }, cookie))),
+  };
+  const results = await Promise.allSettled(PROVIDERS.map((provider) => provider(tenant, query, slug, shared)));
   return results.flatMap((result) => {
     if (result.status === 'fulfilled') return result.value;
     console.error('Palette: entity search failed', result.reason);

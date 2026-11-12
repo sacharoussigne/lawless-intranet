@@ -125,7 +125,7 @@ export async function middleware(req: NextRequest) {
 
     if (pathname.startsWith(`${t.management.index}`)) {
       middlewares.push(hasManagementAccessMiddleware);
-      if (pathname === t.management.people || pathname.startsWith(`${t.management.people}/`)) {
+      if (pathname === t.management.people() || pathname.startsWith(`${t.management.people()}/`)) {
         middlewares.push(hasWeeklyActivityEditAllMiddleware);
         middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
           assertAppFeatureEnabledMiddleware(request, s, 'weeklyActivity'),

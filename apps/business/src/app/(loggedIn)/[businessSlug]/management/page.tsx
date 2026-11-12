@@ -43,7 +43,7 @@ export default async function ManagementPage({
       description:
         'Configurez les coffres de stockage, leur ordre et leur organisation physique.',
       icon: IconArchive,
-      href: t.management.chests,
+      href: t.management.chests(),
       visible: true,
     },
     {
@@ -59,7 +59,7 @@ export default async function ManagementPage({
       description:
         'Fixez le nom des personnes, avec ou sans compte intranet, et ajoutez-en à partir de leur Discord ID.',
       icon: IconUsers,
-      href: t.management.people,
+      href: t.management.people(),
       visible:
         settings.featureWeeklyActivityEnabled &&
         can(effectivePermissions, 'weekly_activity', 'edit_all'),
@@ -69,7 +69,7 @@ export default async function ManagementPage({
       description:
         'Gérez les courriers utilisés pour les entreprises et le suivi administratif.',
       icon: IconClipboardText,
-      href: t.management.mails,
+      href: t.management.mails(),
       visible: settings.featureMailsEnabled,
     },
   ];

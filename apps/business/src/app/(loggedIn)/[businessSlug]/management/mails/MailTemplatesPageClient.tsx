@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEditParam } from '@/lib/navigation/useEditParam';
 import { Container, Title, Group, Button, Tabs, Stack } from '@mantine/core';
 import { IconPlus, IconTemplate, IconLink } from '@tabler/icons-react';
 import { MailTemplateModal } from './components/MailTemplateModal';
@@ -118,6 +119,12 @@ export default function MailTemplatesPageClient({
     setAssignmentModalOpened(true);
   };
 
+  // `?edit=<id>` (command palette): opens the edit window of that entry.
+  useEditParam((id) => {
+    const entry = mailTemplates.find((candidate) => candidate.id === id);
+    if (entry) handleEdit(entry);
+    return Boolean(entry);
+  });
   return (
     <Container size="xl" py="xl">
       <Title order={1} mb="xl">Courriers</Title>
