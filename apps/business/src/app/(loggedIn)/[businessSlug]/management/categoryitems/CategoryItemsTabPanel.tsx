@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useEditParam } from '@/lib/navigation/useEditParam';
 import { Title, Group, Button, Stack } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { CategoryItemModal } from './components/CategoryItemModal';
@@ -66,6 +67,12 @@ export function CategoryItemsTabPanel({ initialCategoryItems }: CategoryItemsTab
     setModalOpened(true);
   };
 
+  // `?edit=<id>` (command palette): opens the edit window of that entry.
+  useEditParam((id) => {
+    const entry = categoryItems.find((candidate) => candidate.id === id);
+    if (entry) handleEdit(entry);
+    return Boolean(entry);
+  }, ['categories']);
   return (
     <Stack gap="md">
       <Group justify="space-between">

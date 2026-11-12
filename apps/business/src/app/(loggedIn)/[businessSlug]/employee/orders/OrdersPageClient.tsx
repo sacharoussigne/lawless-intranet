@@ -26,6 +26,8 @@ import {
   useTenantRoutes,
 } from '@/app/_contexts/PermissionsContext';
 import { useRouter } from 'next/navigation';
+import { PAGE_ACTIONS } from '@/lib/navigation/commandPalette';
+import { useActionParam } from '@/lib/navigation/useActionParam';
 import type { OrderSummary, OrdersPageResult } from '@/types/orders';
 import type { OrderMailTemplateAssignment } from '@/types/mailTemplates';
 import {
@@ -78,6 +80,8 @@ export default function OrdersPageClient({
   const [modalOpened, setModalOpened] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [createModalOpened, setCreateModalOpened] = useState(false);
+  // « Créer une commande » of the command palette.
+  useActionParam(PAGE_ACTIONS.createOrder, () => setCreateModalOpened(true), Boolean(permissions?.orders.create));
   const [letterPreviewModalOpened, setLetterPreviewModalOpened] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<OrderSummary | null>(null);

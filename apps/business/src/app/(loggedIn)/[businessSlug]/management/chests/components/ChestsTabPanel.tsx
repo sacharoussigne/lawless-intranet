@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEditParam } from '@/lib/navigation/useEditParam';
 import { Button, Group } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { ChestModal } from './ChestModal';
@@ -91,6 +92,12 @@ export function ChestsTabPanel({ initialChests }: ChestsTabPanelProps) {
     setModalOpened(true);
   };
 
+  // `?edit=<id>` (command palette): opens the edit window of that entry.
+  useEditParam((id) => {
+    const entry = chests.find((candidate) => candidate.id === id);
+    if (entry) handleEdit(entry);
+    return Boolean(entry);
+  }, [null, 'chests']);
   return (
     <>
       <Group justify="flex-end" mb="md">

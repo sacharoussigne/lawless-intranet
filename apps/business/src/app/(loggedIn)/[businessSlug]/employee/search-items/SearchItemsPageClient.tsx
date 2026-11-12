@@ -28,13 +28,16 @@ type ItemWithDetailedStock = StockItemWithStockRecord;
 
 interface SearchItemsPageClientProps {
   initialItems: ItemWithRelations[];
+  /** Items already chosen when the page opens (`?item=`). */
+  initialSelectedItemIds?: string[];
 }
 
 export default function SearchItemsPageClient({
   initialItems,
+  initialSelectedItemIds = [],
 }: SearchItemsPageClientProps) {
   const businessSlug = useRequiredBusinessSlug();
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(initialSelectedItemIds);
 
   // Kept fresh by the stock realtime (`['stock', slug]`).
   const detailsQuery = useQuery({

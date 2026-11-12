@@ -304,7 +304,7 @@ export function CabinetPageClient({
                 <Group gap="xs" justify="flex-end">
                   <ActionIcon
                     component={Link}
-                    href={`${t.cabinet.index}/patients/${p.id}?cabinetId=${selectedCabinetId}`}
+                    href={t.cabinet.patient(selectedCabinetId, p.id)}
                     variant="light"
                     color="slate"
                   >

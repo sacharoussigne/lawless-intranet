@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useEditParam } from '@/lib/navigation/useEditParam';
 import { Group, Button, Title, Stack } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { CompanyModal } from './components/CompanyModal';
@@ -69,6 +70,12 @@ export function CompaniesTabPanel({
     setModalOpened(true);
   };
 
+  // `?edit=<id>` (command palette): opens the edit window of that entry.
+  useEditParam((id) => {
+    const entry = companies.find((candidate) => candidate.id === id);
+    if (entry) handleEdit(entry);
+    return Boolean(entry);
+  }, [null, 'companies']);
   return (
     <Stack gap="md">
       <Group justify="space-between">

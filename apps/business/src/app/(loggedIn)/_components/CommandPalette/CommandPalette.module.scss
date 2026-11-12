@@ -1,0 +1,83 @@
+/* « / » command palette: pages and quick actions of the business. */
+
+.content {
+  overflow: hidden;
+  background: var(--disp-surface);
+  border: 1px solid var(--disp-surface-border);
+}
+
+.searchBar {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  border-bottom: 1px solid var(--disp-surface-border);
+
+  input {
+    color: var(--disp-ink);
+  }
+}
+
+.results {
+  max-height: min(420px, 60dvh);
+  overflow-y: auto;
+  padding: var(--mantine-spacing-xs);
+}
+
+.groupTitle {
+  padding: 6px var(--mantine-spacing-sm) 2px;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--disp-ink-muted);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: 8px var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  color: var(--disp-ink);
+  text-decoration: none;
+  font-size: var(--mantine-font-size-sm);
+
+  &[data-active] {
+    background: var(--disp-sage-soft);
+    box-shadow: inset 3px 0 0 var(--disp-sage);
+  }
+}
+
+.itemIcon {
+  flex-shrink: 0;
+  color: var(--disp-sage);
+}
+
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemSection {
+  flex-shrink: 1;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--disp-ink-muted);
+}
+
+.footer {
+  display: flex;
+  gap: var(--mantine-spacing-md);
+  padding: 6px var(--mantine-spacing-md);
+  border-top: 1px solid var(--disp-surface-border);
+  font-size: var(--mantine-font-size-xs);
+  color: var(--disp-ink-muted);
+
+  @media (max-width: 47.99em) {
+    display: none;
+  }
+}

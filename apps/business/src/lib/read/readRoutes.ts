@@ -28,6 +28,7 @@ import { listCareEpisodes } from '@/app/_actions/cabinet/careEpisodes';
 import { listConsultations } from '@/app/_actions/cabinet/consultations';
 import { getCabinetDisplaySettings } from '@/app/_actions/cabinet/displaySettings';
 import { listCabinetPatients } from '@/app/_actions/cabinet/patients';
+import { searchPaletteEntities } from '@/app/_actions/palette';
 import { getManagementCategoryItems } from '@/app/_actions/categoryItems';
 import { getRoleChestAccesses } from '@/app/_actions/chestAccess';
 import { listBusinessPeople } from '@/app/_actions/businessPeople';
@@ -128,6 +129,7 @@ export const readRoutes = {
     searchBusinessUsersForAgenda(slug, input?.query, { adminContext: input?.adminContext }),
 
   // Search-as-you-type (one request per debounced keystroke)
+  paletteSearch: (slug: string, input: { query: string }) => searchPaletteEntities(slug, input),
   individualCustomerSearch: (slug: string, input: { query: string }) =>
     searchIndividualCustomers(slug, input?.query),
   cabinetPatients: (slug: string, input: Parameters<typeof listCabinetPatients>[1]) =>

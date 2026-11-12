@@ -23,6 +23,8 @@ import { EditWeeklyActivityModal } from './EditWeeklyActivityModal';
 import { HistoryWeeklyActivityModal } from './HistoryWeeklyActivityModal';
 import { WeeklyActivityTable } from './WeeklyActivityTable';
 import { WeeklyHoursRecapModal } from './WeeklyHoursRecapModal';
+import { PAGE_ACTIONS } from '@/lib/navigation/commandPalette';
+import { useActionParam } from '@/lib/navigation/useActionParam';
 import {
   buildDoctorOptions,
   compareWeeklyActivityRows,
@@ -73,6 +75,8 @@ export default function WeeklyActivityPageClient({
   const [historyActivityId, setHistoryActivityId] = useState<string | null>(null);
   const [historyTitle, setHistoryTitle] = useState('');
   const [hoursRecapOpen, setHoursRecapOpen] = useState(false);
+  // « Récap des heures » of the command palette.
+  useActionParam(PAGE_ACTIONS.hoursRecap, () => setHoursRecapOpen(true));
   const [selectedDoctorKey, setSelectedDoctorKey] = useState<string | null>(null);
   const [periodWeekDateValue, setPeriodWeekDateValue] = useState<Date>(() =>
     getBankWeekBounds(dayjs().tz('Europe/Paris').startOf('day').toDate()).start,

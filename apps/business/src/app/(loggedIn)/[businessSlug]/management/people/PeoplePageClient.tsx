@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useEditParam } from '@/lib/navigation/useEditParam';
 import {
   ActionIcon,
   Badge,
@@ -81,6 +82,12 @@ export default function PeoplePageClient({ initialData }: { initialData: Busines
   );
   const records = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // `?edit=<discordUserId>` (command palette): opens the person's window.
+  useEditParam((id) => {
+    const person = data.people.find((candidate) => candidate.discordUserId === id);
+    if (person) setModal({ person });
+    return Boolean(person);
+  });
   return (
     <Container size="xl" py="xl">
       <PageHeader

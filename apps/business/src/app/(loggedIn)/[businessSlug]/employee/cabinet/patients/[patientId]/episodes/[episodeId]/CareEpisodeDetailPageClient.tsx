@@ -170,7 +170,7 @@ export function CareEpisodeDetailPageClient({
     try {
       const result = await deleteCareEpisode(businessSlug, episode.id);
       handleAction(result);
-      window.location.href = `${t.cabinet.index}/patients/${episode.patientId}?cabinetId=${episode.patient.cabinetId}`;
+      window.location.href = t.cabinet.patient(episode.patient.cabinetId, episode.patientId);
     } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',
@@ -251,7 +251,7 @@ export function CareEpisodeDetailPageClient({
       <PageHeader
         title="Prise en charge"
         description={`${episode.patient.firstName} ${episode.patient.lastName} — ${episode.motif}`}
-        backHref={`${t.cabinet.index}/patients/${episode.patientId}?cabinetId=${episode.patient.cabinetId}`}
+        backHref={t.cabinet.patient(episode.patient.cabinetId, episode.patientId)}
         backLabel={`Patient : ${episode.patient.firstName} ${episode.patient.lastName}`}
         actions={
           <Group>
