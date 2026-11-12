@@ -3,21 +3,47 @@
 import { type KeyboardEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Kbd, Modal, Text, TextInput } from '@mantine/core';
-import { useWindowEvent } from '@mantine/hooks';
-import { IconSearch } from '@tabler/icons-react';
+import { Kbd, Loader, Modal, Text, TextInput } from '@mantine/core';
+import { useDebouncedValue, useWindowEvent } from '@mantine/hooks';
+import {
+  type Icon,
+  IconBox,
+  IconMailbox,
+  IconNotebook,
+  IconSearch,
+  IconStethoscope,
+  IconUser,
+} from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
 import { hasRole } from '@lawless-intranet/auth-permissions';
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { usePermissions } from '@/app/_contexts/PermissionsContext';
+import { handleAction } from '@/lib/action';
 import { isPlatformAdmin } from '@/lib/business/platformAdmin';
 import {
   type CommandEntry,
   filterCommandEntries,
   getCommandPaletteEntries,
+  PALETTE_ENTITY_MIN_LENGTH,
+  parsePaletteQuery,
 } from '@/lib/navigation/commandPalette';
+import { fetchRead } from '@/lib/read/fetchRead';
+import type { PaletteEntityHit, PaletteEntityType } from '@/types/palette';
 import { Role } from '@/types/enum/roles';
 import { tenantRoutes } from '@/types/routes';
 import classes from './CommandPalette.module.scss';
+
+/** Sections of the « @ » search, in display order. */
+const ENTITY_SECTIONS: { type: PaletteEntityType; title: string; icon: Icon }[] = [
+  { type: 'order', title: 'Commandes', icon: IconNotebook },
+  { type: 'patient', title: 'Patients', icon: IconStethoscope },
+  { type: 'correspondent', title: 'Correspondants', icon: IconUser },
+  { type: 'letter', title: 'Lettres', icon: IconMailbox },
+  { type: 'item', title: 'Objets', icon: IconBox },
+];
+
+/** One row of the palette: a page, an action or an entity. */
+type PaletteRow = { key: string; group: string; label: string; detail?: string; href: string; icon: Icon };
 
 /** Typing in a field, or a dialog already open: « / » is just a character there. */
 function ignoresShortcut(event: globalThis.KeyboardEvent): boolean {
@@ -28,7 +54,8 @@ function ignoresShortcut(event: globalThis.KeyboardEvent): boolean {
 
 /**
  * « / » anywhere in a business: jump to a page or start a quick action (« lettres », « paie »,
- * « créer commande »). Entries follow the user's rights and the enabled modules; no request.
+ * « créer commande »), with no request. « @… » searches entities instead (orders, patients, letters,
+ * items) on the server. Everything follows the user's rights and the enabled modules.
  */
 export function CommandPalette({ businessSlug }: { businessSlug: string }) {
   const [opened, setOpened] = useState(false);
@@ -96,66 +123,79 @@ function CommandPaletteBody({ businessSlug, onClose }: { businessSlug: string; o
       hasAccessibleChests,
     ],
   );
-  const results = useMemo(() => filterCommandEntries(entries, query), [entries, query]);
-  // Pages first, then actions; one list for the keyboard.
-  const ordered = useMemo(
-    () => [...results.filter((entry) => entry.group === 'page'), ...results.filter((entry) => entry.group === 'action')],
-    [results],
-  );
-  const active = Math.min(focused, Math.max(ordered.length - 1, 0));
+  const parsed = parsePaletteQuery(query);
+  const entityMode = parsed.mode === 'entities';
+  const [entityQuery] = useDebouncedValue(entityMode ? parsed.text : '', 200);
+  const entitySearch = useQuery({
+    queryKey: ['palette', businessSlug, entityQuery],
+    queryFn: async () => handleAction(await fetchRead(businessSlug, 'paletteSearch', { query: entityQuery })) ?? [],
+    enabled: entityMode && entityQuery.length >= PALETTE_ENTITY_MIN_LENGTH,
+    staleTime: 30_000,
+  });
 
-  const go = (entry: CommandEntry) => {
+  // One list for the keyboard: pages then actions, or the entity sections.
+  const rows = useMemo<PaletteRow[]>(() => {
+    if (entityMode) {
+      const hits: PaletteEntityHit[] = entitySearch.data ?? [];
+      return ENTITY_SECTIONS.flatMap((section) =>
+        hits
+          .filter((hit) => hit.type === section.type)
+          .map((hit) => ({
+            key: `${hit.type}:${hit.id}`,
+            group: section.title,
+            label: hit.label,
+            detail: hit.detail,
+            href: hit.href,
+            icon: section.icon,
+          })),
+      );
+    }
+    const results = filterCommandEntries(entries, parsed.text);
+    const toRow = (entry: CommandEntry, group: string): PaletteRow => ({
+      key: entry.id,
+      group,
+      label: entry.label,
+      detail: entry.section,
+      href: entry.href,
+      icon: entry.icon,
+    });
+    return [
+      ...results.filter((entry) => entry.group === 'page').map((entry) => toRow(entry, 'Pages')),
+      ...results.filter((entry) => entry.group === 'action').map((entry) => toRow(entry, 'Actions')),
+    ];
+  }, [entityMode, entitySearch.data, entries, parsed.text]);
+  const active = Math.min(focused, Math.max(rows.length - 1, 0));
+
+  const go = (row: PaletteRow) => {
     onClose();
-    router.push(entry.href);
+    router.push(row.href);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setFocused(Math.min(active + 1, ordered.length - 1));
+      setFocused(Math.min(active + 1, rows.length - 1));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setFocused(Math.max(active - 1, 0));
-    } else if (event.key === 'Enter' && ordered[active]) {
+    } else if (event.key === 'Enter' && rows[active]) {
       event.preventDefault();
-      go(ordered[active]);
+      go(rows[active]);
     }
   };
 
-  const renderGroup = (group: CommandEntry['group'], title: string) => {
-    const items = ordered.filter((entry) => entry.group === group);
-    if (items.length === 0) return null;
-    return (
-      <div role="group" aria-label={title}>
-        <Text className={classes.groupTitle}>{title}</Text>
-        {items.map((entry) => {
-          const index = ordered.indexOf(entry);
-          const EntryIcon = entry.icon;
-          return (
-            <Link
-              key={entry.id}
-              href={entry.href}
-              className={classes.item}
-              data-active={index === active || undefined}
-              role="option"
-              aria-selected={index === active}
-              onMouseMove={() => setFocused(index)}
-              onClick={(event) => {
-                // Plain click: close then navigate; middle / modified click: new tab as usual.
-                if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
-                event.preventDefault();
-                go(entry);
-              }}
-            >
-              <EntryIcon size={18} stroke={1.6} className={classes.itemIcon} />
-              <span className={classes.itemLabel}>{entry.label}</span>
-              {entry.section ? <span className={classes.itemSection}>{entry.section}</span> : null}
-            </Link>
-          );
-        })}
-      </div>
-    );
-  };
+  const groups = [...new Set(rows.map((row) => row.group))];
+  const waitingForEntities = entityMode && entityQuery.length >= PALETTE_ENTITY_MIN_LENGTH && entitySearch.isFetching;
+
+  const emptyMessage = !entityMode
+    ? `Aucune page ni action pour « ${parsed.text} ». Pour chercher une commande, un patient ou une lettre : @${parsed.text}`
+    : parsed.text.length < PALETTE_ENTITY_MIN_LENGTH
+      ? 'Tapez un nom, un n° de commande ou de série… (2 caractères minimum)'
+      : entitySearch.isError
+        ? 'La recherche a échoué.'
+        : waitingForEntities || parsed.text !== entityQuery
+          ? null
+          : `Rien trouvé pour « ${parsed.text} ».`;
 
   return (
     <>
@@ -164,8 +204,9 @@ function CommandPaletteBody({ businessSlug, onClose }: { businessSlug: string; o
           data-autofocus
           variant="unstyled"
           size="md"
-          placeholder="Aller à… (lettres, salaires, créer une commande)"
+          placeholder="Aller à… (lettres, salaires) ou @nom pour chercher"
           leftSection={<IconSearch size={18} />}
+          rightSection={waitingForEntities ? <Loader size={16} color="sage" /> : null}
           value={query}
           onChange={(event) => {
             setQuery(event.currentTarget.value);
@@ -177,15 +218,45 @@ function CommandPaletteBody({ businessSlug, onClose }: { businessSlug: string; o
         />
       </div>
       <div className={classes.results} role="listbox">
-        {ordered.length === 0 ? (
-          <Text size="sm" c="dimmed" ta="center" py="lg">
-            Aucune page ni action pour « {query.trim()} ».
-          </Text>
+        {rows.length === 0 ? (
+          emptyMessage ? (
+            <Text size="sm" c="dimmed" ta="center" py="lg" px="md">
+              {emptyMessage}
+            </Text>
+          ) : null
         ) : (
-          <>
-            {renderGroup('page', 'Pages')}
-            {renderGroup('action', 'Actions')}
-          </>
+          groups.map((group) => (
+            <div key={group} role="group" aria-label={group}>
+              <Text className={classes.groupTitle}>{group}</Text>
+              {rows
+                .filter((row) => row.group === group)
+                .map((row) => {
+                  const index = rows.indexOf(row);
+                  const RowIcon = row.icon;
+                  return (
+                    <Link
+                      key={row.key}
+                      href={row.href}
+                      className={classes.item}
+                      data-active={index === active || undefined}
+                      role="option"
+                      aria-selected={index === active}
+                      onMouseMove={() => setFocused(index)}
+                      onClick={(event) => {
+                        // Plain click: close then navigate; middle / modified click: new tab as usual.
+                        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+                        event.preventDefault();
+                        go(row);
+                      }}
+                    >
+                      <RowIcon size={18} stroke={1.6} className={classes.itemIcon} />
+                      <span className={classes.itemLabel}>{row.label}</span>
+                      {row.detail ? <span className={classes.itemSection}>{row.detail}</span> : null}
+                    </Link>
+                  );
+                })}
+            </div>
+          ))
         )}
       </div>
       <div className={classes.footer}>
@@ -194,6 +265,9 @@ function CommandPaletteBody({ businessSlug, onClose }: { businessSlug: string; o
         </span>
         <span>
           <Kbd size="xs">Entrée</Kbd> pour ouvrir
+        </span>
+        <span>
+          <Kbd size="xs">@</Kbd> commandes, patients, lettres, objets
         </span>
         <span>
           <Kbd size="xs">Échap</Kbd> pour fermer

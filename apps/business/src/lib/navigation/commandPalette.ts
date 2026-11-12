@@ -165,3 +165,13 @@ export function filterCommandEntries(entries: CommandEntry[], query: string): Co
   });
   return scored.sort((a, b) => a.score - b.score || a.index - b.index).map(({ entry }) => entry);
 }
+
+/** « @ » at the start switches the palette to the entity search (server); otherwise pages and actions. */
+export function parsePaletteQuery(raw: string): { mode: 'pages' | 'entities'; text: string } {
+  const trimmed = raw.trimStart();
+  return trimmed.startsWith('@')
+    ? { mode: 'entities', text: trimmed.slice(1).trim() }
+    : { mode: 'pages', text: raw.trim() };
+}
+
+export const PALETTE_ENTITY_MIN_LENGTH = 2;

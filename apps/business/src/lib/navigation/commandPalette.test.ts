@@ -7,6 +7,7 @@ import {
   commandEntryTitle,
   filterCommandEntries,
   getCommandPaletteEntries,
+  parsePaletteQuery,
 } from './commandPalette';
 
 /** Every right granted: each test removes what it checks. */
@@ -94,5 +95,17 @@ describe('filterCommandEntries', () => {
   it('returns everything for an empty query, nothing when no word matches', () => {
     expect(filterCommandEntries(entries, '  ')).toHaveLength(entries.length);
     expect(titles('zzz')).toEqual([]);
+  });
+});
+
+describe('parsePaletteQuery', () => {
+  it('switches to the entity search with « @ »', () => {
+    expect(parsePaletteQuery('  @ george ')).toEqual({ mode: 'entities', text: 'george' });
+    expect(parsePaletteQuery('@')).toEqual({ mode: 'entities', text: '' });
+  });
+
+  it('stays on pages and actions otherwise', () => {
+    expect(parsePaletteQuery(' lettres ')).toEqual({ mode: 'pages', text: 'lettres' });
+    expect(parsePaletteQuery('mail@george')).toEqual({ mode: 'pages', text: 'mail@george' });
   });
 });

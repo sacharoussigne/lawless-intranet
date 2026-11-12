@@ -60,6 +60,8 @@ export function tenantRoutes(slug: string) {
     letters: { index: `${employeeBase}/letters` },
     cabinet: {
       index: `${employeeBase}/cabinet`,
+      patient: (cabinetId: string, patientId: string) =>
+        `${employeeBase}/cabinet/patients/${encodeURIComponent(patientId)}?cabinetId=${encodeURIComponent(cabinetId)}`,
       forms: (cabinetId: string, tab?: FormEntityType) => {
         const params = new URLSearchParams({ cabinetId });
         if (tab) params.set('tab', tab);

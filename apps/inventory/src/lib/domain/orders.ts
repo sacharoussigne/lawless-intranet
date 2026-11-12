@@ -222,8 +222,15 @@ export async function listOrdersPage(input: {
     ...(input.type ? { type: input.type } : {}),
     ...(input.responsibleUserId ? { responsibleUserId: input.responsibleUserId } : {}),
     ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+    // The order's name, or its customer (company or individual).
     ...(searchTerm
-      ? { name: { contains: searchTerm, mode: 'insensitive' as const } }
+      ? {
+          OR: [
+            { name: { contains: searchTerm, mode: 'insensitive' as const } },
+            { company: { name: { contains: searchTerm, mode: 'insensitive' as const } } },
+            { individualCustomer: { name: { contains: searchTerm, mode: 'insensitive' as const } } },
+          ],
+        }
       : {}),
   };
 

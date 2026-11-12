@@ -50,6 +50,17 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
   useFillViewport(layoutRef, toolbarRef);
 
   const [focus, setFocus] = useState<{ letterId: string; archived: boolean; nonce: number } | null>(null);
+  // A letter asked by the URL (`?l=`, from the command palette): scrolled to and highlighted once.
+  const urlLetterId = searchParams.get('l');
+  const [focusedUrlLetter, setFocusedUrlLetter] = useState<string | null>(null);
+  if (urlLetterId && urlLetterId !== focusedUrlLetter) {
+    setFocusedUrlLetter(urlLetterId);
+    setFocus((current) => ({
+      letterId: urlLetterId,
+      archived: searchParams.get('archived') === '1',
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
+  }
   const [form, setForm] = useState<FormState>(null);
   const [correspondentForm, setCorrespondentForm] = useState<CorrespondentFormState>(null);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
@@ -61,6 +72,8 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
     (id: string | null) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set('box', boxId);
+      params.delete('l');
+      params.delete('archived');
       if (id) params.set('c', id);
       else params.delete('c');
       window.history.pushState(null, '', `${pathname}?${params.toString()}`);
