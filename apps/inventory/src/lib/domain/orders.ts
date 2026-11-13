@@ -275,48 +275,6 @@ export async function getOrderById(input: {
   return ok(serializeOrder(order));
 }
 
-export async function getActiveOrdersForCompanyGroup(input: {
-  scopeType: string;
-  scopeId: string;
-  companyGroupId: string;
-}): Promise<DomainResult<unknown>> {
-  const where = scopeWhere(input.scopeType, input.scopeId);
-  const group = await prisma.companyGroup.findFirst({
-    where: { id: input.companyGroupId, ...where },
-    select: { companies: { select: { companyId: true } } },
-  });
-  if (!group) return err("Groupe d'entreprises introuvable", 404);
-
-  const companyIds = group.companies.map((e) => e.companyId);
-  const orders = await prisma.order.findMany({
-    where: {
-      ...where,
-      status: { notIn: ['COMPLETED', 'CANCELLED'] },
-      OR: [
-        { companyGroupId: input.companyGroupId },
-        ...(companyIds.length > 0 ? [{ companyId: { in: companyIds } }] : []),
-      ],
-    },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      name: true,
-      status: true,
-      companyGroupId: true,
-      company: { select: { id: true, name: true } },
-      individualCustomer: { select: { id: true, name: true } },
-      items: {
-        select: {
-          itemId: true,
-          quantity: true,
-          item: { select: { id: true, name: true } },
-        },
-      },
-    },
-  });
-  return ok(orders);
-}
-
 export async function updateOrder(input: {
   scopeType: string;
   scopeId: string;

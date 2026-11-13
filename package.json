@@ -1,8 +1,8 @@
 {
-    "name": "lawless-intranet",
-    "private": true,
-    "packageManager": "pnpm@11.6.0",
-    "scripts": {
+  "name": "lawless-intranet",
+  "private": true,
+  "packageManager": "pnpm@11.6.0",
+  "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
@@ -12,14 +12,8 @@
     "db:migrate:status": "pnpm --filter \"./apps/**\" --workspace-concurrency=1 --no-bail run db:migrate:status",
     "db:generate": "pnpm --filter \"./apps/**\" run db:generate",
     "db:pull-prod": "bash scripts/db-pull-prod.sh",
-    "migrate:users-to-auth": "tsx scripts/migrate-users-to-auth.ts",
-    "migrate:mails-to-documents": "tsx scripts/migrate-mails-to-documents.ts",
-    "migrate:agenda-to-service": "tsx scripts/migrate-agenda-to-agenda-service.ts",
-    "migrate:bank-to-service": "tsx scripts/migrate-bank-to-bank-service.ts",
-    "migrate:legacy-bank-account": "tsx scripts/migrate-legacy-bank-account-to-bank-service.ts",
-    "migrate:inventory-to-service": "tsx scripts/migrate-inventory-to-inventory-service.ts",
     "docker:build:auth": "docker build --build-arg APP_NAME=auth --build-arg APP_PORT=3001 -t lawless-auth .",
-    "docker:build:dispensary": "docker build --build-arg APP_NAME=dispensary --build-arg APP_PORT=3000 -t lawless-dispensary .",
+    "docker:build:business": "docker build --build-arg APP_NAME=business --build-arg APP_PORT=3000 -t lawless-business .",
     "docker:build:documents": "docker build --build-arg APP_NAME=documents --build-arg APP_PORT=3002 -t lawless-documents .",
     "docker:build:agenda": "docker build --build-arg APP_NAME=agenda --build-arg APP_PORT=3003 -t lawless-agenda .",
     "docker:build:bank": "docker build --build-arg APP_NAME=bank --build-arg APP_PORT=3004 -t lawless-bank .",
@@ -27,15 +21,12 @@
     "docker:build:shelter": "docker build --build-arg APP_NAME=shelter --build-arg APP_PORT=3006 -t lawless-shelter .",
     "docker:build:media": "docker build --build-arg APP_NAME=media --build-arg APP_PORT=3009 -t lawless-media .",
     "docker:build:realtime": "docker build -f docker/realtime.Dockerfile -t lawless-realtime .",
-      "docker:up": "docker compose --env-file .env.docker up -d --build",
-      "docker:down": "docker compose --env-file .env.docker down"
-    },
-    "devDependencies": {
-      "turbo": "^2.5.0",
-      "typescript": "^5.9.0",
-      "tsx": "^4.21.0",
-      "pg": "^8.16.3",
-      "@types/pg": "^8.16.0",
-      "dotenv": "^17.2.3"
-    }
+    "docker:up": "docker compose --env-file .env.docker up -d --build",
+    "docker:down": "docker compose --env-file .env.docker down"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.0",
+    "dotenv": "^17.2.3"
   }
+}

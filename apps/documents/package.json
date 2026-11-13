@@ -15,9 +15,7 @@
     "db:generate": "prisma generate"
   },
   "dependencies": {
-    "@lawless-intranet/auth-client": "workspace:*",
     "@lawless-intranet/service-kit": "workspace:*",
-    "@lawless-intranet/types": "workspace:*",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "@prisma/client-runtime-utils": "^7.2.0",

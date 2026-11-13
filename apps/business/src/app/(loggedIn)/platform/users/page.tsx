@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { listUsers } from '@/app/_actions/users';
-import UsersPageClient from '@/app/(loggedIn)/(admin)/admin/users/UsersPageClient';
+import UsersPageClient from './UsersPageClient';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getDataOrThrow } from '@/lib/response';
 import type { User } from '@/types/users';

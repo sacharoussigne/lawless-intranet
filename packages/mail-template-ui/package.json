@@ -27,7 +27,8 @@
     "@mantine/notifications": "^8.0.0",
     "@tabler/icons-react": "^3.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sass": "^1"
   },
   "devDependencies": {
     "@mantine/core": "^8.3.17",

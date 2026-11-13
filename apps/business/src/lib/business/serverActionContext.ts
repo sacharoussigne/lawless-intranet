@@ -3,7 +3,6 @@
 import { getAuthSession, type AuthSession } from '@/lib/authSession';
 import {
   requireBusinessAccess,
-  requireBusinessFromSlug,
   type BusinessContext,
 } from '@/lib/business/context';
 import { isPlatformAdmin } from '@/lib/business/platformAdmin';
@@ -88,13 +87,4 @@ export async function requirePlatformAdminContext(): Promise<
     return { ok: false, status: 403, error: 'Droits super-admin requis' };
   }
   return { ok: true, userId: session.user.id };
-}
-
-export async function resolveBusinessIdBySlug(slug: string): Promise<string | null> {
-  try {
-    const d = await requireBusinessFromSlug(slug);
-    return d.id;
-  } catch {
-    return null;
-  }
 }

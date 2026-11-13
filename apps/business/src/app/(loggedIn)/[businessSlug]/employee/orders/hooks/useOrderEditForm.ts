@@ -263,5 +263,3 @@ export function useOrderEditForm(order: OrderWithRelations | undefined, active: 
     ),
   };
 }
-
-export type OrderEditForm = ReturnType<typeof useOrderEditForm>;

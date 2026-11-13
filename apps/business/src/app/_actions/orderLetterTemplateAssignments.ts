@@ -9,7 +9,6 @@ import { inventoryCookie, inventoryScope } from '@/lib/inventory/client';
 import {
   createOrderMailAssignment,
   deleteOrderMailAssignment,
-  getOrderMailAssignment,
   listOrderMailAssignments,
   updateOrderMailAssignment,
 } from '@lawless-intranet/inventory-client/server';
@@ -30,7 +29,6 @@ const updateAssignmentSchema = z.object({
 const deleteAssignmentSchema = z.object({
   id: z.string().uuid('ID invalide'),
 });
-
 
 async function validateOrgTemplate(
   templateId: string,
@@ -59,7 +57,6 @@ function withTemplateSummary<T extends { templateId: string }>(
     mailTemplate: template,
   };
 }
-
 
 async function createOrderLetterTemplateAssignmentUnlogged(
   businessSlug: string,
@@ -150,54 +147,6 @@ export async function getOrderLetterTemplateAssignments(businessSlug: string) {
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors de la récupération des assignations');
-  }
-}
-
-export async function getOrderLetterTemplateAssignmentByTypeAndStatus(
-  businessSlug: string,
-  data: {
-    orderType: OrderType;
-    orderStatus: OrderStatus;
-  },
-) {
-  try {
-    const ctx = await requireTenantServerActionContext(businessSlug);
-    if (!ctx.ok) return ctx.response;
-    const { businessId } = ctx.tenant;
-
-    const assignment = await getOrderMailAssignment(
-      {
-        ...inventoryScope(businessId),
-        orderType: data.orderType,
-        orderStatus: data.orderStatus,
-      },
-      await inventoryCookie(),
-    );
-
-    if (!assignment) {
-      return {
-        status: 200,
-        data: null,
-      };
-    }
-
-    const cookieHeader = await getServerCookieHeader();
-    let template = null;
-    try {
-      template = await getTemplate(assignment.templateId, { cookieHeader });
-    } catch {
-      template = null;
-    }
-
-    return {
-      status: 200,
-      data: withTemplateSummary(
-        assignment,
-        template ? { id: template.id, name: template.name } : null,
-      ),
-    };
-  } catch (error) {
-    return serviceActionError(error, 'Erreur lors de la récupération de l\'assignation');
   }
 }
 

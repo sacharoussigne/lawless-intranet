@@ -115,9 +115,6 @@ export async function middleware(req: NextRequest) {
   } else if (pathname.startsWith('/platform')) {
     middlewares.push(hasToBeLoggedInMiddleware);
     middlewares.push(hasPlatformAdminMiddleware);
-  } else if (pathname === '/admin/users' || pathname.startsWith('/admin/users/')) {
-    const suffix = pathname.slice('/admin/users'.length);
-    return NextResponse.redirect(new URL(`/platform/users${suffix}`, req.url));
   } else if (slug && t) {
     middlewares.push(hasToBeLoggedInMiddleware);
     middlewares.push(hasTenantAccessMiddleware);
@@ -238,11 +235,9 @@ export async function middleware(req: NextRequest) {
     middlewares.push(hasToBeLoggedInMiddleware);
   } else if (pathname === '/') {
     middlewares.push(hasToBeLoggedInMiddleware);
-  } else if (!pathname.startsWith('/platform') && !pathname.startsWith('/admin/users')) {
-    middlewares.push(hasToBeLoggedInMiddleware);
-    middlewares.push(hasApplicationAccessMiddleware);
   } else {
     middlewares.push(hasToBeLoggedInMiddleware);
+    middlewares.push(hasApplicationAccessMiddleware);
   }
 
   return chain(...middlewares)(req, enrichedSession);

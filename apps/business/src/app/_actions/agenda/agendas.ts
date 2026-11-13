@@ -26,7 +26,6 @@ import {
   createAgenda as createAgendaApi,
   deleteAgenda as deleteAgendaApi,
   getAgenda,
-  getAgendaAccess,
   getAgendaBootstrap,
   listAccessibleAgendas as listAccessibleAgendasApi,
   listAllAgendas,
@@ -103,30 +102,6 @@ export async function getAgendaPageBootstrap(businessSlug: string) {
     };
   } catch (error) {
     return serviceActionError(error, 'Erreur lors du chargement de la page agenda');
-  }
-}
-
-export async function checkAgendaModuleAccess(businessSlug: string) {
-  try {
-    const ctx = await getAgendaSessionContext(businessSlug);
-    if (!ctx.ok) return ctx.response;
-
-    const access = await getAgendaAccess(
-      agendaScope(ctx.tenant.businessId),
-      await agendaCookie(),
-    );
-
-    const isAdmin = isBusinessAdminRole(
-      ctx.session.user.role,
-      ctx.tenant.effectiveRole,
-    );
-
-    return {
-      status: 200,
-      data: { hasAccess: access.hasAccess, isAdmin },
-    };
-  } catch (error) {
-    return serviceActionError(error, 'Erreur lors de la vérification d\'accès');
   }
 }
 

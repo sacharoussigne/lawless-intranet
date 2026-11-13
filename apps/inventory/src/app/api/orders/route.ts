@@ -5,7 +5,6 @@ import { fromDomainResult } from '@/lib/http';
 import {
   createOrder,
   deleteOrder,
-  getActiveOrdersForCompanyGroup,
   getOrderById,
   listOrdersPage,
   updateOrder,
@@ -33,14 +32,6 @@ export async function GET(request: Request) {
     return fromDomainResult(
       request,
       await getOrderById({ ...scope.data, id }),
-    );
-  }
-
-  const companyGroupId = url.searchParams.get('activeForCompanyGroupId');
-  if (companyGroupId) {
-    return fromDomainResult(
-      request,
-      await getActiveOrdersForCompanyGroup({ ...scope.data, companyGroupId }),
     );
   }
 

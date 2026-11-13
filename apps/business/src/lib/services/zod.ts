@@ -21,17 +21,3 @@ export const zodErrorParser = (zodError: ZodError) => {
 
     return errors;
 };
-
-export const makeZodError = (errors: { input: string; message: string }[]) => {
-    const zodErrors: { code: "custom"; path: string[]; message: string }[] = [];
-
-    for (const error of errors) {
-        zodErrors.push({
-            code: "custom",
-            path: [error.input],
-            message: error.message,
-        });
-    }
-
-    return new ZodError(zodErrors);
-};
