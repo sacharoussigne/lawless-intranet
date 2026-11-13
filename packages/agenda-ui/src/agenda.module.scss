@@ -193,8 +193,24 @@
     min-width: 3.5rem;
   }
 
+  /* Today: tinted and outlined cell (month), marked header (week / day), so it stands out in
+     the dark theme too. */
   :global(.rbc-today) {
-    background: var(--disp-sage-soft);
+    background: var(--disp-sage-soft-strong);
+  }
+
+  :global(.rbc-month-view .rbc-day-bg.rbc-today) {
+    box-shadow: inset 0 0 0 2px var(--disp-sage-soft-border);
+  }
+
+  :global(.rbc-time-view .rbc-time-header .rbc-header.rbc-today) {
+    color: var(--disp-sage);
+    font-weight: 700;
+    box-shadow: inset 0 -3px 0 var(--disp-sage);
+  }
+
+  :global(.rbc-time-view .rbc-day-slot.rbc-today) {
+    background: color-mix(in srgb, var(--disp-sage-soft-strong) 70%, var(--disp-sage-soft));
   }
 
   :global(.rbc-off-range-bg) {
@@ -286,6 +302,12 @@
   :global(.rbc-selected-cell) {
     background: var(--disp-sage-soft-strong);
     color: var(--disp-ink);
+  }
+
+  /* Same tint as today: an outline keeps the selection visible on it. */
+  :global(.rbc-selected-cell) {
+    outline: 1px dashed var(--disp-sage);
+    outline-offset: -2px;
   }
 
   :global(.rbc-current-time-indicator) {
