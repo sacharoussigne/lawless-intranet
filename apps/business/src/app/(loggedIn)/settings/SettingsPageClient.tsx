@@ -195,19 +195,19 @@ export default function SettingsPageClient(props: {
       notifications.show({
         title: 'Succès',
         message: 'Profil mis à jour',
-        color: 'green',
+        color: 'moss',
       });
 
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
         handleApiZodError(error.error, profileForm);
         return;
       }
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de la mise à jour du profil',
-        color: 'red',
+        message: (error instanceof Error ? error.message : '') || 'Erreur lors de la mise à jour du profil',
+        color: 'danger',
       });
     } finally {
       setProfileSaving(false);
@@ -230,20 +230,20 @@ export default function SettingsPageClient(props: {
       notifications.show({
         title: 'Succès',
         message: 'Mot de passe mis à jour',
-        color: 'green',
+        color: 'moss',
       });
 
       passwordForm.reset();
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
         handleApiZodError(error.error, passwordForm);
         return;
       }
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de la mise à jour du mot de passe',
-        color: 'red',
+        message: (error instanceof Error ? error.message : '') || 'Erreur lors de la mise à jour du mot de passe',
+        color: 'danger',
       });
     } finally {
       setPasswordSaving(false);
@@ -260,14 +260,14 @@ export default function SettingsPageClient(props: {
       notifications.show({
         title: 'Succès',
         message: 'Grade mis à jour',
-        color: 'green',
+        color: 'moss',
       });
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de la mise à jour du grade',
-        color: 'red',
+        message: (error instanceof Error ? error.message : '') || 'Erreur lors de la mise à jour du grade',
+        color: 'danger',
       });
     } finally {
       setGradeSavingSlug(null);
@@ -294,11 +294,11 @@ export default function SettingsPageClient(props: {
       notifications.show({
         title: 'Succès',
         message: 'Préférences de stock mises à jour',
-        color: 'green',
+        color: 'moss',
       });
 
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
         // Server-side Zod errors should not happen often here, but we keep parity with other forms.
         // We map them to the form for a better UX.
@@ -307,8 +307,8 @@ export default function SettingsPageClient(props: {
       }
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de la mise à jour des préférences',
-        color: 'red',
+        message: (error instanceof Error ? error.message : '') || 'Erreur lors de la mise à jour des préférences',
+        color: 'danger',
       });
     } finally {
       setStockUiSaving(false);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Container,
   Title,
@@ -8,8 +9,8 @@ import {
   Button,
 } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import { listUsers } from '@/app/_actions/users';
 import { handleAction } from '@/lib/action';
+import { fetchPlatformRead } from '@/lib/read/fetchPlatformRead';
 import { notifications } from '@mantine/notifications';
 import { UserModal } from './components/UserModal';
 import { DeleteUserModal } from './components/DeleteUserModal';
@@ -19,6 +20,7 @@ import { ActiveFilters } from '@/app/_components/ActiveFilters/ActiveFilters';
 import { authClient } from '@lawless-intranet/auth-client/browser';
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types/users';
+import { toUsersPage, USERS_PAGE_SIZE } from './usersPage';
 
 interface UsersPageClientProps {
   initialUsers: User[];
@@ -30,9 +32,7 @@ export default function UsersPageClient({
   initialTotalRecords,
 }: UsersPageClientProps) {
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>(initialUsers);
-  const [totalRecords, setTotalRecords] = useState(initialTotalRecords);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [modalOpened, setModalOpened] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -45,7 +45,7 @@ export default function UsersPageClient({
   const [nameFilter, setNameFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const pageSize = USERS_PAGE_SIZE;
 
   useEffect(() => {
     // Récupérer l'ID de l'utilisateur actuel
@@ -56,40 +56,39 @@ export default function UsersPageClient({
     });
   }, []);
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const result = await listUsers({
-        searchValue: emailFilter || nameFilter || undefined,
-        searchField: emailFilter ? 'email' : 'name',
-        limit: pageSize,
-        offset: (page - 1) * pageSize,
-        sortBy: 'createdAt',
-        sortDirection: 'desc',
-      });
-      const data = handleAction(result);
-      if (data) {
-        const mappedUsers = (data.users || []).map((user: any) => ({
-          ...user,
-          role: user.role ?? null,
-        }));
-        setUsers(mappedUsers);
-        setTotalRecords(data.total || 0);
-      }
-    } catch (error: any) {
-      notifications.show({
-        title: 'Erreur',
-        message: error.message || 'Erreur lors du chargement des utilisateurs',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isInitialKey = page === 1 && !emailFilter && !nameFilter;
+  const usersQuery = useQuery({
+    queryKey: ['platform', 'users', { page, emailFilter, nameFilter }],
+    queryFn: async () =>
+      toUsersPage(
+        handleAction(
+          await fetchPlatformRead('', 'users', {
+            searchValue: emailFilter || nameFilter || undefined,
+            searchField: emailFilter ? 'email' : 'name',
+            limit: pageSize,
+            offset: (page - 1) * pageSize,
+            sortBy: 'createdAt',
+            sortDirection: 'desc',
+          }),
+        ),
+      ),
+    initialData: isInitialKey ? { users: initialUsers, total: initialTotalRecords } : undefined,
+    placeholderData: keepPreviousData,
+  });
+  const users = usersQuery.data?.users ?? [];
+  const totalRecords = usersQuery.data?.total ?? 0;
+  // After a creation, an edit or a deletion: every page and filter of the list.
+  const refreshUsers = () => queryClient.invalidateQueries({ queryKey: ['platform', 'users'] });
 
   useEffect(() => {
-    loadUsers();
-  }, [page, emailFilter, nameFilter]);
+    if (usersQuery.error) {
+      notifications.show({
+        title: 'Erreur',
+        message: usersQuery.error.message || 'Erreur lors du chargement des utilisateurs',
+        color: 'danger',
+      });
+    }
+  }, [usersQuery.error]);
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
@@ -117,7 +116,7 @@ export default function UsersPageClient({
       notifications.show({
         title: 'Succès',
         message: 'Connexion en tant qu\'utilisateur réussie',
-        color: 'green',
+        color: 'moss',
       });
 
       router.refresh();
@@ -127,7 +126,7 @@ export default function UsersPageClient({
         title: 'Erreur',
         message:
           error instanceof Error ? error.message : 'Erreur lors de l\'impersonation',
-        color: 'red',
+        color: 'danger',
       });
     }
   };
@@ -170,7 +169,7 @@ export default function UsersPageClient({
 
       <UsersTable
         users={filteredUsers}
-        loading={loading}
+        loading={usersQuery.isFetching}
         currentUserId={currentUserId}
         nameFilter={nameFilter}
         emailFilter={emailFilter}
@@ -204,7 +203,7 @@ export default function UsersPageClient({
           setEditingUser(null);
         }}
         editingUser={editingUser}
-        onSuccess={loadUsers}
+        onSuccess={refreshUsers}
       />
 
       <PasswordModal
@@ -227,7 +226,7 @@ export default function UsersPageClient({
           setUserToDelete(null);
         }}
         userToDelete={userToDelete}
-        onSuccess={loadUsers}
+        onSuccess={refreshUsers}
       />
     </Container>
   );

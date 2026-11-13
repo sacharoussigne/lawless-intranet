@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDebouncedValue } from '@mantine/hooks';
 import {
@@ -56,10 +57,10 @@ export function CabinetPageClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const cabinetIdFromUrl = searchParams.get('cabinetId');
 
   const [cabinets] = useState(initialCabinets);
-  const [patients, setPatients] = useState(initialPatients);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebouncedValue(searchInput, 300);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
@@ -69,8 +70,6 @@ export function CabinetPageClient({
     createDefaultDisplaySettings(),
   );
   const [loadingDisplaySettings, setLoadingDisplaySettings] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const initialFetchSkipped = useRef(false);
 
   const isSearchDebouncing = searchInput !== debouncedSearch;
 
@@ -99,26 +98,35 @@ export function CabinetPageClient({
     [pathname, router, searchParams],
   );
 
-  const loadPatients = useCallback(async () => {
-    if (!selectedCabinetId) return;
-    setLoading(true);
-    try {
-      const result = await fetchRead(businessSlug, 'cabinetPatients', {
-        cabinetId: selectedCabinetId,
-        search: debouncedSearch.trim() || undefined,
-      });
-      const data = handleAction(result);
-      if (data) setPatients(data);
-    } catch (error: unknown) {
+  const search = debouncedSearch.trim();
+  const patientsQuery = useQuery({
+    queryKey: ['cabinetPatients', businessSlug, selectedCabinetId, search],
+    queryFn: async () =>
+      handleAction(
+        await fetchRead(businessSlug, 'cabinetPatients', {
+          cabinetId: selectedCabinetId as string,
+          search: search || undefined,
+        }),
+      ) ?? [],
+    enabled: Boolean(selectedCabinetId),
+    // The SSR list is the unfiltered one of the first cabinet.
+    initialData: selectedCabinetId === initialCabinetId && !search ? initialPatients : undefined,
+    placeholderData: keepPreviousData,
+  });
+  const patients = patientsQuery.data ?? [];
+  const loading = patientsQuery.isFetching;
+  const loadPatients = () =>
+    queryClient.invalidateQueries({ queryKey: ['cabinetPatients', businessSlug, selectedCabinetId] });
+
+  useEffect(() => {
+    if (patientsQuery.error) {
       notifications.show({
         title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Chargement impossible',
+        message: patientsQuery.error.message || 'Chargement impossible',
         color: 'danger',
       });
-    } finally {
-      setLoading(false);
     }
-  }, [businessSlug, selectedCabinetId, debouncedSearch]);
+  }, [patientsQuery.error]);
 
   const handleDeletePatient = async (patient: CabinetPatientSummaryDTO) => {
     try {
@@ -159,21 +167,6 @@ export function CabinetPageClient({
     }
   }, [businessSlug, selectedCabinetId]);
 
-  useEffect(() => {
-    if (!selectedCabinetId) return;
-
-    const skipInitialFetch =
-      !initialFetchSkipped.current &&
-      debouncedSearch === '' &&
-      selectedCabinetId === initialCabinetId;
-
-    if (skipInitialFetch) {
-      initialFetchSkipped.current = true;
-      return;
-    }
-
-    void loadPatients();
-  }, [selectedCabinetId, debouncedSearch, initialCabinetId, loadPatients]);
 
   const t = tenantRoutes(businessSlug);
 

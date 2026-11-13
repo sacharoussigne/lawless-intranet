@@ -4,29 +4,18 @@ import { listUsers } from '@/app/_actions/users';
 import UsersPageClient from './UsersPageClient';
 import { SuspenseLoader } from '@/app/_components/SuspenseLoader/SuspenseLoader';
 import { getDataOrThrow } from '@/lib/response';
-import type { User } from '@/types/users';
+import { toUsersPage, USERS_PAGE_SIZE } from './usersPage';
 
 async function UsersContent() {
   const result = await listUsers({
-    limit: 10,
+    limit: USERS_PAGE_SIZE,
     offset: 0,
     sortBy: 'createdAt',
     sortDirection: 'desc',
   });
+  const { users, total } = toUsersPage(getDataOrThrow(result, 'Erreur lors du chargement des utilisateurs'));
 
-  const data = getDataOrThrow(result, 'Erreur lors du chargement des utilisateurs');
-
-  const users: User[] = ((data as { users?: User[] }).users || []).map((user) => ({
-    ...(user as User),
-    role: (user as { role?: string | null }).role ?? null,
-  }));
-
-  return (
-    <UsersPageClient
-      initialUsers={users}
-      initialTotalRecords={(data as { total?: number }).total || 0}
-    />
-  );
+  return <UsersPageClient initialUsers={users} initialTotalRecords={total} />;
 }
 
 export default function PlatformUsersPage() {

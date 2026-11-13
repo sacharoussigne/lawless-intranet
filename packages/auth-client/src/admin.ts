@@ -30,7 +30,41 @@ async function adminFetch(
   return data;
 }
 
+/** Lowercase, without accents: what the user search compares. */
+function normalizeSearch(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+}
+
+type ListedUser = { name?: string | null; email?: string | null };
+
+const SEARCH_SCAN_LIMIT = 5000;
+
+/**
+ * Users of the auth app. A search ignores case and accents (« william » finds « William Smith »):
+ * Better Auth only matches the exact case, so the search loads the users (up to SEARCH_SCAN_LIMIT)
+ * and filters and pages here.
+ */
 export async function listUsers(
+  params: ListUsersParams | undefined,
+  context?: AuthRequestContext,
+) {
+  const search = params?.searchValue?.trim();
+  if (!search) return fetchUsers(params, context);
+
+  // Better Auth caps an unbounded list at 100: ask for more explicitly.
+  const all = (await fetchUsers(
+    { ...params, searchValue: undefined, limit: SEARCH_SCAN_LIMIT, offset: undefined },
+    context,
+  )) as { users?: ListedUser[] } | null;
+  const needle = normalizeSearch(search);
+  const field = params?.searchField ?? 'name';
+  const matches = (all?.users ?? []).filter((user) => normalizeSearch(user[field] ?? '').includes(needle));
+  const offset = params?.offset ?? 0;
+  const users = params?.limit != null ? matches.slice(offset, offset + params.limit) : matches.slice(offset);
+  return { users, total: matches.length, limit: params?.limit, offset };
+}
+
+async function fetchUsers(
   params: ListUsersParams | undefined,
   context?: AuthRequestContext,
 ) {

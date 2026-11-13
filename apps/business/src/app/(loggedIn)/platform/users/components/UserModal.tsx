@@ -110,7 +110,7 @@ export function UserModal({
         notifications.show({
           title: 'Succès',
           message: 'Utilisateur modifié avec succès',
-          color: 'green',
+          color: 'moss',
         });
       } else {
         const result = await createUser({
@@ -123,20 +123,20 @@ export function UserModal({
         notifications.show({
           title: 'Succès',
           message: 'Utilisateur créé avec succès',
-          color: 'green',
+          color: 'moss',
         });
       }
       onClose();
       form.reset();
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
         handleApiZodError(error.error, form);
       } else {
         notifications.show({
           title: 'Erreur',
-          message: error.message || 'Erreur lors de la sauvegarde',
-          color: 'red',
+          message: (error instanceof Error ? error.message : '') || 'Erreur lors de la sauvegarde',
+          color: 'danger',
         });
       }
     }

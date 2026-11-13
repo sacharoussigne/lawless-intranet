@@ -25,6 +25,7 @@ import {
 } from '@/types/agenda';
 import type { AgendaAccessLevel } from '@/types/agenda';
 import { fetchRead } from '@/lib/read/fetchRead';
+import { useQuery } from '@tanstack/react-query';
 
 interface AgendaMembersModalProps {
   opened: boolean;
@@ -41,34 +42,30 @@ export function AgendaMembersModal({
   agendaId,
   agendaName,
 }: AgendaMembersModalProps) {
-  const [members, setMembers] = useState<AgendaMemberDTO[]>([]);
-  const [loading, setLoading] = useState(false);
   const [accessLevel, setAccessLevel] = useState<AgendaAccessLevel>('READ');
 
-  const memberUserIds = useMemo(
-    () => members.map((member) => member.userId),
-    [members],
-  );
+  const membersQuery = useQuery({
+    queryKey: ['agendaMembers', businessSlug, agendaId],
+    queryFn: async () => {
+      const data = handleAction(await fetchRead(businessSlug, 'agendaWithMembers', { agendaId: agendaId as string }));
+      return (data?.members ?? []) as AgendaMemberDTO[];
+    },
+    enabled: opened && Boolean(agendaId),
+  });
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
+  const loading = membersQuery.isLoading;
+  const loadMembers = () => membersQuery.refetch();
+  const memberUserIds = useMemo(() => members.map((member) => member.userId), [members]);
 
-  const loadMembers = useCallback(async () => {
-    if (!agendaId) return;
-    setLoading(true);
-    try {
-      const result = await fetchRead(businessSlug, 'agendaWithMembers', { agendaId });
-      const data = handleAction(result);
-      if (data) {
-        setMembers(data.members as AgendaMemberDTO[]);
-      }
-    } catch (error: unknown) {
+  useEffect(() => {
+    if (membersQuery.error) {
       notifications.show({
         title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Chargement impossible',
+        message: membersQuery.error.message || 'Chargement impossible',
         color: 'danger',
       });
-    } finally {
-      setLoading(false);
     }
-  }, [agendaId, businessSlug]);
+  }, [membersQuery.error]);
 
   const searchAgendaUsers = useCallback(
     async (query: string) => {
@@ -78,12 +75,6 @@ export function AgendaMembersModal({
     },
     [businessSlug],
   );
-
-  useEffect(() => {
-    if (opened && agendaId) {
-      void loadMembers();
-    }
-  }, [opened, agendaId, loadMembers]);
 
   const handleAddMember = async (userId: string) => {
     if (!agendaId) return;
@@ -154,7 +145,8 @@ export function AgendaMembersModal({
       }
     >
       <Stack gap="md">
-        <Group align="flex-end" grow>
+        {/* Top-aligned: the search results grow below the field without moving the select. */}
+        <Group align="flex-start" grow>
           <UserPseudoSearch
             enabled={opened}
             inputName="agenda-member-user-search"
