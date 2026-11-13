@@ -5,7 +5,7 @@ Stockage de fichiers façon drive : images, PDF et **liens externes** rangés en
 ## Fonctionnement
 
 ```
-navigateur ──server actions──▶ shelter / dispensary ──HTTP + MEDIA_INTERNAL_SECRET──▶ media:3009 ──▶ S3
+navigateur ──server actions──▶ shelter / business ──HTTP + MEDIA_INTERNAL_SECRET──▶ media:3009 ──▶ S3
      │                                                                      (base lawless_media)
      └──── upload direct (POST présigné) / lecture (GET présigné) ─────────▶ S3
 ```
@@ -74,7 +74,7 @@ Un bucket par environnement, par exemple `lawless-media-dev` et `lawless-media-p
      }
    ]
    ```
-   Pour le bucket de dev, `http://localhost:3006` (refuge) et `http://localhost:3000` (dispensaire) suffisent. Si tu ouvres les apps via `shelter.localhost` / `dispensary.localhost`, ajoute aussi ces origines.
+   Pour le bucket de dev, `http://localhost:3006` (refuge) et `http://localhost:3000` (dispensaire) suffisent. Si tu ouvres les apps via leurs hôtes `*.lawless.localhost` (`shelter.lawless.localhost:3006`, `business.lawless.localhost:3000`…), ajoute aussi ces origines.
 3. **Utilisateur IAM** dédié (accès programmatique uniquement), avec cette politique :
    ```json
    {

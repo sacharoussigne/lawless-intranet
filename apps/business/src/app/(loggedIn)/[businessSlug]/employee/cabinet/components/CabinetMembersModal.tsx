@@ -25,6 +25,7 @@ import {
 } from '@/types/cabinet';
 import type { CabinetAccessLevel } from '@prisma/client';
 import { fetchRead } from '@/lib/read/fetchRead';
+import { useQuery } from '@tanstack/react-query';
 
 interface CabinetMembersModalProps {
   opened: boolean;
@@ -41,34 +42,30 @@ export function CabinetMembersModal({
   cabinetId,
   cabinetName,
 }: CabinetMembersModalProps) {
-  const [members, setMembers] = useState<CabinetMemberDTO[]>([]);
-  const [loading, setLoading] = useState(false);
   const [accessLevel, setAccessLevel] = useState<CabinetAccessLevel>('READ');
 
-  const memberUserIds = useMemo(
-    () => members.map((member) => member.userId),
-    [members],
-  );
+  const membersQuery = useQuery({
+    queryKey: ['cabinetMembers', businessSlug, cabinetId],
+    queryFn: async () => {
+      const data = handleAction(await fetchRead(businessSlug, 'cabinetWithMembers', { cabinetId: cabinetId as string }));
+      return (data?.members ?? []) as CabinetMemberDTO[];
+    },
+    enabled: opened && Boolean(cabinetId),
+  });
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
+  const loading = membersQuery.isLoading;
+  const loadMembers = () => membersQuery.refetch();
+  const memberUserIds = useMemo(() => members.map((member) => member.userId), [members]);
 
-  const loadMembers = useCallback(async () => {
-    if (!cabinetId) return;
-    setLoading(true);
-    try {
-      const result = await fetchRead(businessSlug, 'cabinetWithMembers', { cabinetId });
-      const data = handleAction(result);
-      if (data) {
-        setMembers(data.members as CabinetMemberDTO[]);
-      }
-    } catch (error: unknown) {
+  useEffect(() => {
+    if (membersQuery.error) {
       notifications.show({
         title: 'Erreur',
-        message: error instanceof Error ? error.message : 'Chargement impossible',
+        message: membersQuery.error.message || 'Chargement impossible',
         color: 'danger',
       });
-    } finally {
-      setLoading(false);
     }
-  }, [cabinetId, businessSlug]);
+  }, [membersQuery.error]);
 
   const searchCabinetUsers = useCallback(
     async (query: string) => {
@@ -78,12 +75,6 @@ export function CabinetMembersModal({
     },
     [businessSlug],
   );
-
-  useEffect(() => {
-    if (opened && cabinetId) {
-      void loadMembers();
-    }
-  }, [opened, cabinetId, loadMembers]);
 
   const handleAddMember = async (userId: string) => {
     if (!cabinetId) return;
@@ -154,7 +145,8 @@ export function CabinetMembersModal({
       }
     >
       <Stack gap="md">
-        <Group align="flex-end" grow>
+        {/* Top-aligned: the search results grow below the field without moving the select. */}
+        <Group align="flex-start" grow>
           <UserPseudoSearch
             enabled={opened}
             inputName="cabinet-member-user-search"

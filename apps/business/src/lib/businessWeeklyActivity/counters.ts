@@ -30,20 +30,6 @@ export function weeklyCounterDefinitions(type: BusinessType): readonly WeeklyCou
   return getBusinessTypeDefinition(type).weeklyCounters;
 }
 
-export function findWeeklyCounterDefinition(
-  type: BusinessType,
-  key: string,
-): WeeklyCounterDefinition | undefined {
-  return weeklyCounterDefinitions(type).find((c) => c.key === key);
-}
-
-/** Every counter of the type, with its value (0 when missing). */
-export function completeWeeklyCounters(type: BusinessType, counters: WeeklyCounters): WeeklyCounters {
-  return Object.fromEntries(
-    weeklyCounterDefinitions(type).map((c) => [c.key, weeklyCounterValue(counters, c.key)]),
-  );
-}
-
 /** Settings map (`AppSettings.weeklyActivityCounters`): a missing key is enabled. */
 export function isWeeklyCounterEnabled(settingsCounters: Record<string, boolean>, key: string): boolean {
   return settingsCounters[key] !== false;

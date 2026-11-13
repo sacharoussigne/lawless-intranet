@@ -102,7 +102,7 @@ export function PatientFormModal({
       if (patient?.id) {
         onSuccess();
       } else if (data?.id) {
-        router.push(`${t.cabinet.index}/patients/${data.id}?cabinetId=${cabinetId}`);
+        router.push(t.cabinet.patient(cabinetId, data.id));
       }
     } catch (error: unknown) {
       applySubmitError(error);

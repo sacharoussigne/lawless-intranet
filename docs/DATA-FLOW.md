@@ -30,13 +30,15 @@ Les requêtes GET partent en parallèle, hors de la file des actions.
 
 Il n'y a **pas d'API REST par feature**. Chaque app a une seule route GET générique qui réutilise les actions de lecture existantes :
 
-| | Dispensaire | Refuge |
+| | Business | Refuge |
 |---|---|---|
 | Registre | `apps/business/src/lib/read/readRoutes.ts` | `apps/shelter/src/lib/read/readRoutes.ts` |
 | Route | `src/app/api/d/[businessSlug]/read/[query]/route.ts` | `src/app/api/s/[shelterSlug]/read/[query]/route.ts` |
 | Client | `src/lib/read/fetchRead.ts` | `src/lib/read/fetchRead.ts` |
 
 La mécanique est partagée dans `packages/host-kit/src/read.ts` (`createReadRouteHandler`, `createFetchRead`).
+
+Les pages plateforme de l'app business (`/platform`, sans slug) ont leur propre registre, sur le même principe : `lib/read/platformReadRoutes.ts`, route `GET /api/platform/read/<clé>`, client `fetchPlatformRead`. Le contrôle admin plateforme reste dans les actions.
 
 ### Fonctionnement
 

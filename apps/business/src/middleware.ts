@@ -115,9 +115,6 @@ export async function middleware(req: NextRequest) {
   } else if (pathname.startsWith('/platform')) {
     middlewares.push(hasToBeLoggedInMiddleware);
     middlewares.push(hasPlatformAdminMiddleware);
-  } else if (pathname === '/admin/users' || pathname.startsWith('/admin/users/')) {
-    const suffix = pathname.slice('/admin/users'.length);
-    return NextResponse.redirect(new URL(`/platform/users${suffix}`, req.url));
   } else if (slug && t) {
     middlewares.push(hasToBeLoggedInMiddleware);
     middlewares.push(hasTenantAccessMiddleware);
@@ -125,13 +122,14 @@ export async function middleware(req: NextRequest) {
 
     if (pathname.startsWith(`${t.management.index}`)) {
       middlewares.push(hasManagementAccessMiddleware);
-      if (pathname === t.management.people || pathname.startsWith(`${t.management.people}/`)) {
+      if (pathname === t.management.people() || pathname.startsWith(`${t.management.people()}/`)) {
         middlewares.push(hasWeeklyActivityEditAllMiddleware);
         middlewares.push((request: NextRequest, s: AppMiddlewareSession) =>
           assertAppFeatureEnabledMiddleware(request, s, 'weeklyActivity'),
         );
       }
     } else if (
+      pathname === t.admin.index ||
       pathname === t.admin.settings ||
       pathname.startsWith(`${t.admin.settings}/`) ||
       pathname === t.admin.overwriteStock ||
@@ -237,11 +235,9 @@ export async function middleware(req: NextRequest) {
     middlewares.push(hasToBeLoggedInMiddleware);
   } else if (pathname === '/') {
     middlewares.push(hasToBeLoggedInMiddleware);
-  } else if (!pathname.startsWith('/platform') && !pathname.startsWith('/admin/users')) {
-    middlewares.push(hasToBeLoggedInMiddleware);
-    middlewares.push(hasApplicationAccessMiddleware);
   } else {
     middlewares.push(hasToBeLoggedInMiddleware);
+    middlewares.push(hasApplicationAccessMiddleware);
   }
 
   return chain(...middlewares)(req, enrichedSession);

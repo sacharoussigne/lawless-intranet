@@ -41,8 +41,6 @@ export const orderTypeSelectOptions = [
   { value: OrderTypeEnum.OUTGOING, label: getOrderTypeLabel(OrderTypeEnum.OUTGOING) },
 ];
 
-export const orderStatusFilterOptions = [...orderStatusSelectOptions];
-
 export const orderTypeFilterOptions = [
   { value: '', label: 'Tous les types' },
   ...orderTypeSelectOptions,

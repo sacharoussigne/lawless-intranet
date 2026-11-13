@@ -23,7 +23,14 @@ export const EMPLOYEE_MODULE_SEGMENTS = [
   'cabinet',
 ] as const;
 
-export type EmployeeModuleSegment = (typeof EMPLOYEE_MODULE_SEGMENTS)[number];
+/** Management page URL, with its tab and the entity to edit. */
+function managementUrl(url: string, tab?: string, editId?: string): string {
+  const params = new URLSearchParams();
+  if (tab) params.set('tab', tab);
+  if (editId) params.set('edit', editId);
+  const query = params.toString();
+  return query ? `${url}?${query}` : url;
+}
 
 export function tenantRoutes(slug: string) {
   const base = businessBase(slug);
@@ -60,6 +67,8 @@ export function tenantRoutes(slug: string) {
     letters: { index: `${employeeBase}/letters` },
     cabinet: {
       index: `${employeeBase}/cabinet`,
+      patient: (cabinetId: string, patientId: string) =>
+        `${employeeBase}/cabinet/patients/${encodeURIComponent(patientId)}?cabinetId=${encodeURIComponent(cabinetId)}`,
       forms: (cabinetId: string, tab?: FormEntityType) => {
         const params = new URLSearchParams({ cabinetId });
         if (tab) params.set('tab', tab);
@@ -74,19 +83,12 @@ export function tenantRoutes(slug: string) {
     },
     management: {
       index: `${base}/management`,
-      companies: (tab?: 'groups') => {
-        const url = `${base}/management/companies`;
-        if (tab === 'groups') return `${url}?tab=groups`;
-        return url;
-      },
-      items: (tab?: 'categories') => {
-        const url = `${base}/management/items`;
-        if (tab === 'categories') return `${url}?tab=categories`;
-        return url;
-      },
-      mails: `${base}/management/mails`,
-      chests: `${base}/management/chests`,
-      people: `${base}/management/people`,
+      // `edit`: opens the edit window of that entity (command palette, useEditParam).
+      companies: (tab?: 'groups', editId?: string) => managementUrl(`${base}/management/companies`, tab, editId),
+      items: (tab?: 'categories', editId?: string) => managementUrl(`${base}/management/items`, tab, editId),
+      mails: (editId?: string) => managementUrl(`${base}/management/mails`, undefined, editId),
+      chests: (editId?: string) => managementUrl(`${base}/management/chests`, undefined, editId),
+      people: (editId?: string) => managementUrl(`${base}/management/people`, undefined, editId),
     },
     admin: {
       index: `${base}/admin`,
@@ -108,6 +110,7 @@ export const routes = {
     index: '/test',
   },
   platform: {
+    index: '/platform',
     businesses: '/platform/dispensaries',
     users: '/platform/users',
     logs: '/platform/logs',

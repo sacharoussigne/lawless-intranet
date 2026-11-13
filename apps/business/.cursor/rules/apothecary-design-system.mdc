@@ -69,7 +69,7 @@ Préférer `OrderStatusBadge`, `OrderTypeBadge`, ou `apothecaryBooleanPills` dep
 
 - `var(--disp-*)` et `var(--mantine-color-sage-*)` — pas de hex en dur
 - Titres : `font-family: var(--disp-font-display); font-weight: 400;`
-- Hover : `var(--mantine-color-sage-0)` sur fond crème
+- Hover : `var(--disp-sage-soft)` (jamais `--mantine-color-<palette>-0/1`, qui restent clairs en thème sombre)
 
 ## Dette legacy
 

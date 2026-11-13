@@ -33,20 +33,8 @@ export const authClient = createAuthClient({
   ],
 });
 
-export async function signInWithDiscord(callbackURL?: string) {
-  await authClient.signIn.social({
-    provider: 'discord',
-    callbackURL,
-  });
-}
-
 export async function signOut() {
   await authClient.signOut();
-}
-
-export function getLoginUrl(callbackUrl: string): string {
-  const authUrl = getPublicAuthUrl();
-  return `${authUrl}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 }
 
 export function getSignupUrl(callbackUrl: string): string {

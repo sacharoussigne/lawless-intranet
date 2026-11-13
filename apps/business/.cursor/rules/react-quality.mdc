@@ -12,7 +12,7 @@ Pour charger ou muter des données serveur côté client, utiliser **React Query
 
 - Doc : [`docs/react-query.md`](../../docs/react-query.md)
 - Rule : [`react-query.mdc`](./react-query.mdc)
-- Référence : module stock (`useStockQueries`, `queryKeys`)
+- Référence : module stock (`packages/inventory-ui/src/stock/hooks/useStockQueries.ts`, `src/lib/stock/queryKeys.ts`)
 
 Ne pas reproduire le pattern legacy `useState` + `useEffect` + `loadX()` pour des server actions (ex. agenda). Migrer vers React Query lors d'une refonte de la feature.
 

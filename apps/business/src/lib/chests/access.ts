@@ -47,22 +47,6 @@ export function hasChestAccess(access: ChestAccessResult, chestId: string): bool
   return access.chestIds.includes(chestId);
 }
 
-export function assertChestAccess(
-  access: ChestAccessResult,
-  chestId: string,
-): boolean {
-  return hasChestAccess(access, chestId);
-}
-
-export function filterChestIdsByAccess(
-  access: ChestAccessResult,
-  chestIds: string[],
-): string[] {
-  if (access.all) return chestIds;
-  const allowed = new Set(access.chestIds);
-  return chestIds.filter((id) => allowed.has(id));
-}
-
 export function chestAccessWhereFilter(
   access: ChestAccessResult,
 ): { id?: { in: string[] } } | Record<string, never> {

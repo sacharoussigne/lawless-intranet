@@ -54,7 +54,7 @@ export function AgendasAdminPageClient({
       notifications.show({
         title: 'Erreur',
         message: err instanceof Error ? err.message : 'Rechargement impossible',
-        color: 'red',
+        color: 'danger',
       });
     }
   };

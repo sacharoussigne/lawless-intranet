@@ -1,157 +1,61 @@
 # SSO Development Setup
 
-## Hosts
+## Hosts: `*.lawless.localhost`
 
-> **Sous-domaines partagés (`*.lawless.localhost`)** : les navigateurs refusent un cookie
-> `Domain=.localhost` posé depuis un sous-domaine (`localhost` compte comme une extension de
-> premier niveau). Pour partager la session entre plusieurs hôtes (auth, dispensary,
-> business, gs…), utiliser un niveau de plus :
-> - auth : `AUTH_COOKIE_DOMAIN=.lawless.localhost`, `BETTER_AUTH_URL` et `NEXT_PUBLIC_AUTH_URL`
->   = `http://auth.lawless.localhost:3001`. Les apps sur leurs sous-domaines sont alors
->   reconnues d'office (`getTrustedOrigins`) ;
-> - Discord : ajouter `http://auth.lawless.localhost:3001/api/auth/callback/discord` aux redirects ;
-> - dispensary : `NEXT_PUBLIC_AUTH_URL` / `AUTH_URL` = `http://auth.lawless.localhost:3001`,
->   `NEXT_PUBLIC_APP_URL=http://business.lawless.localhost:3000`,
->   `BUSINESS_TYPE_HOSTS=DISPENSARY=dispensary.lawless.localhost:3000` ;
-> - Chrome résout `*.localhost` vers 127.0.0.1 tout seul ; sinon ajouter les hôtes ci-dessous.
->
-> Sans partage entre hôtes, tout faire tourner sur `localhost:<port>` suffit.
+Browsers refuse a cookie with `Domain=.localhost` set from a subdomain (`localhost` counts as a top-level domain), which breaks the Discord login with a `state_mismatch`. To share the session between hosts (auth, business, shelter…), use one more level: **`*.lawless.localhost`**.
 
-Add to your hosts file (required for SSO cookie sharing on `.localhost`):
+- auth: `AUTH_COOKIE_DOMAIN=.lawless.localhost`, `BETTER_AUTH_URL` and `NEXT_PUBLIC_AUTH_URL` = `http://auth.lawless.localhost:3001`. Apps on its subdomains are trusted automatically (`getTrustedOrigins`).
+- business: `NEXT_PUBLIC_AUTH_URL=http://auth.lawless.localhost:3001`, `NEXT_PUBLIC_APP_URL=http://business.lawless.localhost:3000`, `BUSINESS_TYPE_HOSTS=DISPENSARY=dispensary.lawless.localhost:3000`.
+- The Next configs list `*.lawless.localhost` in `allowedDevOrigins` (otherwise pages do not hydrate).
+- Chrome resolves `*.localhost` to 127.0.0.1 by itself. Other browsers may need hosts entries:
 
 ```
-127.0.0.1 auth.localhost
-127.0.0.1 dispensary.localhost
-127.0.0.1 business.localhost
-127.0.0.1 gs.localhost
-127.0.0.1 shelter.localhost
-127.0.0.1 documents.localhost
-127.0.0.1 agenda.localhost
-127.0.0.1 bank.localhost
-127.0.0.1 inventory.localhost
+127.0.0.1 auth.lawless.localhost
+127.0.0.1 business.lawless.localhost
+127.0.0.1 dispensary.lawless.localhost
+127.0.0.1 gs.lawless.localhost
+127.0.0.1 shelter.lawless.localhost
 ```
 
-On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator.
+On Windows, edit `C:\Windows\System32\drivers\etc\hosts` as administrator. Use these hostnames in the browser (not `127.0.0.1`) so the shared session cookie works.
 
-`pnpm dev` binds to all interfaces on ports 3000–3006; use the hostnames above in the browser (not `127.0.0.1`) so Better Auth `crossSubDomainCookies` work.
+Without sharing between hosts, running everything on `localhost:<port>` is enough.
 
 ## Apps
 
 | App | URL | Port |
 |-----|-----|------|
-| auth (IdP) | http://auth.localhost:3001 | 3001 |
-| dispensary (RP) | http://dispensary.localhost:3000 | 3000 |
-| business app, every business / general stores (same server, `BUSINESS_TYPE_HOSTS`) | http://business.localhost:3000, http://gs.localhost:3000 | 3000 |
-| shelter (RP) | http://shelter.localhost:3006 | 3006 |
-| documents (API) | http://documents.localhost:3002 | 3002 |
-| agenda (API) | http://agenda.localhost:3003 | 3003 |
-| bank (API) | http://bank.localhost:3004 | 3004 |
-| inventory (API) | http://inventory.localhost:3005 | 3005 |
+| auth (IdP) | http://auth.lawless.localhost:3001 | 3001 |
+| business (every business; dispensaries and general stores on their own host via `BUSINESS_TYPE_HOSTS`) | http://business.lawless.localhost:3000, http://dispensary.lawless.localhost:3000, http://gs.lawless.localhost:3000 | 3000 |
+| shelter | http://shelter.lawless.localhost:3006 | 3006 |
+| documents (API) | http://localhost:3002 | 3002 |
+| agenda (API) | http://localhost:3003 | 3003 |
+| bank (API) | http://localhost:3004 | 3004 |
+| inventory (API) | http://localhost:3005 | 3005 |
 | media (API, server-side only) | http://localhost:3009 | 3009 |
 | realtime (WebSocket) | ws://localhost:3007 (internal: http://localhost:3008) | 3007 / 3008 |
 
+Production URLs: `docs/URLS.md`.
+
 ## Environment
 
-1. Copy `apps/auth/.env.example` to `apps/auth/.env`
-2. Copy `apps/business/.env.example` to `apps/business/.env`
-3. Copy `apps/shelter/.env.example` to `apps/shelter/.env`
-4. Copy `apps/documents/.env.example` to `apps/documents/.env`
-5. Copy `apps/agenda/.env.example` to `apps/agenda/.env`
-6. Copy `apps/bank/.env.example` to `apps/bank/.env`
-7. Copy `apps/inventory/.env.example` to `apps/inventory/.env`
-8. Set the same `AUTH_INTERNAL_SECRET` in auth + dispensary + shelter
-9. Set the same `AGENDA_INTERNAL_SECRET` in agenda + dispensary (required for admin agenda ops)
-10. Set the same `DOCUMENTS_INTERNAL_SECRET` in documents + dispensary (required for all documents API calls)
-11. Set the same `BANK_INTERNAL_SECRET` / `BANK_BOT_API_SECRET` in bank + dispensary + shelter
-12. Set the same `INVENTORY_INTERNAL_SECRET` in inventory + dispensary
-13. Configure separate PostgreSQL databases:
-   - `DATABASE_URL` in auth → auth DB
-   - `DATABASE_URL` in dispensary → dispensary DB (no user/session tables)
-   - `DATABASE_URL` in shelter → shelter DB
-   - `DATABASE_URL` in documents → documents DB
-   - `DATABASE_URL` in agenda → agenda DB
-   - `DATABASE_URL` in bank → bank DB
-   - `DATABASE_URL` in inventory → inventory DB
-   - `DATABASE_URL` in media → media DB
-14. Point dispensary at the services:
-   - `DOCUMENTS_URL=http://localhost:3002`
-   - `AGENDA_URL=http://localhost:3003`
-   - `BANK_URL=http://localhost:3004`
-   - `INVENTORY_URL=http://localhost:3005`
-15. Point shelter at bank: `BANK_URL=http://localhost:3004`
-16. In auth `.env`, set `SHELTER_URL` / `NEXT_PUBLIC_SHELTER_URL` to `http://localhost:3006` (or `http://shelter.localhost:3006`)
-17. Media library (shelter and dispensary): copy `apps/media/.env.example` to `apps/media/.env` (database, `MEDIA_INTERNAL_SECRET`, dev S3 bucket), and set `MEDIA_URL=http://localhost:3009` + the same `MEDIA_INTERNAL_SECRET` in shelter and dispensary. Bucket setup: `docs/MEDIA.md`.
-18. Realtime websocket (every live update): started by `pnpm dev`, no configuration needed in dev. Outside production, realtime and its publishers / token issuers default to `localhost:3007` / `localhost:3008` and a shared dev secret; set the `REALTIME_*` variables only to override them (they are required in production).
-
-Optional root `.env` for one-shot migration scripts:
-
-| Variable | Role |
-|----------|------|
-| `OLD_DISPENSARY_DATABASE_URL` | Legacy mono-app DB backup (still has `user` / `account` tables) |
-| `AUTH_DATABASE_URL` | Target auth DB |
-| `DISPENSARY_DATABASE_URL` | Current dispensary DB (orphan check after migration / agenda/bank/inventory source) |
-| `SHELTER_DATABASE_URL` | Shelter DB |
-| `AGENDA_DATABASE_URL` | Target agenda DB |
-| `BANK_DATABASE_URL` | Target bank DB |
-| `INVENTORY_DATABASE_URL` | Target inventory DB |
-
-## Migration from legacy single-DB setup
-
-**Order matters.** User IDs in dispensary data must match auth user IDs.
-
-### Fresh split (prod or local, auth tables still in source DB)
-
-```bash
-# 1. Create auth schema
-cd apps/auth && pnpm db:migrate
-
-# 2. Copy users (preserves IDs)
-pnpm migrate:users-to-auth
-
-# 3. Remove local auth tables from dispensary
-cd apps/business && pnpm db:migrate
-```
-
-### Agenda split (after agenda service exists)
-
-```bash
-# 1. Create agenda schema
-cd apps/agenda && pnpm db:migrate
-
-# 2. Copy agenda data (preserves UUIDs, maps dispensaryId → scopeType/scopeId)
-DISPENSARY_DATABASE_URL=... AGENDA_DATABASE_URL=... pnpm migrate:agenda-to-service
-
-# 3. Deploy dispensary (drops local agenda tables)
-cd apps/business && pnpm db:migrate
-```
-
-### Local recovery (dispensary already migrated, backup available)
-
-If `remove_local_auth_tables` was already applied on the dispensary DB, point the script at a backup that still contains auth tables:
-
-```bash
-# Root .env example:
-# OLD_DISPENSARY_DATABASE_URL=postgresql://.../dispensaire
-# AUTH_DATABASE_URL=postgresql://.../lawless_auth
-# DISPENSARY_DATABASE_URL=postgresql://.../lawless_dispensary
-
-cd apps/auth && pnpm db:migrate
-pnpm migrate:users-to-auth
-# Re-run with --reset-auth if test users were created in auth first:
-# pnpm migrate:users-to-auth -- --reset-auth
-```
-
-Explicit env vars (without root `.env`):
-
-```bash
-SOURCE_DATABASE_URL=postgresql://...legacy \
-AUTH_DATABASE_URL=postgresql://...auth \
-pnpm migrate:users-to-auth
-```
+1. Copy each `apps/<app>/.env.example` to `apps/<app>/.env` (auth, business, shelter, documents, agenda, bank, inventory, media).
+2. Shared secrets (same value on both sides):
+   - `AUTH_INTERNAL_SECRET`: auth + business
+   - `AGENDA_INTERNAL_SECRET`: agenda + business (admin agenda operations)
+   - `DOCUMENTS_INTERNAL_SECRET`: documents + business + shelter
+   - `BANK_INTERNAL_SECRET` / `BANK_BOT_API_SECRET`: bank + business + shelter
+   - `INVENTORY_INTERNAL_SECRET`: inventory + business
+   - `MEDIA_INTERNAL_SECRET`: media + business + shelter
+3. One PostgreSQL database per app (`DATABASE_URL` in each `.env`): auth, business (no user/session tables), shelter, documents, agenda, bank, inventory, media.
+4. Point the hosts at the services: `DOCUMENTS_URL=http://localhost:3002`, `AGENDA_URL=http://localhost:3003`, `BANK_URL=http://localhost:3004`, `INVENTORY_URL=http://localhost:3005`, `MEDIA_URL=http://localhost:3009` (shelter: bank, documents and media only).
+5. In auth `.env`, set `SHELTER_URL` / `NEXT_PUBLIC_SHELTER_URL` to `http://shelter.lawless.localhost:3006`.
+6. Media library: dev S3 bucket in `apps/media/.env`, see `docs/MEDIA.md`.
+7. Realtime websocket (every live update): started by `pnpm dev`, no configuration needed in dev. Outside production, realtime and its publishers / token issuers default to `localhost:3007` / `localhost:3008` and a shared dev secret; set the `REALTIME_*` variables only to override them (they are required in production).
 
 ## Discord OAuth
 
-Register redirect URI: `http://auth.localhost:3001/api/auth/callback/discord`
+Register the redirect URI: `http://auth.lawless.localhost:3001/api/auth/callback/discord`
 
 ## Run
 
@@ -160,6 +64,6 @@ pnpm install
 pnpm dev
 ```
 
-Login flow: dispensary redirects unauthenticated users to auth, then back with shared `.localhost` session cookie.
+Login flow: business redirects unauthenticated users to auth, then back with the session cookie shared on `.lawless.localhost`.
 
 Session cookies use the custom Better Auth prefix `lawless-intranet` (e.g. `lawless-intranet.session_token`), not the default `better-auth.*`, so they do not collide with other apps on the same cookie domain.

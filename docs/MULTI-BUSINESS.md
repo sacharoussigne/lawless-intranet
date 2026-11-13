@@ -1,6 +1,6 @@
 # Réflexion : une app multi-entreprises (« Business »)
 
-> Document de réflexion et journal des phases. Pour reprendre le chantier (état, façon de travailler, pièges), voir [`MULTI-BUSINESS-CONTEXT.md`](MULTI-BUSINESS-CONTEXT.md).
+> Document de conception et journal des phases. Le chantier est **terminé** (phases 1 à 6 et 8, en prod) ; seule la phase 7 (general store) est en pause, sa spécification est gardée ici. Les choix qui ont changé en cours de route sont signalés dans le journal (§ 10).
 
 ## Objectif
 
@@ -30,50 +30,6 @@ Pour le refuge, on avait copié `apps/dispensary`, et environ 100 fichiers sont 
 Un niveau `lawless.` aurait été logique si on l'appliquait à tout le projet. Mais `dispensaire.aerokusu.fr` serait devenu `dispensaire.lawless.aerokusu.fr`, et `auth.aerokusu.fr` serait devenu `auth.lawless.aerokusu.fr`. Il aurait aussi fallu changer le domaine du cookie SSO et les certificats, et prévenir tous les joueurs.
 
 On n'y gagne rien : la cohabitation avec d'autres apps sur `aerokusu.fr` est déjà assurée par le préfixe du cookie SSO (`lawless-intranet`, voir `docs/DOCKER.md`). On reste donc à plat.
-
-## 1. État actuel
-
-### Les données métier sont déjà génériques
-
-Le stock, les ventes, les commandes, les crafts, la banque, l'agenda, les documents et les médias sont déjà des **services** à part. Ils sont scopés par `scopeType` + `scopeId` (`packages/service-kit/src/scope.ts`). Le dispensaire fixe `scopeType: 'dispensary'` à un seul endroit, `apps/dispensary/src/lib/serviceHost.ts`. Ces services savent donc déjà servir n'importe quel type d'entreprise. Le refuge en est la preuve, avec `scopeType: 'shelter'`.
-
-### Ce que contient `apps/dispensary`
-
-La base de l'app compte 15 modèles :
-
-| Nature | Modèles |
-|---|---|
-| Génériques | `Dispensary` (le tenant), `DispensaryMember`, `DispensaryRolePermission`, `DispensaryMemberPermission`, `PayrollWeeklyReport`, `DispensaryDiscordProfile`, `UserUiPreferences`, `AppLog` |
-| Mixtes | `AppSettings` : les toggles de features sont génériques, mais `dispensaryName` vaut « Saint-Denis » par défaut et les flags `weeklyActivity*Visible` sont médicaux.<br>`DispensaryWeeklyActivity` et son historique : la caisse et la présence sont génériques, mais `patientsCount`, `infusionsCount`, `poppyMilkCount` et `sherifCount` sont médicaux. |
-| Médical | `Cabinet`, `CabinetMember`, `CabinetPatient`, `CareEpisode`, `Consultation` |
-
-### Résolution du tenant
-
-- Elle se fait **uniquement par le chemin** `/d/[slug]` (`middleware.ts`, `lib/dispensary/slug.ts`). L'hôte n'est jamais lu.
-- `/` (`app/page.tsx`) redirige vers le premier dispensaire accessible. Il n'y a pas de vraie page de choix, seulement un select dans le Header.
-- `requireTenantServerActionContext` (`lib/serverActionAuth.ts`) vérifie le tenant, la session, la feature (`AppFeatureKey`, 11 clés) et la permission.
-- Les permissions combinent la matrice de rôles du tenant et des surcharges par membre. La matrice par défaut, `DEFAULT_ROLE_MATRIX` (`lib/dispensary/permissionsSeed.ts`), est la même pour tous.
-
-### Spécificités du dispensaire codées en dur
-
-- La ressource de permission `weekly_dispensary_activity`, dans `packages/auth-permissions/src/catalog.ts`.
-- Le branding :
-  - le titre `%s | Dispensaire` dans `app/layout.tsx` ;
-  - le manifest PWA ;
-  - le logo `logo_dispensaire.png` ;
-  - `dispensarySiteTitle()` dans le Header.
-- Environ 77 libellés « dispensaire » répartis dans 41 fichiers d'UI.
-- Le préfixe CSS `--disp-*`, et les thèmes « Apothicaire » et « Lampe à huile ».
-
-### Hébergement et SSO
-
-- Le reverse proxy est nginx-proxy, configuré par `VIRTUAL_HOST` et `LETSENCRYPT_HOST` sur chaque conteneur.
-- Le cookie SSO a pour domaine `AUTH_COOKIE_DOMAIN`, donc il couvre déjà tout `*.aerokusu.fr`.
-- Côté auth, `isAllowedSsoHostname` (`apps/auth/src/lib/ssoHosts.ts`) accepte déjà tout sous-domaine. En revanche, `getTrustedOrigins()` (`apps/auth/src/lib/constants.ts`) liste les origines une par une.
-
-### Bots Discord
-
-Les bots appellent `/api/dispensary/weekly-activity/...` et `/api/dispensary/bank/bot/...`. Ils identifient le dispensaire par son **UUID** (`x-dispensary-id` ou `?dispensaryId=`), jamais par son slug. Ces routes doivent continuer de répondre.
 
 ## 2. Modèle cible
 
@@ -187,7 +143,7 @@ model WeeklyActivityCounter {
    - `gs.*` → `GENERAL_STORE` ;
    - `business.*` → aucun filtre.
 
-   La table de correspondance vient de l'env (par exemple `BUSINESS_HOSTS=dispensaire:DISPENSARY,gs:GENERAL_STORE`). En local, on garde ainsi `dispensaire.localhost`, `gs.localhost` et `business.localhost`.
+   La table de correspondance vient de l'env : `BUSINESS_TYPE_HOSTS=DISPENSARY=dispensaire.example.com,GENERAL_STORE=gs.example.com` (`lib/business/hosts.ts`). En local : `dispensary.lawless.localhost`, `gs.lawless.localhost`, `business.lawless.localhost`.
 2. Une entreprise ouverte sur un hôte qui ne correspond pas à son type est redirigée en **308** vers le bon hôte, avec le même chemin.
 
 ### Chemins sans préfixe
@@ -241,8 +197,8 @@ Le select actuel devient un switcher qui :
 
 ### Bots Discord
 
-- `/api/dispensary/...` et `x-dispensary-id` restent comme **alias**.
-- On ajoute `/api/business/...` et `x-business-id`, que le bot du general store utilisera.
+- `/api/dispensary/...` et `x-dispensary-id` restent : c'est le contrat des bots actuels.
+- `/api/business/...` et `x-business-id` ne sont **pas faits** : ils viendront avec le bot du general store (phase 7).
 
 ### Permissions
 
@@ -325,7 +281,7 @@ model BusinessPerson {         // sa place dans une entreprise
 - **Dispensaire** : il reste **vert** (« Apothicaire » et « Lampe à huile »).
 - **General store** : il aura un **thème bleu**, à concevoir sur le moteur `host-kit/theme`, en clair et en sombre. On peut partir sur une ambiance « mercantile » : bleu de toile et d'enseigne peinte, bois clair, papier d'emballage.
 - **Préférence de thème** : `UserUiPreferences.theme` passe à une valeur **par type** (`{ DISPENSARY: 'apothecary', GENERAL_STORE: 'mercantile' }`). Le cookie de thème suit le même principe, si bien qu'un thème vert n'apparaît jamais dans le general store.
-- **Variables CSS** : `--disp-*` devient `--biz-*`. C'est un renommage mécanique, à faire en toute fin.
+- **Variables CSS** : le renommage `--disp-*` → `--biz-*` a été abandonné ; le préfixe `--disp-*` est gardé (phase 8).
 
 ## 9. Déploiement
 
@@ -340,7 +296,7 @@ model BusinessPerson {         // sa place dans une entreprise
 - **DNS** : ajouter `business` et `gs`. `auth.aerokusu.fr` et le domaine du cookie SSO (`.aerokusu.fr`) ne changent pas.
 - **Auth** : autoriser tout `*.<AUTH_COOKIE_DOMAIN>` dans `getTrustedOrigins()`, comme le fait déjà `isAllowedSsoHostname`. On n'aura plus à y toucher à chaque nouveau type.
 - **URLs absolues** : `NEXT_PUBLIC_APP_URL` est figé au build, ce qui ne marche plus avec plusieurs hôtes. Il faut faire l'inventaire des URLs absolues (callbacks SSO, liens de partage, liens dans les mails, jeton realtime…) et les **dériver de l'hôte de la requête**.
-- Un nouveau type demande une entrée DNS, une entrée dans `VIRTUAL_HOST` / `LETSENCRYPT_HOST` et une entrée dans `BUSINESS_HOSTS`.
+- Un nouveau type demande une entrée DNS, une entrée dans `VIRTUAL_HOST` / `LETSENCRYPT_HOST` et une entrée dans `BUSINESS_TYPE_HOSTS`.
 
 ## 10. Phases
 
@@ -465,14 +421,22 @@ Chaque phase est livrable seule et ne casse rien pour le dispensaire actuel.
 - Faut-il un réglage « visible au catalogue » par objet pour le catalogue de prix ?
 - La **matrice de permissions** exacte du rôle employé du general store.
 
+## Compatibilité à garder et invariants
+
+- **API des bots** : `/api/dispensary/...`, `x-dispensary-id`, les anciens champs de compteurs (`patientsCount`…). Le bot vit dans un autre dépôt.
+- **Redirections** : `/d/<slug>/…` et les anciens chemins sans tenant (`legacyPathToTenant`) redirigent toujours.
+- **Noms gardés** : variables d'env `DISPENSARY_*`, base `lawless_dispensary`, tables `dispensary_*` (`@@map`), préfixe S3 `dispensary/<id>/` des anciens fichiers (purgé avec le scope).
+- **Compteurs de l'activité hebdo** : ne jamais renommer une clé (en base et dans l'historique).
+- **Slugs réservés** : les segments de l'app (`api`, `auth`, `platform`, `settings`, `admin`, `partage`, `d`, `test` et les anciens chemins) ne peuvent pas être un slug d'entreprise (`lib/business/slug.ts`).
+- **Appels internes en prod** : de serveur à serveur, toujours par le réseau Docker `internal` (`http://auth:3001`…), jamais par les URLs publiques derrière Cloudflare (`docs/DOCKER.md` › « Appels entre conteneurs »).
+
 ## Fichiers de référence
 
-- `apps/dispensary/prisma/schema.prisma`
-- `apps/dispensary/src/middleware.ts`, `src/lib/dispensary/{context,slug,permissionsSeed,permissionsResolve}.ts`
-- `apps/dispensary/src/lib/serverActionAuth.ts`, `src/lib/appSettingsShared.ts`, `src/lib/serviceHost.ts`
-- `apps/dispensary/src/app/page.tsx`, `src/app/layout.tsx`, `src/app/manifest.ts`, `src/app/(loggedIn)/_components/Header/Header.tsx`
-- `apps/dispensary/src/types/routes.ts` (`tenantRoutes`)
-- `apps/dispensary/src/lib/dispensaryWeeklyActivityApiAuth.ts` (bots)
+- `apps/business/prisma/schema.prisma`
+- `apps/business/src/middleware.ts`, `src/lib/business/{context,slug,hosts,permissionsSeed,permissionsResolve}.ts`
+- `apps/business/src/lib/businessTypes` (registre des types), `src/lib/appSettingsShared.ts`, `src/lib/appFeatures.ts`
+- `apps/business/src/lib/businessDiscordProfile` (personnes communes), `src/lib/businessWeeklyActivityApiAuth.ts` (bots)
+- `apps/business/src/types/routes.ts` (`tenantRoutes`, redirections)
 - `packages/auth-permissions/src/catalog.ts`, `packages/realtime/src/topics.ts`, `packages/host-kit/src/serviceHost.ts`, `packages/service-kit/src/scope.ts`
 - `apps/auth/src/lib/{auth,constants,ssoHosts}.ts`
 - `docker-compose.yml`, `docker/.env.example`, `docs/DOCKER.md`

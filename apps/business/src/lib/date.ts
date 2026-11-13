@@ -6,13 +6,6 @@
 import dayjs from '@/lib/dayjs';
 
 /**
- * Gets the current date
- */
-export function getNow(): Date {
-  return dayjs.tz().toDate();
-}
-
-/**
  * Gets the start of the day (00:00:00) for a given date
  */
 export function getStartOfDay(date?: Date): Date {
@@ -71,19 +64,5 @@ export function parsePickerDate(value: Date | string | null): Date | null {
   if (value == null) return null;
   if (value instanceof Date) return getStartOfDay(value);
   return dayjs(value).tz().startOf('day').toDate();
-}
-
-/**
- * Checks if a date is within a day range
- * Dates are compared by their day, not their UTC time
- */
-export function isDateInDayRange(date: Date, dayStart: Date, dayEnd: Date): boolean {
-  // Convert dates to YYYY-MM-DD format for day comparison
-  const dateStr = formatDate(date);
-  const dayStartStr = formatDate(dayStart);
-  const dayEndStr = formatDate(dayEnd);
-  
-  // If date is between start and end (exclusive) of the day
-  return dateStr >= dayStartStr && dateStr < dayEndStr;
 }
 

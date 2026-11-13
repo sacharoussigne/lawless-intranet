@@ -52,10 +52,19 @@ export function useAgendaLayoutPreference() {
     });
   }, [persist]);
 
+  /** One panel only (`?panels=`), saved like a toggle. */
+  const showOnly = useCallback(
+    (panel: 'calendar' | 'todo') => {
+      persist((prev) => ({ ...prev, showCalendar: panel === 'calendar', showTodo: panel === 'todo' }));
+    },
+    [persist],
+  );
+
   return {
     layout,
     setWidthMode,
     toggleCalendar,
     toggleTodo,
+    showOnly,
   };
 }

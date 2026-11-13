@@ -14,7 +14,9 @@ import Link from 'next/link';
 import { buildDefaultTimedSlotForDay } from './dates';
 import {
   AGENDA_CALENDAR_FOCUS_PARAM,
+  AGENDA_PANELS_PARAM,
   isAgendaCalendarFocusParam,
+  parseAgendaPanelsParam,
 } from './calendarNavigation';
 import { useAgendaRealtime } from './realtime/useAgendaRealtime';
 import { agendaKeys } from './queryKeys';
@@ -154,7 +156,7 @@ export function AgendaWorkspace({
     Boolean(onManageMembers) &&
     Boolean(selectedAgenda) &&
     (canOwnAgenda(selectedAgenda?.accessLevel) || isAdmin);
-  const { layout, setWidthMode, toggleCalendar, toggleTodo } =
+  const { layout, setWidthMode, toggleCalendar, toggleTodo, showOnly } =
     useAgendaLayoutPreference();
   const [calendarFocusOverride, setCalendarFocusOverride] = useState(false);
   const calendarFocusParam = searchParams.get(AGENDA_CALENDAR_FOCUS_PARAM);
@@ -168,6 +170,22 @@ export function AgendaWorkspace({
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [calendarFocusParam, pathname, router, searchParams]);
+
+  // `?panels=calendar|todo` (command palette): that panel only, then the parameter goes away.
+  const panelsParam = parseAgendaPanelsParam(searchParams.get(AGENDA_PANELS_PARAM));
+  useEffect(() => {
+    if (!panelsParam) return;
+    // Participants of an event only have no to-do lists.
+    if (panelsParam === 'calendar' || !participantOnly) {
+      // A calendar forced by `?focus=calendar` would stay next to the to-do lists.
+      if (panelsParam === 'todo') setCalendarFocusOverride(false);
+      showOnly(panelsParam);
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(AGENDA_PANELS_PARAM);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [panelsParam, participantOnly, pathname, router, searchParams, showOnly]);
 
   const effectiveLayout = useMemo(
     () => ({

@@ -31,12 +31,6 @@ export type CategoryItemDTO = {
   order: number;
 };
 
-export type ChestStockCheckConfigsResponse = {
-  chests: { id: string; name: string; isEnabled: boolean; order: number }[];
-  categories: CategoryItemDTO[];
-  configsByChestId: Record<string, ChestStockCheckConfigDTO>;
-};
-
 export type ChestStockCheckFormResponse = {
   categories: CategoryItemDTO[];
   config: ChestStockCheckConfigDTO | null;

@@ -3,9 +3,9 @@
 | App | Local | Prod |
 |---|---|---|
 | Auth | http://auth.lawless.localhost:3001 | https://auth.aerokusu.fr |
-| Business (toutes les entreprises) | http://business.lawless.localhost:3000 | https://business.aerokusu.fr |
+| Business (toutes les entreprises) | http://business.lawless.localhost:3000 | — (un seul type en prod, voir `MULTI-BUSINESS.md`) |
 | Dispensaires | http://dispensary.lawless.localhost:3000 | https://dispensaire.aerokusu.fr |
-| General stores | http://gs.lawless.localhost:3000 | https://gs.aerokusu.fr |
+| General stores | http://gs.lawless.localhost:3000 | — (phase 7 en pause) |
 | Refuge | http://shelter.lawless.localhost:3006 | https://refuge.aerokusu.fr |
 | Documents (API) | http://localhost:3002 | https://documents.aerokusu.fr |
 | Agenda (API) | http://localhost:3003 | https://agenda.aerokusu.fr |

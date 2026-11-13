@@ -45,6 +45,7 @@ import {
 import { parsePickerDate } from '@/lib/date';
 import { getOrderClientDisplayName, type OrderSummary } from '@/types/orders';
 import { OrderStatusEnum } from '@/types/enum/orderStatus';
+import { DuplicateConfirm } from './DuplicateConfirm';
 
 interface OrdersTableProps {
   orders: OrderSummary[];
@@ -294,15 +295,11 @@ function OrdersMobileList({
                     </Button>
                   )}
                   {permissions?.orders.create && onDuplicate && (
-                    <Button
-                      size="xs"
-                      variant="light"
-                      color="slate"
-                      leftSection={<IconCopy size={14} />}
-                      onClick={() => onDuplicate(order)}
-                    >
-                      Dupliquer
-                    </Button>
+                    <DuplicateConfirm onConfirm={() => onDuplicate(order)}>
+                      <Button size="xs" variant="light" color="slate" leftSection={<IconCopy size={14} />}>
+                        Dupliquer
+                      </Button>
+                    </DuplicateConfirm>
                   )}
                   {permissions?.orders.update && (
                     <Button
@@ -544,16 +541,11 @@ function OrdersDataTable({
                     </ActionIcon>
                   </Tooltip>
                   {permissions?.orders.create && onDuplicate && (
-                    <Tooltip label="Dupliquer" withArrow>
-                      <ActionIcon
-                        variant="light"
-                        color="slate"
-                        onClick={() => onDuplicate(order)}
-                        aria-label="Dupliquer"
-                      >
+                    <DuplicateConfirm onConfirm={() => onDuplicate(order)}>
+                      <ActionIcon variant="light" color="slate" aria-label="Dupliquer" title="Dupliquer">
                         <IconCopy size={16} />
                       </ActionIcon>
-                    </Tooltip>
+                    </DuplicateConfirm>
                   )}
                   {permissions?.orders.update && (
                     <LockedActionIcon

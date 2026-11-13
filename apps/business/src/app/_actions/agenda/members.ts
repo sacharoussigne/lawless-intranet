@@ -84,13 +84,6 @@ async function removeAgendaMemberUnlogged(
   }
 }
 
-export type AgendaUserSearchResult = {
-  id: string;
-  name: string;
-  email: string;
-  image: string | null;
-};
-
 export async function searchBusinessUsersForAgenda(
   businessSlug: string,
   query: string,

@@ -4,8 +4,6 @@ import {
   requireCabinetWrite,
   requireCabinetOwner,
 } from '@/lib/cabinet/access';
-import prisma from '@/lib/prisma';
-import { tenantWhere } from '@/lib/business/tenantWhere';
 
 export {
   searchEligibleBusinessUsers as searchEligibleBusinessUsersForCabinet,
@@ -72,46 +70,4 @@ export async function guardCabinetOwner(
     session.user.role,
     effectiveRole,
   );
-}
-
-export async function resolveCabinetIdFromPatientId(
-  businessId: string,
-  patientId: string,
-): Promise<string | null> {
-  const patient = await prisma.cabinetPatient.findFirst({
-    where: {
-      id: patientId,
-      cabinet: tenantWhere(businessId),
-    },
-    select: { cabinetId: true },
-  });
-  return patient?.cabinetId ?? null;
-}
-
-export async function resolveCabinetIdFromCareEpisodeId(
-  businessId: string,
-  episodeId: string,
-): Promise<string | null> {
-  const episode = await prisma.careEpisode.findFirst({
-    where: {
-      id: episodeId,
-      patient: { cabinet: tenantWhere(businessId) },
-    },
-    select: { patient: { select: { cabinetId: true } } },
-  });
-  return episode?.patient.cabinetId ?? null;
-}
-
-export async function resolveCabinetIdFromConsultationId(
-  businessId: string,
-  consultationId: string,
-): Promise<string | null> {
-  const consultation = await prisma.consultation.findFirst({
-    where: {
-      id: consultationId,
-      careEpisode: { patient: { cabinet: tenantWhere(businessId) } },
-    },
-    select: { careEpisode: { select: { patient: { select: { cabinetId: true } } } } },
-  });
-  return consultation?.careEpisode.patient.cabinetId ?? null;
 }

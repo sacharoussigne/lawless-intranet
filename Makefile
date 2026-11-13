@@ -4,7 +4,6 @@
 CYAN   = \033[0;36m
 NC     = \033[m
 ENV   ?= dev
-LARAVEL_VERSION ?= ^10
 
 -include .env
 
@@ -12,7 +11,7 @@ help:
 	@grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 .env:
-	@[ -f .env ] || cp build/.env.tpl .env; 
+	@[ -f .env ] || cp docker/.env.example .env; 
 
 network:
 	@docker network inspect proxy > /dev/null || docker network create proxy
@@ -37,11 +36,8 @@ authbash: ## Accéder au conteneur auth en bash
 businessbash: ## Accéder au conteneur business (ex-dispensary) en bash
 	@docker compose exec -u root business sh
 
-documentsbash: ## Accéder au conteneur auth en bash
+documentsbash: ## Accéder au conteneur documents en bash
 	@docker compose exec -u root documents sh
-
-exec: ## Exécuter une commande dans le conteneur (make exec COMMAND="...")
-	@docker compose exec -T -u root web sh -c "$(COMMAND)"
 
 status: ## Status des conteneurs
 	@docker compose ps

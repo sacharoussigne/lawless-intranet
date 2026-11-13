@@ -37,7 +37,7 @@ docker compose --env-file .env.docker up -d --build
 
 > **App renommée `business` (ex-`dispensary`)** : le service compose, l'image et le conteneur s'appellent maintenant `business` (`<projet>-business`). Les variables d'env gardent leurs noms `DISPENSARY_*`, donc le `.env.docker` ne change pas. Au premier déploiement après ce renommage, `make deploy` (qui fait `docker compose up -d --build --remove-orphans`) crée `business` et **supprime l'ancien conteneur `dispensary`**. Sans `--remove-orphans`, l'ancien conteneur resterait derrière le même `VIRTUAL_HOST` et nginx-proxy alternerait entre les deux.
 
-Après un `git pull`, **ne pas** utiliser `make rebuild` en routine — cette commande force un rebuild sans cache des 7 apps et remplit rapidement le disque.
+Après un `git pull`, **ne pas** utiliser `make rebuild` en routine — cette commande force un rebuild sans cache des 8 apps (et du serveur realtime) et remplit rapidement le disque.
 
 | Situation | Commande |
 |-----------|----------|
@@ -53,7 +53,7 @@ Services disponibles pour `make service SERVICE=…` : `auth`, `business`, `docu
 
 ## Maintenance disque
 
-Sur un VPS avec 7 apps Next.js, prévoir **≥ 80 Go** de disque ou purger régulièrement le cache de build.
+Sur un VPS avec 8 apps Next.js et le serveur realtime, prévoir **≥ 80 Go** de disque ou purger régulièrement le cache de build.
 
 ### Surveillance
 
@@ -153,6 +153,15 @@ docker build \
   --build-arg APP_NAME=shelter \
   --build-arg APP_PORT=3006 \
   -t lawless-shelter .
+
+# Media (port 3009)
+docker build \
+  --build-arg APP_NAME=media \
+  --build-arg APP_PORT=3009 \
+  -t lawless-media .
+
+# Realtime (Node seul, son propre Dockerfile)
+docker build -f docker/realtime.Dockerfile -t lawless-realtime .
 ```
 
 ## Variables importantes en prod
@@ -187,8 +196,8 @@ docker build \
 | `DOCUMENTS_INTERNAL_SECRET` | documents + business | Secret host→documents (toutes les routes API sauf health) |
 | `REALTIME_PUBLIC_URL` | business | URL WebSocket navigateur (`wss://realtime.example.com`), lue **au runtime** (pas de rebuild) |
 | `REALTIME_VIRTUAL_HOST` | realtime | Hôte nginx-proxy du WebSocket |
-| `REALTIME_TOKEN_SECRET` | realtime + business | Signature des jetons d'abonnement (business signe, realtime vérifie) |
-| `REALTIME_INTERNAL_SECRET` | realtime + agenda | Publication service→realtime sur le port interne |
+| `REALTIME_TOKEN_SECRET` | realtime + business + shelter | Signature des jetons d'abonnement (business signe, realtime vérifie) |
+| `REALTIME_INTERNAL_SECRET` | realtime + agenda + business + shelter + media | Publication vers realtime sur le port interne (tout code qui écrit) |
 | `MEDIA_INTERNAL_SECRET` | media + shelter + business | Secret hôte→media (toutes les routes) |
 | `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION` | media | Bucket S3 de la médiathèque |
 | `MEDIA_AWS_ACCESS_KEY_ID`, `MEDIA_AWS_SECRET_ACCESS_KEY` | media | Clés de l'utilisateur IAM du bucket |
@@ -250,84 +259,6 @@ agenda, media, business, shelter ──http://realtime:3008/publish (réseau pri
 make service SERVICE=realtime          # build + (re)déploiement du seul serveur temps réel
 docker logs lawless-realtime           # « [realtime] websocket on :3007, internal API on :3008 »
 ```
-
-## Migration bank depuis l’ancien stockage business
-
-**Ordre critique** — à exécuter **une fois**, avant que business n’applique `extract_bank_to_service` :
-
-```bash
-# 1. Créer la BDD bank et appliquer les migrations (tables vides)
-#    → déployer le conteneur bank OU prisma migrate deploy sur BANK_DATABASE_URL
-
-# 2. Copier les données (préserve les UUIDs)
-DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
-BANK_DATABASE_URL="$BANK_DATABASE_URL" \
-pnpm migrate:bank-to-service
-
-# 3. Déployer business (migrate deploy droppe les tables bank locales)
-```
-
-## Migration agenda depuis l’ancien stockage business
-
-**Ordre critique** — à exécuter **une fois**, avant que business n’applique `remove_agenda_tables` :
-
-```bash
-# 1. Créer la BDD agenda et appliquer les migrations (tables vides)
-#    → déployer le conteneur agenda OU prisma migrate deploy sur AGENDA_DATABASE_URL
-
-# 2. Copier les données (préserve les UUIDs)
-DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
-AGENDA_DATABASE_URL="$AGENDA_DATABASE_URL" \
-pnpm migrate:agenda-to-service
-
-# 3. Déployer business (migrate deploy droppe les tables agenda locales)
-```
-
-## Migration inventory depuis l’ancien stockage business
-
-**Ordre critique** — à exécuter **une fois**, avant que business n’applique `remove_inventory_tables` :
-
-```bash
-# 1. Créer la BDD inventory et appliquer les migrations (tables vides)
-#    → déployer le conteneur inventory OU prisma migrate deploy sur INVENTORY_DATABASE_URL
-
-# 2. Copier les données (préserve les UUIDs)
-DISPENSARY_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
-INVENTORY_DATABASE_URL="$INVENTORY_DATABASE_URL" \
-pnpm migrate:inventory-to-service
-
-# 3. Déployer business (migrate deploy droppe les tables inventaire locales)
-```
-
-## Migration depuis l’ancien déploiement mono-app (users → auth)
-
-**Ordre critique** — à exécuter **une fois**, avant que business n’applique `remove_local_auth_tables` :
-
-```bash
-# 1. Créer la BDD auth et appliquer les migrations auth (tables vides)
-#    → déployer le conteneur auth OU prisma migrate deploy sur AUTH_DATABASE_URL
-
-# 2. Copier les comptes (préserve les IDs — indispensable pour dispensary_member, etc.)
-SOURCE_DATABASE_URL="$DISPENSARY_DATABASE_URL" \
-AUTH_DATABASE_URL="$AUTH_DATABASE_URL" \
-pnpm migrate:users-to-auth
-
-# 3. Déployer business (migrate deploy supprime user/account locaux)
-# 4. Mettre à jour Discord : callback sur le domaine auth
-```
-
-Si des comptes test ont déjà été créés dans la BDD auth, relancer avec `--reset-auth` :
-
-```bash
-pnpm migrate:users-to-auth -- --reset-auth
-```
-
-Résumé :
-
-1. Migrations auth sur `AUTH_DATABASE_URL` (schéma vide)
-2. `pnpm migrate:users-to-auth` avec source = ancienne BDD business (encore avec tables `user`)
-3. Déployer **auth**, puis **business**
-4. Discord redirect URI → domaine auth
 
 ## Notes
 

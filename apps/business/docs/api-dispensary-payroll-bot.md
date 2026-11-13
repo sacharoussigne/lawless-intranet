@@ -26,6 +26,7 @@ Même base d’URL et même authentification que l’[API de l’activité hebdo
 | Champ | Type | Description |
 |-------|------|-------------|
 | `date` | `YYYY-MM-DD` | Un jour de la semaine voulue (calendrier Europe/Paris). Par défaut : aujourd’hui. |
+| `reportType` | string | `"Employés"` (défaut, pour les anciens bots) ou `"Préparateurs de caisse"`. Un autre type donne une **422**. |
 
 **Réponse 200 — `data`**
 
@@ -33,8 +34,8 @@ Même base d’URL et même authentification que l’[API de l’activité hebdo
 |-------|------|-------------|
 | `id` | string | ID du rapport |
 | `url` | string | Lien absolu vers la page du rapport (hôte du type d’entreprise via `BUSINESS_TYPE_HOSTS`, sinon `NEXT_PUBLIC_APP_URL`) |
-| `letterUrl` | string | Même page avec la lettre à la mairie ouverte (`?lettre`) ; la lettre se rédige dans Paramètres › Salaires |
-| `reportType` | string | `"Employés"` |
+| `letterUrl` | string \| null | Même page avec la lettre à la mairie ouverte (`?lettre`), pour un rapport « Employés » seulement (`null` sinon) ; la lettre se rédige dans Paramètres › Salaires |
+| `reportType` | string | Type du rapport créé ou existant |
 | `weekStart`, `weekEnd` | ISO 8601 | Lundi 00:00 → dimanche 23:59:59 (Europe/Paris) |
 | `alreadyExists` | boolean | `true` si le rapport existait déjà (rien n’a été créé) |
 
@@ -60,7 +61,7 @@ Même base d’URL et même authentification que l’[API de l’activité hebdo
 | **401** | Secret invalide |
 | **403** | Activité hebdomadaire ou paie désactivée |
 | **404** | Entreprise inconnue |
-| **422** | `date` invalide (format ou jour inexistant) |
+| **422** | `date` invalide (format ou jour inexistant) ou `reportType` inconnu |
 | **500** | Échec de la création (le rapport est enregistré avec son message d’erreur) |
 
 ```bash

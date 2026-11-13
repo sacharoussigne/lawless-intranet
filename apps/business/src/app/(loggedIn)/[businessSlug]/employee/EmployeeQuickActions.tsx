@@ -10,6 +10,8 @@ import {
   type InventoryUiPermissions,
 } from '@lawless-intranet/inventory-ui';
 import { SaleModal } from '@/app/_components/sales/SaleModal';
+import { PAGE_ACTIONS } from '@/lib/navigation/commandPalette';
+import { useActionParam } from '@/lib/navigation/useActionParam';
 import { usePermissions, useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
 import { useOptionalRealtimeSocket } from '@lawless-intranet/realtime/socket';
 import { createBusinessInventoryActions } from '@/lib/inventory/inventoryUiActions';
@@ -153,6 +155,8 @@ export function EmployeeQuickActions({
   initialAssignments = [],
 }: EmployeeQuickActionsProps) {
   const [saleOpened, setSaleOpened] = useState(false);
+  // « Nouvelle vente » of the command palette.
+  useActionParam(PAGE_ACTIONS.newSale, () => setSaleOpened(true), canCreateSale);
   const [takeOpened, setTakeOpened] = useState(false);
   const { permissions } = usePermissions();
   const requiredSlug = useRequiredBusinessSlug();
