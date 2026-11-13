@@ -28,6 +28,7 @@ import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import type { LetterCorrespondentDTO, LetterDTO, LetterReplyRefDTO } from '@/types/letters';
 import { useLetterBoxMutation, useLetterConversation, type ConversationFilters } from '../hooks/useLettersQueries';
 import { LetterBubble } from './LetterBubble';
+import { letterDay } from '@/lib/letters/letterTime';
 import { LetterComposer } from './LetterComposer';
 import classes from '../letters.module.scss';
 
@@ -125,6 +126,17 @@ export function Conversation({
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
   }, [focus, lastId, conversation.isFetching, flash]);
 
+  // A letter just sent: sorted by its date and time, it can land above the newest ones. Go to it
+  // once the refreshed conversation holds it.
+  const sentId = useRef<string | null>(null);
+  useEffect(() => {
+    const id = sentId.current;
+    if (!id || !letters.some((letter) => letter.id === id)) return;
+    sentId.current = null;
+    const frame = window.requestAnimationFrame(() => flash(id));
+    return () => window.cancelAnimationFrame(frame);
+  }, [letters, flash]);
+
   const showLetter = (letterId: string) => {
     if (!flash(letterId)) {
       notifications.show({
@@ -212,9 +224,9 @@ export function Conversation({
           </div>
         ) : (
           letters.map((letter, index) => {
-            const day = formatRpDate(letter.letterDate, 'EEEE d MMMM yyyy');
+            const day = formatRpDate(letterDay(letter.letterDate), 'EEEE d MMMM yyyy');
             const previous = letters[index - 1];
-            const previousDay = previous ? formatRpDate(previous.letterDate, 'EEEE d MMMM yyyy') : null;
+            const previousDay = previous ? formatRpDate(letterDay(previous.letterDate), 'EEEE d MMMM yyyy') : null;
             return (
               <Fragment key={letter.id}>
                 {day !== previousDay ? <div className={classes.day}>{day}</div> : null}
@@ -251,7 +263,9 @@ export function Conversation({
           replyTo={replyTo}
           onClearReply={() => setReplyTo(null)}
           paused={paused || viewer !== null}
-          onSent={() => feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' })}
+          onSent={(id) => {
+            sentId.current = id;
+          }}
         />
       ) : null}
 

@@ -21,11 +21,11 @@ import { IconArrowBackUp, IconCheck, IconCopy, IconMail, IconX } from '@tabler/i
 import { pastedFiles, useFileDrop } from '@lawless-intranet/media-ui';
 import type { MediaLimitsRecord } from '@lawless-intranet/types';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
-import { RpDateInput } from '@/app/_components/RpDatePicker/RpDateInput';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
 import { createLetterCorrespondent } from '@/app/_actions/letters/correspondents';
 import { updateLetter } from '@/app/_actions/letters/letters';
-import { getTodayRealDate } from '@/lib/rpCalendar';
+import { nowToMinute } from '@/lib/letters/letterTime';
+import { LetterDateTimeInput } from './LetterDateTimeInput';
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import type { LetterCorrespondentDTO, LetterDTO, LetterDirection, LetterReplyRefDTO } from '@/types/letters';
 import { useLetterBoxMutation } from '../hooks/useLettersQueries';
@@ -150,7 +150,7 @@ export function LetterFormModal({
       direction,
       title: finalTitle,
       transcript: transcript.trim() || null,
-      letterDate: letterDate ?? getTodayRealDate(),
+      letterDate: letterDate ?? nowToMinute(),
       replyToId: replyTo?.id ?? null,
       images,
     });
@@ -213,7 +213,7 @@ export function LetterFormModal({
               { value: 'SENT', label: 'Envoyée' },
             ]}
           />
-          <RpDateInput label={undefined} aria-label="Date de la lettre" value={letterDate} onChange={setLetterDate} />
+          <LetterDateTimeInput value={letterDate} onChange={setLetterDate} />
         </Group>
 
         <Select
