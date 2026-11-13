@@ -28,15 +28,15 @@ export function DeleteUserModal({
       notifications.show({
         title: 'Succès',
         message: 'Utilisateur supprimé avec succès',
-        color: 'green',
+        color: 'moss',
       });
       onClose();
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de la suppression',
-        color: 'red',
+        message: (error instanceof Error ? error.message : '') || 'Erreur lors de la suppression',
+        color: 'danger',
       });
     }
   };

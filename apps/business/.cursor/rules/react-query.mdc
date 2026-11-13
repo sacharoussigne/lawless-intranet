@@ -12,8 +12,8 @@ Lire [`docs/react-query.md`](../../docs/react-query.md) avant d'implémenter.
 
 ## Règles
 
-1. **Server actions** = source de vérité serveur ; React Query = cache/déduplication/invalidation uniquement
-2. **`queryFn`** : `() => handleAction(await serverAction(...))` — jamais Prisma direct depuis le client
+1. **Server actions** = source de vérité serveur (mutations, chargement SSR) ; React Query = cache/déduplication/invalidation uniquement
+2. **`queryFn`** : `async () => handleAction(await fetchRead(slug, '<clé>', input))` — lecture GET via le registre `src/lib/read/readRoutes.ts`, jamais une server action (Next les exécute une par une par onglet) ni Prisma depuis le client
 3. **SSR** : `initialData` depuis la page Server Component ; `staleTime` pour éviter le double fetch au montage
 4. **Mutations** : `useMutation` + `invalidateQueries` — pas de `loadX()` manuel post-mutation
 5. **Query keys** : `src/lib/<feature>/queryKeys.ts`, inclure `businessSlug`
@@ -22,7 +22,7 @@ Lire [`docs/react-query.md`](../../docs/react-query.md) avant d'implémenter.
 ## Structure de référence (stock)
 
 - [`src/lib/stock/queryKeys.ts`](../../src/lib/stock/queryKeys.ts)
-- [`src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts`](../../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
+- [`packages/inventory-ui/src/stock/hooks/useStockQueries.ts`](../../../../packages/inventory-ui/src/stock/hooks/useStockQueries.ts)
 - [`src/lib/react-query/QueryProvider.tsx`](../../src/lib/react-query/QueryProvider.tsx)
 
 ## Interdit dans du code neuf
@@ -37,4 +37,4 @@ Modales, formulaires, sélections → `useState` local. Seules les **données se
 
 ## Legacy
 
-`runAsyncEffect` + fetch manuel (agenda) : migrer lors d'une refonte, ne pas reproduire. Voir aussi [`react-quality.mdc`](./react-quality.mdc).
+`useState` + `useEffect` + `loadX()` : migrer lors d'une refonte, ne pas reproduire. `runAsyncEffect` (agenda-ui) reste admis pour le temps réel ou les effets sans cache. Voir aussi [`react-quality.mdc`](./react-quality.mdc).

@@ -1,7 +1,8 @@
 'use client';
 
 import { useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Modal,
   Stack,
@@ -49,39 +50,32 @@ export function ManageResourceAccessModal({
   onSuccess,
 }: ManageResourceAccessModalProps) {
   const businessSlug = useRequiredBusinessSlug();
-  const [accesses, setAccesses] = useState<DocumentAccessItem[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserPseudoSearchResult | null>(null);
   const [accessType, setAccessType] = useState<'READ' | 'WRITE'>('READ');
   const [loading, setLoading] = useState(false);
+
+  const accessesQuery = useQuery({
+    queryKey: ['resourceAccesses', businessSlug, resourceType, resourceId],
+    queryFn: async () => {
+      const result =
+        resourceType === 'template'
+          ? await fetchRead(businessSlug, 'templateAccesses', { templateId: resourceId as string })
+          : await fetchRead(businessSlug, 'documentAccesses', { documentId: resourceId as string });
+      return (handleAction(result) ?? []) as DocumentAccessItem[];
+    },
+    enabled: opened && Boolean(resourceId),
+  });
+  const accesses = accessesQuery.data ?? [];
+  const reloadAccesses = () => accessesQuery.refetch();
 
   const excludeUserIds = [
     ...(ownerId ? [ownerId] : []),
     ...accesses.map((access) => access.userId),
   ];
 
-  const reloadAccesses = useCallback(async () => {
-    if (!resourceId) return;
-
-    const result =
-      resourceType === 'template'
-        ? await fetchRead(businessSlug, 'templateAccesses', { templateId: resourceId })
-        : await fetchRead(businessSlug, 'documentAccesses', { documentId: resourceId });
-
-    const data = handleAction(result);
-    if (data) {
-      setAccesses(data);
-    }
-  }, [businessSlug, resourceId, resourceType]);
-
-  useEffect(() => {
-    if (!opened || !resourceId) return;
-    void reloadAccesses();
-  }, [opened, resourceId, reloadAccesses]);
-
   const handleClose = () => {
     setSelectedUser(null);
     setAccessType('READ');
-    setAccesses([]);
     onClose();
   };
 

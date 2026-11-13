@@ -98,7 +98,6 @@ services:
       # Publishes changes (orders) to the realtime server over the private network
       REALTIME_INTERNAL_URL: "http://realtime:3008"
       REALTIME_INTERNAL_SECRET: "${REALTIME_INTERNAL_SECRET:?err}"
-      NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       DISPENSARY_BOT_API_SECRET: "${DISPENSARY_BOT_API_SECRET:-}"
       # Host of each kind of business (docs/DOCKER.md, « Plusieurs hôtes »): DISPENSARY=dispensaire.example.com,...
@@ -263,10 +262,8 @@ services:
       AUTH_URL: "http://auth:3001"  # private "internal" network (no public DNS, proxy nor TLS)
       NEXT_PUBLIC_AUTH_URL: "${AUTH_PUBLIC_URL:?err}"
       NEXT_PUBLIC_APP_URL: "${SHELTER_PUBLIC_URL:?err}"
-      AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:?err}"
       BANK_URL: "http://bank:3004"
       BANK_INTERNAL_SECRET: "${BANK_INTERNAL_SECRET:?err}"
-      NEXT_PUBLIC_APP_ENV: "${APP_ENV:-PROD}"
       TZ: "${TZ:-UTC}"
       VIRTUAL_HOST: "${SHELTER_VIRTUAL_HOST:?err}"
       VIRTUAL_PORT: "3006"

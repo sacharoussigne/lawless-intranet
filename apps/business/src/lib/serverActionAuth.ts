@@ -66,34 +66,6 @@ export type ServerActionGuardOptions = {
   };
 };
 
-export async function requireServerActionContext(
-  options: ServerActionGuardOptions = {},
-): Promise<
-  { ok: true; session: AuthSession } | { ok: false; response: ActionFailure }
-> {
-  const sessionResult = await requireSession();
-  if (!sessionResult.ok) return sessionResult;
-
-  if (options.feature) {
-    return {
-      ok: false,
-      response: { status: 400, error: 'Feature check requires dispensary context' },
-    };
-  }
-
-  if (options.permission) {
-    const permResult = requirePermission(
-      sessionResult.session.user?.role,
-      options.permission.resource,
-      options.permission.action,
-      options.permission.message,
-    );
-    if (!permResult.ok) return permResult;
-  }
-
-  return { ok: true, session: sessionResult.session };
-}
-
 export async function requireTenantServerActionContext(
   businessSlug: string,
   options: ServerActionGuardOptions = {},

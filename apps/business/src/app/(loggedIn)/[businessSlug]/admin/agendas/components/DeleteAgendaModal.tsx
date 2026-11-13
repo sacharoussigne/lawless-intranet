@@ -36,7 +36,7 @@ export function DeleteAgendaModal({
       notifications.show({
         title: 'Succès',
         message: 'Agenda supprimé',
-        color: 'green',
+        color: 'moss',
       });
       onSuccess();
       onClose();
@@ -44,7 +44,7 @@ export function DeleteAgendaModal({
       notifications.show({
         title: 'Erreur',
         message: error instanceof Error ? error.message : 'Suppression impossible',
-        color: 'red',
+        color: 'danger',
       });
     } finally {
       setSubmitting(false);

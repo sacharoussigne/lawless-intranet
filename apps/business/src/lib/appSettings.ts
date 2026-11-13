@@ -112,15 +112,3 @@ export async function getAppFeatureActionBlock(
   }
   return { status: 403, error: APP_FEATURE_DISABLED_MESSAGE };
 }
-
-export async function getAppFeaturesActionBlock(
-  businessId: string,
-  features: AppFeatureKey[],
-): Promise<{ status: 403; error: string } | null> {
-  const settings = await getAppSettings(businessId);
-  const hasDisabled = features.some((f) => !isAppFeatureEnabled(settings, f));
-  if (!hasDisabled) {
-    return null;
-  }
-  return { status: 403, error: APP_FEATURE_DISABLED_MESSAGE };
-}

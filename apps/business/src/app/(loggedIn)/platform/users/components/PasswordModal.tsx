@@ -64,18 +64,18 @@ export function PasswordModal({
       notifications.show({
         title: 'Succès',
         message: 'Mot de passe modifié avec succès',
-        color: 'green',
+        color: 'moss',
       });
       onSuccess();
       passwordForm.reset();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ParsedZodError) {
         handleApiZodError(error.error, passwordForm);
       } else {
         notifications.show({
           title: 'Erreur',
-          message: error.message || 'Erreur lors du changement de mot de passe',
-          color: 'red',
+          message: (error instanceof Error ? error.message : '') || 'Erreur lors du changement de mot de passe',
+          color: 'danger',
         });
       }
     }

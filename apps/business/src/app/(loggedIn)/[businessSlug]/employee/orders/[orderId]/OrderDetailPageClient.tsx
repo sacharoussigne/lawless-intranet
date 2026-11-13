@@ -25,6 +25,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { PageHeader } from '@/app/_components/PageHeader/PageHeader';
+import { DuplicateConfirm } from '../components/DuplicateConfirm';
 import { DeleteConfirmPopover } from '@/app/_components/DeleteConfirmPopover/DeleteConfirmPopover';
 import { MarkdownContent } from '@/app/_components/MarkdownContent/MarkdownContent';
 import { MarkdownTextarea } from '@/app/_components/MarkdownTextarea';
@@ -271,15 +272,16 @@ export function OrderDetailPageClient({
         </Button>
       )}
       {permissions?.orders.create && (
-        <Button
-          variant="light"
-          color="slate"
-          leftSection={<IconCopy size={16} />}
-          loading={duplicateOrder.isPending}
-          onClick={() => void duplicate()}
-        >
-          Dupliquer
-        </Button>
+        <DuplicateConfirm onConfirm={duplicate}>
+          <Button
+            variant="light"
+            color="slate"
+            leftSection={<IconCopy size={16} />}
+            loading={duplicateOrder.isPending}
+          >
+            Dupliquer
+          </Button>
+        </DuplicateConfirm>
       )}
       {canUpdate && (
         <Button leftSection={<IconPencil size={16} />} onClick={() => setEditing(true)}>

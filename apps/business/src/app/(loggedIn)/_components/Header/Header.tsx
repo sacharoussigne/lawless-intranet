@@ -111,14 +111,14 @@ export default function Header({
         notifications.show({
           title: 'Erreur',
           message: result.error.message || 'Impossible de quitter la session impersonnée.',
-          color: 'red',
+          color: 'danger',
         });
         return;
       }
       notifications.show({
         title: 'Session restaurée',
         message: 'Vous êtes de nouveau connecté avec votre compte.',
-        color: 'green',
+        color: 'moss',
       });
       router.refresh();
       router.push(routes.platform.users);
@@ -126,7 +126,7 @@ export default function Header({
       notifications.show({
         title: 'Erreur',
         message: 'Impossible de quitter la session impersonnée.',
-        color: 'red',
+        color: 'danger',
       });
     } finally {
       setStoppingImpersonation(false);

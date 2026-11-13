@@ -2,6 +2,7 @@
 
 import { useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Modal,
   Select,
@@ -85,42 +86,37 @@ export default function CreateOrderModal({
   const [responsibleUserId, setResponsibleUserId] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<CreateOrderLineItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
   const [clientMode, setClientMode] = useState<ClientMode>('company');
-  const [individualCustomers, setIndividualCustomers] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
   const [selectedIndividualCustomerId, setSelectedIndividualCustomerId] = useState<string | null>(
     null
   );
   const [individualCustomerInput, setIndividualCustomerInput] = useState('');
 
-  // Load individual customers when modal opens
+  // Individual customers, loaded when the modal opens.
+  const queryClient = useQueryClient();
+  const individualCustomersKey = ['individualCustomers', businessSlug] as const;
+  const individualCustomersQuery = useQuery({
+    queryKey: individualCustomersKey,
+    queryFn: async () =>
+      (handleAction(await fetchRead(businessSlug, 'individualCustomers')) ?? []) as Array<{
+        id: string;
+        name: string;
+      }>,
+    enabled: opened,
+  });
+  const individualCustomers = useMemo(() => individualCustomersQuery.data ?? [], [individualCustomersQuery.data]);
+  const loadingData = individualCustomersQuery.isLoading;
+  const refreshIndividualCustomers = () => queryClient.invalidateQueries({ queryKey: individualCustomersKey });
+
   useEffect(() => {
-    if (!opened) return;
-
-    const loadIndividualCustomers = async () => {
-      try {
-        setLoadingData(true);
-        const individualsResult = await fetchRead(businessSlug, 'individualCustomers');
-        const individualsData = handleAction(individualsResult);
-        if (individualsData) {
-          setIndividualCustomers(individualsData);
-        }
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Erreur lors du chargement des données';
-        notifications.show({
-          title: 'Erreur',
-          message,
-          color: 'danger',
-        });
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
-    void loadIndividualCustomers();
-  }, [opened, businessSlug]);
+    if (individualCustomersQuery.error) {
+      notifications.show({
+        title: 'Erreur',
+        message: individualCustomersQuery.error.message || 'Erreur lors du chargement des données',
+        color: 'danger',
+      });
+    }
+  }, [individualCustomersQuery.error]);
 
   const itemsToUse = useMemo(() => {
     if (items.length > 0) {
@@ -363,11 +359,7 @@ export default function CreateOrderModal({
       const result = await createIndividualCustomer(businessSlug, { name: trimmed });
       const data = handleAction(result);
       if (data) {
-        setIndividualCustomers((prev) =>
-          [...prev, data].sort((a, b) =>
-            a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' })
-          )
-        );
+        await refreshIndividualCustomers();
         setSelectedIndividualCustomerId(data.id);
         setIndividualCustomerInput(data.name);
         notifications.show({
@@ -376,10 +368,10 @@ export default function CreateOrderModal({
           color: 'moss',
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de la création',
+        message: (error instanceof Error ? error.message : '') || 'Erreur lors de la création',
         color: 'danger',
       });
     }
@@ -395,9 +387,7 @@ export default function CreateOrderModal({
     try {
       const result = await deleteIndividualCustomerByName(businessSlug, { name: trimmed });
       handleAction(result);
-      setIndividualCustomers((prev) =>
-        prev.filter((c) => c.name.trim().toLowerCase() !== trimmed.toLowerCase())
-      );
+      await refreshIndividualCustomers();
       if (match && selectedIndividualCustomerId === match.id) {
         setSelectedIndividualCustomerId(null);
         setIndividualCustomerInput('');
@@ -407,10 +397,10 @@ export default function CreateOrderModal({
         message: 'Particulier supprimé',
         color: 'moss',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Erreur',
-        message: error.message || 'Erreur lors de la suppression',
+        message: (error instanceof Error ? error.message : '') || 'Erreur lors de la suppression',
         color: 'danger',
       });
     }

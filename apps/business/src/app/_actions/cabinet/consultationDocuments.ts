@@ -1,8 +1,5 @@
 'use server';
 
-import { getAppSettings } from '@/lib/appSettings';
-import { createRpCalendar } from '@/lib/rpCalendar';
-import { getBusinessUserName } from '@/lib/people/userProfiles';
 import { loggedAction } from '@/lib/logs/writer';
 import { serviceActionError } from '@/lib/serviceAction';
 import { z } from 'zod/v3';
@@ -14,13 +11,8 @@ import {
   listDocuments,
   updateDocument,
 } from '@lawless-intranet/documents-client/server';
-import {
-  buildUserTemplateRenderContext,
-  renderTemplate,
-} from '@lawless-intranet/mail-template-engine';
 import prisma from '@/lib/prisma';
 import { tenantWhere } from '@/lib/business/tenantWhere';
-import { getMemberDescription } from '@/lib/business/memberDescription';
 import {
   getCabinetSessionContext,
   guardCabinetRead,
@@ -29,8 +21,6 @@ import {
 import { parseCustomValuesFromDb } from '@/lib/cabinet/formSchema';
 import {
   buildConsultationDocumentMetadata,
-  buildConsultationTemplateVariables,
-  getDefaultConsultationDocumentName,
   CONSULTATION_DOCUMENT_TYPE,
   isConsultationDocumentForConsultation,
   parseConsultationDocumentMetadata,
@@ -62,7 +52,6 @@ const deleteDocumentSchema = z.object({
   id: z.string().uuid('ID invalide'),
   consultationId: z.string().uuid('Consultation invalide'),
 });
-
 
 type ConsultationDocumentSource = {
   consultationId: string;
@@ -447,115 +436,6 @@ async function deleteConsultationDocumentUnlogged(
     return serviceActionError(
       error,
       'Erreur lors de la suppression du document',
-    );
-  }
-}
-
-export async function generateConsultationDocumentPreview(
-  businessSlug: string,
-  data: { consultationId: string; templateId: string },
-) {
-  try {
-    const validated = z
-      .object({
-        consultationId: z.string().uuid('Consultation invalide'),
-        templateId: z.string().uuid('Template invalide'),
-      })
-      .parse(data);
-
-    const ctx = await getCabinetSessionContext(businessSlug);
-    if (!ctx.ok) return ctx.response;
-
-    const source = await getConsultationDocumentSource(
-      ctx.tenant.businessId,
-      validated.consultationId,
-    );
-    if (!source) {
-      return { status: 404, error: 'Consultation introuvable' };
-    }
-
-    const guard = await guardCabinetWrite(
-      ctx.tenant.businessId,
-      source.cabinetId,
-      ctx.session,
-      ctx.tenant.effectiveRole,
-    );
-    if (!guard.ok) {
-      return { status: guard.status, error: guard.error };
-    }
-
-    const cookieHeader = await getServerCookieHeader();
-    const template = await getTemplate(validated.templateId, { cookieHeader });
-    const templateCabinetId =
-      typeof (template.metadata as Record<string, unknown> | null | undefined)?.cabinetId ===
-      'string'
-        ? (template.metadata as Record<string, unknown>).cabinetId
-        : null;
-
-    if (
-      template.scopeId !== ctx.tenant.businessId ||
-      template.type !== 'consultation-document-template' ||
-      templateCabinetId !== source.cabinetId
-    ) {
-      return { status: 404, error: 'Template introuvable' };
-    }
-
-    const variables = buildConsultationTemplateVariables({
-      cabinetName: source.cabinetName,
-      patient: {
-        firstName: source.patientFirstName,
-        lastName: source.patientLastName,
-        birthDate: source.patientBirthDate,
-        customValues: source.patientCustomValues,
-      },
-      careEpisode: {
-        motif: source.careEpisodeMotif,
-        startedAt: source.careEpisodeStartedAt,
-        customValues: source.careEpisodeCustomValues,
-      },
-      consultation: {
-        date: source.consultationDate,
-        customValues: source.consultationCustomValues,
-      },
-    }, createRpCalendar((await getAppSettings(ctx.tenant.businessId)).rpYearOffset));
-    const memberDescription =
-      (await getMemberDescription(ctx.tenant.businessId, ctx.session.user.id)) ?? '';
-    const preview = renderTemplate(
-      template.content,
-      buildUserTemplateRenderContext({
-        inputs: {},
-        username: await getBusinessUserName(
-          ctx.tenant.businessId,
-          ctx.session.user.id,
-          ctx.session.user.name || 'Utilisateur',
-        ),
-        userDescription: memberDescription,
-        userGender: ctx.session.user.gender ?? 'male',
-        variables,
-      }),
-    );
-
-    const defaultName =
-      getDefaultConsultationDocumentName(
-        template.metadata as Record<string, unknown> | null | undefined,
-      ) ??
-      `Document - ${source.patientFirstName} ${source.patientLastName}`;
-
-    return {
-      status: 200,
-      data: {
-        templateId: template.id,
-        templateName: template.name,
-        templateContent: template.content,
-        preview,
-        variables,
-        suggestedName: defaultName,
-      },
-    };
-  } catch (error) {
-    return serviceActionError(
-      error,
-      'Erreur lors de la génération de l’aperçu du document',
     );
   }
 }

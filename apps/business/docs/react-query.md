@@ -11,7 +11,7 @@ Ce guide décrit le standard du projet pour charger et muter des données serveu
 
 ## Setup
 
-Le `QueryProvider` est monté dans le layout dispensary :
+Le `QueryProvider` est monté dans le layout du tenant :
 
 - [`src/lib/react-query/QueryProvider.tsx`](../src/lib/react-query/QueryProvider.tsx)
 - [`src/app/(loggedIn)/[businessSlug]/layout.tsx`](../src/app/(loggedIn)/[businessSlug]/layout.tsx)
@@ -44,26 +44,28 @@ const [itemsResult, checksResult] = await Promise.all([
 const items = getDataOrThrow(itemsResult, '...');
 const checks = getDataOrThrow(checksResult, '...');
 
-return <StockPageClient initialItems={items} initialStockChecksSummary={checks} />;
+return <BusinessStockWorkspace initialItems={items} initialStockChecksSummary={checks} />;
 ```
 
 ### Client — hook query
 
-Référence : [`src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts`](../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
+Référence : [`packages/inventory-ui/src/stock/hooks/useStockQueries.ts`](../../../packages/inventory-ui/src/stock/hooks/useStockQueries.ts). Le stock vit dans un package UI : la lecture passe par l'action injectée par l'hôte (`actions.getItemsWithStock`, qui appelle `fetchRead`). Dans l'app, même forme avec `fetchRead` directement.
 
 ```tsx
-export function useStockItems(chestId: string | null, initialData: ItemWithRelations[]) {
-  const { businessSlug } = usePermissions();
+export function useStockItems(chestId: string | null, initialData?: ItemWithRelations[]) {
+  const { scopeKey, actions } = useInventoryUi();
 
   return useQuery({
-    queryKey: stockKeys.items(businessSlug!, chestId),
-    queryFn: () => fetchStockItems(businessSlug!, chestId),
-    initialData: chestId === null ? initialData : undefined,
+    queryKey: stockKeys.items(scopeKey, chestId),
+    queryFn: async () => unwrapActionResult(await actions.getItemsWithStock(chestId)),
+    initialData: initialData && initialData.length > 0 ? initialData : undefined,
     placeholderData: (previous) => previous,
-    enabled: Boolean(businessSlug),
     staleTime: DEFAULT_STALE_TIME_MS,
   });
 }
+
+// Dans l'app :
+queryFn: async () => handleAction(await fetchRead(businessSlug, 'cabinetPatients', { cabinetId }))
 ```
 
 Points clés :
@@ -136,13 +138,6 @@ const { data: items } = useStockItems(chestId, initialItems);
 // ✅ useStockItems / useQueries avec les mêmes query keys
 ```
 
-### Envoyer tous les items en mutation alors que seuls quelques-uns changent
-
-```tsx
-// ❌ items.map(...) → updateStock(all)
-// ✅ getChangedStockEntries(items, editedQuantities)
-```
-
 ## Migration legacy
 
 Le pattern `useState` + `useEffect` + `loadX()` (ex. agenda) est **legacy**. Lors d'une refonte de feature, migrer vers React Query. Ne pas migrer massivement hors scope.
@@ -153,6 +148,6 @@ Le pattern `useState` + `useEffect` + `loadX()` (ex. agenda) est **legacy**. Lor
 
 Module **stock** :
 
-- [`useStockQueries.ts`](../src/app/(loggedIn)/[businessSlug]/stock/hooks/useStockQueries.ts)
-- [`StockPageClient.tsx`](../src/app/(loggedIn)/[businessSlug]/stock/StockPageClient.tsx)
+- [`useStockQueries.ts`](../../../packages/inventory-ui/src/stock/hooks/useStockQueries.ts) et [`StockPage.tsx`](../../../packages/inventory-ui/src/stock/StockPage.tsx) (inventory-ui)
+- [`BusinessStockWorkspace.tsx`](../src/app/(loggedIn)/[businessSlug]/employee/(stock)/stock/BusinessStockWorkspace.tsx) (hôte : actions injectées)
 - [`queryKeys.ts`](../src/lib/stock/queryKeys.ts)

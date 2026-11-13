@@ -1,5 +1,4 @@
 import { load } from 'cheerio';
-import { payrollReportResultSchema, type PayrollReportResult } from './schema';
 
 export const PAYROLL_DAYS = [
   'lundi',
@@ -303,27 +302,4 @@ export function parsePayrollHtmlTable(html: string): ParsedPayrollTable {
     return caisseParsed;
   }
   return legacy;
-}
-
-export function parsedToPayrollReportResult(parsed: ParsedPayrollTable): PayrollReportResult {
-  const employees = parsed.employees.map((e) => ({
-    name: cleanText(e.name ?? ''),
-    role: cleanText(e.role ?? ''),
-    id: e.id,
-    schedule: e.schedule,
-    stats: {
-      sherifs: e.stats.sherifs,
-      palefreniers: e.stats.palefreniers,
-      nombre_caisses: e.stats.nombre_caisses,
-      nombre_presences: e.stats.nombre_presences,
-      patients_soignes: e.stats.patients_soignes ?? 0,
-      poppy_milk_offertes: 0,
-      infusions_ginseng_offertes: 0,
-    },
-  }));
-
-  return payrollReportResultSchema.parse({
-    employees,
-    global_stats: parsed.global_stats,
-  });
 }

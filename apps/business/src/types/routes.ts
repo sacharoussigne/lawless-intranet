@@ -23,8 +23,6 @@ export const EMPLOYEE_MODULE_SEGMENTS = [
   'cabinet',
 ] as const;
 
-export type EmployeeModuleSegment = (typeof EMPLOYEE_MODULE_SEGMENTS)[number];
-
 /** Management page URL, with its tab and the entity to edit. */
 function managementUrl(url: string, tab?: string, editId?: string): string {
   const params = new URLSearchParams();

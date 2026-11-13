@@ -4,7 +4,7 @@ Guide pour travailler sur **lawless-intranet**.
 
 ## Concept
 
-Intranet pour un serveur **RP western (RedM, ~1890)**. Il sert à des organisations en jeu : le **dispensaire de Saint-Denis** (stock, commandes, ventes, banque, courriers, paie, activité hebdo, agenda, cabinet) et le **refuge animalier** (animaux, espèces/races, suivis, liste d'attente, documents, banque).
+Intranet pour un serveur **RP western (RedM, ~1890)**. Il sert à des organisations en jeu : le **dispensaire de Saint-Denis** (stock, commandes, ventes, banque, courriers, paie, activité hebdo, agenda, cabinet, médiathèque, lettres) et le **refuge animalier** (animaux, espèces/races, suivis, liste d'attente, documents, banque).
 
 - **Multi-tenant** : chaque organisation a un slug. Routes `/[businessSlug]/…` (business ; les slugs réservés sont dans `lib/business/slug.ts`, l'hôte peut filtrer le type d'entreprise via `BUSINESS_TYPE_HOSTS`, voir `lib/business/hosts.ts`) et `/s/[shelterSlug]/…` (shelter). Les espaces sont `employee/`, `management/`, `admin/` ; `platform/` sert à l'admin global.
 - **Calendrier RP** : les dates sont stockées en réel et affichées **N ans plus tôt**. L'écart est un réglage par entreprise et par refuge (`AppSettings.rpYearOffset`, 136 par défaut : `DEFAULT_RP_YEAR_OFFSET` dans `@lawless-intranet/types`), modifiable dans Admin › Réglages. Ne jamais écrire de date RP en base ni coder une année en dur.
@@ -38,14 +38,14 @@ Packages partagés (`packages/*`, consommés en TS source via `workspace:*`, san
 - `*-client` (`agenda`, `bank`, `documents`, `inventory`, `media`, `auth`) : clients fetch typés vers les services. L'export `./server` est réservé au côté serveur.
 - `service-client` : couche fetch commune des `*-client` (`createServiceFetch` : URL et secret depuis l'env, cookie SSO transmis, parsing JSON, `ServiceClientError`). Chaque `XClientError` en hérite.
 - `service-kit` (services API uniquement) : `./prisma` (`createPrismaClient`), `./http` (`createCors`, `createRouteResponses`, `readSession`), `./internal-secret` (`hasInternalSecret`, comparaison en temps constant), `./scope`.
-- `host-kit` (apps hôtes business / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`), `./theme` (moteur de thèmes : `themesToCss`, `themeInitScript`, `ThemeProvider` / `useAppTheme`, transition View Transitions). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
+- `host-kit` (apps hôtes business / shelter) : `./action` (`createActionErrorParser`, `handleAction`, `getDataOrThrow`, `toUiResult`), `./errors`, `./service-error` (`serviceActionError`), `./service-host` (`createServiceHost`), `./query` (`QueryProvider`), `./realtime`, `./middleware` (`chain`), `./read` (registre des lectures GET, `fetchRead`), `./no-autofill`, `./theme` (moteur de thèmes : `themesToCss`, `themeInitScript`, `ThemeProvider` / `useAppTheme`, transition View Transitions). Les fichiers `@/lib/action`, `@/lib/response`… des apps les ré-exportent.
 - `*-ui` (`agenda-ui`, `bank-ui`, `inventory-ui`, `media-ui`, `mail-template-ui`) : UI Mantine réutilisable. **Elle ne parle jamais directement au service** : l'app hôte injecte ses server actions via un provider (`BankUiProvider`, `AgendaUiProvider`…). Exemple : `apps/business/src/lib/bank/bankUiActions.ts`.
 - Actions bank : la logique est partagée dans `@lawless-intranet/bank-client/host` (`createBankHostActions`). Chaque hôte ne fournit que `withBank` (`lib/bank/client.ts`) et ré-exporte les actions depuis `_actions/bankAccounts.ts`.
 - `auth-permissions` : rôles globaux Better Auth et catalogue de permissions.
 - `realtime` : temps réel. `./socket` (client WebSocket navigateur), `./token` (jetons signés), `./publish` (publication côté services) et `topics.ts` (noms des topics).
 - `mail-template-engine` : parseur et moteur de rendu des templates (variables, conditions).
 
-SSO en local : il faut les hôtes `*.localhost` (cookies cross-subdomain). Voir `docs/SSO-DEV.md`. Docker et déploiement : `docs/DOCKER.md` (le serveur `realtime` a son propre `docker/realtime.Dockerfile`).
+SSO en local : il faut les hôtes `*.lawless.localhost` (cookie partagé ; `.localhost` seul est refusé par les navigateurs). Voir `docs/SSO-DEV.md` (URLs locales et de prod : `docs/URLS.md`). Docker et déploiement : `docs/DOCKER.md` (le serveur `realtime` a son propre `docker/realtime.Dockerfile`).
 
 ## Temps réel
 
@@ -65,7 +65,7 @@ pnpm dev                                  # toutes les apps (turbo), serveur rea
 pnpm --filter business dev              # une seule app
 pnpm --filter <app> typecheck             # tsc --noEmit
 pnpm --filter <app> lint
-pnpm --filter <app> test                  # vitest (business, shelter, documents, media, inventory, agenda-ui, media-ui, inventory-ui, mail-template-ui, realtime, mail-template-engine) ; inventory : tests d'intégration du craft sur la base locale (ignorés si DATABASE_URL n'est pas sur localhost)
+pnpm --filter <app> test                  # vitest : apps business, shelter, documents, media, inventory, realtime ; packages agenda-ui, media-ui, inventory-ui, mail-template-ui, mail-template-engine, realtime, host-kit, service-client, service-kit, auth-client, bank-client ; inventory : tests d'intégration du craft sur la base locale (ignorés si DATABASE_URL n'est pas sur localhost)
 pnpm --filter <app> exec vitest run src/lib/rpCalendar.test.ts   # un seul fichier
 pnpm --filter <app> db:migrate            # prisma migrate dev (crée la migration)
 pnpm --filter <app> db:generate
@@ -124,19 +124,19 @@ export async function doThing(slug: string, input: unknown) {
 
 - Il y a deux niveaux. Les **rôles globaux** Better Auth sont dans `packages/auth-permissions`. Les **permissions par tenant** (rôles et membres) sont dans `lib/business/permissions*` et `lib/shelter/permissionsCatalog`, et se vérifient avec `can(perms, resource, action)`.
 - **Feature toggles** par tenant (`AppSettings`, `AppFeatureKey` dans `lib/appSettingsShared.ts`). Une nouvelle feature doit être ajoutée au toggle, au middleware et au garde des actions.
-- **Chantier multi-entreprises** (en cours, branche `feat(business)/rename-dispensary-to-business`) : **lire d'abord `docs/MULTI-BUSINESS-CONTEXT.md`** (état des phases, façon de travailler, pièges, carte du code, phase suivante).
+- **Multi-entreprises** (renommage dispensary → business, types d'entreprise) : terminé, sauf la phase 7 (bazar) en pause. Décisions, journal des phases, compatibilité à garder et invariants : `docs/MULTI-BUSINESS.md`.
 - **Lettres** (boîtes aux lettres, archive des lettres RP par correspondant) : lire `docs/LETTERS.md`.
 - **Types d'entreprise** (business, `docs/MULTI-BUSINESS.md`) : `Business.type` (`BusinessType`) et le registre `lib/businessTypes` (modules proposés, rôles des membres, matrice de rôles par défaut, compteurs de l'activité hebdo). Les compteurs sont stockés en JSON (`counters`, clé → valeur) et activables par entreprise (`AppSettings.weeklyActivityCounters`) : **ne jamais renommer une clé de compteur**, elle est en base et dans l'historique. Les **personnes** (ID Discord, noms, n° de compte, lien SSO) sont communes à toutes les entreprises (`Person`) ; `BusinessPerson` les rattache à une entreprise avec leur grade. Lire et écrire via `lib/businessDiscordProfile` (`findBusinessProfiles`, `personInBusiness`…). Un module n'est actif que s'il est **proposé par le type** et activé dans les réglages : `normalizeAppSettings` coupe les autres, donc les lectures `feature*Enabled` et `isAppFeatureEnabled` en tiennent compte. Une nouvelle feature s'ajoute à `lib/appFeatures.ts`, puis aux `modules` des types concernés.
 - Côté client, `PermissionsContext` / `usePermissions()` sert à masquer ou afficher l'UI.
 
 ### Data fetching client
 
-Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/business/docs/react-query.md` et `docs/DATA-FLOW.md` ; le module de référence est stock (`lib/stock/queryKeys.ts`, `…/stock/hooks/useStockQueries.ts`).
+Pour **tout nouveau code** et toute refonte : **React Query**, avec des lectures en GET (`fetchRead`) et des mutations en server actions. Lire `apps/business/docs/react-query.md` et `docs/DATA-FLOW.md` ; le module de référence est stock (`apps/business/src/lib/stock/queryKeys.ts`, `packages/inventory-ui/src/stock/hooks/useStockQueries.ts`).
 - Server actions pour les **mutations** et le chargement SSR des `page.tsx`. Next les exécute **une par une par onglet** (dans la file de la navigation) : ne pas s'en servir pour les relectures client.
 - Relectures côté client (`queryFn`, chargements au clic, recherches au fil de la frappe, actions de lecture injectées dans les `*-ui`) : `fetchRead(slug, '<query>', input)` (`lib/read/fetchRead.ts`), une GET same-origin vers `/api/d/<slug>/read/<query>` (refuge : `/api/s/<slug>/read/<query>`) qui réutilise l'action de lecture inscrite dans le registre fermé `lib/read/readRoutes.ts` (auth et permissions restent dans l'action, `Date` conservées ; helpers partagés dans `@lawless-intranet/host-kit/read`). Même forme de résultat : `queryFn: async () => handleAction(await fetchRead(...))`. Toute nouvelle lecture client passe par le registre. Exceptions : une lecture qui écrit (`getOrCreateWeek`) ou dont l'entrée ne tient pas dans une URL (`generateOrderMailPreview`) reste une action. Le middleware ne couvre pas `/api` : le garde de l'action est la seule protection.
 - `initialData` vient du SSR, et les query keys incluent le slug.
 - `useMutation` + invalidation ciblée. Les notifications sont gérées dans le hook de mutation, pas dans la page.
-- À ne pas reproduire : le pattern legacy `useState` + `useEffect` + `loadX()`. `runAsyncEffect` reste admis seulement pour le temps réel ou les effets sans cache.
+- À ne pas reproduire : le pattern legacy `useState` + `useEffect` + `loadX()`. `runAsyncEffect` (agenda-ui) reste admis seulement pour le temps réel ou les effets sans cache.
 
 ### UI / design system
 
@@ -167,7 +167,7 @@ Les modules historiques (auth, documents, agenda, bank, inventory) ont été ext
 2. les types dans `packages/types` ;
 3. un package client `packages/<x>-client`, dont le `config.ts` instancie `createServiceFetch` (`service-client`) ; côté service, `lib/{prisma,cors,auth,internalAuth}.ts` s'appuient sur `service-kit` ;
 4. si besoin, un package UI `packages/<x>-ui` avec des actions injectées. Côté hôte : `lib/<x>/client.ts` (scope et cookie via `serviceHost`), erreurs avec `serviceActionError` ou `withTenantService` (`@/lib/serviceAction`), mapping UI avec `toUiResult` ;
-5. un script de migration de données dans `scripts/` (préserver les IDs), à exposer dans le `package.json` racine ;
+5. un script de migration de données dans `scripts/` (préserver les IDs), à exposer dans le `package.json` racine, puis à supprimer une fois la migration passée en prod ;
 6. les scripts `db:migrate`, `db:migrate:deploy`, `db:migrate:status` et `db:generate` dans le `package.json` de l'app (repris par les scripts globaux, voir « Commandes ») ;
 7. un secret interne partagé, plus les variables d'env dans `turbo.json`, `docker-compose.yml` et `docs/SSO-DEV.md`.
 

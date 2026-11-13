@@ -139,13 +139,6 @@ export const businessWeeklyActivityBotPatchSchema = legacyCounterFieldsSchema
     { message: 'La fin de période doit être après le début', path: ['periodEnd'] },
   );
 
-export type BusinessWeeklyActivityBotCaisseBody = z.infer<
-  typeof businessWeeklyActivityBotCaisseBodySchema
->;
-export type BusinessWeeklyActivityBotPresenceBody = z.infer<
-  typeof businessWeeklyActivityBotPresenceBodySchema
->;
-
 export type BusinessWeeklyActivityCreateInput = z.infer<typeof businessWeeklyActivityCreateSchema>;
 export type BusinessWeeklyActivityUpdateInput = z.infer<typeof businessWeeklyActivityUpdateSchema>;
 export type BusinessWeeklyActivityBotPatchInput = z.infer<typeof businessWeeklyActivityBotPatchSchema>;

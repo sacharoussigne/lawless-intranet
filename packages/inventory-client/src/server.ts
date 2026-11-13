@@ -621,21 +621,6 @@ export async function getOrderById(
   return parseJsonResponse(response);
 }
 
-export async function getActiveOrdersForCompanyGroup(
-  params: InventoryScopeParams & { companyGroupId: string },
-  options: ClientOptions = {},
-): Promise<OrderRecord[]> {
-  const response = await inventoryFetch(
-    `/api/orders${toQuery({
-      scopeType: params.scopeType,
-      scopeId: params.scopeId,
-      activeForCompanyGroupId: params.companyGroupId,
-    })}`,
-    { cookieHeader: options.cookieHeader },
-  );
-  return parseJsonResponse(response);
-}
-
 export async function listOrdersPage(
   params: InventoryScopeParams & {
     page?: number;
