@@ -5,9 +5,9 @@ import { Button, Group, SegmentedControl, Stack, Text, TextInput } from '@mantin
 import { IconMail } from '@tabler/icons-react';
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { AppModal, AppModalFooter } from '@/app/_components/AppModal/AppModal';
-import { RpDateInput } from '@/app/_components/RpDatePicker/RpDateInput';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
-import { getTodayRealDate } from '@/lib/rpCalendar';
+import { nowToMinute } from '@/lib/letters/letterTime';
+import { LetterDateTimeInput } from './LetterDateTimeInput';
 import type { LetterDirection, LetterReplyRefDTO } from '@/types/letters';
 import classes from '../letters.module.scss';
 
@@ -37,7 +37,7 @@ export function LetterSendModal({
   const { formatRpDate } = useRpCalendar();
   // Answering a received letter: ours is most likely a sent one.
   const [direction, setDirection] = useState<LetterDirection>(replyTo?.direction === 'RECEIVED' ? 'SENT' : 'RECEIVED');
-  const [letterDate, setLetterDate] = useState<Date | null>(getTodayRealDate());
+  const [letterDate, setLetterDate] = useState<Date | null>(nowToMinute);
   const suggestion = (next: LetterDirection, date: Date | null) =>
     `${next === 'RECEIVED' ? 'Lettre de' : 'Réponse à'} ${correspondentName}${date ? ` du ${formatRpDate(date, 'd MMM yyyy')}` : ''}`;
   const [title, setTitle] = useState(() => suggestion(direction, letterDate));
@@ -54,7 +54,7 @@ export function LetterSendModal({
 
   const confirm = () => {
     if (!title.trim()) return;
-    onConfirm({ title: title.trim(), direction, letterDate: letterDate ?? getTodayRealDate() });
+    onConfirm({ title: title.trim(), direction, letterDate: letterDate ?? nowToMinute() });
   };
 
   return (
@@ -109,8 +109,7 @@ export function LetterSendModal({
               { value: 'SENT', label: 'Envoyée' },
             ]}
           />
-          <RpDateInput
-            aria-label="Date de la lettre"
+          <LetterDateTimeInput
             value={letterDate}
             onChange={(date) => {
               setLetterDate(date);

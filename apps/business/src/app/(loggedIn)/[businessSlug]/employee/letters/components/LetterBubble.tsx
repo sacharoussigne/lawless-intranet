@@ -13,6 +13,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
+import { hasTime, letterDay, timeOf } from '@/lib/letters/letterTime';
 import { apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { amberPalette, leatherPalette, sagePalette, slatePalette } from '@/lib/design-tokens';
 import { letterDirectionLabel, type LetterDTO } from '@/types/letters';
@@ -185,7 +186,8 @@ export const LetterBubble = forwardRef<
 
         <Group justify="space-between" mt={4} gap="xs" wrap="nowrap">
           <Text size="xs" c="dimmed" truncate="end">
-            {formatRpDate(letter.letterDate, 'd MMMM yyyy')} · ajoutée par {letter.createdBy.name}
+            {formatRpDate(letterDay(letter.letterDate), 'd MMMM yyyy')}
+            {hasTime(letter.letterDate) ? ` à ${timeOf(letter.letterDate)}` : ''} · ajoutée par {letter.createdBy.name}
           </Text>
           {transcript ? (
             <CopyButton value={transcript}>

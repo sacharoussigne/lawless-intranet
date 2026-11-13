@@ -6,6 +6,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 import { noAutofillProps } from '@lawless-intranet/host-kit/no-autofill';
 import { useRpCalendar } from '@/app/_contexts/RpCalendarContext';
+import { hasTime, letterDay, timeOf } from '@/lib/letters/letterTime';
 import { apothecaryPillStyle } from '@/lib/apothecaryPill';
 import { amberPalette } from '@/lib/design-tokens';
 import { letterDirectionLabel, type LetterSearchHitDTO } from '@/types/letters';
@@ -59,7 +60,8 @@ export function LetterSearchSpotlight({
         <Group gap={6} wrap="nowrap">
           <Text size="xs" c="dimmed" truncate="end">
             {letterDirectionLabel(hit.direction)} · {hit.correspondentName} ·{' '}
-            {formatRpDate(hit.letterDate, 'd MMM yyyy')}
+            {formatRpDate(letterDay(hit.letterDate), 'd MMM yyyy')}
+            {hasTime(hit.letterDate) ? ` à ${timeOf(hit.letterDate)}` : ''}
           </Text>
           {hit.archived ? (
             <Badge size="xs" variant="outline" radius="sm" style={apothecaryPillStyle(amberPalette)}>

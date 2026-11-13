@@ -8,7 +8,7 @@ Archive des lettres RP reçues et envoyées, rangées par correspondant, pour le
 - `LetterBoxMember` : liste d'accès de la boîte (`OWNER`, `WRITE`, `READ`), comme le cabinet. Le propriétaire choisit qui lit ou écrit. Une boîte garde toujours au moins un propriétaire.
 - `LetterCorrespondent` : les contacts **d'une boîte**. `lastLetterAt` est tenu à jour à chaque écriture, pour trier la liste de gauche sans agrégat.
 - `Letter` :
-  - `direction` (`RECEIVED` / `SENT`), `title`, `transcript`, `letterDate` (date réelle, affichée en RP) ;
+  - `direction` (`RECEIVED` / `SENT`), `title`, `transcript`, `letterDate` (date et heure réelles, affichées en RP ; l'heure est celle de Paris, `lib/letters/letterTime.ts`) ;
   - `replyToId` : la lettre à laquelle elle répond, comme une réponse Discord ;
   - `archivedAt` : retire la lettre du fil sans la supprimer ;
   - `serial` : numéro de série unique dans la boîte, à écrire sur la lettre papier pour la retrouver dans un coffre (`lib/letters/serial.ts`). Il commence par les initiales du correspondant au moment de l'ajout (« George Montgomery » donne `GM-7K3Q9P` ; un seul mot donne ses 2 premières lettres ; `LT` si le nom n'a pas de lettre). Il ne change jamais, même si on renomme le correspondant ou qu'on déplace la lettre.
@@ -32,7 +32,7 @@ Archive des lettres RP reçues et envoyées, rangées par correspondant, pour le
 
 - Contacts à gauche, conversation à droite : les lettres reçues à gauche, les envoyées à droite. L'URL (`?box=&c=`) garde la boîte et le correspondant.
 - On ajoute une lettre **depuis une conversation**, avec sa barre de message (`LetterComposer`) : on colle (Ctrl/Cmd + V) ou glisse plusieurs captures, réordonnées en les faisant glisser, et un seul transcript. Les images partent au stockage aussitôt.
-- À l'envoi (bouton ou Ctrl/Cmd + Entrée), une petite modale (`LetterSendModal`) demande le nom de la lettre (titre proposé), reçue ou envoyée, et sa date RP.
+- À l'envoi (bouton ou Ctrl/Cmd + Entrée), une petite modale (`LetterSendModal`) demande le nom de la lettre (titre proposé), reçue ou envoyée, et sa date et son heure RP (maintenant par défaut, `LetterDateTimeInput`). La conversation est triée par date et heure, puis par ordre d'ajout : une lettre ajoutée après coup mais écrite plus tôt se range à sa place, et la conversation défile jusqu'à elle. Les lettres enregistrées avant l'heure sont à minuit et n'affichent pas d'heure.
 - « Répondre » met la lettre en citation au-dessus de la barre, comme Discord. Modifier une lettre passe par `LetterFormModal`.
 - Un brouillon laissé en changeant de conversation : ses images sont supprimées du stockage.
 - Recherche dans la conversation (titre, transcript, n° de série), et recherche globale de la boîte (Ctrl/Cmd + K), qui ouvre la conversation sur la lettre.
