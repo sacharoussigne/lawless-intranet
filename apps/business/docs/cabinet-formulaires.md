@@ -19,13 +19,13 @@ Cabinet
 
 | Route | Description |
 |-------|-------------|
-| `/d/{slug}/cabinet` | Liste des patients du cabinet sélectionné |
-| `/d/{slug}/cabinet/forms` | Configuration des formulaires (OWNER) |
-| `/d/{slug}/cabinet` (bouton Affichage) | Couleurs des libellés par type de champ (OWNER) |
-| `/d/{slug}/cabinet/templates` | Modèles de documents de consultation |
-| `/d/{slug}/cabinet/patients/{id}` | Fiche patient |
-| `/d/{slug}/cabinet/patients/{id}/episodes/{id}` | Prise en charge |
-| `/d/{slug}/cabinet/patients/.../consultations/{id}` | Consultation |
+| `/{slug}/employee/cabinet` | Liste des patients du cabinet sélectionné |
+| `/{slug}/employee/cabinet/forms` | Configuration des formulaires (OWNER) |
+| `/{slug}/employee/cabinet` (bouton Affichage) | Couleurs des libellés par type de champ (OWNER) |
+| `/{slug}/employee/cabinet/templates` | Modèles de documents de consultation |
+| `/{slug}/employee/cabinet/patients/{id}` | Fiche patient |
+| `/{slug}/employee/cabinet/patients/{id}/episodes/{id}` | Prise en charge |
+| `/{slug}/employee/cabinet/patients/.../consultations/{id}` | Consultation |
 
 ### Champs système vs personnalisés
 
@@ -233,7 +233,7 @@ Patient présente une **douleur modérée** à l'épaule droite.
 
 **Accès requis :** niveau `OWNER` sur le cabinet (ou administrateur du dispensaire).
 
-1. Aller sur `/d/{slug}/cabinet/forms`
+1. Aller sur `/{slug}/employee/cabinet/forms`
 2. Choisir l'onglet : **Fiche patient**, **Prise en charge** ou **Consultation**
 3. Ajouter ou modifier des catégories et des champs
 4. Pour chaque champ : choisir le type, le libellé, les options
@@ -247,7 +247,7 @@ Les champs système apparaissent en aperçu fixe et ne peuvent pas être supprim
 
 **Accès requis :** niveau `OWNER` sur le cabinet (ou administrateur du dispensaire).
 
-Depuis la page principale du cabinet (`/d/{slug}/cabinet`), le bouton **Affichage** ouvre une modal permettant de définir une couleur de libellé par type de champ :
+Depuis la page principale du cabinet (`/{slug}/employee/cabinet`), le bouton **Affichage** ouvre une modal permettant de définir une couleur de libellé par type de champ :
 
 - Texte court, Zone de texte, Date, Liste déroulante, Champs système
 
@@ -257,7 +257,7 @@ Un aperçu live montre le rendu label + contenu formaté avant enregistrement.
 
 ### Surcharge par champ
 
-Dans `/d/{slug}/cabinet/forms`, développez un champ personnalisé : le réglage **Couleur du libellé** surcharge la couleur définie par type (modal Affichage) pour ce champ uniquement. Laissez vide pour hériter du type ou du défaut.
+Dans `/{slug}/employee/cabinet/forms`, développez un champ personnalisé : le réglage **Couleur du libellé** surcharge la couleur définie par type (modal Affichage) pour ce champ uniquement. Laissez vide pour hériter du type ou du défaut.
 
 ---
 
@@ -277,5 +277,5 @@ Dans `/d/{slug}/cabinet/forms`, développez un champ personnalisé : le réglage
 |---------|------|
 | [`src/lib/cabinet/formSchema/types.ts`](../src/lib/cabinet/formSchema/types.ts) | Types `FormField`, `FormCategory`, schémas |
 | [`src/lib/cabinet/formSchema/fieldTypes.ts`](../src/lib/cabinet/formSchema/fieldTypes.ts) | Libellés des types de champs |
-| [`src/app/(loggedIn)/[businessSlug]/cabinet/components/DynamicFieldInput.tsx`](../src/app/(loggedIn)/[businessSlug]/cabinet/components/DynamicFieldInput.tsx) | Rendu et saisie des champs |
+| [`src/app/(loggedIn)/[businessSlug]/employee/cabinet/components/DynamicFieldInput.tsx`](../src/app/(loggedIn)/[businessSlug]/employee/cabinet/components/DynamicFieldInput.tsx) | Rendu et saisie des champs |
 | [`src/app/_components/MarkdownContent/MarkdownContent.tsx`](../src/app/_components/MarkdownContent/MarkdownContent.tsx) | Composant de rendu Markdown |

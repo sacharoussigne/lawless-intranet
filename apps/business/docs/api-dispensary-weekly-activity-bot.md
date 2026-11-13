@@ -89,6 +89,23 @@ WHERE "periodEnd" = "periodStart" + interval '7 days';
 
 ---
 
+## Règles communes aux écritures
+
+### Semaines passées verrouillées
+
+Les écritures (`POST`, `PATCH`, `DELETE`, `bot/caisse`, `bot/presence`) qui touchent une semaine **antérieure à la semaine bancaire en cours** (Europe/Paris) sont refusées en **403** avec le message `Semaine passée : seule la direction peut la modifier`, sauf si le compte intranet lié au `X-Discord-User-Id` a le rôle **admin** ou **direction** dans l'entreprise (`lib/businessWeeklyActivity/botWeekLock.ts`). La semaine en cours reste toujours modifiable.
+
+### Préparateurs de caisse
+
+Une personne dont le **grade** est « préparateur de caisse » (selon le type d'entreprise, `isCashPreparerGrade`) ne fait que des caisses. Pour elle, le bot n'affiche que la caisse et l'API refuse en **403** (`Réservé aux employés : en tant que préparateur de caisse, seule la caisse est disponible.`) :
+
+- de **cocher une présence** (`bot/presence` ; décocher reste permis pour nettoyer) ;
+- d'**augmenter un compteur** (`POST`, `PATCH` ; baisser reste permis, par exemple pour annuler).
+
+Le récap (`GET …/recap`) signale ces personnes avec `cashPreparer` (voir plus bas).
+
+---
+
 ## `GET /api/dispensary/bot/businesses`
 
 Liste des entreprises auxquelles un serveur Discord peut être lié (menu du `/config` du bot).
@@ -183,7 +200,8 @@ Les lignes renvoyées sont celles dont la période **chevauche** cette semaine (
 | Champ | Type | Description |
 |-------|------|-------------|
 | `periodStart`, `periodEnd` | string ISO | Bornes canoniques de la semaine (Paris) pour la requête |
-| `rows` | array | Même forme d’objets que le `GET` liste (tri par `resolvedDisplayName`, locale `fr`), plus `salary` (ci-dessous) |
+| `rows` | array | Même forme d’objets que le `GET` liste (tri par `resolvedDisplayName`, locale `fr`), plus `salary` (ci-dessous) et `cashPreparer` (boolean : la personne est préparateur de caisse) |
+| `viewer` | object | Seulement avec `X-Discord-User-Id` : `{ cashPreparer: boolean }` pour la personne qui demande (le bot ne lui montre alors que la caisse) |
 
 **`rows[].salary` — salaire estimé** (`null` si le module paie est désactivé) :
 
