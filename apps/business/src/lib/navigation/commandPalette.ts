@@ -17,6 +17,7 @@ import {
   IconUsers,
   IconWorld,
 } from '@tabler/icons-react';
+import { withAgendaPanels } from '@lawless-intranet/agenda-ui';
 import { isAppFeatureEnabled } from '@/lib/appSettingsShared';
 import { normalizeString } from '@/lib/string/normalizeString';
 import { routes } from '@/types/routes';
@@ -61,7 +62,8 @@ const KEYWORDS: Record<string, string[]> = {
   mails: ['courrier', 'templates', 'modeles'],
   search: ['objets', 'trouver'],
   agenda: ['calendrier', 'evenements', 'rdv'],
-  tasks: ['todo', 'taches'],
+  todo: ['taches', 'liste', 'a faire'],
+  calendar: ['evenements', 'rdv', 'planning'],
   media: ['images', 'photos', 'fichiers', 'mediatheque'],
   people: ['employes', 'membres', 'discord'],
   items: ['objets', 'catalogue'],
@@ -89,7 +91,9 @@ export function getCommandPaletteEntries(ctx: CommandPaletteContext): CommandEnt
 
   if (appSettings.featureAgendaEnabled && ctx.agendaModuleAccess) {
     page('agenda', 'Agenda', t.agenda.index, IconCalendarEvent);
-    page('tasks', 'Tâches', t.agenda.tasks, IconChecklist);
+    // The agenda on one panel only (`?panels=`, kept as the user's layout).
+    page('todo', 'Todo', withAgendaPanels(t.agenda.tasks, 'todo'), IconChecklist, 'Agenda');
+    page('calendar', 'Calendrier', withAgendaPanels(t.agenda.index, 'calendar'), IconCalendarEvent, 'Agenda');
   }
   if (appSettings.featureMediaEnabled && permissions?.media.access) page('media', 'Médiathèque', t.media.index, IconPhoto);
 

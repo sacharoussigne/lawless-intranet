@@ -44,6 +44,13 @@ describe('getCommandPaletteEntries', () => {
     expect(all).not.toContain('Plateforme');
   });
 
+  it('opens the agenda on one panel only', () => {
+    const entries = getCommandPaletteEntries(context());
+    expect(entries.find((entry) => entry.label === 'Todo')?.href).toBe('/saint-denis/employee/agenda/taches?panels=todo');
+    expect(entries.find((entry) => entry.label === 'Calendrier')?.href).toBe('/saint-denis/employee/agenda?panels=calendar');
+    expect(labels(context({ agendaModuleAccess: false }))).not.toContain('Agenda › Todo');
+  });
+
   it('hides a page without its module or access', () => {
     expect(labels(context({ letterBoxModuleAccess: false }))).not.toContain('Lettres');
     expect(labels(context({ appSettings: { ...APP_SETTINGS_DEFAULTS, featureLettersEnabled: false } }))).not.toContain(
