@@ -18,6 +18,8 @@ export type LetterFormImage = {
   /** Set once the storage has the file. */
   mediaFileId: string | null;
   name: string;
+  mimeType: string;
+  size: number;
   /** Local preview while uploading, signed URL for saved images. */
   previewUrl: string | null;
   progress: number;
@@ -34,6 +36,8 @@ export function toFormImages(images: LetterImageDTO[]): LetterFormImage[] {
     key: image.mediaFileId,
     mediaFileId: image.mediaFileId,
     name: image.name,
+    mimeType: image.mimeType,
+    size: image.size,
     previewUrl: image.previewUrl,
     progress: 1,
     status: 'ready',
@@ -121,6 +125,8 @@ export function useLetterImageUploads(boxId: string, limits: MediaLimitsRecord, 
           key,
           mediaFileId: null,
           name: file.name,
+          mimeType: file.type,
+          size: file.size,
           previewUrl,
           progress: 0,
           status: error ? 'error' : 'uploading',

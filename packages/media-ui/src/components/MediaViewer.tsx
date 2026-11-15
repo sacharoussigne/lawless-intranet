@@ -43,6 +43,8 @@ const navButtonStyle: CSSProperties = {
   top: '50%',
   transform: 'translateY(-50%)',
   color: ON_DARK,
+  // Above the side panel (zIndex 1), which covers the whole width on phones.
+  zIndex: 2,
 };
 
 function Tool({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
@@ -102,6 +104,8 @@ export function MediaViewer({
   const touch = useMediaQuery('(hover: none)') ?? false;
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const asideOpen = asideToggled ?? !touch;
+  /** Desktop panel to the right of the file: the file and the next arrow make room for it. */
+  const asideBesideFile = Boolean(aside) && asideOpen && !touch;
 
   const step = (delta: number) => {
     if (index === null) return;
@@ -141,7 +145,7 @@ export function MediaViewer({
         <Box
           h="100%"
           p={{ base: 'md', sm: 72 }}
-          pr={aside && asideOpen && !touch ? ASIDE_WIDTH + 48 : undefined}
+          pr={asideBesideFile ? ASIDE_WIDTH + 48 : undefined}
           pt={{ base: `calc(72px + ${SAFE_TOP})`, sm: 80 }}
           pb={{ base: `calc(72px + ${SAFE_BOTTOM})`, sm: 72 }}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -290,7 +294,7 @@ export function MediaViewer({
             </ActionIcon>
           ) : null}
           {hasNext ? (
-            <ActionIcon size={48} radius="xl" aria-label="Fichier suivant" onClick={() => step(1)} style={{ ...navButtonStyle, right: 16 }}>
+            <ActionIcon size={48} radius="xl" aria-label="Fichier suivant" onClick={() => step(1)} style={{ ...navButtonStyle, right: asideBesideFile ? ASIDE_WIDTH + 32 : 16 }}>
               <IconChevronRight size={28} />
             </ActionIcon>
           ) : null}
