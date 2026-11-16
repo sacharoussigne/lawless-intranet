@@ -107,6 +107,48 @@
   }
 }
 
+.contactRow {
+  position: relative;
+
+  &[data-sortable] .contact {
+    padding-left: 24px;
+  }
+
+  /* Lifted while dragged: opaque so the rows it passes over do not show through. */
+  &[data-dragging] {
+    background: var(--disp-surface);
+    box-shadow: var(--disp-shadow-lg);
+  }
+}
+
+/* Grip of a contact: on hover (always shown on touch screens), only it starts a drag. */
+.contactHandle {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  z-index: 1;
+  display: flex;
+  transform: translateY(-50%);
+  color: var(--disp-ink-muted);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+
+  .contactRow:hover &,
+  &:focus-visible {
+    opacity: 0.8;
+  }
+
+  @media (hover: none) {
+    opacity: 0.6;
+  }
+
+  .contactRow[data-dragging] & {
+    cursor: grabbing;
+    opacity: 1;
+  }
+}
+
 .contactBody {
   flex: 1;
   min-width: 0;

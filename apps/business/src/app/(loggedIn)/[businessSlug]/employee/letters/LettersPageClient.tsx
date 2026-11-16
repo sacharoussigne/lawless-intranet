@@ -16,7 +16,16 @@ import {
   type LetterSearchHitDTO,
 } from '@/types/letters';
 import { useFillViewport } from './hooks/useFillViewport';
-import { useLetterCorrespondents, useLettersRealtime } from './hooks/useLettersQueries';
+import { useQueryClient } from '@tanstack/react-query';
+import { reorderLetterCorrespondents } from '@/app/_actions/letters/correspondents';
+import { lettersKeys } from '@/lib/letters/queryKeys';
+import { useRequiredBusinessSlug } from '@/app/_contexts/PermissionsContext';
+import {
+  useInvalidateLetterBox,
+  useLetterBoxMutation,
+  useLetterCorrespondents,
+  useLettersRealtime,
+} from './hooks/useLettersQueries';
 import { Conversation } from './components/Conversation';
 import { CorrespondentFormModal } from './components/CorrespondentFormModal';
 import { CorrespondentList } from './components/CorrespondentList';
@@ -45,6 +54,24 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
   const correspondentId = searchParams.get('c') ?? initial.correspondentId;
   const correspondent = correspondents.find((entry) => entry.id === correspondentId) ?? null;
   useLettersRealtime(boxId);
+
+  // Drag & drop of the contacts: shown at once, saved for the whole box, reloaded if it fails.
+  const slug = useRequiredBusinessSlug();
+  const queryClient = useQueryClient();
+  const invalidateBox = useInvalidateLetterBox();
+  const reorder = useLetterBoxMutation(
+    boxId,
+    (actionSlug, vars: { boxId: string; ids: string[] }, meta) => reorderLetterCorrespondents(actionSlug, vars, meta),
+    { error: 'Impossible de changer l’ordre des correspondants' },
+  );
+  const reorderCorrespondents = (ids: string[]) => {
+    const byId = new Map(correspondents.map((entry) => [entry.id, entry]));
+    queryClient.setQueryData<LetterCorrespondentDTO[]>(
+      lettersKeys.correspondents(slug, boxId),
+      ids.flatMap((id) => byId.get(id) ?? []),
+    );
+    reorder.mutate({ boxId, ids }, { onError: () => void invalidateBox(boxId) });
+  };
   const toolbarRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
   useFillViewport(layoutRef, toolbarRef);
@@ -155,6 +182,7 @@ export function LettersPageClient({ initial, box }: { initial: LettersPageBootst
             canWrite={canWrite}
             onSelect={selectCorrespondent}
             onCreate={openCorrespondentForm}
+            onReorder={reorderCorrespondents}
           />
         </aside>
 

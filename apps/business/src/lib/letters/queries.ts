@@ -14,8 +14,8 @@ export async function loadCorrespondents(boxId: string): Promise<LetterCorrespon
         select: { title: true, direction: true },
       },
     },
-    // Latest letter first; contacts without letters at the end, by name.
-    orderBy: [{ lastLetterAt: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }],
+    // Order chosen by hand for the box; new contacts last.
+    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
   });
   return rows.map((row) => ({
     id: row.id,

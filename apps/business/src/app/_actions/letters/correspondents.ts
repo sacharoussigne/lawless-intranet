@@ -6,7 +6,7 @@ import { actionErrorParser } from '@/lib/action';
 import { emitLetterBoxChanged } from '@/lib/letters/realtime/broadcast';
 import { findCorrespondent, loadCorrespondents } from '@/lib/letters/queries';
 import { correspondentSearchName } from '@/lib/letters/search';
-import { correspondentSchema, letterIdSchema, updateCorrespondentSchema } from './schemas';
+import { correspondentSchema, letterIdSchema, reorderCorrespondentsSchema, updateCorrespondentSchema } from './schemas';
 import { getLettersContext, guardLetterBox } from './internals';
 
 export async function listLetterCorrespondents(businessSlug: string, boxId: string) {
@@ -39,8 +39,16 @@ async function createLetterCorrespondentUnlogged(
     });
     if (existing) return { status: 409, error: `${data.name} est déjà dans vos correspondants` };
 
+    // A new contact goes to the bottom of the list.
+    const last = await prisma.letterCorrespondent.aggregate({ where: { boxId: data.boxId }, _max: { position: true } });
     const created = await prisma.letterCorrespondent.create({
-      data: { boxId: data.boxId, name: data.name, searchName: correspondentSearchName(data.name), note: data.note || null },
+      data: {
+        boxId: data.boxId,
+        name: data.name,
+        searchName: correspondentSearchName(data.name),
+        note: data.note || null,
+        position: (last._max.position ?? -1) + 1,
+      },
       select: { id: true, name: true },
     });
     emitLetterBoxChanged(data.boxId, meta);
@@ -108,6 +116,36 @@ async function deleteLetterCorrespondentUnlogged(businessSlug: string, input: { 
   }
 }
 
+async function reorderLetterCorrespondentsUnlogged(
+  businessSlug: string,
+  input: { boxId: string; ids: string[] },
+  meta?: unknown,
+) {
+  try {
+    const ctx = await getLettersContext(businessSlug);
+    if (!ctx.ok) return ctx.response;
+    const data = reorderCorrespondentsSchema.parse(input);
+    const access = await guardLetterBox(ctx, data.boxId, 'write');
+    if (!access.ok) return { status: access.status, error: access.error };
+
+    // Exactly the contacts of the box: another member may have added or removed one meanwhile.
+    const current = await prisma.letterCorrespondent.findMany({ where: { boxId: data.boxId }, select: { id: true } });
+    const known = new Set(current.map((row) => row.id));
+    const sent = new Set(data.ids);
+    if (sent.size !== data.ids.length || sent.size !== known.size || data.ids.some((id) => !known.has(id))) {
+      return { status: 409, error: 'La liste des correspondants a changé : rechargez la page' };
+    }
+
+    await prisma.$transaction(
+      data.ids.map((id, position) => prisma.letterCorrespondent.update({ where: { id }, data: { position } })),
+    );
+    emitLetterBoxChanged(data.boxId, meta);
+    return { status: 200, data: { count: data.ids.length } };
+  } catch (error) {
+    return actionErrorParser(error, 'Erreur lors du changement d’ordre des correspondants');
+  }
+}
+
 /* Every mutation is logged, whatever the outcome (docs/APP-LOGS.md). */
 
 export async function createLetterCorrespondent(...args: Parameters<typeof createLetterCorrespondentUnlogged>) {
@@ -125,5 +163,11 @@ export async function updateLetterCorrespondent(...args: Parameters<typeof updat
 export async function deleteLetterCorrespondent(...args: Parameters<typeof deleteLetterCorrespondentUnlogged>) {
   return loggedAction({ feature: 'letters', event: 'letterCorrespondents.delete' }, args, () =>
     deleteLetterCorrespondentUnlogged(...args),
+  );
+}
+
+export async function reorderLetterCorrespondents(...args: Parameters<typeof reorderLetterCorrespondentsUnlogged>) {
+  return loggedAction({ feature: 'letters', event: 'letterCorrespondents.reorder' }, args, () =>
+    reorderLetterCorrespondentsUnlogged(...args),
   );
 }
