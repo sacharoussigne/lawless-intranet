@@ -37,6 +37,12 @@ export const updateCorrespondentSchema = correspondentSchema.omit({ boxId: true 
   id: z.string().uuid(),
 });
 
+/** Contact list of a box in its new order (every contact of the box, once). */
+export const reorderCorrespondentsSchema = z.object({
+  boxId: z.string().uuid(),
+  ids: z.array(z.string().uuid()).max(500),
+});
+
 export const letterImageInputSchema = z.object({ mediaFileId: z.string().uuid() });
 
 export const letterInputSchema = z.object({

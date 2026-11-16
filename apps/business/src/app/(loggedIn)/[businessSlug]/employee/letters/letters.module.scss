@@ -25,7 +25,8 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  /* Contacts: room for full names, growing with the screen. */
+  grid-template-columns: clamp(300px, 26vw, 420px) minmax(0, 1fr);
   border: 1px solid var(--disp-surface-border);
   border-radius: var(--mantine-radius-md);
   background: var(--disp-surface);
@@ -104,6 +105,48 @@
   &[data-active] {
     background: var(--disp-sage-soft-strong, var(--disp-sage-soft));
     box-shadow: inset 3px 0 0 var(--disp-sage);
+  }
+}
+
+.contactRow {
+  position: relative;
+
+  &[data-sortable] .contact {
+    padding-left: 24px;
+  }
+
+  /* Lifted while dragged: opaque so the rows it passes over do not show through. */
+  &[data-dragging] {
+    background: var(--disp-surface);
+    box-shadow: var(--disp-shadow-lg);
+  }
+}
+
+/* Grip of a contact: on hover (always shown on touch screens), only it starts a drag. */
+.contactHandle {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  z-index: 1;
+  display: flex;
+  transform: translateY(-50%);
+  color: var(--disp-ink-muted);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+
+  .contactRow:hover &,
+  &:focus-visible {
+    opacity: 0.8;
+  }
+
+  @media (hover: none) {
+    opacity: 0.6;
+  }
+
+  .contactRow[data-dragging] & {
+    cursor: grabbing;
+    opacity: 1;
   }
 }
 
