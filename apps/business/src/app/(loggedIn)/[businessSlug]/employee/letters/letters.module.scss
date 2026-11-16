@@ -25,7 +25,8 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  /* Contacts: room for full names, growing with the screen. */
+  grid-template-columns: clamp(300px, 26vw, 420px) minmax(0, 1fr);
   border: 1px solid var(--disp-surface-border);
   border-radius: var(--mantine-radius-md);
   background: var(--disp-surface);

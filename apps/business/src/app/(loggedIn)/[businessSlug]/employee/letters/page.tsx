@@ -40,7 +40,8 @@ export default async function LettersPage({
   const query = await searchParams;
 
   return (
-    <Container size="xl" pt="xs" pb={0}>
+    // Wider than the other pages (1320 px): a messaging layout uses the screen, up to a readable cap.
+    <Container fluid maw={1800} pt="xs" pb={0}>
       <SuspenseLoader>
         <LettersContent businessSlug={businessSlug} boxId={param(query.box)} correspondentId={param(query.c)} />
       </SuspenseLoader>
