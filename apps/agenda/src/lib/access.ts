@@ -161,7 +161,7 @@ export async function userHasAnyAgendaAccess(
   return participantCount > 0;
 }
 
-/** Agendas the user can open, the one they were given access to last first. */
+/** Agendas the user can open, in the order they were given access (oldest first). */
 export async function listAgendaSummaries(
   scopeType: string,
   scopeId: string,
@@ -169,7 +169,7 @@ export async function listAgendaSummaries(
 ) {
   const memberships = await prisma.agendaMember.findMany({
     where: { userId, agenda: scopeWhere(scopeType, scopeId) },
-    orderBy: [{ createdAt: 'desc' }, { agenda: { name: 'asc' } }],
+    orderBy: [{ createdAt: 'asc' }, { agenda: { name: 'asc' } }],
     select: {
       accessLevel: true,
       agenda: {
