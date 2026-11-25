@@ -66,6 +66,7 @@ export function SortableTodoTask({
       />
       <InlineEditableText
         value={task.title}
+        linkify
         canEdit={canWrite}
         onSave={(title) => onRename(task.id, title)}
         textClassName={`${classes.todoTaskTitle} ${

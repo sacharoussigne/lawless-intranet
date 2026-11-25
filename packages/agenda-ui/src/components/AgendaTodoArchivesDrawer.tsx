@@ -24,6 +24,7 @@ import {
   IconTrash,
   IconX,
 } from '@tabler/icons-react';
+import { LinkifiedText } from './LinkifiedText';
 import classes from '../agenda.module.scss';
 import {
   buildArchiveSections,
@@ -223,7 +224,7 @@ function ArchiveTask({ task, canWrite, onDeleteTask, onRestoreTask, isPending }:
       <IconCircleCheck size={16} stroke={1.5} className={classes.archiveTaskIcon} />
       <div className={classes.archiveTaskBody}>
         <Text size="sm" className={classes.archiveTaskTitle}>
-          {task.title}
+          <LinkifiedText text={task.title} openOnClick />
         </Text>
         {task.description ? (
           <Text size="xs" c="dimmed" truncate="end">

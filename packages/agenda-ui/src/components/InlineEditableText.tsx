@@ -5,6 +5,7 @@ import type { MouseEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader } from '@mantine/core';
 import { stopDragProps } from './agendaDnd';
+import { LinkifiedText } from './LinkifiedText';
 import classes from '../agenda.module.scss';
 
 interface InlineEditableTextProps {
@@ -18,6 +19,8 @@ interface InlineEditableTextProps {
   pending?: boolean;
   /** Touch screens (no double-click): a single tap edits. False to keep the tap for the parent (e.g. selecting a tab). */
   editOnTap?: boolean;
+  /** URLs of the text become links (Cmd/Ctrl+click, tap on touch screens). */
+  linkify?: boolean;
 }
 
 export function InlineEditableText({
@@ -29,6 +32,7 @@ export function InlineEditableText({
   onEditingChange,
   pending = false,
   editOnTap = true,
+  linkify = false,
 }: InlineEditableTextProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -116,7 +120,7 @@ export function InlineEditableText({
           if (editOnTap && canEdit && window.matchMedia('(hover: none)').matches) startEditing(event);
         }}
       >
-        {value}
+        {linkify ? <LinkifiedText text={value} /> : value}
       </span>
       {pending && <Loader size={12} aria-label="Enregistrement en cours" />}
     </>

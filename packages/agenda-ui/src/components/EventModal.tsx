@@ -498,6 +498,7 @@ export function EventModal({
                 />
                 <InlineEditableText
                   value={task.title}
+                  linkify
                   canEdit={canWrite}
                   onSave={(title) => renameEventTodo(task.id, title)}
                   textClassName={`${classes.todoTaskTitle} ${
