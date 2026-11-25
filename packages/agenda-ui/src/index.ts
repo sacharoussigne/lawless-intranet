@@ -22,6 +22,7 @@ export {
 export type { AgendaRealtimeEvent } from './realtime/types';
 export { agendaKeys } from './queryKeys';
 export { getAgendaCalendarRange, type AgendaCalendarRange } from './calendarRange';
+export { lastAgendaCookieName, pickInitialAgendaId, writeLastAgendaId } from './lastAgenda';
 
 export type {
   AgendaAccessLevel,
