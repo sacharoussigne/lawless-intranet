@@ -160,3 +160,34 @@ export async function userHasAnyAgendaAccess(
 
   return participantCount > 0;
 }
+
+/** Agendas the user can open, the one they were given access to last first. */
+export async function listAgendaSummaries(
+  scopeType: string,
+  scopeId: string,
+  userId: string,
+) {
+  const memberships = await prisma.agendaMember.findMany({
+    where: { userId, agenda: scopeWhere(scopeType, scopeId) },
+    orderBy: [{ createdAt: 'desc' }, { agenda: { name: 'asc' } }],
+    select: {
+      accessLevel: true,
+      agenda: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          _count: { select: { members: true } },
+        },
+      },
+    },
+  });
+
+  return memberships.map(({ accessLevel, agenda }) => ({
+    id: agenda.id,
+    name: agenda.name,
+    description: agenda.description,
+    accessLevel,
+    memberCount: agenda._count.members,
+  }));
+}

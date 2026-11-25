@@ -7,7 +7,7 @@ import {
 } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import {
-  listAccessibleAgendaIds,
+  listAgendaSummaries,
   userHasAnyAgendaAccess,
 } from '@/lib/access';
 import { serializeDates } from '@/lib/serialize';
@@ -89,68 +89,16 @@ export async function GET(request: Request) {
       return jsonResponse(request, { hasAccess: false, agendas: [] });
     }
 
-    const agendaIds = await listAccessibleAgendaIds(
+    const summaries = await listAgendaSummaries(
       scopeType,
       scopeId,
       auth.userId,
     );
 
-    if (agendaIds.length === 0) {
-      return jsonResponse(request, { hasAccess: true, agendas: [] });
-    }
-
-    const agendas = await prisma.agenda.findMany({
-      where: { id: { in: agendaIds }, ...scopeWhere(scopeType, scopeId) },
-      include: {
-        members: {
-          where: { userId: auth.userId },
-          select: { accessLevel: true },
-        },
-        _count: { select: { members: true } },
-      },
-      orderBy: { name: 'asc' },
-    });
-
-    const summaries = agendas.map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      accessLevel: a.members[0]?.accessLevel ?? null,
-      memberCount: a._count.members,
-    }));
-
     return jsonResponse(request, { hasAccess: true, agendas: summaries });
   }
 
-  const agendaIds = await listAccessibleAgendaIds(
-    scopeType,
-    scopeId,
-    auth.userId,
-  );
-
-  if (agendaIds.length === 0) {
-    return jsonResponse(request, []);
-  }
-
-  const agendas = await prisma.agenda.findMany({
-    where: { id: { in: agendaIds }, ...scopeWhere(scopeType, scopeId) },
-    include: {
-      members: {
-        where: { userId: auth.userId },
-        select: { accessLevel: true },
-      },
-      _count: { select: { members: true } },
-    },
-    orderBy: { name: 'asc' },
-  });
-
-  const data = agendas.map((a) => ({
-    id: a.id,
-    name: a.name,
-    description: a.description,
-    accessLevel: a.members[0]?.accessLevel ?? null,
-    memberCount: a._count.members,
-  }));
+  const data = await listAgendaSummaries(scopeType, scopeId, auth.userId);
 
   return jsonResponse(request, data);
 }

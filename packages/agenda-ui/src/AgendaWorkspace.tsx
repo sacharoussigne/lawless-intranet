@@ -35,6 +35,7 @@ import {
   type AgendaTodoListDTO,
 } from './types';
 import { AgendaSelector } from './components/AgendaSelector';
+import { pickInitialAgendaId, writeLastAgendaId } from './lastAgenda';
 import type { View } from 'react-big-calendar';
 import { AgendaCalendar } from './components/AgendaCalendar';
 import { AgendaLayoutControls } from './components/AgendaLayoutControls';
@@ -144,7 +145,14 @@ export function AgendaWorkspace({
   const manualAgendaStillVisible =
     manualAgendaId !== null && agendas.some((agenda) => agenda.id === manualAgendaId);
   const selectedAgendaId =
-    (manualAgendaStillVisible ? manualAgendaId : null) ?? urlAgendaId ?? agendas[0]?.id ?? null;
+    (manualAgendaStillVisible ? manualAgendaId : null) ??
+    urlAgendaId ??
+    pickInitialAgendaId(agendas, initialAgendaId);
+
+  // Reopened by default next time (read by the server render).
+  useEffect(() => {
+    if (selectedAgendaId) writeLastAgendaId(scopeKey, selectedAgendaId);
+  }, [scopeKey, selectedAgendaId]);
 
   const selectedAgenda = useMemo(
     () => agendas.find((a) => a.id === selectedAgendaId) ?? agendas[0] ?? null,

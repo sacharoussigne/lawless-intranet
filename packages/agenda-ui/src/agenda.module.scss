@@ -636,6 +636,13 @@
   line-height: var(--mantine-line-height-sm);
 }
 
+.todoLink {
+  color: var(--disp-sage-soft-text, var(--mantine-color-sage-7));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
 .inlineEditableInput {
   flex: 1;
   min-width: 0;

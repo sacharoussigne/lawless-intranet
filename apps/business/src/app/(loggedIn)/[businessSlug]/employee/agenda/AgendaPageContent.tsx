@@ -1,4 +1,10 @@
-import { getAgendaCalendarRange, isAgendaCalendarView } from '@lawless-intranet/agenda-ui';
+import { cookies } from 'next/headers';
+import {
+  getAgendaCalendarRange,
+  isAgendaCalendarView,
+  lastAgendaCookieName,
+  pickInitialAgendaId,
+} from '@lawless-intranet/agenda-ui';
 import { getAgendaPageBootstrap } from '@/app/_actions/agenda/agendas';
 import { listAgendaEvents } from '@/app/_actions/agenda/events';
 import { listAgendaTodoLists } from '@/app/_actions/agenda/todoLists';
@@ -32,7 +38,9 @@ export async function AgendaPageContent({
   }
 
   const { agendas, isAdmin } = bootstrap;
-  const firstAgendaId = agendas[0]?.id;
+  // The agenda opened last time (cookie written by the workspace), else the first one.
+  const lastAgendaId = (await cookies()).get(lastAgendaCookieName(businessSlug))?.value;
+  const firstAgendaId = pickInitialAgendaId(agendas, lastAgendaId) ?? undefined;
 
   // Same range as the calendar's view, so the client reuses this data.
   const initialEventsRange = getAgendaCalendarRange(
